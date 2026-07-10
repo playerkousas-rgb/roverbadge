@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>樂行童軍進度追蹤系統 v4.0 - 完整版</title>
+<title>深資童軍進度追蹤系統 v4.0 - 完整版</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <style>
 :root{
-  --maroon:#1B5E20;--maroon-dark:#0D3B1E;--maroon-light:#FFF5F5;
+  --maroon:#0D47A1;--maroon-dark:#082C5E;--maroon-light:#FFF5F5;
   --gold:#FFD700;--gold-dark:#FFC107;
   --blue:#1565C0;--blue-light:#E3F2FD;
   --green:#198754;--green-light:#D1E7DD;
@@ -264,16 +264,16 @@ a:hover{text-decoration:underline}
 <div id="homePage">
   <div class="app-header-common">
     <div class="logo-row">
-      <div class="logo-svg-wrap" aria-hidden="true" title="樂行童軍">
-        <img src="assets/vs-logo-256.png" alt="樂行童軍標誌" onerror="this.onerror=null; this.src='assets/vs-logo-128.png'; if(this.src.includes('128')){ this.onerror=function(){this.style.display='none'; document.getElementById('fallbackSvgHome').style.display='block';}; }">
+      <div class="logo-svg-wrap" aria-hidden="true" title="深資童軍">
+        <img src="assets/rover-logo-256.png" alt="深資童軍標誌" onerror="this.onerror=null; this.src='assets/rover-logo-128.png'; if(this.src.includes('128')){ this.onerror=function(){this.style.display='none'; document.getElementById('fallbackSvgHome').style.display='block';}; }">
         <svg id="fallbackSvgHome" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="display:none"><defs><radialGradient id="flameGrad2" cx="0.5" cy="0.3" r="0.7"><stop offset="0%" stop-color="#FFEE58"/><stop offset="50%" stop-color="#FFA000"/><stop offset="100%" stop-color="#BF360C"/></radialGradient></defs><path d="M30 85 L50 38 L70 85" fill="none" stroke="#FFD700" stroke-width="3" stroke-linecap="round"/><rect x="47" y="42" width="6" height="34" fill="#8B0000" rx="2"/><ellipse cx="50" cy="42" rx="9" ry="2.5" fill="none" stroke="#FFD700" stroke-width="1.2"/><path d="M45 46 Q42 36 48 28 Q50 24 50 20 Q50 16 52 13 Q55 18 54 24 Q53 28 55 32 Q58 38 55 46" fill="url(#flameGrad2)"/></svg>
       </div>
       <div style="text-align:left">
-        <h1>樂行童軍進度追蹤系統</h1>
-        <p>Rover Scout Progress Tracker v4.2 • PNG Logo + 第11版綱要</p>
+        <h1>深資童軍進度追蹤系統</h1>
+        <p>Venture Scout Progress Tracker v4.2 • PNG Logo + 第11版綱要</p>
       </div>
     </div>
-    <div class="header-subtitle">基於 2026年第11版《樂行童軍訓練綱要》• 支援離線暫存•批量寫入•成員申請確認•表格自動填寫</div>
+    <div class="header-subtitle">基於 2026年第11版《深資童軍訓練綱要》• 支援離線暫存•批量寫入•成員申請確認•表格自動填寫</div>
     <div class="welcome-nav">
       <button class="active" data-tab="enter" onclick="showWelcomeTab('enter', this)">🏠 進入系統</button>
       <button data-tab="setup" onclick="showWelcomeTab('setup', this)">📋 新旅團部署</button>
@@ -298,7 +298,7 @@ a:hover{text-decoration:underline}
         <div class="level-structure">
           <div class="level-box"><div class="level-num">L1</div><div class="level-name">會員章</div><div class="level-desc">12項 • 含保護兒童</div></div>
           <div class="level-box"><div class="level-num">L2</div><div class="level-name">肩章</div><div class="level-desc">23項基礎技能</div></div>
-          <div class="level-box"><div class="level-num">L3</div><div class="level-name">樂行童軍獎章</div><div class="level-desc">4段章 100+選項</div></div>
+          <div class="level-box"><div class="level-num">L3</div><div class="level-name">深資童軍獎章</div><div class="level-desc">4段章 100+選項</div></div>
           <div class="level-box"><div class="level-num">L4</div><div class="level-name">榮譽童軍獎章</div><div class="level-desc">4金帶 • 最高榮譽</div></div>
         </div>
       </div>
@@ -306,11 +306,14 @@ a:hover{text-decoration:underline}
       <div class="troop-section">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
           <h2 style="font-size:16px;color:var(--maroon);display:flex;align-items:center;gap:8px">📍 請選擇您的旅團</h2>
-          <button class="btn btn-sm btn-outline" onclick="loadTroops()">🔄 重新載入</button>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-sm btn-outline" onclick="loadTroops()">🔄 重新載入</button>
+            <button class="btn btn-sm btn-warning" onclick="enterDemoMode()">👀 試用 MOCK 效果 (免登入瀏覽器看)</button>
+          </div>
         </div>
         <div class="troop-grid" id="troopGrid"><p style="grid-column:1/-1;text-align:center;color:var(--text-light);padding:20px">載入中...</p></div>
         <div style="margin-top:12px;padding:10px;background:var(--blue-light);border-radius:8px;font-size:11px;color:var(--blue);line-height:1.6">
-          💡 提示：若您的旅團不在列表，請到「新旅團部署」查看10分鐘自助部署教學。
+          💡 提示：若您的旅團不在列表，請到「新旅團部署」查看10分鐘自助部署教學。<br>🎬 <b>未登入試用：</b>按「👀 試用 MOCK 效果」可免登入、免選旅團，直接用瀏覽器看 10個MOCK成員的進度、全團總覽、批量剔選、表格列印等效果，方便其他旅團了解系統。
         </div>
       </div>
     </div>
@@ -320,7 +323,7 @@ a:hover{text-decoration:underline}
       
       <div class="info-card" style="background:var(--blue-light);border-color:var(--blue);margin-bottom:12px">
         <h3 style="color:var(--blue)">🌟 先了解一下：主系統平台是什麼？</h3>
-        <p style="font-size:12px">你而家用緊嘅 <b>樂行童軍進度追蹤</b> 係一個 Tier 3 元件，可以獨立用，但其實屬於更龐大的 <b>scoutsystem-2.0 主系統平台</b>：</p>
+        <p style="font-size:12px">你而家用緊嘅 <b>深資童軍進度追蹤</b> 係一個 Tier 3 元件，可以獨立用，但其實屬於更龐大的 <b>scoutsystem-2.0 主系統平台</b>：</p>
         <ul style="font-size:11px;margin:6px 0 0 16px">
           <li>📊 Dashboard 儀表板：全旅團人數、活動、財政一目了然</li>
           <li>👥 成員管理、✅集會考勤 QR Code、💰財務、📅活動報名</li>
@@ -330,18 +333,18 @@ a:hover{text-decoration:underline}
         <p style="font-size:11px;margin-top:8px;background:#fff;padding:6px;border-radius:6px"><b>重點：有主系統 ≠ 一定要接上本系統</b>，可自由選擇獨立用或接上，兩條路並存不衝突。藉此告訴用家有更大平台可用。</p>
       </div>
 
-      <div class="info-card" style="background:var(--maroon-light);margin-bottom:12px"><h3>🗺️ 部署地圖 - 兩條路</h3><p style="font-size:11px">共通：下載 Code.gs → 建 Sheet → 執行 initializeSheets → 部署 → 複製 URL+API Key<br><b>軌道A 無主系統/有但想獨立用：</b> 將 URL+Key 交 roverbadge 管理員 → 加入 troops.json → 完成 → 用法：roverbadge.vercel.app 選旅團登入<br><b>軌道B 有主系統並想接上：</b> 同樣交 roverbadge 管理員 + 額外交主系統管理員填入旅團設定→元件設定 backend+apikey → 用法：主系統 Dashboard 點卡片 → 自動帶入 from=portal&embed=1 → 直接用</p></div>
+      <div class="info-card" style="background:var(--maroon-light);margin-bottom:12px"><h3>🗺️ 部署地圖 - 兩條路</h3><p style="font-size:11px">共通：下載 Code.gs → 建 Sheet → 執行 initializeSheets → 部署 → 複製 URL+API Key<br><b>軌道A 無主系統/有但想獨立用：</b> 將 URL+Key 交 vsbadge 管理員 → 加入 troops.json → 完成 → 用法：vsbadge.vercel.app 選旅團登入<br><b>軌道B 有主系統並想接上：</b> 同樣交 vsbadge 管理員 + 額外交主系統管理員填入旅團設定→元件設定 backend+apikey → 用法：主系統 Dashboard 點卡片 → 自動帶入 from=portal&embed=1 → 直接用</p></div>
 
       <div class="tutorial">
         <div class="steps">
           <div class="step"><div class="step-number">1</div><div class="step-content"><h4>共通：下載後端程式碼 (單一檔案版)</h4><p>包含待批、其他獎章、批量、SHEEP修復、PNG、私隱開關</p><a href="apps-script/Code.gs" download="Code.gs" class="btn btn-primary btn-sm" style="margin-top:6px">⬇️ 下載 Code.gs (最新)</a></div></div>
           <div class="step"><div class="step-number">2</div><div class="step-content"><h4>共通：建立 Google Sheet 並部署</h4><p><b>2.1</b> 建新試算表<br><b>2.2</b> 擴充功能→Apps Script，貼上 Code.gs<br><b>2.3</b> 儲存→執行 initializeSheets，授權，複製 API Key<br><b>2.4</b> 部署為網頁應用程式 (執行身分我，存取權任何人)，複製 URL (/exec)</p></div></div>
-          <div class="step"><div class="step-number">3</div><div class="step-content"><h4>軌道A：無主系統 - 提交給 roverbadge 管理員</h4><p>將旅團編號、名稱、URL、API Key 交 roverbadge 管理員加入 troops.json，Vercel自動部署後獨立可用</p></div></div>
-          <div class="step"><div class="step-number">4</div><div class="step-content"><h4>軌道B：有主系統並想接上 - 額外提交給主系統管理員</h4><p>將同一組 URL+Key 交主系統管理員，填入旅團設定→元件設定 roverbadge 卡片 backend+apikey。之後成員點 Dashboard 卡片自動帶入 ?u=0082&role=&ymis=&from=portal&embed=1，無需密碼</p></div></div>
+          <div class="step"><div class="step-number">3</div><div class="step-content"><h4>軌道A：無主系統 - 提交給 vsbadge 管理員</h4><p>將旅團編號、名稱、URL、API Key 交 vsbadge 管理員加入 troops.json，Vercel自動部署後獨立可用</p></div></div>
+          <div class="step"><div class="step-number">4</div><div class="step-content"><h4>軌道B：有主系統並想接上 - 額外提交給主系統管理員</h4><p>將同一組 URL+Key 交主系統管理員，填入旅團設定→元件設定 vsbadge 卡片 backend+apikey。之後成員點 Dashboard 卡片自動帶入 ?u=0082&role=&ymis=&from=portal&embed=1，無需密碼</p></div></div>
           <div class="step"><div class="step-number">5</div><div class="step-content"><h4>私隱選擇</h4><p>有主系統不等於一定要接，可自由選擇獨立用。若旅團重私隱，成員預設只看自己；若想互相鼓勵，團長可在用戶管理→系統設定開啟「允許成員互相查看進度」</p></div></div>
         </div>
       </div>
-      <div class="info-card" style="border-color:var(--blue);background:var(--blue-light)"><h3 style="color:var(--blue)">📧 完成後提交</h3><p style="font-size:11px">獨立用：交 roverbadge 管理員<br>接入主系統：同時交主系統管理員（填 backend+apikey）<br>兩條路可同時用，領袖從主系統入，成員 bookmark 獨立連結</p><button class="btn btn-blue" onclick="showContactModal()" style="width:100%">📧 一鍵提交接入申請給 roverbadge 管理員</button></div>
+      <div class="info-card" style="border-color:var(--blue);background:var(--blue-light)"><h3 style="color:var(--blue)">📧 完成後提交</h3><p style="font-size:11px">獨立用：交 vsbadge 管理員<br>接入主系統：同時交主系統管理員（填 backend+apikey）<br>兩條路可同時用，領袖從主系統入，成員 bookmark 獨立連結</p><button class="btn btn-blue" onclick="showContactModal()" style="width:100%">📧 一鍵提交接入申請給 vsbadge 管理員</button></div>
     </div>
 
     <div id="welcome-guide" class="welcome-section">
@@ -385,8 +388,8 @@ a:hover{text-decoration:underline}
 <div id="loginPage" style="display:none">
   <div class="app-header-common" style="padding:14px">
     <div class="logo-row" style="margin-bottom:0">
-      <div class="logo-svg-wrap"><img src="assets/vs-logo-256.png" alt="Logo" onerror="this.style.display='none'"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:32px;height:32px"><path d="M30 85 L50 38 L70 85" fill="none" stroke="#FFD700" stroke-width="3" stroke-linecap="round"/><rect x="47" y="42" width="6" height="34" fill="#8B0000" rx="2"/><ellipse cx="50" cy="42" rx="9" ry="2.5" fill="none" stroke="#FFD700" stroke-width="1.2"/><path d="M45 46 Q42 36 48 28 Q50 24 50 20 Q50 16 52 13 Q55 18 54 24 Q53 28 55 32 Q58 38 55 46" fill="#FFA000"/></svg></div>
-      <div><h1 style="font-size:18px">樂行童軍進度追蹤 v4.2</h1></div>
+      <div class="logo-svg-wrap"><img src="assets/rover-logo-256.png" alt="Logo" onerror="this.style.display='none'"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:32px;height:32px"><path d="M30 85 L50 38 L70 85" fill="none" stroke="#FFD700" stroke-width="3" stroke-linecap="round"/><rect x="47" y="42" width="6" height="34" fill="#8B0000" rx="2"/><ellipse cx="50" cy="42" rx="9" ry="2.5" fill="none" stroke="#FFD700" stroke-width="1.2"/><path d="M45 46 Q42 36 48 28 Q50 24 50 20 Q50 16 52 13 Q55 18 54 24 Q53 28 55 32 Q58 38 55 46" fill="#FFA000"/></svg></div>
+      <div><h1 style="font-size:18px">深資童軍進度追蹤 v4.2</h1></div>
     </div>
   </div>
   <div class="container">
@@ -413,8 +416,8 @@ a:hover{text-decoration:underline}
 <div id="mainApp" style="display:none">
   <div class="main-app-header">
     <div class="left">
-      <div class="logo-mini" style="overflow:hidden"><img src="assets/vs-logo-128.png" alt="logo" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:24px;height:24px;display:none"><path d="M30 85 L50 38 L70 85" fill="none" stroke="#FFD700" stroke-width="3" stroke-linecap="round"/><rect x="47" y="42" width="6" height="34" fill="#fff" rx="2"/><ellipse cx="50" cy="42" rx="9" ry="2.5" fill="none" stroke="#FFD700" stroke-width="1.2"/><path d="M45 46 Q42 36 48 28 Q50 24 50 20 Q50 16 52 13 Q55 18 54 24 Q53 28 55 32 Q58 38 55 46" fill="#FFD700"/></svg></div>
-      <h1 id="appTitle">樂行童軍進度追蹤</h1>
+      <div class="logo-mini" style="overflow:hidden"><img src="assets/rover-logo-128.png" alt="logo" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:24px;height:24px;display:none"><path d="M30 85 L50 38 L70 85" fill="none" stroke="#FFD700" stroke-width="3" stroke-linecap="round"/><rect x="47" y="42" width="6" height="34" fill="#fff" rx="2"/><ellipse cx="50" cy="42" rx="9" ry="2.5" fill="none" stroke="#FFD700" stroke-width="1.2"/><path d="M45 46 Q42 36 48 28 Q50 24 50 20 Q50 16 52 13 Q55 18 54 24 Q53 28 55 32 Q58 38 55 46" fill="#FFD700"/></svg></div>
+      <h1 id="appTitle">深資童軍進度追蹤</h1>
     </div>
     <div class="user-info">
       <span class="user-chip" id="userInfo">—</span>
@@ -532,8 +535,8 @@ a:hover{text-decoration:underline}
 <div id="toast" class="toast"></div>
 
 <footer style="text-align:center;padding:20px 16px;margin-top:20px;border-top:2px solid var(--border);font-size:12px;color:var(--text-light);background:var(--card)">
-  <div>COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 v4.8</div>
-  <div style="margin-top:4px;font-size:11px">基於 2026年第11版《樂行童軍訓練綱要》 | 支援離線暫存 • 批量寫入 • 保護兒童 Safe from Harm</div>
+  <div>COPYRIGHT 2026 Scout System • 深資童軍進度追蹤系統 v4.8</div>
+  <div style="margin-top:4px;font-size:11px">基於 2026年第11版《深資童軍訓練綱要》 | 支援離線暫存 • 批量寫入 • 保護兒童 Safe from Harm</div>
   <div style="margin-top:4px;font-size:10px">Developed for 82 Troop • All rights reserved • <a href="https://www.scout.org.hk" target="_blank">香港童軍總會</a></div>
 </footer>
 
@@ -547,7 +550,7 @@ let selectedProgressYmis=null; // 領袖查看他人進度
 let appConfig={allow_member_view_others:'false'}; // 系統設定
 
 const LS = {
-  session: 'roverbadge_session_v4',
+  session: 'vsbadge_session_v4',
   pending: (tid)=>`vs_pending_${tid}`,
   requests: (tid,ymis)=>`vs_requests_${tid}_${ymis}`,
   other: (tid)=>`vs_other_${tid}`,
@@ -704,8 +707,10 @@ function backToHome(){
 async function loadTroops(){
   const grid=document.getElementById('troopGrid');
   grid.innerHTML='<p style="grid-column:1/-1;text-align:center;color:var(--text-light);padding:20px">載入中...</p>';
-  // 樂行童軍版：不硬編0082，僅用 troops.json，0082 只是你剛好有齊支部作測試範例
-  const fallbackTroops={};
+  // 硬編碼後備，確保 Vercel 即使 data/troops.json 404 都有 0082
+  const fallbackTroops={
+    "0082": { name:"第 82 旅", backend:"https://script.google.com/macros/s/AKfycbxqQ3JnEdSRnxlhoSEasa6-wX5F58p3dMqBiQRj1zg-SDn7YtFLBKykN5LiWcadgRdCBg/exec" }
+  };
   try{
     let data=null;
     try{ const r=await fetch('data/troops.json?_='+Date.now()); if(r.ok) data=await r.json(); else throw new Error('data 404'); }catch(e){ console.warn('data/troops.json failed',e); data={troops:{}}; }
@@ -714,10 +719,10 @@ async function loadTroops(){
     // 若仍為空，使用硬編碼後備
     if(Object.keys(troops).length===0){
       console.warn('使用硬編碼後備 0082');
-      // 若仍為空，保持空
+      troops=fallbackTroops;
     }
     // 合併後備，確保0082一定存在
-    // 不合併硬編碼，僅用實際資料
+    troops={...fallbackTroops, ...troops};
     if(Object.keys(troops).length===0){
       grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--text-light)"><p>暫無旅團資料</p><p style="font-size:11px;margin-top:6px">已嘗試載入 data/troops.json 及 /api/troops 均失敗，顯示後備資料</p></div>';
       return;
@@ -730,7 +735,7 @@ async function loadTroops(){
   }catch(e){
     console.error(e);
     // 即使出錯也顯示後備
-    grid.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--text-light)"><p>暫無旅團資料</p><p style="font-size:11px">請檢查 data/troops.json 是否已包含你的旅團，或到「新旅團部署」建立後端。你現在是82旅且有齊支部，用0082測試是合理的。</p></div>`;
+    grid.innerHTML=Object.entries(fallbackTroops).map(([id,t])=>`<div class="troop-card" onclick="selectTroop('${id}')"><div class="troop-id">${id}</div><div class="troop-name">${t.name}</div></div>`).join('') + `<p style="grid-column:1/-1;text-align:center;color:var(--red);font-size:11px">載入出錯，已顯示後備 0082：${e.message}</p>`;
   }
 }
 async function selectTroop(id){
@@ -868,7 +873,7 @@ async function submitRegistration(){
   if(!ti||!su||!ak){ showToast('請填寫旅團編號、Script URL 和 API Key','error'); return; }
   btn.disabled=true; btn.textContent='提交中...';
   try{
-    await fetch(SCOUT_ADMIN_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({troopId:ti,troopName:tn,scriptUrl:su,apiKey:ak,appType:'roverbadge',note:nt})});
+    await fetch(SCOUT_ADMIN_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({troopId:ti,troopName:tn,scriptUrl:su,apiKey:ak,appType:'vsbadge',note:nt})});
     showToast('✅ 申請已提交！管理員會盡快處理','success');
     closeContactModal();
     ['c_troopId','c_troopName','c_scriptUrl','c_apiKey','c_note'].forEach(id=>document.getElementById(id).value='');
@@ -1969,11 +1974,11 @@ function renderFormsTab(){
   });
   c.innerHTML=`<div class="info-grid">
     <div class="info-card"><h3>🖨️ 表格自動填寫功能</h3><p>系統會根據進度自動填寫 PT/19 及 PT/20 表格所需完成日期，領袖/成員可修改後直接列印。支援雙面列印，符合總會要求。</p><ul><li>自動帶入姓名、YMIS、旅團、段章完成日期</li><li>可手動編輯補充服務時數、證書編號</li><li>一鍵列印，隱藏操作按鈕</li></ul></div>
-    <div class="info-card" style="border-color:var(--blue)"><h3 style="color:var(--blue)">📋 表格說明</h3><p><b>PT/19 樂行童軍獎章</b>：完成4段章後申請。<br><b>PT/20 榮譽童軍獎章</b>：完成4金帶+服務紀錄，每年9月15日前交總會，安排當年大會操頒發。<br><b>PT/65 考驗計劃</b>：開展金帶前需提交計劃書。</p></div>
+    <div class="info-card" style="border-color:var(--blue)"><h3 style="color:var(--blue)">📋 表格說明</h3><p><b>PT/19 深資童軍獎章</b>：完成4段章後申請。<br><b>PT/20 榮譽童軍獎章</b>：完成4金帶+服務紀錄，每年9月15日前交總會，安排當年大會操頒發。<br><b>PT/65 考驗計劃</b>：開展金帶前需提交計劃書。</p></div>
   </div>
   <div class="filter-bar"><label>選擇成員：</label><select id="formMemberSelect" onchange="renderFormsTab()">${members.map(m=>`<option value="${m.ymis}" ${m.ymis===targetYmis?'selected':''}>${m.name} (${m.ymis})</option>`).join('')}</select></div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
-    <button class="btn btn-primary" onclick="generatePrintableForm('PT19')">🖨️ 產生 PT/19 樂行童軍獎章申請表</button>
+    <button class="btn btn-primary" onclick="generatePrintableForm('PT19')">🖨️ 產生 PT/19 深資童軍獎章申請表</button>
     <button class="btn btn-warning" onclick="generatePrintableForm('PT20')">🐉 產生 PT/20 榮譽童軍獎章申請表</button>
   </div>
   <div id="printableArea" class="print-area"></div>`;
@@ -1998,8 +2003,8 @@ function generatePrintableForm(type){
     html=`<div class="print-area" id="officialPT19">
       <div style="text-align:center;border-bottom:3px double #000;padding-bottom:10px;margin-bottom:12px">
         <div style="font-size:12px;font-weight:700">香港童軍總會 Scout Association of Hong Kong</div>
-        <div style="font-size:15px;font-weight:800;margin-top:4px">樂行童軍獎章及證書申請表 (PT/19 04/2019)</div>
-        <div style="font-size:11px">Application Form for the Rover Scout Award and Certificate</div>
+        <div style="font-size:15px;font-weight:800;margin-top:4px">深資童軍獎章及證書申請表 (PT/19 04/2019)</div>
+        <div style="font-size:11px">Application Form for the Venture Scout Award and Certificate</div>
       </div>
       <div style="font-size:12px;font-weight:700;background:#F0F0F0;padding:4px 8px;border:1px solid #000">(1) 個人摘要 Personal Particulars</div>
       <table class="print-table" style="font-size:11px">
@@ -2023,7 +2028,7 @@ function generatePrintableForm(type){
         <tr><td>探險<br>Exploration</td><td>必修 Compulsory</td><td>E-A001 地圖閱讀<br>E-A002 遠足訓練</td><td>訓練班</td><td><input value="${getDoneDate(['L3-EXP-01','L3-EXP-02'])}" style="width:90px"></td></tr>
         <tr><td></td><td>選修 Elective</td><td>E-A003~E-A009 40km等</td><td>3日2夜</td><td><input value="${segDates['L3-EXP']||''}" style="width:90px"></td></tr>
       </table>
-      <div style="margin-top:12px;font-size:11px;display:grid;grid-template-columns:1fr 1fr;gap:20px"><div>申請者簽署 Applicant’s Signature<br><br>簽署 Signature：__________________ 日期 Date：${today}</div><div>提名 Nomination 旅長/樂行童軍團長 GSL/VSL<br>姓名 Name：__________ 日期 Date：__________<br>旅印 Group Stamp</div></div>
+      <div style="margin-top:12px;font-size:11px;display:grid;grid-template-columns:1fr 1fr;gap:20px"><div>申請者簽署 Applicant’s Signature<br><br>簽署 Signature：__________________ 日期 Date：${today}</div><div>提名 Nomination 旅長/深資童軍團長 GSL/VSL<br>姓名 Name：__________ 日期 Date：__________<br>旅印 Group Stamp</div></div>
       <div style="margin-top:12px;font-size:11px;display:grid;grid-template-columns:1fr 1fr;gap:20px;border-top:1px solid #000;padding-top:8px"><div>推薦 Recommendation 區總監 District Commissioner<br>姓名：__________ 日期：__________<br>區印 District Stamp</div><div>批核 Approval 地域總監 Regional Commissioner / 青少年活動總監<br>姓名：__________ 日期：__________<br>地域印/署印</div></div>
       <div style="margin-top:10px;font-size:9px;color:#666">同一張紙雙面列印，附紀錄冊影印及證書，經地域交總會。表格2年後銷毀。</div>
       <div class="no-print" style="margin-top:14px;text-align:center"><button class="btn btn-primary" onclick="window.print()">🖨️ 列印 (官方格式)</button></div>
@@ -2040,7 +2045,7 @@ function generatePrintableForm(type){
         <tr><td style="width:20%">姓名 Name (中/英)</td><td colspan="2"><input value="${member.name}" style="width:95%"></td><td rowspan="3" style="width:90px;text-align:center">近照<div style="width:80px;height:100px;border:1px dashed #999;margin:4px auto"></div></td></tr>
         <tr><td>出生日期/年齡/性別<br>Scout ID ${member.ymis}</td><td><input type="date" style="width:100px"> Age <input style="width:30px"> Gender <select style="width:50px"><option>男</option><option>女</option></select></td><td>單位 Unit ${currentTroopName}</td></tr>
         <tr><td>地址 Address / 電話 Contact</td><td colspan="2"><input style="width:95%"></td></tr>
-        <tr><td>樂行童軍獎章證書號碼 Cert No. / 發出日期</td><td><input style="width:50%"> Date <input value="${vsAwardDate}" style="width:80px"></td><td colspan="2">HKID首4位* <input placeholder="A123" style="width:60px"></td></tr>
+        <tr><td>深資童軍獎章證書號碼 Cert No. / 發出日期</td><td><input style="width:50%"> Date <input value="${vsAwardDate}" style="width:80px"></td><td colspan="2">HKID首4位* <input placeholder="A123" style="width:60px"></td></tr>
       </table>
       <div style="font-size:12px;font-weight:700;background:#F0F0F0;padding:4px 8px;border:1px solid #000;margin-top:10px">(2) 完成項目 Completed Items</div>
       <table class="print-table" style="font-size:11px">
@@ -2228,7 +2233,7 @@ function renderInfoTab(){
 
   html+=`<div class="info-section"><h3>📄 表格下載及佩戴指引</h3>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-      <a href="https://www.scout.org.hk/tc/circulars-forms/forms/index.html?type=8" target="_blank" class="link-card"><div class="link-icon">📄</div><div class="link-text"><div class="title">PT/19 樂行童軍獎章申請表</div><div class="url">總會表格下載</div></div></a>
+      <a href="https://www.scout.org.hk/tc/circulars-forms/forms/index.html?type=8" target="_blank" class="link-card"><div class="link-icon">📄</div><div class="link-text"><div class="title">PT/19 深資童軍獎章申請表</div><div class="url">總會表格下載</div></div></a>
       <a href="https://www.scout.org.hk/tc/circulars-forms/forms/index.html?type=8" target="_blank" class="link-card"><div class="link-icon">🐉</div><div class="link-text"><div class="title">PT/20 榮譽童軍獎章申請表</div><div class="url">總會表格下載</div></div></a>
       <a href="https://sites.google.com/scouting.org.hk/venture" target="_blank" class="link-card"><div class="link-icon">👕</div><div class="link-text"><div class="title">徽章佩戴指引 (2024-04-01起)</div><div class="url">深資支部官網</div></div></a>
       <a href="https://prog.scouting.org.hk/venture/" target="_blank" class="link-card"><div class="link-icon">🗂️</div><div class="link-text"><div class="title">訓練綱要及通告</div><div class="url">prog.scouting.org.hk/venture</div></div></a>
@@ -2409,6 +2414,55 @@ async function savePermissions(){
     }else throw new Error(d.error);
   }catch(e){
     showToast('儲存失敗：'+e.message,'error');
+  }
+}
+
+
+async function enterDemoMode(){
+  try{
+    const btn=document.querySelector('button[onclick="enterDemoMode()"]');
+    if(btn){ btn.disabled=true; btn.textContent='載入 MOCK 中...'; }
+    // 載入 items.json
+    if(!itemsData){
+      const r1=await fetch('data/items.json');
+      itemsData=await r1.json();
+    }
+    // 載入 MOCK 成員
+    const r=await fetch('data/mock_members.json?_='+Date.now());
+    const data=await r.json();
+    const mockMembers=data.members||[];
+    const mockProgress=data.progress_mock||{};
+    members=mockMembers.map(m=>({ymis:m.ymis, name:m.name}));
+    progressFlat={};
+    for(const ymis in mockProgress){
+      progressFlat[ymis]={};
+      for(const itemId in mockProgress[ymis]){
+        progressFlat[ymis][itemId]=mockProgress[ymis][itemId];
+      }
+    }
+    // 設定假用戶為團長，可體驗全部功能
+    currentTroopId='DEMO';
+    currentTroopName='第82旅 DEMO (MOCK)';
+    currentBackend=''; // 無後端，純瀏覽器
+    currentUser={ymis:'DEMO_LEADER', name:'DEMO 團長 (免登入試用)', role:'group_leader', can_tick:true, allowed_badges:'*'};
+    currentToken='demo-token';
+    appConfig={allow_member_view_others:'true'};
+    // 顯示主App
+    document.getElementById('homePage').style.display='none';
+    document.getElementById('loginPage').style.display='none';
+    document.getElementById('mainApp').style.display='block';
+    document.getElementById('appTitle').textContent=`${currentTroopName} - 進度追蹤 (DEMO免登入)`;
+    document.getElementById('userInfo').innerHTML=`${currentUser.name} <span class="role-badge role-group_leader">團長 DEMO</span> <span style="background:var(--orange);color:#fff;padding:2px 6px;border-radius:999px;font-size:9px">MOCK試用</span>`;
+    setupTabsByRole();
+    renderProgressTab();
+    renderInfoTab();
+    showToast('✅ 已進入 MOCK 試用模式，10個成員進度、批量剔、表格等皆可用，數據僅在瀏覽器', 'success');
+  }catch(e){
+    console.error(e);
+    showToast('MOCK試用載入失敗：'+e.message,'error');
+  }finally{
+    const btn=document.querySelector('button[onclick="enterDemoMode()"]');
+    if(btn){ btn.disabled=false; btn.textContent='👀 試用 MOCK 效果 (免登入瀏覽器看)'; }
   }
 }
 
