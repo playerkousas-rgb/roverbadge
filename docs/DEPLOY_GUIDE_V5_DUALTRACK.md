@@ -20,12 +20,12 @@
 **共通**：下載 Code.gs → 建 Sheet → 執行 initializeSheets → 部署 → 複製 URL+API Key
 
 **軌道A 無主系統/有但想獨立用**：
-- 將 URL+API Key 交 vsbadge 管理員 → 加入 troops.json → 完成
-- 用法：vsbadge.vercel.app → 選旅團 → 登入
+- 將 URL+API Key 交 roverbadge 管理員 → 加入 troops.json → 完成
+- 用法：roverbadge.vercel.app → 選旅團 → 登入
 - 優點：簡單
 
 **軌道B 有主系統並想接上**：
-- 同樣交 vsbadge 管理員
+- 同樣交 roverbadge 管理員
 - 額外：交主系統管理員填入旅團設定→元件設定 backend+apikey
 - 用法：主系統 Dashboard 點卡片 → 自動帶入身份 from=portal&embed=1 → 直接用
 - 優點：單一登入
@@ -34,6 +34,6 @@
 
 ## 為何要告訴用家有主系統？
 
-讓只用 vsbadge 的旅團知道，原來有更大平台可同時使用，Dashboard、考勤、財務等更多功能。
+讓只用 roverbadge 的旅團知道，原來有更大平台可同時使用，Dashboard、考勤、財務等更多功能。
 
 ## 詳細步驟見 DEPLOY_GUIDE_FOR_TROOPS.md

@@ -333,18 +333,18 @@ a:hover{text-decoration:underline}
         <p style="font-size:11px;margin-top:8px;background:#fff;padding:6px;border-radius:6px"><b>重點：有主系統 ≠ 一定要接上本系統</b>，可自由選擇獨立用或接上，兩條路並存不衝突。藉此告訴用家有更大平台可用。</p>
       </div>
 
-      <div class="info-card" style="background:var(--maroon-light);margin-bottom:12px"><h3>🗺️ 部署地圖 - 兩條路</h3><p style="font-size:11px">共通：下載 Code.gs → 建 Sheet → 執行 initializeSheets → 部署 → 複製 URL+API Key<br><b>軌道A 無主系統/有但想獨立用：</b> 將 URL+Key 交 vsbadge 管理員 → 加入 troops.json → 完成 → 用法：vsbadge.vercel.app 選旅團登入<br><b>軌道B 有主系統並想接上：</b> 同樣交 vsbadge 管理員 + 額外交主系統管理員填入旅團設定→元件設定 backend+apikey → 用法：主系統 Dashboard 點卡片 → 自動帶入 from=portal&embed=1 → 直接用</p></div>
+      <div class="info-card" style="background:var(--maroon-light);margin-bottom:12px"><h3>🗺️ 部署地圖 - 兩條路</h3><p style="font-size:11px">共通：下載 Code.gs → 建 Sheet → 執行 initializeSheets → 部署 → 複製 URL+API Key<br><b>軌道A 無主系統/有但想獨立用：</b> 將 URL+Key 交 roverbadge 管理員 → 加入 troops.json → 完成 → 用法：roverbadge.vercel.app 選旅團登入<br><b>軌道B 有主系統並想接上：</b> 同樣交 roverbadge 管理員 + 額外交主系統管理員填入旅團設定→元件設定 backend+apikey → 用法：主系統 Dashboard 點卡片 → 自動帶入 from=portal&embed=1 → 直接用</p></div>
 
       <div class="tutorial">
         <div class="steps">
           <div class="step"><div class="step-number">1</div><div class="step-content"><h4>共通：下載後端程式碼 (單一檔案版)</h4><p>包含待批、其他獎章、批量、SHEEP修復、PNG、私隱開關</p><a href="apps-script/Code.gs" download="Code.gs" class="btn btn-primary btn-sm" style="margin-top:6px">⬇️ 下載 Code.gs (最新)</a></div></div>
           <div class="step"><div class="step-number">2</div><div class="step-content"><h4>共通：建立 Google Sheet 並部署</h4><p><b>2.1</b> 建新試算表<br><b>2.2</b> 擴充功能→Apps Script，貼上 Code.gs<br><b>2.3</b> 儲存→執行 initializeSheets，授權，複製 API Key<br><b>2.4</b> 部署為網頁應用程式 (執行身分我，存取權任何人)，複製 URL (/exec)</p></div></div>
-          <div class="step"><div class="step-number">3</div><div class="step-content"><h4>軌道A：無主系統 - 提交給 vsbadge 管理員</h4><p>將旅團編號、名稱、URL、API Key 交 vsbadge 管理員加入 troops.json，Vercel自動部署後獨立可用</p></div></div>
-          <div class="step"><div class="step-number">4</div><div class="step-content"><h4>軌道B：有主系統並想接上 - 額外提交給主系統管理員</h4><p>將同一組 URL+Key 交主系統管理員，填入旅團設定→元件設定 vsbadge 卡片 backend+apikey。之後成員點 Dashboard 卡片自動帶入 ?u=0082&role=&ymis=&from=portal&embed=1，無需密碼</p></div></div>
+          <div class="step"><div class="step-number">3</div><div class="step-content"><h4>軌道A：無主系統 - 提交給 roverbadge 管理員</h4><p>將旅團編號、名稱、URL、API Key 交 roverbadge 管理員加入 troops.json，Vercel自動部署後獨立可用</p></div></div>
+          <div class="step"><div class="step-number">4</div><div class="step-content"><h4>軌道B：有主系統並想接上 - 額外提交給主系統管理員</h4><p>將同一組 URL+Key 交主系統管理員，填入旅團設定→元件設定 roverbadge 卡片 backend+apikey。之後成員點 Dashboard 卡片自動帶入 ?u=0082&role=&ymis=&from=portal&embed=1，無需密碼</p></div></div>
           <div class="step"><div class="step-number">5</div><div class="step-content"><h4>私隱選擇</h4><p>有主系統不等於一定要接，可自由選擇獨立用。若旅團重私隱，成員預設只看自己；若想互相鼓勵，團長可在用戶管理→系統設定開啟「允許成員互相查看進度」</p></div></div>
         </div>
       </div>
-      <div class="info-card" style="border-color:var(--blue);background:var(--blue-light)"><h3 style="color:var(--blue)">📧 完成後提交</h3><p style="font-size:11px">獨立用：交 vsbadge 管理員<br>接入主系統：同時交主系統管理員（填 backend+apikey）<br>兩條路可同時用，領袖從主系統入，成員 bookmark 獨立連結</p><button class="btn btn-blue" onclick="showContactModal()" style="width:100%">📧 一鍵提交接入申請給 vsbadge 管理員</button></div>
+      <div class="info-card" style="border-color:var(--blue);background:var(--blue-light)"><h3 style="color:var(--blue)">📧 完成後提交</h3><p style="font-size:11px">獨立用：交 roverbadge 管理員<br>接入主系統：同時交主系統管理員（填 backend+apikey）<br>兩條路可同時用，領袖從主系統入，成員 bookmark 獨立連結</p><button class="btn btn-blue" onclick="showContactModal()" style="width:100%">📧 一鍵提交接入申請給 roverbadge 管理員</button></div>
     </div>
 
     <div id="welcome-guide" class="welcome-section">
@@ -550,7 +550,7 @@ let selectedProgressYmis=null; // 領袖查看他人進度
 let appConfig={allow_member_view_others:'false'}; // 系統設定
 
 const LS = {
-  session: 'vsbadge_session_v4',
+  session: 'roverbadge_session_v1',
   pending: (tid)=>`vs_pending_${tid}`,
   requests: (tid,ymis)=>`vs_requests_${tid}_${ymis}`,
   other: (tid)=>`vs_other_${tid}`,
@@ -873,7 +873,7 @@ async function submitRegistration(){
   if(!ti||!su||!ak){ showToast('請填寫旅團編號、Script URL 和 API Key','error'); return; }
   btn.disabled=true; btn.textContent='提交中...';
   try{
-    await fetch(SCOUT_ADMIN_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({troopId:ti,troopName:tn,scriptUrl:su,apiKey:ak,appType:'vsbadge',note:nt})});
+    await fetch(SCOUT_ADMIN_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({troopId:ti,troopName:tn,scriptUrl:su,apiKey:ak,appType:'roverbadge',note:nt})});
     showToast('✅ 申請已提交！管理員會盡快處理','success');
     closeContactModal();
     ['c_troopId','c_troopName','c_scriptUrl','c_apiKey','c_note'].forEach(id=>document.getElementById(id).value='');

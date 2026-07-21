@@ -1,7 +1,7 @@
 # 🧩 樂行童軍進度系統 → 其他支部複製模版 (Agent 專用)
 
 > 本文件是給下一個 AI Agent 看的，讓他不用混淆，直接用同一架構複製出其他 3 個支部的獨立 APP
-> 原系統：樂行童軍進度追蹤 (Rover Scout) v5.6 FINAL - 參考 repo https://github.com/playerkousas-rgb/vsbadge.git
+> 原系統：樂行童軍進度追蹤 (Rover Scout) v5.6 FINAL - 參考 repo https://github.com/playerkousas-rgb/roverbadge.git (參考 vsbadge 原版)
 > 目標：獨立 3 個 APP，例如 幼童軍 / 童軍 / 樂行童軍 (各一份 Vercel + 各自 Google Sheet 後端)
 
 ---
@@ -150,11 +150,11 @@
 **共通**：下載 Code.gs (單一) → 建 Sheet → 貼上 → initializeSheets → 部署為網頁應用程式 → 複製 URL+API Key
 
 **軌道A 無主系統/有但想獨立用**：
-- URL+Key 交 vsbadge 管理員 → 加入 troops.json → 完成
-- 用法：vsbadge.vercel.app 選旅團登入
+- URL+Key 交 roverbadge 管理員 → 加入 troops.json → 完成
+- 用法：roverbadge.vercel.app 選旅團登入
 
 **軌道B 有主系統並想接上**：
-- 同樣交 vsbadge 管理員 + 額外交主系統管理員填旅團設定→元件設定 backend+apikey
+- 同樣交 roverbadge 管理員 + 額外交主系統管理員填旅團設定→元件設定 backend+apikey
 - 用法：主系統 Dashboard 點卡片自動帶入 ?u=&role=&ymis=&from=portal&embed=1 → 免密碼
 - 有主系統≠一定要接，可自由選擇獨立用，藉此宣傳主系統有 Dashboard、考勤、財務、活動報名等更多功能
 
@@ -187,7 +187,7 @@
 
 ## 6. 原 Repo 供參考
 
-https://github.com/playerkousas-rgb/vsbadge.git - v5.x FINAL 已包含上述所有
+https://github.com/playerkousas-rgb/roverbadge.git (參考 vsbadge 原版) - v5.x FINAL 已包含上述所有
 
 ---
 

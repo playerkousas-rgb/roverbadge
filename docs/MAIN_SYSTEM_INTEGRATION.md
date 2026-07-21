@@ -6,7 +6,7 @@
 
 本系統支援 **雙軌制**（見 ROUTER_TIER3_DUALTRACK.md）：
 
-1. **軌道 A - 獨立使用**：打開 `https://vsbadge.vercel.app/` → 選旅團 → 登入
+1. **軌道 A - 獨立使用**：打開 `https://roverbadge.vercel.app/` → 選旅團 → 登入
 2. **軌道 B - 接入主系統**：由主系統 Dashboard 卡片點擊進入，身份自動帶入，免再登入
 
 兩條軌道可以同時用：領袖從主系統進入，成員 bookmark 獨立連結。
@@ -20,7 +20,7 @@
 主系統在渲染卡片時，會用 **iframe** 嵌入本系統，並自動帶入 URL 參數：
 
 ```
-https://vsbadge.vercel.app/?u=0082
+https://roverbadge.vercel.app/?u=0082
   &role=leader          ← 主系統知道你是領袖/成員
   &ymis=1234567890      ← 主系統知道你的 YMIS
   &name=陳大文
@@ -64,7 +64,7 @@ https://vsbadge.vercel.app/?u=0082
 ```jsx
 // 主系統 Dashboard 渲染
 <iframe
-  src={`https://vsbadge.vercel.app/?u=${troopId}&role=${user.role}&ymis=${user.ymis}&name=${user.name}&from=portal&embed=1&backend=${troop.backend}&apikey=${troop.apikey}`}
+  src={`https://roverbadge.vercel.app/?u=${troopId}&role=${user.role}&ymis=${user.ymis}&name=${user.name}&from=portal&embed=1&backend=${troop.backend}&apikey=${troop.apikey}`}
   style={{width:'100%', height:'750px', border:'none', borderRadius:'12px'}}
   title="樂行童軍進度追蹤"
 />
@@ -78,7 +78,7 @@ https://vsbadge.vercel.app/?u=0082
 也可只傳 `u`，讓前端自動查 `troops.json`：
 
 ```
-https://vsbadge.vercel.app/?u=0082&role=leader&ymis=1234567890&from=portal&embed=1
+https://roverbadge.vercel.app/?u=0082&role=leader&ymis=1234567890&from=portal&embed=1
 ```
 
 前端會自動：
@@ -92,7 +92,7 @@ https://vsbadge.vercel.app/?u=0082&role=leader&ymis=1234567890&from=portal&embed
 
 |  | 獨立用 | 接入主系統 |
 |---|---|---|
-| 入口 | vsbadge.vercel.app → 選旅團 | 主系統 Dashboard 卡片 |
+| 入口 | roverbadge.vercel.app → 選旅團 | 主系統 Dashboard 卡片 |
 | 旅團選擇 | 手動選 | 自動帶入 `u` |
 | 登入 | 選 member/leader 輸入 YMIS/Email+密碼 | 自動帶入，無需密碼 (Portal 信任模式) |
 | 後端 | 查 troops.json 取得 backend | 查 troops.json 或直接用 URL 參數 backend/apikey |
