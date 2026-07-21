@@ -1,7 +1,7 @@
-# 🧩 深資童軍進度系統 → 其他支部複製模版 (Agent 專用)
+# 🧩 樂行童軍進度系統 → 其他支部複製模版 (Agent 專用)
 
 > 本文件是給下一個 AI Agent 看的，讓他不用混淆，直接用同一架構複製出其他 3 個支部的獨立 APP
-> 原系統：深資童軍進度追蹤 (Venture Scout) v5.6 FINAL - 參考 repo https://github.com/playerkousas-rgb/vsbadge.git
+> 原系統：樂行童軍進度追蹤 (Rover Scout) v5.6 FINAL - 參考 repo https://github.com/playerkousas-rgb/vsbadge.git
 > 目標：獨立 3 個 APP，例如 幼童軍 / 童軍 / 樂行童軍 (各一份 Vercel + 各自 Google Sheet 後端)
 
 ---
@@ -104,7 +104,7 @@
 - `loadTroops()` 加時間戳 `?_=` 防快取 + 硬編碼後備
 
 ### COPYRIGHT
-- Footer：`COPYRIGHT 2026 Scout System • 深資童軍進度追蹤系統 v4.8`
+- Footer：`COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 v4.8`
 
 ### MOCK 10成員
 - `data/mock_members.json` + `mock_import.csv`，SHEEP登入用戶管理有測試工具一鍵載入
@@ -114,7 +114,7 @@
 ## 3. 各支部需替換的部分（Agent 重點改這裡）
 
 ### A. items.json
-- 照抄深資的結構，但換成該支部的進度性獎章
+- 照抄樂行的結構，但換成該支部的進度性獎章
   - 例如 幼童軍：會員章、幼童軍獎章、歷奇章、高級歷奇章、金紫荊獎章
   - 童軍：會員章、探索獎章、毅行獎章、挑戰獎章、總領袖獎章
   - 樂行童軍：會員章、樂行童軍獎章、貝登堡獎章
@@ -126,12 +126,12 @@
 - forms：該支部的 PT 表格，例如幼童軍 PT/68 金紫荊，童軍 PT/18 總領袖章，樂行 PT/21/22
 
 ### B. Logo / 制服色
-- 深資用棗紅色 #8B0000 + 金色 #FFD700 + 火炬
+- 樂行用棗紅色 #8B0000 + 金色 #FFD700 + 火炬
 - 幼童軍用黃色為主、童軍綠色為主、樂行紅色為主，換 assets/vs-logo-*.png 為該支部標誌，但保持 256px + 128px 大小，不要用1.3M原圖
 - 變更 :root --maroon 色碼為該支部主色
 
 ### C. 表格
-- 深資是 PT/19 + PT/20，幼童軍是 PT/68，童軍是 PT/18，樂行是 PT/21/PT/22
+- 樂行是 PT/19 + PT/20，幼童軍是 PT/68，童軍是 PT/18，樂行是 PT/21/PT/22
 - 參考 `generatePrintableForm()` 已模仿官方格式的寫法，照抄結構改表格欄位
 
 ### D. 保護兒童
@@ -141,7 +141,7 @@
 
 - `troops.json` 旅團對照表結構不變
 - `Code.gs` 完全不用改，已支援任意支部，只需改 items.json
-- `README.md` / `DEPLOY_GUIDE_FOR_TROOPS.md` / `docs/MAIN_SYSTEM_INTEGRATION.md` 文案中的「深資」字眼換成該支部名稱
+- `README.md` / `DEPLOY_GUIDE_FOR_TROOPS.md` / `docs/MAIN_SYSTEM_INTEGRATION.md` 文案中的「樂行」字眼換成該支部名稱
 
 ---
 

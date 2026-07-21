@@ -52,7 +52,7 @@ https://vsbadge.vercel.app/?u=0082
 | branch_leader / group_leader / admin | 全團總覽 + 審批中心 + 用戶管理 | 勾選全部、批量、審批、改角色、設權限 |
 | super_admin (SHEEP) | 全部 + 測試工具 | 最高權限 |
 
-主系統負責：**是否顯示卡片**（例如非深資童軍支部不顯示）
+主系統負責：**是否顯示卡片**（例如非樂行童軍支部不顯示）
 本系統負責：**卡片內顯示什麼**（例如 member 只看自己）
 
 ---
@@ -66,7 +66,7 @@ https://vsbadge.vercel.app/?u=0082
 <iframe
   src={`https://vsbadge.vercel.app/?u=${troopId}&role=${user.role}&ymis=${user.ymis}&name=${user.name}&from=portal&embed=1&backend=${troop.backend}&apikey=${troop.apikey}`}
   style={{width:'100%', height:'750px', border:'none', borderRadius:'12px'}}
-  title="深資童軍進度追蹤"
+  title="樂行童軍進度追蹤"
 />
 ```
 
