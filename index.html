@@ -363,8 +363,8 @@ a:hover{text-decoration:underline}
         <h3>👥 角色功能教學（登入後）</h3>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px;margin-top:8px">
           <div style="background:var(--bg);padding:10px;border-radius:8px;border-left:3px solid var(--green)"><b>👤 成員 member</b><ul style="font-size:11px;margin:6px 0 0 16px"><li>只能看自己進度</li><li>不能直接剔，按📝申請</li><li>待批查看自己申請</li><li>其他獎章只讀自己</li><li>表格列印官方格式</li><li>資料庫看綱要及安全指引</li></ul></div>
-          <div style="background:var(--bg);padding:10px;border-radius:8px;border-left:3px solid #D63384"><b>🎖️ 執委 exec</b><ul style="font-size:11px;margin:6px 0 0 16px"><li>成員全部功能</li><li>可勾選（需授權範圍）</li><li>默認：會員章+活動段章(細項不用)+其他逐個勾</li><li>可選成員查看紀錄</li><li>全團批量剔（若授權）</li><li>待批批准（若授權）</li></ul></div>
-          <div style="background:var(--bg);padding:10px;border-radius:8px;border-left:3px solid var(--maroon)"><b>👨‍💼 領袖 leader</b><ul style="font-size:11px;margin:6px 0 0 16px"><li>全部功能</li><li>我的進度選任何成員看紀錄</li><li>全團一眼睇會員章+百分比</li><li>考驗營批量一鍵幫全團剔</li><li>離線暫存確認寫入</li><li>待批批量批准</li><li>用戶管理改成員為執委+⚙️權限設定</li><li>領袖默認全部，團長/管理員可改低層級</li><li>審批新帳號</li></ul></div>
+          <div style="background:var(--bg);padding:10px;border-radius:8px;border-left:3px solid #D63384"><b>🎖️ 管理委員會 管委 (原執委)</b><ul style="font-size:11px;margin:6px 0 0 16px"><li>成員全部功能</li><li>可勾選（需授權範圍）</li><li>默認：會員章+活動段章(細項不用)+其他逐個勾</li><li>可選成員查看紀錄</li><li>全團批量剔（若授權）</li><li>待批批准（若授權）</li></ul></div>
+          <div style="background:var(--bg);padding:10px;border-radius:8px;border-left:3px solid var(--maroon)"><b>👨‍💼 領袖 leader</b><ul style="font-size:11px;margin:6px 0 0 16px"><li>全部功能</li><li>我的進度選任何成員看紀錄</li><li>全團一眼睇會員章+百分比</li><li>考驗營批量一鍵幫全團剔</li><li>離線暫存確認寫入</li><li>待批批量批准</li><li>用戶管理改成員為管委+⚙️權限設定</li><li>領袖默認全部，團長/管理員可改低層級</li><li>審批新帳號</li></ul></div>
         </div>
       </div>
     </div>
@@ -488,7 +488,7 @@ a:hover{text-decoration:underline}
 <div id="permissionModal" class="modal">
   <div class="modal-content" style="max-width:650px">
     <h3>⚙️ 設定可勾選權限 - <span id="permUserName"></span></h3>
-    <p style="font-size:12px;color:var(--text-light);margin-bottom:10px">領袖默認全部 (*)，團長/管理員可更改。執委可按個別成員勾選可考核範圍。<br>成員改為執委後，可設定其可考核：會員章、活動段章(細項不用)、其他獎章逐個勾。</p>
+    <p style="font-size:12px;color:var(--text-light);margin-bottom:10px">領袖默認全部 (*)，團長/管理員可更改。管委可按個別成員勾選可考核範圍。<br>成員改為管理委員會後，可設定其可考核：會員章、活動段章(細項不用)、其他獎章逐個勾。</p>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;max-height:50vh;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:10px">
       <div>
         <b style="font-size:12px">進度性獎章 (段章層級)</b>
@@ -502,7 +502,7 @@ a:hover{text-decoration:underline}
     <div style="margin-top:10px;display:flex;gap:8px">
       <button class="btn btn-sm btn-secondary" onclick="permSelectAll(true)">全選</button>
       <button class="btn btn-sm btn-secondary" onclick="permSelectAll(false)">全不選</button>
-      <button class="btn btn-sm btn-warning" onclick="permSetExecDefault()">設為執委默認 (會員章+活動段章+其他部分)</button>
+      <button class="btn btn-sm btn-warning" onclick="permSetExecDefault()">設為管委默認 (會員章+活動段章+其他部分)</button>
       <button class="btn btn-sm btn-success" onclick="permSetAll()">設為領袖全部 (*)</button>
     </div>
     <div class="modal-actions">
@@ -835,7 +835,7 @@ function setupTabsByRole(){
     showToast('成員模式：只能查看自己進度，其他獎章及申請','warning');
   }
 }
-function getRoleName(r){ const m={'super_admin':'超管','admin':'管理員','group_leader':'團長','branch_leader':'支部領袖','exec_committee':'執委','member':'團員'}; return m[r]||r; }
+function getRoleName(r){ const m={'super_admin':'超管','admin':'管理員','group_leader':'團長','branch_leader':'樂行童軍團長','exec_committee':'管理委員會','member':'樂行童軍成員'}; return m[r]||r; }
 function canUserTickRole(role){ return ['admin','group_leader','branch_leader','exec_committee','super_admin'].includes(role); }
 
 function canCurrentUserTickItem(itemId){
@@ -1960,26 +1960,21 @@ function handleOtherBadgeCert(badgeId, name, targetYmis, certVal){
 
 /* ================== Forms Tab ================== */
 function renderFormsTab(){
+  
   const c=document.getElementById('tab-forms');
   const isLeader=canUserTickRole(currentUser.role);
   const targetYmis=isLeader? (selectedProgressYmis||currentUser.ymis) : currentUser.ymis;
   const member=members.find(m=>m.ymis===targetYmis)||{name:currentUser.name,ymis:targetYmis};
   const flat=progressFlat[targetYmis]||{};
-  // compute badge completion dates
-  const badgeDates={};
-  itemsData.badges.forEach(b=>{
-    const ids=getBadgeItemIds(b);
-    const dates=ids.map(id=>flat[id]).filter(Boolean).sort();
-    badgeDates[b.id]=dates.length? dates[dates.length-1] : '';
-  });
   c.innerHTML=`<div class="info-grid">
-    <div class="info-card"><h3>🖨️ 表格自動填寫功能</h3><p>系統會根據進度自動填寫 PT/21 及 PT/22 表格所需完成日期，領袖/成員可修改後直接列印。支援雙面列印，符合總會要求。</p><ul><li>自動帶入姓名、YMIS、旅團、段章完成日期</li><li>可手動編輯補充服務時數、證書編號</li><li>一鍵列印，隱藏操作按鈕</li></ul></div>
-    <div class="info-card" style="border-color:var(--blue)"><h3 style="color:var(--blue)">📋 表格說明</h3><p><b>PT/21 樂行童軍獎章</b>：完成4段章後申請。<br><b>PT/22 貝登堡獎章</b>：完成4金帶+服務紀錄，每年9月15日前交總會，安排當年大會操頒發。<br><b>PT/65 考驗計劃</b>：開展金帶前需提交計劃書。</p></div>
+    <div class="info-card"><h3>🖨️ 樂行童軍表格自動填寫 (已更新最新官方)</h3><p>PT/21 樂行童軍獎章、PT/22 貝登堡獎章、PT/69 考驗申請 2024最新版，非深資表格。管理委員會名稱已修正。</p><ul><li>自動帶入姓名、YMIS、旅團、證書號碼、完成日期</li><li>PT/21 需完成4項 (童軍知識、社區服務I、童軍技能I + 選修1)</li><li>PT/22 需先有PT/21證書，再完成社區服務II、童軍技能II、挑戰 + 選修2</li><li>一鍵列印官方格式</li></ul></div>
+    <div class="info-card" style="border-color:var(--blue)"><h3 style="color:var(--blue)">📋 表格說明 (樂行專用，已修正深資混用)</h3><p><b>PT/69 考驗申請</b>：開始樂行/貝登堡考驗前提交計劃簡述。<br><b>PT/21 樂行童軍獎章</b>：完成4項申請。<br><b>PT/22 貝登堡獎章</b>：完成全部7項 (4必修+3選修其中2)，需區總監及地域總監推薦，每年9月15日前交總會，大會操頒發。</p><p style="font-size:10px;color:var(--text-light)">之前版本表格描述提PT/65(深資)已修正為樂行PT/69。</p></div>
   </div>
   <div class="filter-bar"><label>選擇成員：</label><select id="formMemberSelect" onchange="renderFormsTab()">${members.map(m=>`<option value="${m.ymis}" ${m.ymis===targetYmis?'selected':''}>${m.name} (${m.ymis})</option>`).join('')}</select></div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
-    <button class="btn btn-primary" onclick="generatePrintableForm('PT21')">🖨️ 產生 PT/21 樂行童軍獎章申請表</button>
-    <button class="btn btn-warning" onclick="generatePrintableForm('PT22')">🐉 產生 PT/22 貝登堡獎章申請表</button>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">
+    <button class="btn btn-secondary" onclick="generatePrintableForm('PT69')">📝 產生 PT/69 考驗申請</button>
+    <button class="btn btn-primary" onclick="generatePrintableForm('PT21')">🏅 產生 PT/21 樂行獎章 (最新)</button>
+    <button class="btn btn-warning" onclick="generatePrintableForm('PT22')">🏆 產生 PT/22 貝登堡獎章 (最新)</button>
   </div>
   <div id="printableArea" class="print-area"></div>`;
 }
@@ -1995,58 +1990,130 @@ function generatePrintableForm(type){
   function badgeIds(bId){ const b=itemsData.badges.find(x=>x.id===bId); return b?getBadgeItemIds(b):[]; }
 
   let html='';
-  // 樂行童軍官方表格：PT/21 樂行童軍獎章 / PT/22 貝登堡獎章
-  const isRoverAward = (type==='PT21' || type==='PT19');
-  const badgeId = isRoverAward ? 'L3' : 'L4';
-  const badge = itemsData.badges.find(b=>b.id===badgeId);
-  const formTitle = isRoverAward ? '樂行童軍獎章及證書申請表 (PT/21)' : '貝登堡獎章及證書申請表 (PT/22) 貝登堡獎章';
-  const formSub = isRoverAward ? 'Rover Scout Award' : 'Baden-Powell Award';
-
-  html=`<div class="print-area" id="officialForm">
-    <div style="text-align:center;border-bottom:3px double #000;padding-bottom:10px;margin-bottom:12px">
-      <div style="font-size:12px;font-weight:700">香港童軍總會 Scout Association of Hong Kong</div>
-      <div style="font-size:15px;font-weight:800;margin-top:4px">${formTitle}</div>
-      <div style="font-size:11px">${formSub} - 樂行童軍支部</div>
-    </div>
-    <div style="font-size:12px;font-weight:700;background:#F0F0F0;padding:4px 8px;border:1px solid #000">(1) 個人摘要 Personal Particulars</div>
-    <table class="print-table" style="font-size:11px">
-      <tr><td style="width:20%">姓名 Name (中/英)</td><td colspan="2"><input value="${member.name}" style="width:95%"></td><td rowspan="3" style="width:90px;text-align:center">近照<div style="width:80px;height:100px;border:1px dashed #999;margin:4px auto"></div></td></tr>
-      <tr><td>出生日期/年齡/性別<br>Scout ID ${member.ymis}</td><td><input type="date" style="width:100px"> Age <input style="width:30px"> Gender <select style="width:50px"><option>男</option><option>女</option></select></td><td>單位 Unit ${currentTroopName}</td></tr>
-      <tr><td>地址 Address / 電話 Contact</td><td colspan="2"><input style="width:95%"></td></tr>
-      <tr><td>樂行童軍獎章證書號碼 Cert No. / 發出日期</td><td><input style="width:50%"> Date <input value="${isRoverAward?'':getDoneDate(badgeIds('L3'))}" style="width:80px"></td><td colspan="2">HKID首4位* <input placeholder="A123" style="width:60px"></td></tr>
-    </table>
-    <div style="font-size:12px;font-weight:700;background:#F0F0F0;padding:4px 8px;border:1px solid #000;margin-top:10px">(2) 完成項目 Completed Items - ${badge?badge.name:''} ${badge?`(${badge.requirements||''})`:''}</div>
-    <table class="print-table" style="font-size:11px">
-      <tr><th>項目 Items</th><th>單元名稱 Module Name</th><th>完成日期</th><th>備註</th></tr>
-      ${(badge?badge.segments:[]).map(seg=>{
-        const segDone=getDoneDate(getSegmentItemIds(seg));
-        return seg.items.map(it=>{
-          const done=getDoneDate([it.id].concat((it.subItems||[]).map(s=>s.id)));
-          return `<tr><td>${seg.name}</td><td>${it.name}</td><td><input value="${done||segDone}" style="width:90px"></td><td>${it.detail?it.detail.substring(0,40):''}</td></tr>`;
-        }).join('');
-      }).join('')}
-      <tr><td colspan="2">其他獎章 / AYP</td><td colspan="2">${Object.keys(other).map(k=>`${k}:${other[k].date}`).join(', ')||''}</td></tr>
-    </table>
-    <div style="margin-top:12px;font-size:11px">
-      <div>申請者簽署 Applicant’s Signature：__________________ 日期 Date：${today}</div>
-      <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:20px;border-top:1px solid #000;padding-top:8px">
-        <div>提名 Nomination 團長 GSL/VSL / 團管理委員會主席<br>姓名：__________ 日期：__________<br>旅印 Group Stamp</div>
-        <div>推薦 Recommendation 區總監 DC / 地域總監 RC<br>姓名：__________ 日期：__________<br>區印/地域印</div>
+  if(type==='PT69'){
+    html=`<div class="print-area" id="officialForm">
+      <div style="text-align:center;border-bottom:3px double #000;padding-bottom:10px;margin-bottom:12px">
+        <div style="font-size:12px;font-weight:700">香港童軍總會 Scout Association of Hong Kong</div>
+        <div style="font-size:15px;font-weight:800;margin-top:4px">樂行童軍獎章及貝登堡獎章考驗申請 (PT/69 08/2018 最新)</div>
+        <div style="font-size:11px">Application for Assessment of Rover Scout Award and Baden-Powell Award - 官方最新版</div>
       </div>
-      <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:20px;border-top:1px solid #000;padding-top:8px">
-        <div>批核 Approval 青少年活動總監 PC<br>姓名：__________ 日期：__________<br>署印</div>
-        <div>備註：${isRoverAward?'完成4項獲樂行童軍獎章':'完成7項全部獲貝登堡獎章，經區總監及地域總監接見'}</div>
+      <div style="font-size:12px;font-weight:700;background:#F0F0F0;padding:4px 8px;border:1px solid #000">(1) 個人摘要 Personal Particulars</div>
+      <table class="print-table" style="font-size:11px">
+        <tr><td>姓名 Name (中/英) 須與身份證相同</td><td><input value="${member.name}" style="width:80%"> YMIS ${member.ymis}</td><td rowspan="3" style="width:90px;text-align:center">近照<br><div style="width:80px;height:100px;border:1px dashed #999;margin:4px auto"></div></td></tr>
+        <tr><td>出生日期/年齡/性別 DOB/Age/Gender</td><td><input type="date"> Age<input style="width:30px"> Gender<select><option>男</option><option>女</option></select> Scout ID ${member.ymis} Issue Date<input></td></tr>
+        <tr><td>所屬單位 Region/District/Group ${currentTroopName} / 地址 Address / 電話 Contact / Email</td><td><input style="width:95%"><br><input style="width:95%"></td></tr>
+        <tr><td>樂行童軍肩章簽發日期 Date of Rover Epaulettes Issued</td><td colspan="2"><input type="date" style="width:120px"> 肩章考驗(舊制PT/53)已由新制取代</td></tr>
+      </table>
+      <div style="font-size:12px;font-weight:700;background:#F0F0F0;padding:4px 8px;border:1px solid #000;margin-top:10px">(2) 考驗計劃 Assessment Planning</div>
+      <table class="print-table" style="font-size:11px">
+        <tr><th>項目 Items</th><th>計劃簡述 Summary of Planning</th><th>由 From</th><th>至 To</th></tr>
+        <tr><td>童軍知識 Scouting Knowledge</td><td><input style="width:95%"></td><td><input type="date"></td><td><input type="date"></td></tr>
+        <tr><td>社區服務(I) Community Service I - 童軍服務 Scout Service</td><td><input style="width:95%"></td><td><input type="date"></td><td><input type="date"></td></tr>
+        <tr><td>社區服務(I) - 社區服務 Community Service</td><td><input style="width:95%"></td><td><input type="date"></td><td><input type="date"></td></tr>
+        <tr><td>社區服務(II) Community Service II</td><td><input style="width:95%"></td><td><input type="date"></td><td><input type="date"></td></tr>
+        <tr><td>童軍技能(I) Scoutcraft I</td><td><input style="width:95%"></td><td><input type="date"></td><td><input type="date"></td></tr>
+        <tr><td>童軍技能(II) Scoutcraft II</td><td><input style="width:95%"></td><td><input type="date"></td><td><input type="date"></td></tr>
+        <tr><td>個人興趣 Personal Pursuits</td><td><input style="width:95%"></td><td><input type="date"></td><td><input type="date"></td></tr>
+        <tr><td>個人發展 Personal Development</td><td><input style="width:95%"></td><td><input type="date"></td><td><input type="date"></td></tr>
+        <tr><td>認識世界 Horizons Broadening - 境外體驗 Overseas / 本地交流 Local</td><td><input style="width:95%"></td><td><input type="date"></td><td><input type="date"></td></tr>
+        <tr><td>挑戰項目 Challenge - 個人挑戰 Personal / 野外挑戰 Wilderness</td><td><input style="width:95%"></td><td><input type="date"></td><td><input type="date"></td></tr>
+      </table>
+      <div style="margin-top:12px;font-size:11px">
+        <div>申請人簽署 Applicant：__________________ 日期 Date：${today}</div>
+        <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:20px">
+          <div>同意 Agreement 團長 RSL 批准開始考驗<br>姓名：__________ 日期：__________<br>旅印 Group Stamp</div>
+          <div>知會區會 Acknowledged by District ADC(RS)/DRSL/District Assigned Person<br>簽署：__________ 區印：__________ 日期：__________</div>
+        </div>
+        <div style="margin-top:8px">批核 Approval 地域總部總監(樂行童軍) RHQC(RS)<br>姓名：__________ 日期：__________ 地域印 Regional Stamp</div>
+        <div style="margin-top:10px;font-size:9px;background:#E3F2FD;padding:6px;border:1px solid #90CAF9">備註：個人資料用途自願，不足無法處理。PT/69 官方最新 2018版，開始考驗前提交。</div>
       </div>
-      <div style="margin-top:10px;font-size:9px;background:#FFF3CD;padding:6px;border:1px solid #FFE69C">全年接受申請，需附紀錄冊、證書影印，經地域交總會。樂行童軍獎章完成4項，貝登堡完成7項全部。</div>
-    </div>
-    <div class="no-print" style="margin-top:14px;text-align:center"><button class="btn btn-primary" onclick="window.print()">🖨️ 列印 (官方格式 雙面)</button></div>
-  </div>`;
+      <div class="no-print" style="margin-top:14px;text-align:center"><button class="btn btn-primary" onclick="window.print()">🖨️ 列印 PT/69</button> <a href="https://www.scout.org.hk/uploads/tc/forms/15033/PT69.pdf" target="_blank" class="btn btn-secondary">📄 下載官方空白PT/69</a></div>
+    </div>`;
+  } else if(type==='PT21'){
+    const compKnowledge = getDoneDate(['L1-01','L1-02']) || '';
+    const commI1 = getDoneDate(['L3-SERVICE-01']) || '';
+    const scI = getDoneDate(['L2-SKILL-01']) || '';
+    const persDev = getDoneDate(badgeIds('L6')) || '';
+    html=`<div class="print-area" id="officialForm">
+      <div style="text-align:center;border-bottom:3px double #000;padding-bottom:10px;margin-bottom:12px">
+        <div style="font-size:12px;font-weight:700">香港童軍總會 Scout Association of Hong Kong</div>
+        <div style="font-size:15px;font-weight:800;margin-top:4px">樂行童軍獎章及證書申請表 (PT/21 08/2022最新)</div>
+        <div style="font-size:11px">Application Form for the Rover Scout Award and Certificate - 樂行支部專用，非深資PT/19</div>
+      </div>
+      <div style="font-size:12px;font-weight:700;background:#F0F0F0;padding:4px 8px;border:1px solid #000">1. 個人資料 Personal Particulars</div>
+      <table class="print-table" style="font-size:11px">
+        <tr><td style="width:22%">姓名 Name (中/英) 須與身份證相同</td><td><input value="${member.name}" style="width:70%"> YMIS ${member.ymis}</td><td rowspan="4" style="width:90px;text-align:center">近照 x3<br><div style="width:80px;height:100px;border:1px dashed #999;margin:2px auto"></div>回郵地址用正楷BLOCK LETTERS</td></tr>
+        <tr><td>出生日期/年齡/性別 DOB/Age/Gender</td><td><input type="date" style="width:110px"> Age<input style="width:40px"> Gender<select><option>男</option><option>女</option></select> Scout ID ${member.ymis} Issue Date<input type="date"></td></tr>
+        <tr><td>所屬單位 Region/District/Group</td><td><input value="${currentTroopName}" style="width:70%"> 單位</td></tr>
+        <tr><td>地址 Address / 電話 Contact / Email</td><td><input style="width:95%"><br><input placeholder="Phone / Email" style="width:95%"></td></tr>
+      </table>
+      <div style="font-size:12px;font-weight:700;background:#F0F0F0;padding:4px 8px;border:1px solid #000;margin-top:10px">2. 完成之項目 Completed Items - 樂行童軍獎章 (完成4項：3必修+選修1)</div>
+      <table class="print-table" style="font-size:11px">
+        <tr><th>項目 Items</th><th>活動簡述 Summary</th><th>完成日期 Date</th><th>審核員 Assessor</th><th>備註 Remarks</th></tr>
+        <tr><td>必修 童軍知識 Scouting Knowledge</td><td><input style="width:95%" value="${(itemsData.badges.find(b=>b.id==='L1')?.name||'')}"></td><td><input value="${compKnowledge}" style="width:80px"></td><td><input style="width:70px"></td><td></td></tr>
+        <tr><td>必修 社區服務(I) - 童軍服務 Scout Service</td><td><input style="width:95%"></td><td><input value="${commI1}" style="width:80px"></td><td><input style="width:70px"></td><td></td></tr>
+        <tr><td>必修 社區服務(I) - 社區服務 Community Service</td><td><input style="width:95%"></td><td><input style="width:80px"></td><td><input style="width:70px"></td><td></td></tr>
+        <tr><td>必修 童軍技能(I) Scoutcraft I</td><td><input style="width:95%"></td><td><input value="${scI}" style="width:80px"></td><td><input style="width:70px"></td><td></td></tr>
+        <tr><td>☐ 選修 個人發展 Personal Development (三選一)</td><td><input style="width:95%"></td><td><input value="${persDev}" style="width:80px"></td><td><input style="width:70px"></td><td>三選一剔號</td></tr>
+        <tr><td>☐ 選修 個人興趣 Personal Pursuits</td><td><input style="width:95%"></td><td><input style="width:80px"></td><td><input style="width:70px"></td><td></td></tr>
+        <tr><td>☐ 選修 認識世界 Horizons Broadening (境外/本地)</td><td><input style="width:95%"></td><td><input style="width:80px"></td><td><input style="width:70px"></td><td></td></tr>
+      </table>
+      <div style="margin-top:12px;font-size:11px">
+        <div>3. 申請者簽署 Applicant’s Signature：__________________ 日期 Date：${today}</div>
+        <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:20px;border-top:1px solid #000;padding-top:8px">
+          <div>4. 提名 Nomination 樂行童軍團長 Rover Scout Leader<br>姓名：__________ 日期：__________<br>旅印 Group Stamp</div>
+          <div>5. 推薦 Recommendation 助理區總監(樂行)/樂行區長/區指定人士 ADC(RS)/DRSL/District Assigned<br>姓名：__________ 日期：__________<br>區印 District Stamp</div>
+        </div>
+        <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:20px;border-top:1px solid #000;padding-top:8px">
+          <div>6. 批核 Approval 地域總部總監(樂行) RHQC(RS)<br>姓名：__________ 日期：__________<br>地域印 Regional Stamp</div>
+          <div>7. 確認 Confirmation 青少年活動總監 Programme Commissioner<br>姓名：__________ 日期：__________<br>署印 Branch Stamp</div>
+        </div>
+        <div style="margin-top:10px;font-size:9px;background:#E3F2FD;padding:6px;border:1px solid #90CAF9">申請程序：(1)填表簽署交團長提名 (2)交區會簽推薦+地域批核 (3)連同紀錄冊個人資料、有效日期、獎章頁及證書影印本經地域交總會青少年活動署 (4)總監核對發證。官方PT/21 2022最新版。</div>
+      </div>
+      <div class="no-print" style="margin-top:14px;text-align:center"><button class="btn btn-primary" onclick="window.print()">🖨️ 列印 PT/21 (最新官方格式)</button> <a href="https://www.scout.org.hk/article_attach/23724/PT21.pdf" target="_blank" class="btn btn-secondary">📄 下載官方空白PT/21</a></div>
+    </div>`;
+  } else if(type==='PT22'){
+    const l3date = getDoneDate(badgeIds('L3')) || '';
+    html=`<div class="print-area" id="officialForm">
+      <div style="text-align:center;border-bottom:3px double #000;padding-bottom:10px;margin-bottom:12px">
+        <div style="font-size:12px;font-weight:700">香港童軍總會 Scout Association of Hong Kong</div>
+        <div style="font-size:15px;font-weight:800;margin-top:4px">貝登堡獎章及證書申請表 (PT/22 08/2022最新)</div>
+        <div style="font-size:11px">Application Form for Baden-Powell Award and Certificate - 樂行支部最高榮譽</div>
+      </div>
+      <div style="font-size:12px;font-weight:700;background:#F0F0F0;padding:4px 8px;border:1px solid #000">1. 個人資料 Personal Particulars</div>
+      <table class="print-table" style="font-size:11px">
+        <tr><td>姓名 Name (中/英)</td><td><input value="${member.name}" style="width:70%"> YMIS ${member.ymis}</td><td rowspan="3" style="width:90px;text-align:center">近照</td></tr>
+        <tr><td>DOB/Age/Gender / Scout ID / Issue Date</td><td><input type="date"> Age<input style="width:30px"> Gender<select><option>男</option><option>女</option></select> ID ${member.ymis} Issue<input type="date"></td></tr>
+        <tr><td>Unit Region/District/Group ${currentTroopName} / Address / Contact / Email</td><td><input style="width:95%"></td></tr>
+      </table>
+      <div style="font-size:12px;font-weight:700;background:#FFF3CD;padding:4px 8px;border:1px solid #000;margin-top:10px">樂行童軍獎章 Rover Scout Award 證書編號 Cert No.:<input style="width:100px"> 完成日期 Date:<input value="${l3date}" style="width:100px"> (必須先完成PT/21)</div>
+      <div style="font-size:12px;font-weight:700;background:#F0F0F0;padding:4px 8px;border:1px solid #000;margin-top:10px">2. 完成之項目 Completed Items - 貝登堡獎章 (完成3必修+選修2，共7項中6? 官方為3必修+2選修，連同PT/21共7項全部)</div>
+      <table class="print-table" style="font-size:11px">
+        <tr><th>項目 Items</th><th>活動簡述 Summary</th><th>完成日期 Date</th><th>審核員 Assessor</th><th>備註</th></tr>
+        <tr><td>必修 社區服務(II) Community Service II</td><td><input style="width:95%"></td><td><input style="width:80px"></td><td><input style="width:70px"></td><td></td></tr>
+        <tr><td>必修 童軍技能(II) Scoutcraft II</td><td><input style="width:95%"></td><td><input style="width:80px"></td><td><input style="width:70px"></td><td></td></tr>
+        <tr><td>必修 挑戰項目 Challenge (個人/野外)</td><td><input style="width:95%"></td><td><input style="width:80px"></td><td><input style="width:70px"></td><td></td></tr>
+        <tr><td>☐ 選修 個人發展 Personal Development (三選二)</td><td><input style="width:95%"></td><td><input style="width:80px"></td><td><input style="width:70px"></td><td>三選二</td></tr>
+        <tr><td>☐ 選修 個人興趣 Personal Pursuits</td><td><input style="width:95%"></td><td><input style="width:80px"></td><td><input style="width:70px"></td><td></td></tr>
+        <tr><td>☐ 選修 認識世界 Horizons Broadening</td><td><input style="width:95%"></td><td><input style="width:80px"></td><td><input style="width:70px"></td><td></td></tr>
+      </table>
+      <div style="margin-top:12px;font-size:11px">
+        <div>3. 申請者簽署 Applicant：__________________ 日期 Date：${today}</div>
+        <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:20px;border-top:1px solid #000;padding-top:8px">
+          <div>4. 提名 Nomination 樂行童軍團長 Rover Scout Leader<br>姓名：__________ 日期：__________<br>旅印 Group Stamp</div>
+          <div>5. 推薦 Recommendation 區總監 District Commissioner + 地域總監 Regional Commissioner<br>姓名：__________ 日期：__________<br>區印/地域印 District/Regional Stamp</div>
+        </div>
+        <div style="margin-top:8px;border-top:1px solid #000;padding-top:8px">6. 批核 Approval 青少年活動總監 Programme Commissioner<br>姓名：__________ 日期：__________<br>署印 Branch Stamp<br>全年接受申請，9月15日前交總會，安排當年大會操頒發，之後留翌年。</div>
+        <div style="margin-top:10px;font-size:9px;background:#FFF3CD;padding:6px;border:1px solid #FFE69C">文件：紀錄冊個人資料、有效日期、貝登堡頁次及證書影印本，經地域交總會。PT/22 2022最新版，非深資PT/20。</div>
+      </div>
+      <div class="no-print" style="margin-top:14px;text-align:center"><button class="btn btn-primary" onclick="window.print()">🖨️ 列印 PT/22 (最新)</button> <a href="https://www.scout.org.hk/article_attach/23723/PT22.pdf" target="_blank" class="btn btn-secondary">📄 下載官方空白PT/22</a></div>
+    </div>`;
+  }
   document.getElementById('printableArea').innerHTML=html;
 }
 
-
-
-/* ================== Help Tab - 角色分開教學 (內嵌版，不依賴外部MD，避免404) ================== */
+/* ================== Help Tab
+ - 角色分開教學 (內嵌版，不依賴外部MD，避免404) ================== */
 const EMBEDDED_GUIDES={
   member: `<h2>👤 成員使用教學 (Member)</h2>
   <blockquote>你只需關心自己的進度，其他功能由領袖處理</blockquote>
@@ -2063,8 +2130,8 @@ const EMBEDDED_GUIDES={
   <h4>為何看不到其他成員？</h4>
   <p>預設私隱，成員只看自己。團長可在用戶管理開啟「允許成員互相查看進度」。</p>`,
 
-  exec: `<h2>🎖️ 執委使用教學 (Exec)</h2>
-  <blockquote>你由成員晉升為執委，擁有部分領袖權限</blockquote>
+  exec: `<h2>🎖️ 管理委員會使用教學 (管委 - 原執委)</h2>
+  <blockquote>樂行童軍支部叫「管理委員會」，性質同深資童軍「執行委員會」一樣，名稱不同而已</blockquote>
   <ul>
     <li>成員功能全部</li>
     <li><b>可勾選進度</b>（需授權），默認：會員章+活動段章(細項不用)+其他逐個勾</li>
@@ -2072,8 +2139,10 @@ const EMBEDDED_GUIDES={
     <li>可在全團總覽使用批量剔選</li>
     <li>可在待批批准申請（若授權）</li>
   </ul>
+  <h3>名稱差異說明</h3>
+  <p>深資：執行委員會 (Exec) — 樂行：管理委員會 (管理委員)，職能一樣：負責團內架構、組織、活動及行政，所有領袖為當然委員。</p>
   <h3>如何幫成員勾選？</h3>
-  <ol><li>我的進度選成員</li><li>找到項目直接勾選+改日期</li><li>底部確認寫入</li></ol>`,
+  <ol><li>我的進度選成員</li><li>找到項目直接勾選+改日期</li><li>底部確認寫入</li></ol>`, 
 
   leader: `<h2>👨‍💼 領袖使用教學 (Leader)</h2>
   <blockquote>你擁有全部權限</blockquote>
@@ -2146,7 +2215,7 @@ function renderInfoTab(){
         </ul>
       </div>
       <div style="background:#fff;border-radius:8px;padding:12px;border:1px solid var(--border)">
-        <h4 style="color:#D63384;font-size:14px">🎖️ 執委 (exec_committee) 可以做什麼</h4>
+        <h4 style="color:#D63384;font-size:14px">🎖️ 管理委員會 (管委) 可以做什麼 (性質同深資執委一樣，名稱不同)</h4>
         <ul style="font-size:12px;line-height:1.8;padding-left:16px;color:var(--text-light);margin-top:6px">
           <li>成員的所有功能</li>
           <li>可勾選進度（需領袖授權可勾選範圍）</li>
@@ -2165,7 +2234,7 @@ function renderInfoTab(){
           <li>可使用「🚀考驗營批量完成」：選成員+選項目+日期，一鍵幫全團剔，不用逐個跳轉</li>
           <li>可直接勾選+輸入日期，離線暫存按確認批量寫入，過程有提示</li>
           <li>可在「📝待批」批量批准/拒絕成員申請</li>
-          <li>可在「👥用戶管理」將成員改為執委，並按個別成員設定可考核什麼（會員章/活動段章/其他獎章逐個勾）</li>
+          <li>可在「👥用戶管理」將成員改為管理委員會，並按個別成員設定可考核什麼（會員章/活動段章/其他獎章逐個勾）</li>
           <li>領袖默認全部權限，團長/管理員可更改低層級可勾選範圍</li>
           <li>團長/管理員可在「👥用戶管理」授權/收回勾選權限，設定細緻權限</li>
           <li>團長/管理員可在「📋審批申請」審批新帳號</li>
@@ -2242,7 +2311,7 @@ async function loadUsers(){
         <div style="font-size:12px;line-height:1.8">
           <b>USER (系統使用者)</b> = 所有在 Users 表的人，包括：<br>
           • <span class="role-badge role-member">團員 member</span> = 純成員，不包括領袖<br>
-          • <span class="role-badge role-exec_committee">執委 exec_committee</span> = 屬領袖，可勾選 (需授權)<br>
+          • <span class="role-badge role-exec_committee">管理委員會 exec_committee (管委)</span> = 屬領袖，可勾選 (性質同深資執委，名稱不同)<br>
           • <span class="role-badge role-branch_leader">支部領袖 branch_leader</span> = 領袖<br>
           • <span class="role-badge role-group_leader">團長 group_leader</span> = 領袖<br>
           • <span class="role-badge role-admin">管理員 admin</span> = 領袖<br>
@@ -2285,7 +2354,7 @@ async function loadUsers(){
 
       let h=roleExplain+systemSettingHtml+mockTool+'<div class="filter-bar"><input type="text" id="userSearch" placeholder="搜尋姓名/ YMIS/ Email" oninput="filterUsers()" style="flex:1"></div><div id="userList">';
       h+=d.users.map(u=>`<div class="user-item" data-search="${(u.name+u.ymis+u.email).toLowerCase()}"><div class="user-item-info"><b>${u.name}</b> ${u.ymis?`(${u.ymis})`:''} ${u.email?` - ${u.email}`:''}<span class="role-badge role-${u.role}">${getRoleName(u.role)}</span> ${u.can_tick?'<span style="background:var(--green-light);color:var(--green);padding:1px 6px;border-radius:999px;font-size:9px">可勾選</span>':''}<br><small style="font-size:10px;color:var(--text-light)">權限: ${u.allowed_badges|| (u.role==='member'?'無':(u.role==='exec_committee'?'L1,活動段章,其他部分':'全部(*)'))}</small></div><div class="user-item-actions">`+
-        (['admin','group_leader','branch_leader','super_admin'].includes(currentUser.role)&&u.ymis!==currentUser.ymis?`<select onchange="updateUserRole('${u.ymis}',this.value)"><option value="member" ${u.role==='member'?'selected':''}>團員</option><option value="exec_committee" ${u.role==='exec_committee'?'selected':''}>執委</option><option value="branch_leader" ${u.role==='branch_leader'?'selected':''}>支部領袖</option><option value="group_leader" ${u.role==='group_leader'?'selected':''}>團長</option><option value="admin" ${u.role==='admin'?'selected':''}>管理員</option></select><button class="btn btn-sm ${u.can_tick?'btn-danger':'btn-success'}" onclick="toggleCanTick('${u.ymis}',${!u.can_tick})">${u.can_tick?'收回勾選':'授權勾選'}</button><button class="btn btn-sm btn-warning" onclick="openPermissionModal('${u.ymis}','${u.name.replace(/'/g,"\'") }','${u.role}','${(u.allowed_badges||'').replace(/'/g,"")}')">⚙️ 權限</button>`:'' )+
+        (['admin','group_leader','branch_leader','super_admin'].includes(currentUser.role)&&u.ymis!==currentUser.ymis?`<select onchange="updateUserRole('${u.ymis}',this.value)"><option value="member" ${u.role==='member'?'selected':''}>團員</option><option value="exec_committee" ${u.role==='exec_committee'?'selected':''}>管理委員會</option><option value="branch_leader" ${u.role==='branch_leader'?'selected':''}>支部領袖</option><option value="group_leader" ${u.role==='group_leader'?'selected':''}>團長</option><option value="admin" ${u.role==='admin'?'selected':''}>管理員</option></select><button class="btn btn-sm ${u.can_tick?'btn-danger':'btn-success'}" onclick="toggleCanTick('${u.ymis}',${!u.can_tick})">${u.can_tick?'收回勾選':'授權勾選'}</button><button class="btn btn-sm btn-warning" onclick="openPermissionModal('${u.ymis}','${u.name.replace(/'/g,"\'") }','${u.role}','${(u.allowed_badges||'').replace(/'/g,"")}')">⚙️ 權限</button>`:'' )+
         `</div></div>`).join('');
       h+='</div>';
       c.innerHTML=h;
@@ -2358,7 +2427,7 @@ function permSelectAll(checked){
   document.querySelectorAll('.permCheck').forEach(cb=>cb.checked=checked);
 }
 function permSetExecDefault(){
-  // 執委默認：會員章 + 活動段章 (多元技能活動) + 其他部分
+  // 管委默認：會員章 + 活動段章 (多元技能活動) + 其他部分
   const defaults=['L1','L3-ACT-SCOUT','L3-ACT-SP','L3-ACT-INT','OTHER'];
   document.querySelectorAll('.permCheck').forEach(cb=>{
     cb.checked=defaults.includes(cb.value) || cb.value.startsWith('OT-');
