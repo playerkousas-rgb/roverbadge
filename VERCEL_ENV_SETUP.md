@@ -36,7 +36,7 @@
 旅團編號：0082
 旅團名稱：第 82 旅
 Backend URL：https://script.google.com/macros/s/AKfycbw81wLR5NZtRk4m1ptSAoFBueoqwIZ5hcM_apHJa2xMmlVfUvZsS8R45nTIKTOIuBB2KQ/exec
-API KEY：vs_xxxxxxxxxxxxxx (執行 showApiKey 取得)
+API KEY：rover_xxxxxxxxxxxxxx (執行 showApiKey 取得)
 ```
 
 **管理員做 (只改2個地方，1分鐘完成)：**
@@ -64,8 +64,8 @@ Vercel Dashboard → 你的 Project (vsbadge) → Settings → Environment Varia
 
 | Name | Value | Env |
 |------|-------|-----|
-| `TROOP_0082_APIKEY` | `vs_xxxx` | Production, Preview, Development 全勾 |
-| `TROOP_0015_APIKEY` | `vs_yyyy` | 同上 |
+| `TROOP_0082_APIKEY` | `rover_xxxx` | Production, Preview, Development 全勾 |
+| `TROOP_0015_APIKEY` | `rover_yyyy` | 同上 |
 
 **注意命名：**
 - `TROOP_` + `旅團編號` + `_APIKEY`
@@ -117,7 +117,7 @@ function initializeSheets() {
 }
 ```
 
-- 第一次執行 `initializeSheets` 自動生成 `vs_` + 24位 uuid，存 `PropertiesService`
+- 第一次執行 `initializeSheets` 自動生成 `rover_` + 24位 uuid，存 `PropertiesService`
 - 之後任何地方 `getApiKey()` 都取同一個，除非手動清 `Script Properties`
 - `showApiKey()` 可隨時再睇
 
@@ -147,7 +147,7 @@ if (backend) troops[id] = { name, backend, apikey };
 ## 檢查清單 (管理員)
 
 - [x] GS Code.gs 有 getApiKey 自動生成 + showApiKey + initializeSheets 回傳
-- [x] 超管隱藏：Code.gs `ymis==='sheep'` 特判 `super_admin`，前端 `loadUsers()` 過濾 `sheep` 非 super_admin 不可見
+- [x] 超管隱藏：Code.gs `ymis==='系統管理員'` 特判 `super_admin`，前端 `loadUsers()` 過濾 `系統管理員` 非 super_admin 不可見
 - [x] URL https://script.google.com/macros/s/AKfycbw81wLR5NZtRk4m1ptSAoFBueoqwIZ5hcM_apHJa2xMmlVfUvZsS8R45nTIKTOIuBB2KQ/exec 已更新到所有 `troops.json` + `index.html fallbackTroops`
 - [x] 全面排查 vsbadge 內容：scoutbadge 曾有 0082R 已移除，roverbadge/cubbadge/scoutbadge 內 `vsbadge 管理員` 文字已改為各自 app 管理員，session key 已修正 `scoutbadge_session_v1` / `cubbadge_session_v1` / `roverbadge_session_v1` / `vsbadge_session_v4`
 - [x] Vercel 功能變數名稱：`TROOP_0082_APIKEY` (推薦) ，向後兼容 `TROOP_0082_BACKEND` (可選)

@@ -10,7 +10,7 @@
   - `scoutbadge.vercel.app` → 童軍 #2E7D32
   - `cubbadge.vercel.app` → 幼童軍 #FFC107
 
-- 每個 APP **各自**有一個 APP ADMIN (維護該 Vercel Project 的人，擁有 `SHEEP/0728` super_admin)
+- 每個 APP **各自**有一個 APP ADMIN (維護該 Vercel Project 的人，擁有 `系統管理員` super_admin)
   - 例如 vsbadge 的 APP ADMIN 管晒所有用 vsbadge 的旅團 (0082, 0015, 0233...)
   - 唔係每個旅團開一個 Vercel，係共用同一個
 
@@ -26,11 +26,11 @@
 - 旅團編號 (如 0082)
 - 名稱 (第 82 旅)
 - Backend URL (/exec)
-- API KEY (vs_xxxx)
+- API KEY (rover_xxxx)
 
 **管理員做：**
 1. 編輯 `data/troops.json` + `troops.json` (公開)
-2. Vercel 加1個環境變數 `TROOP_0082_APIKEY=vs_xxxx` (防爬虫，不進 GitHub)
+2. Vercel 加1個環境變數 `TROOP_0082_APIKEY=rover_xxxx` (防爬虫，不進 GitHub)
 3. Redeploy
 
 ## 為何咁設計？
@@ -44,13 +44,13 @@
 
 `apps-script/Code.gs`:
 
-- `getApiKey()`：若無就 `vs_` + uuid
+- `getApiKey()`：若無就 `rover_` + uuid
 - `showApiKey()`：隨時查看
 - `initializeSheets()`：初始化完彈出 KEY + URL
 
 ## 檢查
 
-- 超管隱藏：已實作，非 super_admin 睇唔到 sheep 帳號
+- 超管隱藏：已實作，非 super_admin 睇唔到 系統管理員 帳號
 - 0082R 已移除：scoutbadge 之前有殘留，已清
 - vsbadge 文字殘留：roverbadge/cubbadge/scoutbadge 之前寫 vsbadge 管理員，已改為各自 app 管理員
 - fallback URL 已更新為最新 https://script.google.com/macros/s/AKfycbw81wLR5NZtRk4m1ptSAoFBueoqwIZ5hcM_apHJa2xMmlVfUvZsS8R45nTIKTOIuBB2KQ/exec
