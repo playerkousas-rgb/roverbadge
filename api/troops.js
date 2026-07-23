@@ -5,7 +5,7 @@
 // - 人類靠登入防：即使有 backend+apikey，無 token 仍不可讀資料
 // - 管理員：同一個 APP ADMIN (vsbadge/roverbadge/scoutbadge/cubbadge 各自獨立APP，各自有一套 troops.json + env vars)
 // - 流程：旅團提交 URL+APIKEY 給管理員 -> 管理員改 troops.json 加1個環境變數 -> Redeploy 完成
-// GS 自動生成：Code.gs getApiKey() 若無則 vs_+uuid, showApiKey() 可查看, initializeSheets 回傳
+// GS 自動生成：Code.gs getApiKey() 若無則 rover_+uuid, showApiKey() 可查看, initializeSheets 回傳
 
 export default function handler(req, res) {
   const troops = {};
