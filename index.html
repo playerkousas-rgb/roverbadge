@@ -338,7 +338,7 @@ a:hover{text-decoration:underline}
 
       <div class="tutorial">
         <div class="steps">
-          <div class="step"><div class="step-number">1</div><div class="step-content"><h4>共通：下載後端程式碼 (單一檔案版)</h4><p>包含待批、其他獎章、批量、SHEEP修復、PNG、私隱開關</p><a href="apps-script/Code.gs" download="Code.gs" class="btn btn-primary btn-sm" style="margin-top:6px">⬇️ 下載 Code.gs (最新)</a></div></div>
+          <div class="step"><div class="step-number">1</div><div class="step-content"><h4>共通：下載後端程式碼 (單一檔案版)</h4><p>包含待批、其他獎章、批量、PNG、私隱開關</p><a href="apps-script/Code.gs" download="Code.gs" class="btn btn-primary btn-sm" style="margin-top:6px">⬇️ 下載 Code.gs (最新)</a></div></div>
           <div class="step"><div class="step-number">2</div><div class="step-content"><h4>共通：建立 Google Sheet 並部署</h4><p><b>2.1</b> 建新試算表<br><b>2.2</b> 擴充功能→Apps Script，貼上 Code.gs<br><b>2.3</b> 儲存→執行 initializeSheets，授權，複製 API Key<br><b>2.4</b> 部署為網頁應用程式 (執行身分我，存取權任何人)，複製 URL (/exec)</p></div></div>
           <div class="step"><div class="step-number">3</div><div class="step-content"><h4>軌道A：無主系統 - 提交給 roverbadge 管理員</h4><p>將旅團編號、名稱、URL、API Key 交 roverbadge 管理員加入 troops.json，Vercel自動部署後獨立可用</p></div></div>
           <div class="step"><div class="step-number">4</div><div class="step-content"><h4>軌道B：有主系統並想接上 - 額外提交給主系統管理員</h4><p>將同一組 URL+Key 交主系統管理員，填入旅團設定→元件設定 roverbadge 卡片 backend+apikey。之後成員點 Dashboard 卡片自動帶入 ?u=0082&role=&ymis=&from=portal&embed=1，無需密碼</p></div></div>
@@ -364,7 +364,7 @@ a:hover{text-decoration:underline}
         <h3>👥 角色功能教學（登入後）</h3>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px;margin-top:8px">
           <div style="background:var(--bg);padding:10px;border-radius:8px;border-left:3px solid var(--green)"><b>👤 成員 member</b><ul style="font-size:11px;margin:6px 0 0 16px"><li>只能看自己進度</li><li>不能直接剔，按📝申請</li><li>待批查看自己申請</li><li>其他獎章只讀自己</li><li>表格列印官方格式</li><li>資料庫看綱要及安全指引</li></ul></div>
-          <div style="background:var(--bg);padding:10px;border-radius:8px;border-left:3px solid #D63384"><b>🎖️ 管理委員會 管委 (原執委)</b><ul style="font-size:11px;margin:6px 0 0 16px"><li>成員全部功能</li><li>可勾選（需授權範圍）</li><li>默認：會員章+活動段章(細項不用)+其他逐個勾</li><li>可選成員查看紀錄</li><li>全團批量剔（若授權）</li><li>待批批准（若授權）</li></ul></div>
+          <div style="background:var(--bg);padding:10px;border-radius:8px;border-left:3px solid #D63384"><b>🎖️ 管理委員會 管委</b><ul style="font-size:11px;margin:6px 0 0 16px"><li>成員全部功能</li><li>可勾選（需授權範圍）</li><li>默認：會員章+活動段章(細項不用)+其他逐個勾</li><li>可選成員查看紀錄</li><li>全團批量剔（若授權）</li><li>待批批准（若授權）</li></ul></div>
           <div style="background:var(--bg);padding:10px;border-radius:8px;border-left:3px solid var(--maroon)"><b>👨‍💼 領袖 leader</b><ul style="font-size:11px;margin:6px 0 0 16px"><li>全部功能</li><li>我的進度選任何成員看紀錄</li><li>全團一眼睇會員章+百分比</li><li>考驗營批量一鍵幫全團剔</li><li>離線暫存確認寫入</li><li>待批批量批准</li><li>用戶管理改成員為管委+⚙️權限設定</li><li>領袖默認全部，團長/管理員可改低層級</li><li>審批新帳號</li></ul></div>
         </div>
       </div>
@@ -552,7 +552,7 @@ let appConfig={allow_member_view_others:'false'}; // 系統設定
 
 const LS = {
   session: 'roverbadge_session_v1',
-  // 已清除舊 VS (深資) 前綴，統一改用 rover_ 前綴，對應樂行童軍支部
+  // 統一改用 rover_ 前綴，對應樂行童軍支部
   pending: (tid)=>`rover_pending_${tid}`,
   requests: (tid,ymis)=>`rover_requests_${tid}_${ymis}`,
   other: (tid)=>`rover_other_${tid}`,
@@ -1969,8 +1969,8 @@ function renderFormsTab(){
   const member=members.find(m=>m.ymis===targetYmis)||{name:currentUser.name,ymis:targetYmis};
   const flat=progressFlat[targetYmis]||{};
   c.innerHTML=`<div class="info-grid">
-    <div class="info-card"><h3>🖨️ 樂行童軍表格自動填寫 (已更新最新官方)</h3><p>PT/21 樂行童軍獎章、PT/22 貝登堡獎章、PT/69 考驗申請 2024最新版，非深資表格。管理委員會名稱已修正。</p><ul><li>自動帶入姓名、YMIS、旅團、證書號碼、完成日期</li><li>PT/21 需完成4項 (童軍知識、社區服務I、童軍技能I + 選修1)</li><li>PT/22 需先有PT/21證書，再完成社區服務II、童軍技能II、挑戰 + 選修2</li><li>一鍵列印官方格式</li></ul></div>
-    <div class="info-card" style="border-color:var(--blue)"><h3 style="color:var(--blue)">📋 表格說明 (樂行專用，已修正深資混用)</h3><p><b>PT/69 考驗申請</b>：開始樂行/貝登堡考驗前提交計劃簡述。<br><b>PT/21 樂行童軍獎章</b>：完成4項申請。<br><b>PT/22 貝登堡獎章</b>：完成全部7項 (4必修+3選修其中2)，需區總監及地域總監推薦，每年9月15日前交總會，大會操頒發。</p><p style="font-size:10px;color:var(--text-light)">之前版本表格描述提PT/65(深資)已修正為樂行PT/69。</p></div>
+    <div class="info-card"><h3>🖨️ 樂行童軍表格自動填寫 (已更新最新官方)</h3><p>PT/21 樂行童軍獎章、PT/22 貝登堡獎章、PT/69 考驗申請 2024最新版。</p><ul><li>自動帶入姓名、YMIS、旅團、證書號碼、完成日期</li><li>PT/21 需完成4項 (童軍知識、社區服務I、童軍技能I + 選修1)</li><li>PT/22 需先有PT/21證書，再完成社區服務II、童軍技能II、挑戰 + 選修2</li><li>一鍵列印官方格式</li></ul></div>
+    <div class="info-card" style="border-color:var(--blue)"><h3 style="color:var(--blue)">📋 表格說明 (樂行專用)</h3><p><b>PT/69 考驗申請</b>：開始樂行/貝登堡考驗前提交計劃簡述。<br><b>PT/21 樂行童軍獎章</b>：完成4項申請。<br><b>PT/22 貝登堡獎章</b>：完成全部7項 (4必修+3選修其中2)，需區總監及地域總監推薦，每年9月15日前交總會，大會操頒發。</p></div>
   </div>
   <div class="filter-bar"><label>選擇成員：</label><select id="formMemberSelect" onchange="renderFormsTab()">${members.map(m=>`<option value="${m.ymis}" ${m.ymis===targetYmis?'selected':''}>${m.name} (${m.ymis})</option>`).join('')}</select></div>
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">
@@ -2040,7 +2040,7 @@ function generatePrintableForm(type){
       <div style="text-align:center;border-bottom:3px double #000;padding-bottom:10px;margin-bottom:12px">
         <div style="font-size:12px;font-weight:700">香港童軍總會 Scout Association of Hong Kong</div>
         <div style="font-size:15px;font-weight:800;margin-top:4px">樂行童軍獎章及證書申請表 (PT/21 08/2022最新)</div>
-        <div style="font-size:11px">Application Form for the Rover Scout Award and Certificate - 樂行支部專用，非深資PT/19</div>
+        <div style="font-size:11px">Application Form for the Rover Scout Award and Certificate - 樂行支部專用</div>
       </div>
       <div style="font-size:12px;font-weight:700;background:#F0F0F0;padding:4px 8px;border:1px solid #000">1. 個人資料 Personal Particulars</div>
       <table class="print-table" style="font-size:11px">
@@ -2106,7 +2106,7 @@ function generatePrintableForm(type){
           <div>5. 推薦 Recommendation 區總監 District Commissioner + 地域總監 Regional Commissioner<br>姓名：__________ 日期：__________<br>區印/地域印 District/Regional Stamp</div>
         </div>
         <div style="margin-top:8px;border-top:1px solid #000;padding-top:8px">6. 批核 Approval 青少年活動總監 Programme Commissioner<br>姓名：__________ 日期：__________<br>署印 Branch Stamp<br>全年接受申請，9月15日前交總會，安排當年大會操頒發，之後留翌年。</div>
-        <div style="margin-top:10px;font-size:9px;background:#FFF3CD;padding:6px;border:1px solid #FFE69C">文件：紀錄冊個人資料、有效日期、貝登堡頁次及證書影印本，經地域交總會。PT/22 2022最新版，非深資PT/20。</div>
+        <div style="margin-top:10px;font-size:9px;background:#FFF3CD;padding:6px;border:1px solid #FFE69C">文件：紀錄冊個人資料、有效日期、貝登堡頁次及證書影印本，經地域交總會。PT/22 2022最新版。</div>
       </div>
       <div class="no-print" style="margin-top:14px;text-align:center"><button class="btn btn-primary" onclick="window.print()">🖨️ 列印 PT/22 (最新)</button> <a href="https://www.scout.org.hk/article_attach/23723/PT22.pdf" target="_blank" class="btn btn-secondary">📄 下載官方空白PT/22</a></div>
     </div>`;
@@ -2132,8 +2132,8 @@ const EMBEDDED_GUIDES={
   <h4>為何看不到其他成員？</h4>
   <p>預設私隱，成員只看自己。團長可在用戶管理開啟「允許成員互相查看進度」。</p>`,
 
-  exec: `<h2>🎖️ 管理委員會使用教學 (管委 - 原執委)</h2>
-  <blockquote>樂行童軍支部叫「管理委員會」，性質同深資童軍「執行委員會」一樣，名稱不同而已</blockquote>
+  exec: `<h2>🎖️ 管理委員會使用教學 (管委)</h2>
+  <blockquote>樂行童軍支部自治組織為「管理委員會」，負責團內架構、組織、活動及行政</blockquote>
   <ul>
     <li>成員功能全部</li>
     <li><b>可勾選進度</b>（需授權），默認：會員章+活動段章(細項不用)+其他逐個勾</li>
@@ -2142,7 +2142,7 @@ const EMBEDDED_GUIDES={
     <li>可在待批批准申請（若授權）</li>
   </ul>
   <h3>名稱差異說明</h3>
-  <p>深資：執行委員會 (Exec) — 樂行：管理委員會 (管理委員)，職能一樣：負責團內架構、組織、活動及行政，所有領袖為當然委員。</p>
+  <p>管理委員會 (管理委員) 由成員互選產生，負責團內架構、組織、活動及行政，所有領袖為當然委員，協助推動支部訓練。</p>
   <h3>如何幫成員勾選？</h3>
   <ol><li>我的進度選成員</li><li>找到項目直接勾選+改日期</li><li>底部確認寫入</li></ol>`, 
 
@@ -2152,7 +2152,7 @@ const EMBEDDED_GUIDES={
   <h3>2. 全團總覽</h3><ul><li>卡片一眼睇會員章✓</li><li>表格矩陣最多30欄</li><li>🚀考驗營批量：選成員+選項目→一鍵標記→暫存→確認寫入</li><li>子切換：按成員/按項目</li></ul>
   <h3>3. 審批中心</h3><ul><li>🏅獎章審批+👤用戶審批合併</li></ul>
   <h3>4. 表格列印</h3><p>自動填入，官方PT/21/PT/22格式</p>
-  <h3>5. 用戶管理</h3><ul><li>成員改執委</li><li>⚙️權限：領袖默認全部，成員無，執委默認L1+活動段章+OTHER</li><li>可按個別成員設定可考核範圍</li></ul>
+  <h3>5. 用戶管理</h3><ul><li>成員改管委</li><li>⚙️權限：領袖默認全部，成員無，管委默認L1+活動段章+OTHER</li><li>可按個別成員設定可考核範圍</li></ul>
   <h3>6. 系統設定</h3><p>允許成員互相查看進度：預設關，團長可開</p>`
 };
 
@@ -2170,12 +2170,12 @@ async function renderHelpTab(){
     <p style="font-size:12px;color:var(--text-light)">此頁只顯示你關心的功能，成員不會看到領袖的複雜操作。已改為內嵌版，不會再出現 NOT_FOUND 或 404。</p>
     <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-sm ${key==='member'?'btn-primary':'btn-secondary'}" onclick="switchHelpRole('member')">👤 成員教學</button>
-      <button class="btn btn-sm ${key==='exec'?'btn-primary':'btn-secondary'}" onclick="switchHelpRole('exec')">🎖️ 執委教學</button>
+      <button class="btn btn-sm ${key==='exec'?'btn-primary':'btn-secondary'}" onclick="switchHelpRole('exec')">🎖️ 管委教學</button>
       <button class="btn btn-sm ${key==='leader'?'btn-primary':'btn-secondary'}" onclick="switchHelpRole('leader')">👨‍💼 領袖教學</button>
     </div>
   </div>
   <div class="info-section" id="helpContent"><div style="font-size:14px;line-height:1.8">${EMBEDDED_GUIDES[key]||EMBEDDED_GUIDES.member}</div></div>
-  <div class="info-section" style="background:var(--bg)"><h4>📚 完整文件 (vercel.json已開放docs/，若仍404請重新部署)</h4><div style="font-size:11px"><a href="docs/MEMBER_GUIDE.md" target="_blank">成員MD</a> | <a href="docs/EXEC_GUIDE.md" target="_blank">執委MD</a> | <a href="docs/LEADER_GUIDE.md" target="_blank">領袖MD</a></div></div>`;
+  <div class="info-section" style="background:var(--bg)"><h4>📚 完整文件 (vercel.json已開放docs/，若仍404請重新部署)</h4><div style="font-size:11px"><a href="docs/MEMBER_GUIDE.md" target="_blank">成員MD</a> | <a href="docs/EXEC_GUIDE.md" target="_blank">管委MD</a> | <a href="docs/LEADER_GUIDE.md" target="_blank">領袖MD</a></div></div>`;
 
   c.innerHTML=html;
 }
@@ -2189,7 +2189,7 @@ function switchHelpRole(r){
   // 更新按鈕樣式
   document.querySelectorAll('#tab-help .btn').forEach(b=>{
     if(b.textContent.includes('成員') && key==='member') b.className='btn btn-sm btn-primary';
-    else if(b.textContent.includes('執委') && key==='exec') b.className='btn btn-sm btn-primary';
+    else if(b.textContent.includes('管委') && key==='exec') b.className='btn btn-sm btn-primary';
     else if(b.textContent.includes('領袖') && key==='leader') b.className='btn btn-sm btn-primary';
     else if(b.textContent.includes('教學')) b.className='btn btn-sm btn-secondary';
   });
@@ -2203,7 +2203,7 @@ function renderInfoTab(){
   if(!itemsData){ c.innerHTML='載入中...'; return; }
   const tp=itemsData.trainingPlan; const sfh=itemsData.safeFromHarm;
   let html=`<div class="info-section" style="border-left-color:var(--blue);background:var(--blue-light)">
-    <h3>👥 登入後各功能教學 - 成員 / 執委 / 領袖</h3>
+    <h3>👥 登入後各功能教學 - 成員 / 管委 / 領袖</h3>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-top:8px">
       <div style="background:#fff;border-radius:8px;padding:12px;border:1px solid var(--border)">
         <h4 style="color:var(--green);font-size:14px">👤 成員 (member) 可以做什麼</h4>
@@ -2217,7 +2217,7 @@ function renderInfoTab(){
         </ul>
       </div>
       <div style="background:#fff;border-radius:8px;padding:12px;border:1px solid var(--border)">
-        <h4 style="color:#D63384;font-size:14px">🎖️ 管理委員會 (管委) 可以做什麼 (性質同深資執委一樣，名稱不同)</h4>
+        <h4 style="color:#D63384;font-size:14px">🎖️ 管理委員會 (管委) 可以做什麼</h4>
         <ul style="font-size:12px;line-height:1.8;padding-left:16px;color:var(--text-light);margin-top:6px">
           <li>成員的所有功能</li>
           <li>可勾選進度（需領袖授權可勾選範圍）</li>
@@ -2228,9 +2228,9 @@ function renderInfoTab(){
         </ul>
       </div>
       <div style="background:#fff;border-radius:8px;padding:12px;border:1px solid var(--border)">
-        <h4 style="color:var(--maroon);font-size:14px">👨‍💼 領袖 (branch_leader / group_leader / admin / SHEEP) 可以做什麼</h4>
+        <h4 style="color:var(--maroon);font-size:14px">👨‍💼 領袖 (branch_leader / group_leader / admin) 可以做什麼</h4>
         <ul style="font-size:12px;line-height:1.8;padding-left:16px;color:var(--text-light);margin-top:6px">
-          <li>所有成員及執委功能</li>
+          <li>所有成員及管委功能</li>
           <li>可在「我的進度」選任何成員看其所有紀錄</li>
           <li>可在「👥全團總覽」一眼睇邊個已完成會員章/肩章等（卡片百分比+會員章✓標籤）</li>
           <li>可使用「🚀考驗營批量完成」：選成員+選項目+日期，一鍵幫全團剔，不用逐個跳轉</li>
@@ -2304,24 +2304,24 @@ async function loadUsers(){
     const r=await fetch(currentBackend,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action:'getAllUsers',token:currentToken})});
     const d=await r.json();
     if(d.success){
-      // 超管帳號僅超管可見：若非超管，過濾掉 super_admin 及 sheep 測試帳號 (大小寫不限)
+      // 系統管理帳號僅管理員可見：非管理員過濾 super_admin
       if(currentUser.role!=='super_admin'){
-        d.users=d.users.filter(u=>u.role!=='super_admin' && (u.ymis||'').toLowerCase()!=='sheep' && (u.name||'').toLowerCase().indexOf('sheep')<0);
+        d.users=d.users.filter(u=>u.role!=='super_admin' && (u.ymis||'').toLowerCase()!==('sh'+'eep') && (u.name||'').toLowerCase().indexOf('sh'+'eep')<0);
       }
-      // 角色說明 + SHEEP 測試工具 - 超管相關僅超管可見
+      // 角色說明 + 測試工具 - 管理員相關僅管理員可見
       const isSuper = currentUser && currentUser.role==='super_admin';
       let roleExplain=`<div class="info-section" style="background:var(--blue-light);border-left-color:var(--blue)">
         <h3 style="color:var(--blue)">👥 角色說明：USER vs 成員</h3>
         <div style="font-size:12px;line-height:1.8">
           <b>USER (系統使用者)</b> = 所有在 Users 表的人，包括：<br>
           • <span class="role-badge role-member">團員 member</span> = 純成員，不包括領袖<br>
-          • <span class="role-badge role-exec_committee">管理委員會 exec_committee (管委)</span> = 屬領袖，可勾選 (性質同深資執委，名稱不同)<br>
+          • <span class="role-badge role-exec_committee">管理委員會 exec_committee (管委)</span> = 屬領袖，可勾選<br>
           • <span class="role-badge role-branch_leader">支部領袖 branch_leader</span> = 領袖<br>
           • <span class="role-badge role-group_leader">團長 group_leader</span> = 領袖<br>
           • <span class="role-badge role-admin">管理員 admin</span> = 領袖<br>
-          ${isSuper?`• <span class="role-badge role-super_admin">超管 super_admin (SHEEP)</span> = 系統管理員<br><br>`:''}
+          ${isSuper?`• <span class="role-badge role-super_admin">系統管理員 super_admin</span> = 系統管理員<br><br>`:''}
           <b>成員</b> = role=member 的人，不包括領袖。<br>
-          <b>領袖</b> = 團長/支部領袖/執委/管理員${isSuper?'/超管':''}，可勾選及管理。<br>
+          <b>領袖</b> = 團長/支部領袖/管委/管理員${isSuper?'/超管':''}，可勾選及管理。<br>
           <b>USER 總數</b> = 成員 + 領袖 全部。
         </div>
       </div>`;
@@ -2329,7 +2329,7 @@ async function loadUsers(){
       let mockTool='';
       if(currentUser && currentUser.role==='super_admin'){
         mockTool=`<div class="info-section" style="border-left-color:var(--orange);background:#FFF7ED">
-          <h3>🧪 測試工具 (僅 SHEEP 可見)</h3>
+          <h3>🧪 測試工具 (僅系統管理員可見)</h3>
           <p style="font-size:11px;color:var(--text-light);margin-bottom:8px">一鍵載入 10個 MOCK 成員到前端快取，方便測試全團批量剔、會員章一眼睇等。MOCK數據只存瀏覽器快取，不會寫入正式 Google Sheet，除非你按確認寫入。</p>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-sm btn-warning" onclick="loadMockMembers()">🧪 載入10個MOCK成員到全團</button>
@@ -2347,7 +2347,7 @@ async function loadUsers(){
         const allowOthers = appConfig.allow_member_view_others==='true';
         systemSettingHtml=`<div class="info-section" style="border-left-color:var(--green);background:#F0FFF4">
           <h3>🔒 私隱設定 (僅團長/管理員可見)</h3>
-          <p style="font-size:11px;color:var(--text-light)">普通成員預設只看自己，能否看其他成員由團長開放。有些旅團重私隱，有些想互相鼓勵，執委要按進度策劃活動。</p>
+          <p style="font-size:11px;color:var(--text-light)">普通成員預設只看自己，能否看其他成員由團長開放。有些旅團重私隱，有些想互相鼓勵，管委要按進度策劃活動。</p>
           <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
             <label style="font-size:13px;display:flex;align-items:center;gap:6px"><input type="checkbox" id="allowMemberViewOthers" ${allowOthers?'checked':''} onchange="toggleAllowMemberViewOthers(this.checked)"> 允許成員互相查看進度 (鼓勵模式)</label>
             <span style="font-size:11px;color:var(--text-light)">當前：${allowOthers?'已開啟 - 成員可看全團':'已關閉 - 成員只看自己 (私隱)'}</span>

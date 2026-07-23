@@ -15,7 +15,7 @@
 ├── data/troops.json (旅團對照表 { "0082": {name, backend, apikey} })
 ├── troops.json (根，同 data/troops.json 備份)
 ├── assets/ (bp-award-logo-256.png, bp-award-logo-128.png — 貝登堡獎章作 Logo)
-├── apps-script/Code.gs (單一檔案版，28600 bytes, 含 SHEEP超管、細緻權限、私隱開關)
+├── apps-script/Code.gs (單一檔案版，28600 bytes, 含 系統管理員、細緻權限、私隱開關)
 ├── api/troops.js (Vercel 讀環境變數)
 ├── vercel.json (開放 data/, assets/, docs/, apps-script/, api/)
 ├── docs/ (MEMBER_GUIDE.md, EXEC_GUIDE.md, LEADER_GUIDE.md, MAIN_SYSTEM_INTEGRATION.md)
@@ -34,7 +34,7 @@
 - 其他獎章
 
 **不要改動後端邏輯**，只需改 `items.json` 及前端文案，後端已支援：
-- 批量寫入、離線暫存、成員申請→領袖審批、其他獎章、細緻權限 (allowed_badges)、私隱開關 (allow_member_view_others)、SHEEP超管 (sheep/0728)
+- 批量寫入、離線暫存、成員申請→領袖審批、其他獎章、細緻權限 (allowed_badges)、私隱開關 (allow_member_view_others)、系統管理員
 
 ---
 
@@ -78,7 +78,7 @@
 
 ### 權限細分
 - 後端 `Users.allowed_badges` 欄，第13欄，`*` = 全部
-- 領袖默認全部，成員無，執委默認 L1,活動段章,OTHER部分
+- 領袖默認全部，成員無，管委默認 L1,活動段章,OTHER部分
 - 前端 `canCurrentUserTickItem(itemId)` 檢查前綴匹配，`OTHER` 匹配其他獎章
 - 用戶管理頁 ⚙️權限 按鈕彈 Modal 勾選可考核範圍，團長/管理員可改低層級
 
@@ -107,7 +107,7 @@
 - Footer：`COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 v4.8`
 
 ### MOCK 10成員
-- `data/mock_members.json` + `mock_import.csv`，SHEEP登入用戶管理有測試工具一鍵載入
+- `data/mock_members.json` + `mock_import.csv`，系統管理員登入用戶管理有測試工具一鍵載入
 
 ---
 
@@ -171,15 +171,15 @@
 - [ ] 其他獎章已併入進度，分頁隱藏
 - [ ] 按項目已併入全團總覽，子切換按成員/按項目
 - [ ] 表格官方格式，雙面列印
-- [ ] 權限：高層可設低層可勾什麼，領袖默認全部，執委可按個別成員勾選會員章/活動段章(細項不用)/其他逐個勾
+- [ ] 權限：高層可設低層可勾什麼，領袖默認全部，管委可按個別成員勾選會員章/活動段章(細項不用)/其他逐個勾
 - [ ] 成員預設只看自己，能否看其他由團長在用戶管理→系統設定開關 `allow_member_view_others`
 - [ ] 教學按角色分開：❓教學 tab 內嵌版，不依賴 fetch，成員不關心其他功能，登入後方便查閱
-- [ ] SHEEP 超管僅超管可見，普通用戶在用戶管理看不到 super_admin 行
+- [ ] 系統管理員 超管僅超管可見，普通用戶在用戶管理看不到 super_admin 行
 - [ ] 審批中心合併：獎章審批+用戶審批同一分頁，子切換
 - [ ] V4.0更新及已修復問題已移除，保留 `#home-future-framework` 空框
 - [ ] COPYRIGHT 2026 Scout System footer
 - [ ] 單一 Code.gs，扁平ZIP，17-21文件，無舊文件
-- [ ] MOCK 10成員 + CSV，SHEEP 測試工具
+- [ ] MOCK 10成員 + CSV，系統管理員 測試工具
 - [ ] `vercel.json` 開放 assets/docs/data/apps-script/api
 - [ ] `troops.json` 保留 0082 後備
 

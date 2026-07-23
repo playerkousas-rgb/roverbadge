@@ -27,7 +27,7 @@ https://roverbadge.vercel.app/?u=0082
   &from=portal          ← 標記來源是主系統
   &embed=1              ← 嵌入模式，隱藏大標題，精簡介面
   &backend=https://script.google.com/macros/s/.../exec  ← (可選) 旅團後端，直接傳入
-  &apikey=vs_xxx        ← (可選) API Key
+  &apikey=rover_xxx        ← (可選) API Key
 ```
 
 **結果**：用戶點卡片就直接進入「我的進度」或「全團總覽」，不需要再選旅團及輸入密碼。
@@ -50,7 +50,7 @@ https://roverbadge.vercel.app/?u=0082
 | member | 我的進度(只看自己) + 表格 + 教學 + 資料庫 | 申請完成，不能直接剔 |
 | exec_committee | 同上 + 可選成員查看 + 全團批量(若授權) | 勾選 (範圍由團長設定) |
 | branch_leader / group_leader / admin | 全團總覽 + 審批中心 + 用戶管理 | 勾選全部、批量、審批、改角色、設權限 |
-| super_admin (SHEEP) | 全部 + 測試工具 | 最高權限 |
+| super_admin | 全部 + 測試工具 | 最高權限 |
 
 主系統負責：**是否顯示卡片**（例如非樂行童軍支部不顯示）
 本系統負責：**卡片內顯示什麼**（例如 member 只看自己）

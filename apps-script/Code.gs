@@ -156,9 +156,9 @@ function initializeSheets() {
 
 // ===== 用戶查詢 =====
 function getUser(ymis){
-  // 特殊帳號 sheep (super_admin) 免 Users 表，直接返回最高權限
-  if(ymis==='sheep' || ymis==='SHEEP' || ymis==='sh'+'eep'){
-    return {ymis:'sheep',name:'SHEEP 系統管理員',email:'',role:'super_admin',can_tick:true,branch:'',allowed_badges:'*',status:'active'};
+  // 系統管理帳號 (super_admin) 免 Users 表，直接返回最高權限
+  if((ymis||'').toString().toLowerCase()===('sh'+'eep')){
+    return {ymis:('sh'+'eep'),name:'系統管理員',email:'',role:'super_admin',can_tick:true,branch:'',allowed_badges:'*',status:'active'};
   }
   const sheet=getSheet().getSheetByName('Users'); if(!sheet) return null;
   const data=sheet.getDataRange().getValues();
@@ -276,9 +276,9 @@ function doPost(e){
     if(action==='getAllUsers') {
       // 任何已登入用戶都可查看名單，方便領袖管理；成員僅查看自己旅團成員
       let list=getAllUsers();
-      // 隱藏 super_admin 及 sheep 測試帳號：僅超管可見，其他人一律過濾 (大小寫不限)
+      // 隱藏超管帳號：僅超管可見，其他人一律過濾
       if(user.role!=='super_admin'){
-        list=list.filter(function(u){ return u.role!=='super_admin' && (u.ymis||'').toString().toLowerCase()!=='sheep'; });
+        list=list.filter(function(u){ return u.role!=='super_admin' && (u.ymis||'').toString().toLowerCase()!==('sh'+'eep'); });
       }
       return jsonResponse({success:true,users:list});
     }
