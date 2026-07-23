@@ -14,7 +14,7 @@
 ├── data/items.json (考核項目定義，306項，第11版)
 ├── data/troops.json (旅團對照表 { "0082": {name, backend, apikey} })
 ├── troops.json (根，同 data/troops.json 備份)
-├── assets/ (vs-logo-*.png, vs-torch.svg)
+├── assets/ (bp-award-logo-256.png, bp-award-logo-128.png — 貝登堡獎章作 Logo)
 ├── apps-script/Code.gs (單一檔案版，28600 bytes, 含 SHEEP超管、細緻權限、私隱開關)
 ├── api/troops.js (Vercel 讀環境變數)
 ├── vercel.json (開放 data/, assets/, docs/, apps-script/, api/)
@@ -46,7 +46,7 @@
 - 全團總覽限制 30欄/50人，卡片 + 表格 + 批量區
 
 ### LOGO
-- 使用 PNG 256px (72KB) + 128px (22KB) + SVG fallback，`<img src="assets/vs-logo-256.png" onerror="fallback">`
+- 使用貝登堡獎章 PNG 256px + 128px + SVG fallback，`<img src="assets/bp-award-logo-256.png" onerror="fallback">`，favicon 同用 128px
 - 不要用 1.3M 原圖，ZIP 會大
 
 ### 瀏覽器暫存→批量寫入
@@ -127,7 +127,7 @@
 
 ### B. Logo / 制服色
 - 樂行用棗紅色 #8B0000 + 金色 #FFD700 + 火炬
-- 幼童軍用黃色為主、童軍綠色為主、樂行紅色為主，換 assets/vs-logo-*.png 為該支部標誌，但保持 256px + 128px 大小，不要用1.3M原圖
+- 幼童軍用黃色為主、童軍綠色為主、樂行紅色為主，換 assets/bp-award-logo-*.png 為該支部標誌，但保持 256px + 128px 大小，不要用1.3M原圖
 - 變更 :root --maroon 色碼為該支部主色
 
 ### C. 表格

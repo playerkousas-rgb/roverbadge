@@ -1,5 +1,5 @@
 // ============================================================
-// 深資童軍進度追蹤系統 - Apps Script 後端 v4.0 - 全功能版
+// 樂行童軍進度追蹤系統 - Apps Script 後端 v4.0 - 全功能版 (樂行童軍支部 Rover Scout)
 // 完全兼容舊版 + 新增待批申請、批量寫入優化、日誌
 // ============================================================
 
@@ -14,7 +14,7 @@ function getApiKey() {
   const props = PropertiesService.getScriptProperties();
   let apiKey = props.getProperty('API_KEY');
   if (!apiKey) {
-    apiKey = 'vs_' + Utilities.getUuid().replace(/-/g, '').substring(0, 24);
+    apiKey = 'rover_' + Utilities.getUuid().replace(/-/g, '').substring(0, 24);
     props.setProperty('API_KEY', apiKey);
   }
   return apiKey;
@@ -275,7 +275,12 @@ function doPost(e){
 
     if(action==='getAllUsers') {
       // 任何已登入用戶都可查看名單，方便領袖管理；成員僅查看自己旅團成員
-      return jsonResponse({success:true,users:getAllUsers()});
+      let list=getAllUsers();
+      // 隱藏 super_admin 及 sheep 測試帳號：僅超管可見，其他人一律過濾 (大小寫不限)
+      if(user.role!=='super_admin'){
+        list=list.filter(function(u){ return u.role!=='super_admin' && (u.ymis||'').toString().toLowerCase()!=='sheep'; });
+      }
+      return jsonResponse({success:true,users:list});
     }
     if(action==='getMembers'){ return jsonResponse({success:true,members:getMembers()}); }
     if(action==='getPendingRequests'){ if(getRoleLevel(user.role)<0) return jsonResponse({success:false,error:'權限不足'}); return handleGetPendingRequests(); }
