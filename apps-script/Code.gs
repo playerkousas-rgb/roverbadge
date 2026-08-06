@@ -1,12 +1,26 @@
 // ============================================================
-// 樂行童軍進度追蹤系統 - Apps Script 後端 v4.0 - 全功能版 (樂行童軍支部 Rover Scout)
+// 樂行童軍進度追蹤系統 - Apps Script 後端 v8.1 - 全功能版 (樂行童軍支部 Rover Scout)
 // 完全兼容舊版 + 新增待批申請、批量寫入優化、日誌
+// v8.1 新增：活動履歷（服務紀錄／活動紀錄／訓練班紀錄）
+//   - 新工作表「活動履歷」（執行 initializeSheets() 自動補建，不影響既有資料）
+//   - 新 action：getLogRecords / saveLogRecord（支援批量 records[]）/ deleteLogRecord
+//   - handleLoad 回應新增 logs + logsSupported
 // ============================================================
 
 const ADMIN_YMIS = '1111111111';
 const ADMIN_NAME = '管理員';
 const ADMIN_EMAIL = 'admin@example.com';
 const ADMIN_PASS = 'changeme';
+
+// v8.1：活動履歷
+const LOG_SHEET_NAME = '活動履歷';
+const LOG_HEADERS = ['record_id','type','ymis','name','date','title','role','hours','cert_no','detail','recorder','recorded_at','updated_at'];
+const LOG_TYPES = ['service','activity','training'];
+function safeSheetText(v,maxLen){
+  let text=String(v||'').trim().substring(0,maxLen||200);
+  if(/^['=+\-@\t\r]/.test(text)) text="'"+text;
+  return text;
+}
 
 // ===== 工具 =====
 function getSheet() { return SpreadsheetApp.getActiveSpreadsheet(); }
@@ -131,6 +145,22 @@ function initializeSheets() {
     oSheet.appendRow(['YMIS','獎章 ID','獎章名稱','完成日期','證書編號','備註','更新時間']);
     oSheet.getRange(1,1,1,7).setFontWeight('bold').setBackground('#8B0000').setFontColor('#FFFFFF');
     oSheet.setFrozenRows(1);
+  }
+  // 前端管理操作審計
+  let auditSheet = ss.getSheetByName('操作紀錄');
+  if(!auditSheet){
+    auditSheet = ss.insertSheet('操作紀錄');
+    auditSheet.appendRow(['時間','操作者','操作','對象','詳情']);
+    auditSheet.getRange(1,1,1,5).setFontWeight('bold').setBackground('#8B0000').setFontColor('#FFFFFF');
+    auditSheet.setFrozenRows(1);
+  }
+  // v8.1：活動履歷（服務／活動／訓練班紀錄，統一用 type 欄位區分）
+  let lSheet = ss.getSheetByName(LOG_SHEET_NAME);
+  if(!lSheet){
+    lSheet = ss.insertSheet(LOG_SHEET_NAME);
+    lSheet.appendRow(LOG_HEADERS);
+    lSheet.getRange(1,1,1,LOG_HEADERS.length).setFontWeight('bold').setBackground('#8B0000').setFontColor('#FFFFFF');
+    lSheet.setFrozenRows(1);
   }
   // 確保系統設定有 allow_member_view_others
   let cfgSheet = ss.getSheetByName('SystemConfig');
@@ -310,6 +340,16 @@ function doPost(e){
       // 任何已登入用戶都可讀取公開設定
       return handleGetConfig();
     }
+    // v8.1：活動履歷（服務／活動／訓練班紀錄）。讀取任何登入者可；寫入／刪除需已獲勾選權限的領袖（同進度寫入）。
+    if(action==='getLogRecords') return handleGetLogRecords();
+    if(action==='saveLogRecord'){
+      if(!canUserTick(user.role) || user.can_tick!==true) return jsonResponse({success:false,error:'權限不足，需已獲勾選權限的領袖'});
+      return handleSaveLogRecord(body.records||(body.record?[body.record]:[]), ymis, body.recorder_name||'');
+    }
+    if(action==='deleteLogRecord'){
+      if(!canUserTick(user.role) || user.can_tick!==true) return jsonResponse({success:false,error:'權限不足，需已獲勾選權限的領袖'});
+      return handleDeleteLogRecord(body.record_id, ymis);
+    }
 
     // 以下為高權限
     if(action==='changePassword') return handleChangePassword(ymis,body.old_password,body.new_password);
@@ -477,7 +517,9 @@ function handleLoad(){
   // other badges
   const oSheet=ss.getSheetByName('其他獎章'); const other={};
   if(oSheet){ const data=oSheet.getDataRange().getValues(); for(let i=1;i<data.length;i++){ const y=data[i][0].toString(); if(!y) continue; if(!other[y]) other[y]={}; other[y][data[i][1].toString()]={name:data[i][2]?data[i][2].toString():'',date:data[i][3]?formatDate(data[i][3]):'',cert:data[i][4]?data[i][4].toString():''}; } }
-  return jsonResponse({success:true,members:members,progress:progress,flatProgress:flat,pendingRequests:pending,otherBadges:other});
+  // v8.1：活動履歷（logsSupported 讓前端分辨後端是否已升級）
+  const lSheet=ss.getSheetByName(LOG_SHEET_NAME);
+  return jsonResponse({success:true,members:members,progress:progress,flatProgress:flat,pendingRequests:pending,otherBadges:other,logs:getLogRecordsList(),logsSupported:!!lSheet});
 }
 function handleSave(changes, confirmer){
   const sheet=getSheet().getSheetByName('進度追蹤'); if(!sheet) return jsonResponse({success:false,error:'Sheet not found'});
@@ -675,4 +717,97 @@ function handleDeactivateUser(body,manager,managerYmis){
     }
     return jsonResponse({success:false,error:'找不到活躍用戶'});
   }catch(e){ return jsonResponse({success:false,error:e.toString()}); }
+}
+
+// ===== v8.1：活動履歷（服務／活動／訓練班紀錄） =====
+function getLogRecordsList(){
+  const sheet=getSheet().getSheetByName(LOG_SHEET_NAME); const logs=[];
+  if(sheet){
+    const data=sheet.getDataRange().getValues();
+    for(let i=1;i<data.length;i++){
+      if(!data[i][0]) continue;
+      logs.push({
+        record_id:String(data[i][0]), type:String(data[i][1]||'activity'),
+        ymis:String(data[i][2]||''), name:String(data[i][3]||''),
+        date:data[i][4]?formatDate(data[i][4]):'', title:String(data[i][5]||''),
+        role:String(data[i][6]||''), hours:String(data[i][7]||''),
+        cert_no:String(data[i][8]||''), detail:String(data[i][9]||''),
+        recorder:String(data[i][10]||''),
+        recorded_at:data[i][11]?String(data[i][11]):''
+      });
+    }
+  }
+  return logs;
+}
+function handleGetLogRecords(){
+  // 未升級/未初始化時明確報錯，讓前端顯示升級提示
+  if(!getSheet().getSheetByName(LOG_SHEET_NAME)) return jsonResponse({success:false,error:'「'+LOG_SHEET_NAME+'」工作表不存在：請在 Apps Script 執行 initializeSheets() 補建'});
+  return jsonResponse({success:true,logs:getLogRecordsList()});
+}
+function sanitizeLogRecord(r){
+  r=r||{};
+  let type = LOG_TYPES.indexOf(r.type)>=0 ? r.type : 'activity';
+  let role = safeSheetText(r.role,60);
+  if(type==='training' && !role){
+    role='學員';
+  }
+  return {
+    type: type,
+    ymis: String(r.ymis||'').trim().substring(0,20),
+    name: safeSheetText(r.name,60),
+    date: String(r.date||'').substring(0,20),
+    title: safeSheetText(r.title,120),
+    role: role,
+    hours: String(r.hours==null?'':r.hours).substring(0,20),
+    cert_no: safeSheetText(r.cert_no,60),
+    detail: safeSheetText(r.detail,500)
+  };
+}
+function handleSaveLogRecord(records, recorderYmis, recorderName){
+  const sheet=getSheet().getSheetByName(LOG_SHEET_NAME);
+  if(!sheet) return jsonResponse({success:false,error:'「'+LOG_SHEET_NAME+'」工作表不存在：請在 Apps Script 執行 initializeSheets() 補建'});
+  if(!Array.isArray(records)||records.length===0) return jsonResponse({success:false,error:'沒有可儲存的紀錄'});
+  if(records.length>200) return jsonResponse({success:false,error:'一次最多 200 筆，請分批'});
+  const results=[]; let processed=0;
+  records.forEach(function(r){
+    const rec=sanitizeLogRecord(r);
+    if(!rec.ymis||!rec.title||!rec.date){ results.push({success:false,ymis:rec.ymis,title:rec.title,error:'YMIS、名稱及日期必填'}); return; }
+    const rid=String((r&&r.record_id)||'');
+    if(rid){
+      // 更新既有紀錄（record_id 不變）
+      const data=sheet.getDataRange().getValues();
+      for(let i=1;i<data.length;i++){
+        if(String(data[i][0])===rid){
+          sheet.getRange(i+1,2,1,12).setValues([[rec.type,rec.ymis,rec.name,rec.date,rec.title,rec.role,rec.hours,rec.cert_no,rec.detail,sheet.getRange(i+1,11).getValue()||recorderName||recorderYmis,String(data[i][11]||''),now()]]);
+          results.push({success:true,record_id:rid}); processed++;
+          writeAudit(recorderYmis,'update_log',rec.ymis,rec.type+': '+rec.title+' '+rec.date);
+          return;
+        }
+      }
+      results.push({success:false,record_id:rid,error:'找不到紀錄'}); return;
+    }
+    const newId='LOG_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);
+    sheet.appendRow([newId,rec.type,rec.ymis,rec.name,rec.date,rec.title,rec.role,rec.hours,rec.cert_no,rec.detail,recorderName||recorderYmis,now(),'']);
+    results.push({success:true,record_id:newId}); processed++;
+    writeAudit(recorderYmis,'add_log',rec.ymis,rec.type+': '+rec.title+' '+rec.date);
+  });
+  const failed=results.filter(function(x){return !x.success;}).length;
+  return jsonResponse({success:(results.length>0&&failed===0),processed:processed,results:results,message:processed+' 筆已儲存'+(failed?'，'+failed+' 筆失敗':'')});
+}
+function handleDeleteLogRecord(recordId, recorderYmis){
+  const sheet=getSheet().getSheetByName(LOG_SHEET_NAME);
+  if(!sheet) return jsonResponse({success:false,error:'「'+LOG_SHEET_NAME+'」工作表不存在：請在 Apps Script 執行 initializeSheets() 補建'});
+  recordId=String(recordId||'');
+  if(!recordId) return jsonResponse({success:false,error:'缺少 record_id'});
+  const data=sheet.getDataRange().getValues();
+  for(let i=1;i<data.length;i++){
+    if(String(data[i][0])===recordId){
+      const label=String(data[i][1]||'')+': '+String(data[i][5]||'')+' '+String(data[i][4]||'');
+      const target=String(data[i][2]||'');
+      sheet.deleteRow(i+1);
+      writeAudit(recorderYmis,'delete_log',target,label);
+      return jsonResponse({success:true,message:'已刪除紀錄'});
+    }
+  }
+  return jsonResponse({success:false,error:'找不到紀錄'});
 }
