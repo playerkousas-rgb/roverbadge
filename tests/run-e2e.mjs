@@ -277,6 +277,63 @@ console.log('\n【10b】會員與領袖管理操作（新增/修改/權限/停�
   check('審批申請（reviewApplication）成功', revApp.success === true && mockA.state.applications[0]?.status === 'approved');
 }
 
+// ================== 10c. 活動履歷 ==================
+console.log('\n【10c】活動履歷：單筆/批量寫入、讀取、成員被拒、刪除、旅團隔離');
+{
+  // 領袖單筆寫入（服務）
+  const s1 = await apiRequest('saveLogRecord', { token: tokenA, records: [{ type: 'service', ymis: '1234560001', name: '成員甲', date: '2026-08-01', title: '暑期賣旗籌款', role: '服務員', hours: '4', cert_no: '', detail: '港島區' }], recorder_name: '陳大文' }, { troopId: '0082' });
+  check('領袖單筆服務紀錄成功 + 回傳 record_id', s1.success === true && (s1.results?.[0]?.record_id || '').startsWith('LOG_'));
+  const rid1 = s1.results[0].record_id;
+
+  // 批量寫入（活動 + 訓練班）
+  const s2 = await apiRequest('saveLogRecord', { token: tokenA, records: [
+    { type: 'activity', ymis: '1234560001', name: '成員甲', date: '2026-07-15', title: '夏日大露營', role: '參加者', hours: '', cert_no: '', detail: '' },
+    { type: 'activity', ymis: '1234560002', name: '成員乙', date: '2026-07-15', title: '夏日大露營', role: '參加者', hours: '', cert_no: '', detail: '' },
+    { type: 'training', ymis: '1234560001', name: '成員甲', date: '2026-06-01', title: '急救證書班', role: '學員', hours: '18', cert_no: 'FA-2026-001', detail: '' }
+  ], recorder_name: '陳大文' }, { troopId: '0082' });
+  check('批量 3 筆寫入 processed=3', s2.success === true && s2.processed === 3);
+
+  // 讀取
+  const g = await apiRequest('getLogRecords', { token: tokenA }, { troopId: '0082' });
+  check('getLogRecords 返回 4 筆', g.success === true && (g.logs || []).length === 4);
+  check('load 回應包含 logs + logsSupported', (await apiRequest('load', { token: tokenA }, { troopId: '0082' })).logsSupported === true && (await apiRequest('load', { token: tokenA }, { troopId: '0082' })).logs.length === 4);
+
+  // 編輯（record_id 更新）
+  const up = await apiRequest('saveLogRecord', { token: tokenA, records: [{ record_id: rid1, type: 'service', ymis: '1234560001', name: '成員甲', date: '2026-08-01', title: '暑期賣旗籌款（修改）', role: '統籌', hours: '6', cert_no: '', detail: '' }], recorder_name: '陳大文' }, { troopId: '0082' });
+  const afterEdit = await apiRequest('getLogRecords', { token: tokenA }, { troopId: '0082' });
+  const edited = (afterEdit.logs || []).find(x => x.record_id === rid1);
+  check('編輯成功（標題/崗位/時數已更新，仍 4 筆）', up.success === true && edited?.title.includes('修改') && edited?.role === '統籌' && afterEdit.logs.length === 4);
+
+  // 旅團隔離
+  check('mock B 無任何履歷紀錄（隔離）', (mockB.state.logs || []).length === 0);
+
+  // 成員（無勾選權）寫入被拒
+  const addMemE = await apiRequest('addUser', { token: tokenA, ymis: '1234560005', name: '成員戊', email: 'e@example.org', role: 'member', password: 'MemberE!23456', can_tick: false }, { troopId: '0082' });
+  check('新增無勾選權成員戊成功', addMemE.success === true);
+  const loginMember = await apiRequest('login', { login_id: '1234560005', password: 'MemberE!23456' }, { troopId: '0082' });
+  check('成員登入成功（讀取用）', loginMember.success === true && typeof loginMember.token === 'string');
+  const memberSave = await apiRequest('saveLogRecord', { token: loginMember.token, records: [{ type: 'activity', ymis: '1234560005', name: '成員戊', date: '2026-08-02', title: '自填活動', role: '', hours: '', cert_no: '', detail: '' }] }, { troopId: '0082' });
+  check('成員（can_tick=false）寫入被拒', memberSave.success === false && /權限/.test(memberSave.error || ''));
+  const memberRead = await apiRequest('getLogRecords', { token: loginMember.token }, { troopId: '0082' });
+  check('成員可讀取（前端只顯示自己）', memberRead.success === true);
+
+  // 刪除
+  const del = await apiRequest('deleteLogRecord', { token: tokenA, record_id: rid1 }, { troopId: '0082' });
+  check('刪除成功', del.success === true);
+  const afterDel = await apiRequest('getLogRecords', { token: tokenA }, { troopId: '0082' });
+  check('刪除後剩 3 筆', (afterDel.logs || []).length === 3 && !(afterDel.logs || []).some(x => x.record_id === rid1));
+
+  // 必填驗證
+  const bad = await apiRequest('saveLogRecord', { token: tokenA, records: [{ type: 'activity', ymis: '1234560001', name: '成員甲', date: '', title: '', role: '', hours: '', cert_no: '', detail: '' }] }, { troopId: '0082' });
+  check('欠日期/名稱 → success:false', bad.success === false);
+
+  // 協助訓練班（如擔任助教/導師）直接填寫為服務紀錄 (service)
+  const sTrStaff = await apiRequest('saveLogRecord', { token: tokenA, records: [{ type: 'service', ymis: '1234560001', name: '成員甲', date: '2026-05-20', title: '童軍技能考驗班協助', role: '助教', hours: '8', cert_no: '', detail: '擔任助教' }], recorder_name: '陳大文' }, { troopId: '0082' });
+  check('協助訓練班（助教）以服務紀錄寫入成功', sTrStaff.success === true);
+  const checkTrStaff = (await apiRequest('getLogRecords', { token: tokenA }, { troopId: '0082' })).logs.find(x => x.record_id === sTrStaff.results[0].record_id);
+  check('協助訓練班紀錄為服務紀錄 (service)', checkTrStaff?.type === 'service' && checkTrStaff?.role === '助教');
+}
+
 // ================== 11. 多旅團隔離 ==================
 console.log('\n【11】多旅團隔離：旅團 B 獨立寫入、token 不串用');
 {
@@ -352,6 +409,8 @@ console.log('\n【14】index.html 靜態安全檢查（代替 Browser Network �
   const allFetches = html.match(/fetch\s*\(/g) || [];
   check(`所有 fetch() 呼叫只有同源（共 ${allFetches.length} 個）`, allFetches.length <= 12 && !/fetch\s*\(\s*['"]https?:/.test(html));
   check('所有 API 都經同源封裝 apiRequest()', html.includes('await apiRequest('));
+  check('活動履歷 tab 已註冊', html.includes('id="tab-logs"') && html.includes('renderLogsTab'));
+  check('舊後端升級提示存在', html.includes('v8.1') && html.includes('logRecordsSupported'));
 }
 
 // ================== 收尾 ==================

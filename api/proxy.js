@@ -36,6 +36,7 @@ const TOKEN_ACTIONS = new Set([
   'logout', 'load', 'getConfig', 'getMembers', 'getOtherBadges',
   'save', 'saveOtherBadge', 'requestComplete',
   'getPendingRequests', 'reviewRequest',
+  'getLogRecords', 'saveLogRecord', 'deleteLogRecord',
   'getAllUsers', 'addMember', 'addUser',
   'resetPassword', 'changePassword', 'deactivateUser',
   'getApplications', 'reviewApplication',
