@@ -411,6 +411,19 @@ console.log('\n【14】index.html 靜態安全檢查（代替 Browser Network �
   check('所有 API 都經同源封裝 apiRequest()', html.includes('await apiRequest('));
   check('活動履歷 tab 已註冊', html.includes('id="tab-logs"') && html.includes('renderLogsTab'));
   check('舊後端升級提示存在', html.includes('v8.1') && html.includes('logRecordsSupported'));
+
+  const scripts = html.match(/<script[^>]*>([\s\S]*?)<\/script>/gi) || [];
+  let scriptSyntaxOk = true;
+  for (const s of scripts) {
+    const code = s.replace(/<script[^>]*>/i, '').replace(/<\/script>/i, '');
+    try {
+      new Function(code);
+    } catch(err) {
+      scriptSyntaxOk = false;
+      console.error('index.html script syntax error:', err);
+    }
+  }
+  check('index.html JavaScript 語法解析無誤', scriptSyntaxOk);
 }
 
 // ================== 收尾 ==================
