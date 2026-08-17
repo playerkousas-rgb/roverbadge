@@ -862,13 +862,6 @@ async function handlePortalParams(){
     checkSavedSession();
     return;
   }
-        loadTroops();
-        setTimeout(()=>{ try{ selectTroop(u); }catch(e){} }, 500);
-      }
-    }catch(e){ loadTroops(); }
-    checkSavedSession();
-    return;
-  }
 
   // 預設獨立使用
   loadTroops();
