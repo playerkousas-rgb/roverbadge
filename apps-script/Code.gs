@@ -541,10 +541,10 @@ function handleSave(changes, confirmer){
 }
 function handleAddMember(ymis,name,squad,squadRole){
   let sheet=getSheet().getSheetByName('成員名單');
-  if(!sheet){ sheet=getSheet().insertSheet('成員名單'); sheet.appendRow(['YMIS','姓名','加入日期','支部','聯絡','小隊']); }
+  if(!sheet){ sheet=getSheet().insertSheet('成員名單'); sheet.appendRow(['YMIS','姓名','加入日期','支部','聯絡','備註']); }
   // 確保有 6 欄 header
   if(sheet.getLastColumn()<6){
-    sheet.getRange(1,6).setValue('小隊');
+    sheet.getRange(1,6).setValue('備註');
   }
   sheet.appendRow([ymis,name,new Date(),'','',squad||'']);
   return jsonResponse({success:true});
@@ -613,7 +613,7 @@ function handleResetPassword(targetYmis,managerYmis){
       if(String(data[i][0])===String(targetYmis)){
         const temp='Rover'+Math.floor(100000+Math.random()*900000);
         sh.getRange(i+1,5).setValue(hashPassword(temp));
-        // 若有第 13 欄 (allowed_badges) 保留，第 6 欄為 branch（小隊）
+        // 若有第 13 欄 (allowed_badges) 保留，第 6 欄為 branch（備註）
         if(data[i][5]!=='' && data[i][5]!==null && data[i][5]!==undefined){
           // 保留現有資料，只改密碼
         }
@@ -654,7 +654,7 @@ function handleAddUser(body){
       email,                             // 3 email
       role,                              // 4 role
       pwdHash,                           // 5 password_hash
-      squad,                             // 6 branch (兼小隊)
+      squad,                             // 6 branch (備註)
       canTick,                           // 7 can_tick
       'bulk_onboard',                    // 8 auth_by
       nowStr,                            // 9 auth_date
@@ -667,7 +667,7 @@ function handleAddUser(body){
     let mSheet=getSheet().getSheetByName('成員名單');
     if(!mSheet){
       mSheet=getSheet().insertSheet('成員名單');
-      mSheet.appendRow(['YMIS','姓名','加入日期','支部','聯絡','小隊']);
+      mSheet.appendRow(['YMIS','姓名','加入日期','支部','聯絡','備註']);
     }
     mSheet.appendRow([ymis, name, new Date(), '', '', squad]);
     writeAudit(ymis,'add_user',ymis,'前端開立帳號 role='+role);
