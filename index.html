@@ -641,7 +641,7 @@ a:hover{text-decoration:underline}
     <div class="form-group"><label>YMIS（10位數字） *</label><input id="applyYmis" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" placeholder="例如 1234560001"></div>
     <div class="form-group"><label>姓名 *</label><input id="applyName" placeholder="中文姓名"></div>
     <div class="form-group"><label>聯絡電郵（可留空）</label><input id="applyEmail" type="email" placeholder="your@email.com"></div>
-    <div class="form-group"><label>備註（小隊/聯絡/特殊需要）</label><input id="applySquad" placeholder="例: 紅隊 / 9月新入團"></div>
+    <div class="form-group"><label>備註（聯絡方式/特殊需要）</label><input id="applySquad" placeholder="例: 電話號碼 / 9月新入團"></div>
     <div id="applyMsg" class="login-msg"></div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('accountApplyModal')">取消</button>
@@ -661,15 +661,15 @@ a:hover{text-decoration:underline}
         <li><b>方法一：上傳 CSV</b>（推薦）— 先按「⬇️ 下載成員範本」取得範本，填寫後上傳</li>
         <li><b>方法二：貼上 JSON</b> — 直接貼上 <code style="background:#fff;padding:1px 4px;border-radius:3px">[{"ymis":"1234560001","name":"王小明",...}]</code></li>
       </ul>
-      <p style="margin:6px 0 0"><b>📝 CSV 欄位：</b>ymis,name,email,squad,squad_role,role,can_tick,password,note</p>
+      <p style="margin:6px 0 0"><b>📝 CSV 欄位：</b>ymis,name,email,role,can_tick,password,note</p>
       <ul style="margin:4px 0 0 16px;padding:0;font-size:11px">
         <li><b>ymis</b> (必填) 10位數字</li>
         <li><b>name</b> (必填) 中文姓名</li>
         <li><b>email</b> 電郵（填了才可登入 Email 模式）</li>
-        <li><b>squad</b> 小隊名稱（如 紅隊）</li>
         <li><b>role</b> 角色：member / exec_committee / branch_leader / group_leader / admin</li>
         <li><b>can_tick</b> true / false 是否可勾選</li>
         <li><b>password</b> 留空＝只加成員（無登入）；有填＝建立可登入帳號</li>
+        <li><b>note</b> 備註（聯絡方式/特殊需要等）</li>
       </ul>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
@@ -678,9 +678,9 @@ a:hover{text-decoration:underline}
     </div>
     <div style="font-size:11px;color:var(--text-light);margin-bottom:6px;font-weight:600">或直接貼上 JSON 陣列：</div>
     <textarea id="bulkJson" style="width:100%;height:130px;font-family:monospace;font-size:11px;padding:8px;border:1px solid var(--border);border-radius:8px;background:#FAFAFA;resize:vertical" placeholder='[
-  {"ymis":"1234560001","name":"王小明","email":"wang@x.com","squad":"紅隊","role":"member","can_tick":false,"password":""},
-  {"ymis":"1234560002","name":"李小華","email":"lee@x.com","squad":"藍隊","role":"member","can_tick":false,"password":""},
-  {"ymis":"1234560003","name":"陳小美","email":"","squad":"","role":"member","can_tick":false,"password":"","note":"新入團"}
+  {"ymis":"1234560001","name":"王小明","email":"wang@x.com","role":"member","can_tick":false,"password":""},
+  {"ymis":"1234560002","name":"李小華","email":"lee@x.com","role":"member","can_tick":false,"password":""},
+  {"ymis":"1234560003","name":"陳小美","email":"","role":"member","can_tick":false,"password":"","note":"新入團"}
 ]'></textarea>
     <div id="bulkOnboardStatus" style="font-size:11px;margin-top:6px;padding:6px;border-radius:6px;display:none"></div>
     <div class="modal-actions">
@@ -1059,7 +1059,7 @@ async function submitAccountApply(){
 
 /* ================== v5.0 批量開戶 (全前端控制) ================== */
 function downloadMembersTemplate(){
-  const csv='ymis,name,email,squad,squad_role,role,can_tick,password,note\n1234560001,王小明,wong@example.org,紅隊,member,member,false,,新團員\n1234560002,李小華,lee@example.org,藍隊,member,member,false,Scout123,轉隊已設密碼\n1234560003,陳小美,chen@example.org,紅隊,member,exec_committee,true,,可勾選管委\n1234560004,張老師,zhang@example.org,,,branch_leader,true,Scout456,支部領袖\n';
+  const csv='ymis,name,email,role,can_tick,password,note\n1234560001,王小明,wong@example.org,member,false,,新團員\n1234560002,李小華,lee@example.org,member,false,Scout123,轉支部已設密碼\n1234560003,陳小美,chen@example.org,exec_committee,true,,管理委員會\n1234560004,張老師,zhang@example.org,branch_leader,true,Scout456,支部領袖\n';
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));
   a.download='rover_members_template.csv';
@@ -2955,7 +2955,7 @@ async function loadUsers(){
           actionBtns.push(`<select onchange="updateUserRole('${u.ymis}',this.value)" title="更改角色"><option value="member" ${u.role==='member'?'selected':''}>團員</option><option value="exec_committee" ${u.role==='exec_committee'?'selected':''}>管委</option><option value="branch_leader" ${u.role==='branch_leader'?'selected':''}>支部領袖</option><option value="group_leader" ${u.role==='group_leader'?'selected':''}>團長</option><option value="admin" ${u.role==='admin'?'selected':''}>管理員</option></select>`);
           actionBtns.push(`<button class="btn btn-sm ${u.can_tick?'btn-danger':'btn-success'}" onclick="toggleCanTick('${u.ymis}',${!u.can_tick})" title="${u.can_tick?'收回勾選權限':'授權勾選權限'}">${u.can_tick?'收回':'授權'}</button>`);
           actionBtns.push(`<button class="btn btn-sm btn-warning" onclick="openPermissionModal('${u.ymis}','${u.name.replace(/'/g,"\'") }','${u.role}','${(u.allowed_badges||'').replace(/'/g,"")}')" title="設定可勾選權限">⚙️ 權限</button>`);
-          actionBtns.push(`<button class="btn btn-sm btn-secondary" onclick="editSquad('${u.ymis}','${(squad||'').replace(/'/g,"\'")}','${squad_role.replace(/'/g,"\'")}')" title="編輯小隊及職務">🧭 小隊</button>`);
+          actionBtns.push(`<button class="btn btn-sm btn-secondary" onclick="editSquad('${u.ymis}','${(squad||'').replace(/'/g,"\'")}','${squad_role.replace(/'/g,"\'")}')" title="📝 備註">📝 備註</button>`);
           actionBtns.push(`<button class="btn btn-sm btn-warning" onclick="resetMemberPassword('${u.ymis}')" title="重設密碼（生成一次性臨時密碼）">🔑 重設密碼</button>`);
           actionBtns.push(`<button class="btn btn-sm btn-danger" onclick="deactivateUser('${u.ymis}')" title="停用帳號（清除token, 保留資料）">🗑️ 停用</button>`);
         }
@@ -2966,7 +2966,7 @@ async function loadUsers(){
           ${isSelf?'<span style="background:var(--blue-light);color:var(--blue);padding:1px 6px;border-radius:999px;font-size:9px">自己</span>':''}
           <br><small style="font-size:10px;color:var(--text-light)">
             權限: ${u.allowed_badges|| (u.role==='member'?'無':(u.role==='exec_committee'?'L1,活動段章,其他部分':'全部(*)'))}
-            ${squad?` | 小隊: <b>${squad}</b>${squad_role!=='member'?` (${squad_role})`:''}`:''}
+            ${squad?` | 備註: <b>${squad}</b>${squad_role!=='member'?` (${squad_role})`:''}`:''}
           </small></div><div class="user-item-actions">${actionBtns.join('')}</div></div>`;
       }).join('');
       h+='</div>';
@@ -3198,7 +3198,7 @@ async function addMemberFromApp(){
   if(!/^\d{10}$/.test(ymis)){ showToast('YMIS 須為 10位數字','error'); return; }
   const name=prompt('成員姓名');
   if(!name) return;
-  const squad=prompt('小隊名稱（可留空）','')||'';
+  const squad=prompt('備註（可留空）','')||'';
   try{
     const d=await apiRequest('addMember',{token:currentToken,ymis,name,squad,squad_role:'member'});
     if(d.success){
@@ -3217,7 +3217,7 @@ async function addUserFromApp(){
   const email=prompt('聯絡電郵（可留空）','')||'';
   const role=prompt('角色：member / exec_committee / branch_leader / group_leader / admin','member')||'member';
   const password=prompt('密碼（留空＝只加成員，無登入）','')||'';
-  const squad=prompt('小隊（可留空）','')||'';
+  const squad=prompt('備註（可留空）','')||'';
   const canTick=confirm('是否可勾選進度？');
   try{
     const d=await apiRequest('addUser',{token:currentToken,ymis,name,email,role,password,squad,squad_role:'member',can_tick:canTick});
@@ -3228,14 +3228,12 @@ async function addUserFromApp(){
   }catch(e){ showToast('建立失敗：'+e.message,'error'); }
 }
 async function editSquad(ymis, currentSquad, currentRole){
-  const squad=prompt('小隊名稱（留空代表未分配）', currentSquad||'');
+  const squad=prompt('備註（留空代表未填）', currentSquad||'');
   if(squad===null) return;
-  const role=prompt('小隊職務：member / 隊長 / 副隊長', currentRole||'member');
-  if(role===null) return;
   try{
-    const d=await apiRequest('updateUserRole',{token:currentToken,target_ymis:ymis,new_role:'member',can_tick:false,squad:squad||'',squad_role:role||'member'});
+    const d=await apiRequest('updateUserRole',{token:currentToken,target_ymis:ymis,new_role:'member',can_tick:false,squad:squad||'',squad_role:'member'});
     if(d.success){
-      showToast('✅ 小隊及職務已更新','success');
+      showToast('✅ 備註已更新','success');
       loadUsers();
     }else throw new Error(d.error||'失敗');
   }catch(e){ showToast('更新失敗：'+e.message,'error'); }
@@ -3244,7 +3242,7 @@ function downloadUsersList(){
   // 從當前頁面抽用戶資料轉 CSV
   const items=document.querySelectorAll('#userList .user-item');
   if(!items.length){ showToast('沒有可匯出的用戶','warning'); return; }
-  const rows=[['YMIS','姓名','Email','角色','可勾選','小隊','職務']];
+  const rows=[['YMIS','姓名','Email','角色','可勾選','備註']];
   items.forEach(it=>{
     const info=it.querySelector('.user-item-info');
     const name=info?.querySelector('b')?.textContent||'';
@@ -3255,11 +3253,9 @@ function downloadUsersList(){
     const roleMatch=(info?.textContent||'').match(/(團員|管委|支部領袖|團長|管理員)/);
     const role=roleMatch?roleMatch[1]:'';
     const canTick=/可勾選/.test(info?.textContent||'');
-    const squadMatch=(info?.textContent||'').match(/小隊:\s*([^()]+)/);
-    const squad=squadMatch?squadMatch[1].trim():'';
-    const role2Match=(info?.textContent||'').match(/\(([^)]+)\)/g);
-    const squadRole=(role2Match&&role2Match.length>1)?role2Match[role2Match.length-1].replace(/[()]/g,'').trim():'member';
-    rows.push([ymis,name,email,role,canTick?'是':'否',squad,squadRole]);
+    const noteMatch=(info?.textContent||'').match(/備註:\s*([^|]+)/);
+    const note=noteMatch?noteMatch[1].trim():'';
+    rows.push([ymis,name,email,role,canTick?'是':'否',note]);
   });
   const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
   const a=document.createElement('a');
