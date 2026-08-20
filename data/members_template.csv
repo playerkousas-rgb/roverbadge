@@ -1,0 +1,5 @@
+ymis,name,email,role,can_tick,password,note
+1234560001,王小明,wong@example.org,member,false,,新團員
+1234560002,李小華,lee@example.org,member,false,Scout123,轉支部已設密碼
+1234560003,陳小美,chen@example.org,exec_committee,true,,管理委員會
+1234560004,張老師,zhang@example.org,branch_leader,true,Scout456,支部領袖
