@@ -1,0 +1,687 @@
+樂行童軍進度追蹤系統	Rover Scout Progress Tracker
+樂行童軍進度追蹤	Rover Scout Progress Tracker
+樂行童軍進度追蹤系統 v5.0 - 手機友善・批量開戶・全前端控制	Rover Scout Progress Tracker v5.0 - Mobile friendly · Bulk onboarding · Full front-end control
+樂行童軍進度追蹤 v4.2	Rover Scout Progress Tracker v4.2
+Rover Scout Progress Tracker v4.2 • 貝登堡獎章 Logo + 2026年第5版綱要	Rover Scout Progress Tracker v4.2 • Baden-Powell Award logo + 2026 5th Edition Scheme
+基於 2026年第5版《樂行童軍訓練綱要》 | 支援離線暫存 • 批量寫入 • 批量開戶 • 全前端控制 • 保護兒童 Safe from Harm	Based on the 5th Edition of the Rover Scout Training Scheme (2026) | Offline staging • Batch writing • Bulk onboarding • Full front-end control • Safe from Harm
+基於 2026年第5版《樂行童軍訓練綱要》• 支援離線暫存•批量寫入•成員申請確認•表格自動填寫	Based on the 5th Edition of the Rover Scout Training Scheme (2026) • Offline staging • batch writing • member request confirmation • form auto-fill
+COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 v5.0	COPYRIGHT 2026 Scout System • Rover Scout Progress Tracker v5.0
+香港童軍總會	Scout Association of Hong Kong
+🏠 進入系統	🏠 Enter System
+📋 新旅團部署	📋 New Group Deployment
+📖 使用教學	📖 User Guide
+📦 版本更新紀錄（未來用於新版本後端GS及功能改動）	📦 Version History (for future backend GS versions and feature changes)
+最新：v5.0 FINAL	Latest: v5.0 FINAL
+• 目前 v5.0 FINAL 已穩定，測試完成	• v5.0 FINAL is stable and fully tested
+• 新版本新增功能和改動說明	• New features and changes in this version
+• 新版本後端 Code.gs 下載（記得保有舊資料 - initializeSheets 不會清舊資料）	• New backend Code.gs download (your old data is kept - initializeSheets does not clear old data)
+框架保留，內容已精簡（依你要求移除舊修復資訊）	Framework kept, content streamlined (old fix notes removed per your request)
+🆕 v5.1 新增	🆕 New in v5.1
+此區未來用於：	This section will be used for:
+PNG LOGO 256px、防卡死、批量、官方表格、細緻權限、MOCK測試、成員私隱開關、教學按角色分開	PNG logo 256px, freeze-proofing, batch, official forms, fine-grained permissions, MOCK testing, member privacy toggle, role-based help
+包含待批、其他獎章、批量、PNG、私隱開關	Includes Pending, Other Badges, batch, PNG, privacy toggle
+📍 請選擇您的旅團	📍 Please select your Group
+🔄 重新載入	🔄 Reload
+👀 試用 MOCK 效果 (免登入瀏覽器看)	👀 Try the MOCK demo (no login needed)
+載入中...	Loading...
+第 82 旅 (樂行)	82nd Group (Rover)
+第 82 旅	82nd Group
+選擇旅團	Select Group
+未登入試用：	Try without logging in:
+你而家用緊嘅	You are currently using
+四級勾選架構 + 級聯自動完成	4-level ticking structure + auto cascade
+12項 • 含保護兒童	12 items • incl. Safe from Harm
+23項基礎技能	23 basic skills
+4段章 100+選項	4 segments, 100+ options
+4金帶 • 最高榮譽	4 Gold Bands • Highest honour
+進度性獎章 (段章層級)	Progressive badges (segment level)
+其他獎章 (逐個勾)	Other badges (tick individually)
+🎖️ 管理委員會 管委	🎖️ Crew Management Committee (CMC)
+👤 成員 member	👤 Member
+👨‍💼 領袖 leader	👨‍💼 Leader
+樂行童軍獎章	Rover Scout Award
+貝登堡獎章	Baden-Powell Award
+會員章	Membership Badge
+肩章	Epaulettes
+📋 新旅團部署指南 - 有主系統 / 無主系統 兩條路 (10分鐘)	📋 New Group Deployment Guide - with or without the main system, two tracks (10 min)
+🌟 先了解一下：主系統平台是什麼？	🌟 First, understand: what is the main system platform?
+重點：有主系統 ≠ 一定要接上本系統	Key point: having a main system ≠ you must connect this system
+係一個 Tier 3 元件，可以獨立用，但其實屬於更龐大的	It is a Tier 3 component that can be used standalone, but it actually belongs to a larger
+scoutsystem-2.0 主系統平台	scoutsystem-2.0 main system platform
+，可自由選擇獨立用或接上，兩條路並存不衝突。藉此告訴用家有更大平台可用。	, and you are free to use it standalone or connect it; the two tracks coexist without conflict. This tells users that a bigger platform is available.
+🔐 單一登入：點卡片自動帶入身份，唔使再輸 YMIS/密碼	🔐 SSO: clicking the card brings your identity automatically, no need to type YMIS/password again
+🧩 插件市場：本系統是其中一個插件，可一鍵加入卡片	🧩 Plugin market: this system is one of the plugins; add it to a card in one click
+📊 Dashboard 儀表板：全旅團人數、活動、財政一目了然	📊 Dashboard: Group headcount, activities and finances at a glance
+👥 成員管理、✅集會考勤 QR Code、💰財務、📅活動報名	👥 Member management, ✅ meeting attendance QR Code, 💰 finance, 📅 event registration
+軌道A：無主系統 - 提交給 roverbadge 管理員	Track A: No main system - submit to the roverbadge admin
+軌道B：有主系統並想接上 - 額外提交給主系統管理員	Track B: Has a main system and wants to connect - additionally submit to the main system admin
+軌道A 無主系統/有但想獨立用：	Track A - no main system, or has one but wants standalone:
+軌道B 有主系統並想接上：	Track B - has a main system and wants to connect:
+🗺️ 部署地圖 - 兩條路	🗺️ Deployment map - two tracks
+共通：下載 Code.gs → 建 Sheet → 執行 initializeSheets → 部署 → 複製 URL+API Key	Common: download Code.gs → create Sheet → run initializeSheets → deploy → copy URL + API Key
+共通：建立 Google Sheet 並部署	Common: create a Google Sheet and deploy
+共通：下載後端程式碼 (單一檔案版)	Common: download the backend code (single-file version)
+⬇️ 下載 Code.gs (最新)	⬇️ Download Code.gs (latest)
+擴充功能→Apps Script，貼上 Code.gs	Extensions → Apps Script, paste Code.gs
+儲存→執行 initializeSheets，授權，複製 API Key	Save → run initializeSheets, authorise, copy the API Key
+部署為網頁應用程式 (執行身分我，存取權任何人)，複製 URL (/exec)	Deploy as a web app (execute as me, access: anyone), copy the URL (/exec)
+將旅團編號、名稱、URL、API Key 交 roverbadge 管理員加入 troops.json，Vercel自動部署後獨立可用	Give the Group number, name, URL and API Key to the roverbadge admin to add to troops.json; after Vercel auto-deploys, it works standalone
+獨立用：交 roverbadge 管理員	Standalone: submit to the roverbadge admin
+接入主系統：同時交主系統管理員（填 backend+apikey）	Connect to main system: also submit to the main system admin (fill in backend + apikey)
+兩條路可同時用，領袖從主系統入，成員 bookmark 獨立連結	Both tracks can be used at the same time: leaders enter via the main system, members bookmark the standalone link
+將 URL+Key 交 roverbadge 管理員 → 加入 troops.json → 完成 → 用法：roverbadge.vercel.app 選旅團登入	Give URL + Key to the roverbadge admin → added to troops.json → done → how to use: go to roverbadge.vercel.app, select the Group and log in
+將同一組 URL+Key 交主系統管理員，填入旅團設定→元件設定 roverbadge 卡片 backend+apikey。之後成員點 Dashboard 卡片自動帶入 ?u=0082&role=&ymis=&from=portal&embed=1，無需密碼	Give the same URL + Key to the main system admin, fill them into Group settings → component settings → roverbadge card backend + apikey. Members then click the Dashboard card, which auto-fills ?u=0082&role=&ymis=&from=portal&embed=1 with no password needed
+有主系統不等於一定要接，可自由選擇獨立用。若旅團重私隱，成員預設只看自己；若想互相鼓勵，團長可在用戶管理→系統設定開啟「允許成員互相查看進度」	Having a main system does not mean you must connect. For privacy-focused Groups, members see only themselves by default; for mutual encouragement, the Group Scout Leader can enable "Allow members to view each other's progress" in User Management → System Settings
+💡 提示：若您的旅團不在列表，請到「新旅團部署」查看10分鐘自助部署教學。	💡 Tip: if your Group is not in the list, see the 10-minute self-deployment guide in "New Group Deployment".
+首頁點擊旅團卡片（例如 0082 第82旅）	Click the Group card on the home page (e.g. 0082, 82nd Group)
+成員：YMIS 10位數字 + 密碼；領袖：Email + 密碼。首次登入預設密碼請洽管理員。	Member: YMIS (10 digits) + password; Leader: Email + password. For the default first-login password, contact the admin.
+成員不可直接勾選，點擊「📝 申請完成」→選擇日期→填寫證據→提交。領袖會在「待批」頁看到。	Members cannot tick directly: click "📝 Request" → choose the date → fill in evidence → submit. Leaders see it in the Pending page.
+領袖可直接勾選，系統自動填今日日期，亦可手動改日期。所有勾選先存瀏覽器，底部顯示未保存數量，按「確認寫入」才批量寫入雲端，寫入時有進度提示。	Leaders can tick directly; today's date is auto-filled and can be changed. All ticks are staged in the browser first — the unsaved count is shown at the bottom — and are written to the cloud in batch when you press "Confirm write", with progress feedback.
+按「👀 試用 MOCK 效果」可免登入、免選旅團，直接用瀏覽器看 10個MOCK成員的進度、全團總覽、批量剔選、表格列印等效果，方便其他旅團了解系統。	Press "👀 Try the MOCK demo" to see, without logging in or selecting a Group, the progress of 10 MOCK members, Group overview, batch ticking, print forms etc. — a convenient way for other Groups to understand the system.
+💡 提交後領袖會在「待批」頁看到，可批准即自動寫入進度。先暫存於瀏覽器，按確認才送出（支援離線）。	💡 After submission the leader sees it in the Pending page; approving auto-writes the progress. It is staged in the browser first and sent on confirmation (offline supported).
+🔐 登入系統	🔐 Login
+👤 成員	👤 Member
+👨‍💼 領袖	👨‍💼 Leader
+YMIS（10位數字）	YMIS (10 digits)
+YMIS（10位數字） *	YMIS (10 digits) *
+YMIS 10位	YMIS (10 digits)
+YMIS 須為 10位數字	YMIS must be 10 digits
+例如 1234567890	e.g. 1234567890
+例如 1234560001	e.g. 1234560001
+密碼	Password
+請輸入密碼	Enter password
+登入	Login
+登入中...	Logging in...
+登出	Log out
+← 返回首頁	← Back to home
+📝 申請樂行童軍成員帳戶	📝 Apply for a Rover Scout member account
+🆕 申請成員帳戶	🆕 Apply for a member account
+📧 提交旅團接入申請	📧 Submit Group integration request
+🆕 旅團接入	🆕 Group Integration
+姓名 *	Name *
+中文姓名	Chinese name
+聯絡電郵（可留空）	Contact email (optional)
+備註（聯絡方式/特殊需要）	Notes (contact method / special needs)
+備註（聯絡方式/特殊需要等）	Notes (contact method / special needs, etc.)
+例: 電話號碼 / 9月新入團	e.g. phone number / joining in September
+提交後由旅團領袖在 APP 內審批，批准後會建立帳戶並設置臨時密碼。	After submission, the Group's leader approves it inside the APP; once approved, an account is created with a temporary password.
+提交申請	Submit Application
+提交申請	Submit
+提交	Submit
+提交中...	Submitting...
+取消	Cancel
+關閉	Close
+請填寫帳號和密碼	Please enter your account and password
+登入成功！載入資料...	Login successful! Loading data...
+登入失敗	Login failed
+請填寫姓名	Please enter your name
+✅ 申請已提交，請等待領袖審批。審批後可登入。	✅ Application submitted; please wait for leader approval. You can log in after approval.
+提交失敗	Submission failed
+（可稍後重試或聯絡領袖）	(try again later or contact a leader)
+📥 批量開戶 - 領袖專用	📥 Bulk Onboarding - Leaders only
+💡 全前端控制：	💡 Full front-end control:
+無需登出 Google Sheet，在前台上傳 CSV/JSON 即可一鍵建立多個成員帳戶。	No need to log out of Google Sheets — upload CSV/JSON in the front end to create multiple member accounts in one click.
+📋 兩種方法：	📋 Two methods:
+方法一：上傳 CSV	Method 1: upload CSV
+（推薦）— 先按「⬇️ 下載成員範本」取得範本，填寫後上傳	(recommended) - press "⬇️ Download Member Template" to get the template, fill it in and upload
+方法二：貼上 JSON	Method 2: paste JSON
+— 直接貼上	- paste directly
+📝 CSV 欄位：	📝 CSV columns:
+(必填) 10位數字	(required) 10 digits
+(必填) 中文姓名	(required) Chinese name
+電郵（填了才可登入 Email 模式）	Email (needed only for Email login mode)
+角色：member / exec_committee / branch_leader / group_leader / admin	Role: member / exec_committee / branch_leader / group_leader / admin
+true / false 是否可勾選	true / false - can tick
+留空＝只加成員（無登入）；有填＝建立可登入帳號	Empty = add member only (no login); filled = create a login-enabled account
+備註（聯絡方式/特殊需要等）	Notes (contact method / special needs etc.)
+⬇️ 下載成員範本 CSV	⬇️ Download Member Template CSV
+📤 上傳填好的 CSV	📤 Upload the filled CSV
+或直接貼上 JSON 陣列：	Or paste a JSON array directly:
+🚀 由 JSON 批量開戶	🚀 Bulk onboard from JSON
+請貼上 JSON	Please paste JSON
+JSON 格式錯誤：	JSON format error: 
+JSON 中沒有有效資料（YMIS 須為10位數字）	No valid data in JSON (YMIS must be 10 digits)
+CSV 中沒有有效資料（YMIS 須為10位數字）	No valid data in CSV (YMIS must be 10 digits)
+沒有有效資料（YMIS 須為10位數字）	No valid data (YMIS must be 10 digits)
+請選擇 CSV 檔案	Please choose a CSV file
+CSV 解析失敗：	CSV parse failed: 
+解析到	Parsed 
+ 筆，開始批量開戶...	 records; starting bulk onboarding...
+⏳ 批量處理中：	⏳ Processing batch: 
+(成功	 (ok
+ 略過	 skip
+✅ 批量開戶完成：	✅ Bulk onboarding complete: 
+成功	ok
+略過	skipped
+失敗詳情：	Failure details: 
+筆，略過	 records, skipped
+ 筆	 records
+，請看 console	, see console
+批量開戶完成：成功	Bulk onboarding complete: ok
+批量開戶失敗清單：	Bulk onboarding failure list: 
+📊 我的進度	📊 My Progress
+👥 全團總覽	👥 Group Overview
+✅ 審批中心	✅ Approval Centre
+📅 活動履歷	📅 Activity Log
+🖨️ 表格列印	🖨️ Print Forms
+❓ 教學	❓ Help
+📚 資料庫	📚 Library
+👥 用戶管理	👥 User Management
+📋 審批申請(舊-已合併)	📋 Approvals (old - merged)
+🔍 按項目(舊)	🔍 By Item (old)
+⭐ 其他獎章(舊)	⭐ Other Badges (old)
+檢視成員：	View member:
+-- 選擇成員 --	-- Select Member --
+看自己	View self
+目前：	Currently:
+自己	Self
+完成度	Progress
+ℹ️ 成員模式：你不能直接勾選。若你已完成某項，請按「📝 申請完成」，填寫日期及證據，領袖確認後會自動寫入。	ℹ️ Member mode: you cannot tick items directly. If you have completed an item, press "📝 Request", fill in the date and evidence, and it will be written automatically once the leader confirms.
+只能查看他人進度，不能編輯	You can only view others' progress, not edit
+⭐ 其他獎章及徽章	⭐ Other Badges & Awards
+- 非進度性但樂行可考，併入進度一覽	- Not part of the progressive scheme, but attainable by Rover Scouts; included in the progress overview
+💡 此區包含急救章、拯溺、AYP、航空/海上等，數據與「⭐其他獎章」頁同步，領袖可在此直接剔，成員只讀。	💡 This section covers First Aid, Lifesaving, AYP, Aviation/Sea etc. Data is synced with the ⭐ Other Badges page. Leaders can tick here directly; members are read-only.
+必修	Mandatory
+評核：	Assessment: 
+提示：	Tip: 
+🔗 參考連結	🔗 Reference link
+證書編號	Cert no.
+查看考驗說明	View assessment details
+申請完成	Request completion
+✅ 已完成	✅ Completed
+📝 申請	📝 Request
+▶ 展開	▶ Expand
+▼ 收合	▼ Collapse
+暫無詳細說明，請參考訓練綱要。	No further details available; please refer to the Training Scheme.
+資料未載入	Data not loaded
+載入訓練綱要及進度...	Loading Training Scheme and progress...
+載入失敗: 	Load failed: 
+載入失敗：	Load failed: 
+載入失敗	Load failed
+重試	Retry
+0 項未保存	0 unsaved changes
+已暫存於瀏覽器	Staged in browser
+捨棄	Discard
+✅ 確認寫入雲端	✅ Confirm write to cloud
+考驗說明	Assessment Details
+📝 申請完成 - 	📝 Request Completion - 
+完成日期 *	Completion date *
+證據/備註（例如：相片、證書編號、服務時數）	Evidence / notes (e.g. photos, certificate no., service hours)
+請選擇完成日期	Please select a completion date
+✅ 申請已送出，待領袖確認	✅ Request sent; awaiting leader confirmation
+申請送出失敗：	Failed to send request: 
+⚙️ 設定可勾選權限 - 	⚙️ Set tickable permissions - 
+全選	Select all
+全不選	Select none
+設為管委默認 (會員章+活動段章+其他部分)	Set CMC default (Membership Badge + Activities segments + Other parts)
+設為領袖全部 (*)	Set leader all (*)
+💾 儲存權限	💾 Save permissions
+💾 儲存	💾 Save
+會員章 (全部12項)	Membership Badge (all 12 items)
+會員章-保護兒童 (必修)	Membership Badge - Safe from Harm (mandatory)
+肩章 (基礎技能23項)	Epaulettes (23 basic skills)
+活動策劃段章 (舊自立)	Activity Planning segment (old: Self-Reliance)
+社會服務段章 (舊責任)	Community Service segment (old: Responsibility)
+多元技能-範疇一 童軍技能	Diverse Skills - Area 1 Scoutcraft
+多元技能-範疇二 康樂體育	Diverse Skills - Area 2 Recreation & Sports
+多元技能-範疇三 新體驗 (個人興趣)	Diverse Skills - Area 3 New Experiences (personal interest)
+戶外探險段章	Outdoor Adventure segment
+貝登堡獎章 全部金帶	Baden-Powell Award - all Gold Bands
+活動策劃金帶/多元技能金帶	Activity Planning Gold Band / Diverse Skills Gold Band
+➕ 新增活動履歷紀錄	➕ Add Activity Log Record
+✏️ 編輯紀錄	✏️ Edit Record
+成員 *	Member *
+📥 批量：同一活動套用到多個成員	📥 Batch: apply the same activity to multiple members
+按住 Ctrl（電腦）或逐點（手機）可多選成員	Hold Ctrl (computer) or tap each one (phone) to select multiple members
+日期 *	Date *
+活動名稱 *	Activity name *
+活動名稱	Activity name
+崗位／身份	Role / capacity
+時數	Hours
+內容／備註	Content / notes
+請填寫日期及名稱	Please fill in the date and name
+請選擇至少一位成員	Please select at least one member
+儲存中...	Saving...
+✅ 已儲存（DEMO 本機模式，不寫入雲端）	✅ Saved (DEMO local mode, not written to cloud)
+✅ 已刪除紀錄	✅ Record deleted
+已刪除（DEMO 本機模式）	Deleted (DEMO local mode)
+儲存失敗：	Save failed: 
+✅ 活動履歷已更新	✅ Activity log updated
+未能讀取紀錄	Failed to read records
+讀取失敗：	Read failed: 
+只有領袖可以新增／編輯紀錄	Only leaders can add/edit records
+只有領袖可以刪除紀錄	Only leaders can delete records
+找不到紀錄，請先重新載入	Record not found; please reload first
+後端未升級 v8.1，暫未能儲存	Backend not upgraded to v8.1; cannot save yet
+服務名稱	Service name
+訓練班名稱	Training course name
+學員	Trainee
+暫無紀錄	No records yet
+，可按上方「➕ 新增紀錄」補登	 - press "➕ Add Record" above to add one
+🤝 服務紀錄	🤝 Service Record
+🏕️ 活動紀錄	🏕️ Activity Record
+🎓 訓練班紀錄	🎓 Training Course Record
+全部	All
+崗位：	Role: 
+時數：	Hours: 
+證書：	Cert no.: 
+記錄：	Recorded by: 
+📅 活動履歷（服務／活動／訓練班紀錄）	📅 Activity Log (Service / Activity / Training Course records)
+🔄 刷新	🔄 Refresh
+🔄 載入	🔄 Load
+➕ 新增紀錄	➕ Add Record
+類型	Type
+確定刪除「	Confirm deleting "
+」？此操作不能復原。	"? This action cannot be undone.
+🚀 考驗營 / 集體活動 批量完成 (領袖專用)	🚀 Camp / Group Activity Batch Completion (Leaders only)
+例如剛去完考驗營，可一鍵幫有去的成員全剔。先暫存瀏覽器，底部按確認才寫入。	e.g. after a camp, tick all the items for members who attended in one click. Changes are staged in the browser first; press Confirm at the bottom to write them.
+1. 選擇成員 (可搜尋過濾後批量)	1. Select Members (searchable filter, then batch)
+2. 選擇項目 (當前篩選段章內)	2. Select Items (within the currently filtered segment)
+全選成員	Select all members
+取消全選	Clear selection
+全選項目	Select all items
+✅ 一鍵標記完成	✅ Mark all complete
+搜尋成員姓名/ YMIS	Search member name / YMIS
+👥 按成員總覽 (一眼睇會員章)	👥 By Member (Membership Badge at a glance)
+🔍 按項目統計 (百分比)	🔍 By Item (percentages)
+選擇段章以查看詳細矩陣。	Select a segment to view the detailed matrix.
+搜尋項目名稱/編號	Search item name / code
+全部獎章	All badges
+全部段章	All segments
+無成員符合搜尋	No members match the search
+無成員	No members
+無項目	No items
+僅顯示前50項，更多請分段章篩選	Showing only the first 50 items; filter by segment for more
+該段章共有	This segment has 
+ 項，為避免卡死，僅顯示前 30 項。請選擇更細分段章或使用卡片總覽。	 items. To avoid freezing, only the first 30 are shown. Choose a finer segment or use the card view.
+仍要顯示全部 (	Show all anyway (
+成員	Member
+僅顯示前50位成員，請用搜尋篩選	Showing only the first 50 members; use search to filter
+💡 點擊 ✅ 可快速切換完成狀態（領袖權限），先暫存瀏覽器再批量寫入	💡 Click ✅ to quickly toggle the completion status (leader permission); staged in the browser, then written in batch
+請先選擇至少一位成員	Please select at least one member
+請先選擇至少一個項目	Please select at least one item
+確定將	Confirm marking 
+ 個項目標記為完成，套用到	 items as complete, applied to 
+ 位成員？	 member(s)?
+日期：	Date: 
+將先暫存瀏覽器，需按底部確認寫入	Changes are staged in the browser first; press Confirm at the bottom to write
+✅ 已批量加入	✅ Batch added 
+ 項至待寫入 (	 items to the write queue (
+人 x	 members × 
+項)	 items)
+無符合搜尋的項目	No items match the search
+載入審批中心...	Loading Approval Centre...
+目前沒有待審批項目	No pending approvals
+成員的獎章申請及新用戶註冊申請都會在此顯示	Badge requests and new-account applications will appear here
+🏅 獎章審批	🏅 Badge Approvals
+👤 用戶審批	👤 User Approvals
+🏅 獎章審批 - 成員申請完成	🏅 Badge Approvals - Member completion requests
+✅ 批量批准選中	✅ Batch approve selected
+暫無獎章待批	No badge requests pending
+本地暫存	Local draft
+📅 申請日期：	📅 Request date: 
+| 提交：	 | Submitted: 
+選中	Select
+✅ 批准	✅ Approve
+❌ 拒絕	❌ Reject
+⏳ 待領袖確認	⏳ Awaiting leader confirmation
+💾 已暫存	💾 Staged locally
+👤 用戶審批 - 新帳號註冊	👤 User Approvals - New account registration
+暫無用戶待批	No user applications pending
+申請角色：	Requested role: 
+批准	Approve
+拒絕	Reject
+確定要	Confirm 
+此申請？	this request?
+嗎？	?
+確定批量批准	Confirm batch-approving 
+ 項？	 items?
+正在批量批准	Batch-approving 
+ 項...	 items...
+批量批准完成：成功	Batch approval complete: ok
+，失敗	, failed
+正在批准並寫入...	Approving and writing...
+正在拒絕...	Rejecting...
+操作失敗：	Operation failed: 
+請先選中要批准的項目	Please select the items to approve first
+待審批帳號申請	Pending account applications
+目前沒有待審批的申請	No pending applications
+載入中...	Loading...
+已完成	Completed
+✅ 其他獎章已儲存	✅ Other badges saved
+更新其他獎章失敗：	Failed to update other badges: 
+儲存其他獎章失敗：	Failed to save other badges: 
+無權限勾選此其他獎章	No permission to tick this Other Badge
+👥 角色說明：USER vs 成員	👥 Roles Explained: USER vs Member
+USER (系統使用者)	USER (system user)
+= 所有在 Users 表的人，包括：	= everyone in the Users sheet, including:
+團員 member	Member
+團員	Member
+= 純成員，不包括領袖	= pure member, not a leader
+管理委員會 exec_committee (管委)	Crew Management Committee exec_committee (CMC)
+管理委員會	Crew Management Committee
+= 屬領袖，可勾選	= a leader; can tick
+支部領袖 branch_leader	Rover Scout Leader branch_leader
+支部領袖	Rover Scout Leader
+= 領袖	= leader
+團長 group_leader	Group Scout Leader group_leader
+團長	Group Scout Leader
+管理員 admin	Admin
+管理員	Admin
+= 領袖	= leader
+系統管理員 super_admin	System Admin super_admin
+超管	System Admin
+，可勾選及管理。	, can tick and manage.
+USER 總數	Total USERs
+= 成員 + 領袖 全部。	= all members + leaders.
+🧪 測試工具 (僅系統管理員可見)	🧪 Test Tools (System Admin only)
+一鍵載入 10個 MOCK 成員到前端快取，方便測試全團批量剔、會員章一眼睇等。MOCK數據只存瀏覽器快取，不會寫入正式 Google Sheet，除非你按確認寫入。	Load 10 MOCK members into the front-end cache in one click, useful for testing Group batch ticking and the Membership Badge at-a-glance view. MOCK data is stored only in the browser cache and will NOT be written to the real Google Sheet unless you confirm the write.
+🧪 載入10個MOCK成員到全團	🧪 Load 10 MOCK members into the Group
+🗑️ 清除MOCK快取	🗑️ Clear MOCK cache
+📄 查看 MOCK JSON	📄 View MOCK JSON
+📄 下載 CSV 匯入 Sheet	📄 Download CSV for Sheet import
+🔒 私隱設定 (僅團長/管理員可見)	🔒 Privacy Settings (Group Scout Leader/Admin only)
+普通成員預設只看自己，能否看其他成員由團長開放。有些旅團重私隱，有些想互相鼓勵，管委要按進度策劃活動。	Members only see themselves by default; whether they can view others is decided by the Group Scout Leader. Some Groups value privacy, others prefer mutual encouragement — the CMC plans activities based on progress.
+允許成員互相查看進度 (鼓勵模式)	Allow members to view each other's progress (encouragement mode)
+當前：	Current: 
+已開啟 - 成員可看全團	ON - members can view the whole Group
+已關閉 - 成員只看自己 (私隱)	OFF - members only see themselves (privacy)
+說明：關閉時成員「我的進度」不能選其他人，全團總覽隱藏；開啟時成員可看全團但不能編輯。	Note: when OFF, members cannot select others in My Progress and the Group Overview is hidden; when ON, members can view the whole Group but cannot edit.
+📥 批量開戶 (CSV/JSON)	📥 Bulk Onboarding (CSV/JSON)
+➕ 新增成員	➕ Add Member
+🆕 開新帳號	🆕 Create Account
+⬇️ 匯出用戶清單	⬇️ Export User List
+🔍 搜尋姓名/ YMIS/ Email	🔍 Search name / YMIS / Email
+管委	CMC
+更改角色	Change role
+收回勾選權限	Revoke tick permission
+授權勾選權限	Grant tick permission
+收回	Revoke
+授權	Grant
+⚙️ 權限	⚙️ Permissions
+📝 備註	📝 Note
+🔑 重設密碼	🔑 Reset Password
+🗑️ 停用	🗑️ Deactivate
+可勾選	Can tick
+權限: 	Permissions: 
+無	None
+全部(*)	All (*)
+備註: 	Note: 
+載入用戶...	Loading users...
+✅ 角色已更新	✅ Role updated
+已授權勾選	Tick permission granted
+已收回權限	Tick permission revoked
+✅ 成員已新增	✅ Member added
+✅ 帳號已建立	✅ Account created
+✅ 備註已更新	✅ Note updated
+✅ 權限已更新	✅ Permissions updated
+沒有可匯出的用戶	No users to export
+✅ 已匯出	✅ Exported 
+ 個用戶	 users
+成員 YMIS（10位數字）	Member YMIS (10 digits)
+成員姓名	Member name
+備註（可留空）	Notes (optional)
+聯絡電郵（可留空）	Contact email (optional)
+密碼（留空＝只加成員，無登入）	Password (leave empty = member only, no login)
+是否可勾選進度？	Can this user tick progress?
+備註（留空代表未填）	Notes (blank = not filled)
+建立失敗：	Create failed: 
+新增失敗：	Add failed: 
+更新失敗：	Update failed: 
+設定失敗：	Setting failed: 
+停用失敗：	Deactivation failed: 
+重設失敗：	Reset failed: 
+刪除失敗：	Delete failed: 
+✅ 帳號已停用，token 已清除	✅ Account deactivated; token cleared
+確定停用此帳號 (	Deactivate this account (
+停用後此成員將無法登入，但歷史進度會保留。	After deactivation, this member cannot log in, but their progress history will be kept.
+如要恢復，請在 Users 表把 status 改回 active。	To restore, change the status back to "active" in the Users sheet.
+確定重設	Reset the password for 
+ 的密碼？	?
+系統會生成一次性臨時密碼，重設後此用戶首次登入須更改密碼。	A one-time temporary password will be generated; the user must change it at first login.
+🔑 密碼重設成功	🔑 Password reset successful
+的一次性密碼：	's one-time password:
+📋 請複製並通知此成員，	📋 Please copy this and inform the member: 
+首次登入後須更改密碼	the password must be changed after first login
+📋 複製密碼	📋 Copy password
+✅ 已複製	✅ Copied
+(無)	(none)
+❓ 教學 - 按角色分開 (你當前：	❓ Help - by role (you are currently: 
+此頁只顯示你關心的功能，成員不會看到領袖的複雜操作。已改為內嵌版，不會再出現 NOT_FOUND 或 404。	This page only shows the features you care about; members will not see complex leader operations. Now embedded, so NOT_FOUND or 404 will no longer appear.
+👤 成員教學	👤 Member Guide
+🎖️ 管委教學	🎖️ CMC Guide
+👨‍💼 領袖教學	👨‍💼 Leader Guide
+📚 完整文件 (vercel.json已開放docs/，若仍404請重新部署)	📚 Full documents (vercel.json exposes docs/; if still 404, redeploy)
+成員MD	Member MD
+管委MD	CMC MD
+領袖MD	Leader MD
+👥 登入後各功能教學 - 成員 / 管委 / 領袖	👥 Feature Guide After Login - Member / CMC / Leader
+👤 成員 (member) 可以做什麼	👤 What can a Member do
+🎖️ 管理委員會 (管委) 可以做什麼	🎖️ What can the Crew Management Committee (CMC) do
+👨‍💼 領袖 (branch_leader / group_leader / admin) 可以做什麼	👨‍💼 What can Leaders (branch_leader / group_leader / admin) do
+只能看自己的進度，不能看全團	Can only view their own progress, not the whole Group
+不能直接剔，只能按「📝申請完成」提交日期+證據	Cannot tick directly; use "📝 Request" to submit the date + evidence
+可在「📝待批」查看自己申請是否已批	Can check whether their requests have been approved in "📝 Pending"
+可查看「⭐其他獎章」中自己的其他獎章	Can view their own Other Badges in "⭐ Other Badges"
+可使用「🖨️表格列印」自動填PT/21/PT/22後列印	Can use "🖨️ Print Forms" to auto-fill PT/21 / PT/22 and print
+可查看「📚資料庫」內綱要、保護兒童、安全指引	Can view the Training Scheme, Safe from Harm and safety guides in "📚 Library"
+成員的所有功能	All member functions
+可勾選進度（需領袖授權可勾選範圍）	Can tick progress (within the scope authorised by leaders)
+默認可考核：會員章、活動段章(細項不用打勾，勾段章即可)、其他獎章逐個勾	Default assessable scope: Membership Badge, Activities segments (no need to tick sub-items — ticking the segment suffices), Other badges individually
+可在「我的進度」選其他成員查看其紀錄	Can select other members in My Progress to view their records
+可在「👥全團總覽」使用批量剔選（若被授權）	Can use batch ticking in the Group Overview (if authorised)
+可在「📝待批」批准成員的申請（若被授權）	Can approve member requests in "📝 Pending" (if authorised)
+所有成員及管委功能	All member and CMC functions
+可在「我的進度」選任何成員看其所有紀錄	Can select any member in My Progress to view all their records
+可在「👥全團總覽」一眼睇邊個已完成會員章/肩章等（卡片百分比+會員章✓標籤）	Can see at a glance who has completed the Membership Badge / Epaulettes etc. in the Group Overview (card percentages + Membership Badge ✓ labels)
+可使用「🚀考驗營批量完成」：選成員+選項目+日期，一鍵幫全團剔，不用逐個跳轉	Can use "🚀 Camp batch completion": select members + items + date, and tick the whole Group in one click without switching pages
+可直接勾選+輸入日期，離線暫存按確認批量寫入，過程有提示	Can tick directly + enter dates; changes are staged offline and written in batch on confirmation, with prompts throughout
+可在「📝待批」批量批准/拒絕成員申請	Can approve/reject member requests in batch in "📝 Pending"
+可在「👥用戶管理」將成員改為管理委員會，並按個別成員設定可考核什麼（會員章/活動段章/其他獎章逐個勾）	Can change members to the Crew Management Committee in User Management and set each member's assessable scope (Membership Badge / Activities segments / Other badges individually)
+領袖默認全部權限，團長/管理員可更改低層級可勾選範圍	Leaders have full permissions by default; the Group Scout Leader/Admin can change lower-level tick scopes
+團長/管理員可在「👥用戶管理」授權/收回勾選權限，設定細緻權限	The Group Scout Leader/Admin can grant/revoke tick permissions and set fine-grained permissions in User Management
+團長/管理員可在「📋審批申請」審批新帳號	The Group Scout Leader/Admin can approve new accounts in the Approval Centre
+訓練方法：	Training Method: 
+預期成果：	Expected Outcomes: 
+進度流程：	Progress Flow: 
+評估原則：	Assessment Principles: 
+有用連結：	Useful Links: 
+必修課程：	Mandatory Courses: 
+前往	Go
+預防方法：	Prevention: 
+處理方法：	Handling: 
+求助熱線：	Helplines: 
+📚 各獎章考驗總覽（點擊展開）	📚 Overview of All Badge Assessments (Click to expand)
+要求：	Requirement: 
+參考段章說明	Refer to the segment description
+📄 表格下載及佩戴指引 (樂行童軍支部專用)	📄 Form Downloads & Badge Wearing Guide (Rover Scout Section)
+樂行支部官方表格 (PDF)	Official Rover Section form (PDF)
+徽章佩戴指引 (2024-04-01起)	Badge Wearing Guide (from 2024-04-01)
+樂行支部官網	Rover Section official website
+樂行童軍訓練綱要 第5版 (2026)	Rover Scout Training Scheme 5th Edition (2026)
+青少年活動署最新綱要	Latest scheme from the Programme Branch
+新修訂支部訓練綱要通告 P022-26	Circular P022-26 - Revised Sectional Training Schemes
+2026.02 樂行支部通告	Rover Section circular, Feb 2026
+佩戴重點（2024新指引）：	Wearing key points (2024 new guide): 
+• 和平使者章佩戴左胸袋中央，取代會員章	• Messengers of Peace Badge worn on the centre of the left chest pocket, replacing the Membership Badge
+• 急救章統一左袖上方AYP下方	• First Aid Badge on the upper left sleeve, below the AYP badge
+• 拯溺布章佩戴左袖上方中央	• Scout Lifesaving Badge worn on the centre of the upper left sleeve
+• 世界童軍獎章最多右袖平行4枚	• Up to 4 WOSM badges in parallel on the right sleeve
+• 貝登堡獎章可終身佩戴	• The Baden-Powell Award can be worn for life
+🖨️ 樂行童軍表格自動填寫 (已更新最新官方)	🖨️ Rover Scout Form Auto-fill (updated to the latest official)
+PT/21 樂行童軍獎章、PT/22 貝登堡獎章、PT/69 考驗申請 2024最新版。	PT/21 Rover Scout Award, PT/22 Baden-Powell Award, PT/69 Assessment Application - latest 2024 versions.
+自動帶入姓名、YMIS、旅團、證書號碼、完成日期	Auto-fills name, YMIS, Group, certificate numbers and completion dates
+PT/21 需完成4項 (童軍知識、社區服務I、童軍技能I + 選修1)	PT/21 requires 4 completed items (Scouting Knowledge, Community Service I, Scoutcraft I + 1 elective)
+PT/22 需先有PT/21證書，再完成社區服務II、童軍技能II、挑戰 + 選修2	PT/22 requires the PT/21 certificate first, then Community Service II, Scoutcraft II, Challenge + 2 electives
+一鍵列印官方格式	Print the official format in one click
+📋 表格說明 (樂行專用)	📋 Form Notes (Rover Section)
+PT/69 考驗申請	PT/69 Assessment Application
+：開始樂行/貝登堡考驗前提交計劃簡述。	: submit a summary of the plan before starting the Rover/B-P assessment.
+PT/21 樂行童軍獎章	PT/21 Rover Scout Award
+：完成4項申請。	: apply after completing 4 items.
+PT/22 貝登堡獎章	PT/22 Baden-Powell Award
+：完成全部7項 (4必修+3選修其中2)，需區總監及地域總監推薦，每年9月15日前交總會，大會操頒發。	: complete all 7 items (4 core + 2 of 3 electives); requires recommendation by the District Commissioner and Regional Commissioner; submit to Headquarters before 15 September each year; presented at the Grand Rally.
+選擇成員：	Select member: 
+📝 產生 PT/69 考驗申請	📝 Generate PT/69 Assessment Application
+🏅 產生 PT/21 樂行獎章 (最新)	🏅 Generate PT/21 Rover Scout Award (latest)
+🏆 產生 PT/22 貝登堡獎章 (最新)	🏆 Generate PT/22 Baden-Powell Award (latest)
+(必須先完成PT/21)	(must complete PT/21 first)
+🖨️ 列印 PT/69	🖨️ Print PT/69
+🖨️ 列印 PT/21 (最新官方格式)	🖨️ Print PT/21 (latest official format)
+🖨️ 列印 PT/22 (最新)	🖨️ Print PT/22 (latest)
+📄 下載官方空白PT/69	📄 Download blank official PT/69
+📄 下載官方空白PT/21	📄 Download blank official PT/21
+📄 下載官方空白PT/22	📄 Download blank official PT/22
+男	Male
+女	Female
+姓名	Name
+備註	Notes
+單位	Unit
+近照	Photo
+近照 x3	Photos x3
+回郵地址用正楷BLOCK LETTERS	Return address in BLOCK LETTERS
+三選一剔號	Tick one of three
+三選二	Tick two of three
+申請人簽署 Applicant	Applicant's Signature
+申請者簽署 Applicant	Applicant's Signature
+同意 Agreement 團長 RSL 批准開始考驗	Agreement - Rover Scout Leader approves starting the assessment
+旅印 Group Stamp	Group Stamp
+知會區會 Acknowledged by District	District acknowledgement
+批核 Approval 地域總部總監(樂行童軍) RHQC(RS)	Approval - Regional Headquarters Commissioner (Rover Scouts) RHQC(RS)
+地域印 Regional Stamp	Regional Stamp
+備註：個人資料用途自願，不足無法處理。PT/69 官方最新 2018版，開始考驗前提交。	Note: provision of personal data is voluntary; incomplete data cannot be processed. Official PT/69 2018 version; submit before commencing the assessment.
+文件：紀錄冊個人資料、有效日期、貝登堡頁次及證書影印本，經地域交總會。PT/22 2022最新版。	Documents: record book personal data, validity dates, Baden-Powell page numbers and certificate copies, submitted through the Region to Headquarters. PT/22 2022 latest version.
+選修	Elective
+必修	Core
+個人發展 Personal Development	Personal Development
+個人興趣 Personal Pursuits	Personal Pursuits
+認識世界 Horizons Broadening	Horizons Broadening
+挑戰項目 Challenge	Challenge
+社區服務(I) Community Service I	Community Service (I)
+社區服務(II) Community Service II	Community Service (II)
+童軍技能(I) Scoutcraft I	Scoutcraft (I)
+童軍技能(II) Scoutcraft II	Scoutcraft (II)
+童軍知識 Scouting Knowledge	Scouting Knowledge
+由 From	From
+至 To	To
+項目 Items	Items
+計劃簡述 Summary of Planning	Summary of Planning
+活動簡述 Summary	Summary
+完成日期 Date	Completion Date
+審核員 Assessor	Assessor
+✅ 已下載範本 CSV（含 4 個範例）	✅ Template CSV downloaded (with 4 examples)
+📧 完成後提交	📧 Submit when done
+📧 一鍵提交接入申請給 roverbadge 管理員	📧 Submit the integration request to the roverbadge admin in one click
+旅團編號 *	Group number *
+旅團名稱	Group name
+聯絡 Email / 備註	Contact email / notes
+請留下聯絡方式...	Please leave your contact...
+請填寫旅團編號、Script URL 和 API Key	Please fill in the Group number, Script URL and API Key
+✅ 申請已提交！管理員會盡快處理	✅ Application submitted! The admin will process it soon
+❌ 提交失敗，請檢查網絡	❌ Submission failed; please check your network
+此旅團未在系統登記，請聯絡管理員	This Group is not registered in the system; please contact the admin
+無法取得旅團設定	Failed to get Group settings
+⚠️ 離線模式：顯示快取資料	⚠️ Offline mode: showing cached data
+沒有需要保存的變更	No changes to save
+正在寫入雲端...	Writing to cloud...
+準備寫入	Preparing to write 
+已處理	Processed 
+✅ 寫入成功！	✅ Write successful!
+❌ 寫入失敗	❌ Write failed
+寫入失敗：	Write failed: 
+✅ 已成功寫入雲端	✅ Successfully written to cloud
+，已保留於瀏覽器可重試	; kept in the browser, you can retry
+請稍候，切勿關閉頁面	Please wait; do not close the page
+此頁載入出錯，已防止卡死	Error loading this page; freeze prevented
+切頁出錯，已返回安全頁	Tab switch error; returned to a safe page
+已緊急退出至我的進度	Emergency exit to My Progress
+雙擊已返回首頁	Double-click returned to home
+⚠️ 載入此頁時出錯：	⚠️ Error loading this page: 
+已捨棄未保存變更	Discarded unsaved changes
+確定捨棄	Discard 
+ 項未保存變更？	 unsaved changes?
+連線逾時，伺服器沒有回應，請稍後重試	Connection timed out; the server did not respond. Please try again later
+無法連接伺服器，請檢查網絡連線	Cannot reach the server; please check your network
+無法連接伺服器	Cannot reach the server
+伺服器回應格式異常 (HTTP	Unexpected server response format (HTTP 
+伺服器回應異常 (HTTP	Unexpected server response (HTTP 
+)，請稍後重試	), please try again later
+你沒有勾選權限，請使用申請功能	You have no ticking permission; please use the request feature
+你的權限不可勾選此項目 (	Your permission does not allow ticking this item (
+沒有權限	No permission
+無權限	No permission
+錯誤：	Error: 
+失敗	failed
+：網絡錯誤	: network error
+⚠️ 正使用後備資料顯示 0082，若 Vercel 上 data/troops.json 未部署，請檢查 GitHub 是否已推送 data/troops.json	⚠️ Showing fallback data for 0082; if data/troops.json is not deployed on Vercel, check whether data/troops.json has been pushed to GitHub
+載入出錯，已顯示後備 0082：	Load error; fallback shown for 0082: 
+⚠️ Portal 模式：旅團未在 Registry 登記	⚠️ Portal mode: Group not registered in the Registry
+未在伺服器端 troops.json / env 找到	not found in the server-side troops.json / env
+請聯絡 roverbadge 管理員將旅團 GAS URL 加入 Registry（主系統卡片只需傳 u 參數，不需再傳 backend/apikey）	Please ask the roverbadge admin to add the Group's GAS URL to the Registry (the main-system card only needs the u parameter, no backend/apikey needed)
+📍	📍
+- Portal預選	- Portal pre-selected
+- 進度追蹤 (Portal)	- Progress Tracker (Portal)
+- 進度追蹤	- Progress Tracker
+- 進度追蹤 (DEMO免登入)	- Progress Tracker (DEMO, no login)
+已忽略 URL 中的 backend/apikey 參數：v3.0 起由伺服器端 Registry 解析旅團後端	Ignored backend/apikey parameters in the URL: since v3.0 the server-side Registry resolves the Group's backend
+載入 MOCK 中...	Loading MOCK...
+DEMO 團長 (免登入試用)	DEMO Leader (no-login trial)
+團長 DEMO	Group Scout Leader DEMO
+MOCK試用	MOCK demo
+✅ 已進入 MOCK 試用模式，10個成員進度、批量剔、表格等皆可用，數據僅在瀏覽器	✅ MOCK demo mode entered: 10 members' progress, batch ticking, forms etc. all work; data stays in the browser
+MOCK試用載入失敗：	MOCK demo load failed: 
+已清除MOCK	MOCK cache cleared
+已清除MOCK快取，正在重新載入真實資料...	MOCK cache cleared; reloading real data...
+✅ 已載入	✅ Loaded 
+ 個新成員，總數	 new members; total 
+ 人。	 people.
+已合併 MOCK 進度 (會員章部分完成，方便測試全團一眼睇)。請到「👥全團」及「📊我的進度」測試批量剔選。	MOCK progress merged (Membership Badge partially completed for a quick whole-Group view). Go to "👥 Group Overview" and "📊 My Progress" to test batch ticking.
+提示：MOCK只在瀏覽器快取，重新整理後若無再次載入會按真實後端資料還原。	Note: MOCK data lives only in the browser cache; after a refresh, the real backend data is restored unless you load MOCK again.
+已載入	Loaded 
+個 MOCK成員	 MOCK members
+MOCK載入失敗	MOCK load failed
+暑期賣旗籌款	Summer Flag-selling Fundraiser
+全團春季露營	Group Spring Camp
+領導才訓練班 (N23/05)	Leadership Training Course (N23/05)
+旅際足球邀請賽	Inter-Group Football Invitational
+參加者	Participant
+籌委	Organising member
+服務員	Helper
+DEMO 範例資料	DEMO sample data
+成員模式：只能查看自己進度，其他獎章及申請	Member mode: you can only view your own progress, other badges and requests
+樂行童軍成員	Rover Scout Member
+樂行童軍團長	Rover Scout Leader
+全團一眼睇會員章+百分比	See the whole Group's Membership Badge + percentages at a glance
+考驗營批量一鍵幫全團剔	Camp batch: tick the whole Group in one click
+領袖操作：勾選+日期	Leader actions: tick + date
+成員操作：申請完成	Member actions: request completion
+可勾選（需授權範圍）	Can tick (within authorised scope)
+待批批准（若授權）	Approve pending requests (if authorised)
+其他獎章只讀自己	Other badges: read-only, own view only
+待批查看自己申請	Check own requests in Pending
+離線暫存確認寫入	Stage offline, confirm to write
+表格列印官方格式	Print official forms
+資料庫看綱要及安全指引	Library: scheme and safety guides
+可選成員查看紀錄	Select members to view records
+全團批量剔（若授權）	Whole-Group batch ticking (if authorised)
+進度性獎章 (段章層級)	Progressive badges (segment level)
+✅ 已儲存	✅ Saved 
+已儲存	Saved 
+ 筆活動履歷	 activity log entries
+💡 「訓練班紀錄」專供成員以	💡 "Training Course Record" is for members to fill in when
+身份修讀班別時填寫。	studying a course as a trainee.
+例如：全港童軍大露營 2026	e.g. Hong Kong Scout Jamboree 2026
+選填	optional
+例如 6	e.g. 6
+地點、主辦單位、內容摘要……（選填）	Venue, organiser, content summary... (optional)
+類型 *	Type *
+類型	Type
+例如：2026-05-01 區際露營相片3張，團長可參閱共享相簿...	e.g. 3 photos from the inter-district camp on 2026-05-01; the Group Scout Leader can view the shared album...
+⚠️ 此旅團後端尚未升級到	⚠️ This Group's backend has not been upgraded to 
+，暫未能使用活動履歷。進度、審批、用戶管理等現有功能完全不受影響。	; the Activity Log is unavailable. Existing features (progress, approvals, user management) are not affected.
+旅團後端未升級 v8.1：請通知管理員更新 Code.gs 並執行 initializeSheets()	Group backend not upgraded to v8.1: ask the admin to update Code.gs and run initializeSheets()
+ 的密碼？	?
+工作：	Work: 
+角色已更新	Role updated
+，可勾選及管理。	, can tick and manage.
+進度性獎章 (段章層級)	Progressive badges (segment level)

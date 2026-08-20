@@ -1,0 +1,553 @@
+{
+  "meta": {
+    "version": "5.0 Rover (EN)",
+    "base": "Rover Scout Training Scheme, 5th Edition (February 2026) - English version + Safe from Harm (from 1 July 2025)",
+    "updated": "2026-07-10 Rover v1.0 (EN)"
+  },
+  "badges": [
+    {
+      "id": "L1",
+      "icon": "🌿",
+      "name": "Membership Badge",
+      "en": "Membership Badge",
+      "color": "#1B5E20",
+      "purpose": "To help new members know the Scout Movement and the Rover Scout Section, and to understand and accept the Scout Promise and Scout Law",
+      "description": "Training and assessment are arranged by the Crew Management Committee. The badge is approved and presented by the Rover Scout Leader upon recommendation by the Chairperson of the Crew Management Committee. Two Crew activities taken part in while obtaining the \"Rover Scout Link Badge\" can be counted towards this requirement.",
+      "segments": [
+        {
+          "code": "L1-ACT",
+          "name": "Activities",
+          "desc": "Take part in Crew activities",
+          "items": [
+            {
+              "id": "L1-ACT-01",
+              "name": "Take part in the Crew activities for at least 3 times. One of which should be an activity organised by the Crew or the Group and one of which should be an outdoor or sea activity.",
+              "detail": "Activities organised by the Crew or the Group include variety show, joint-group activity, open day etc. Outdoor activities include trip, camping, campfire, outdoor Crew meeting etc. Sea activities include swimming, rowing, canoeing training or activities etc.",
+              "assessment": "Attendance record",
+              "tip": "Complete within the first month"
+            }
+          ]
+        },
+        {
+          "code": "L1-UND",
+          "name": "Understanding",
+          "desc": "National Flag and Emblem, and the Scout Movement",
+          "items": [
+            {
+              "id": "L1-UND-01",
+              "name": "Identify the national flag and national emblem of the People's Republic of China and understand their meanings.",
+              "detail": "The Five-star Red Flag and the national emblem of the People's Republic of China"
+            },
+            {
+              "id": "L1-UND-02",
+              "name": "Identify the regional flag and regional emblem of the Hong Kong Special Administrative Region and understand their meanings.",
+              "detail": "The Bauhinia regional flag and regional emblem"
+            },
+            {
+              "id": "L1-UND-03",
+              "name": "Understand the meaning of the national anthem of the People's Republic of China and be able to sing it by memory.",
+              "detail": "The March of the Volunteers"
+            },
+            {
+              "id": "L1-UND-04",
+              "name": "Understand the Scout Movement in Hong Kong and the World Scout Movement.",
+              "detail": "History of the development of the Scout Movement in Hong Kong; introduction of each Section from the Grasshopper Section to the Rover Scout Section; history of the founder of the World Scout Movement, its development and current situations."
+            }
+          ]
+        },
+        {
+          "code": "L1-ETQ",
+          "name": "Ceremonial",
+          "desc": "Flag raising and Scouting etiquette",
+          "items": [
+            {
+              "id": "L1-ETQ-01",
+              "name": "Know the rite to the National Flag and Emblem, Regional Flag and Emblem, and National Anthem.",
+              "detail": "Regulations for the use and display of the National Flag and Emblem and the Regional Flag and Emblem"
+            },
+            {
+              "id": "L1-ETQ-02",
+              "name": "Demonstrate how to raise the National Flag and the Regional Flag.",
+              "detail": "Work in pairs; flags must not touch the ground"
+            },
+            {
+              "id": "L1-ETQ-03",
+              "name": "Be able to identify the uniforms of each Section. Know the Rover Scout uniform and the correct methods of wearing different badges and their positions.",
+              "detail": "Refer to the uniform manual"
+            },
+            {
+              "id": "L1-ETQ-04",
+              "name": "Be able to know the uniform for leaders and distinguish different ranks for leaders.",
+              "detail": "Leader uniform and ranks"
+            },
+            {
+              "id": "L1-ETQ-05",
+              "name": "Be able to use and understand the Scout Salute, the Scout Hand Shake and the Scout Sign; know the basic formation commands and signs, and basic foot drill.",
+              "detail": "Commands and movements of static drills and marching; basic foot drill training"
+            },
+            {
+              "id": "L1-ETQ-06",
+              "name": "Understand the ceremonies of flag raising, flag lowering and investiture.",
+              "detail": "Investiture ceremony and flag lowering ceremony"
+            }
+          ]
+        },
+        {
+          "code": "L1-PRM",
+          "name": "Commitment",
+          "desc": "Scout Promise and Scout Law",
+          "items": [
+            {
+              "id": "L1-PRM-01",
+              "name": "Understand and accept the Scout Promise and Scout Law: be able to recite them, know their meanings, and be willing to practise them in daily life.",
+              "detail": "\"On my honour, I promise that I will do my best to do my duty to God and to my Country, to help other people and to keep the Scout Law.\""
+            }
+          ]
+        },
+        {
+          "code": "L1-CP",
+          "name": "Safe from Harm",
+          "desc": "Safe from Harm",
+          "items": [
+            {
+              "id": "L1-CP-01",
+              "name": "Complete the \"Safe from Harm Online Self-Learning Course\" (mandatory from 1 July 2025).",
+              "detail": "To help members understand how to recognise, prevent and act towards inappropriate behaviour, ensuring Scouting activities are carried out in a safe environment. Course: https://sfh.scout.org.hk",
+              "links": [
+                {
+                  "title": "Safe from Harm",
+                  "url": "https://sfh.scout.org.hk"
+                },
+                {
+                  "title": "eLearning",
+                  "url": "https://elearning.scout.org.hk/"
+                }
+              ],
+              "mandatory": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L2",
+      "icon": "🎖️",
+      "name": "Rover Scout Epaulettes",
+      "en": "Rover Scout Epaulettes",
+      "color": "#2E7D32",
+      "purpose": "To provide a platform for new Rover Scouts to experience activities and learn basic Scoutcraft, and to serve as a way for Rover Scouts from different backgrounds to interact with each other",
+      "description": "Upon approval and recommendation by the Rover Scout Leader, the Epaulettes are endorsed and issued by the District Rover Scout Leader / Assistant District Commissioner (Rover Scouts) / Assistant Regional Headquarters Commissioner (Rover Scouts) / Regional Headquarters Commissioner (Rover Scouts). Rover Scouts who have completed the Rover Scout Link Badge upon being invested into the Rover Scout Section are regarded as having completed this assessment.",
+      "segments": [
+        {
+          "code": "L2-INTRO",
+          "name": "Introductory Course",
+          "items": [
+            {
+              "id": "L2-INTRO-01",
+              "name": "Complete a Rover Scout Introductory Course recognised by the Association Headquarters / Regions / District, or complete equivalent items.",
+              "detail": "A Rover Scout Introductory Course completed before becoming a Rover Scout can fulfil this requirement. Please refer to the Appendix \"Overview of the Rover Scout Introductory Courses\" for equivalent items. Rover Scouts who have completed the Rover Scout Link Badge upon being invested into the Rover Scout Section are regarded as having completed the Epaulettes assessment.",
+              "assessment": "Certificate",
+              "tip": "New members should complete within 6 months"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L3",
+      "icon": "🏅",
+      "name": "Rover Scout Award",
+      "en": "Rover Scout Award",
+      "color": "#FF8F00",
+      "purpose": "The Rover Scout Award is awarded when the member completes 4 of the 7 assessment components. All seven components can be conducted simultaneously",
+      "description": "The seven components — Dedication, Scoutcraft, Volunteerism, Global Vision, Tenacity, Mental and Physical Wellness, and Intrepidity — are closely aligned with the educational goal of \"Service-Mindedness and Global Vision\". Rover Scouts must plan their personal progress and gain approval from the affiliated Headquarters Commissioner (Rover Scouts) by submitting the \"Application for Assessment of the Rover Scout Award and Baden-Powell Award\" before the initiation of the assessment. Average completion time: 12-18 months.",
+      "requirements": "Complete 4 of the 7 components",
+      "segments": [
+        {
+          "code": "L3-LEADER",
+          "name": "Dedication",
+          "desc": "Wood Badge training and Group service",
+          "items": [
+            {
+              "id": "L3-LEADER-01",
+              "name": "Complete Wood Badge Framework Stage 1 - Fundamentals of Scouting Course (Module 1A & 1B) or equivalent items.",
+              "detail": "If a Rover Scout completes any of the Wood Badge trainings before the commencement of this assessment, the relevant completed parts will be recognised retrospectively."
+            },
+            {
+              "id": "L3-LEADER-02",
+              "name": "Complete Wood Badge Framework Stage 2 - Sectional Training Methods Course (Module 2A & 2B) and In-Service Mentorship, or equivalent item; or serve within a Scout Group for at least 52 hours in at least 12 months.",
+              "detail": "Rover Scouts can wear the Gilwell Woggle after completing the Wood Badge Framework Stage 2 or equivalent items.",
+              "tip": "Keep service records"
+            }
+          ]
+        },
+        {
+          "code": "L3-SCOUT",
+          "name": "Scoutcraft",
+          "desc": "Traditional scoutcraft + instructor training + foot drill",
+          "items": [
+            {
+              "id": "L3-SCOUT-01",
+              "name": "Complete one of the following \"traditional scoutcraft\" training courses or the equivalent: (i) Expedition Course; (ii) Campcraft Course; or (iii) Pioneering Course.",
+              "detail": "If a Rover Scout has already completed all Traditional Scoutcraft training courses (or equivalent) before undertaking this assessment, or is unable to complete the training due to reasonable circumstances, item 1 may be fulfilled by completing one other Leader Skills Training Course listed in the Wood Badge Training System. However, the course chosen cannot be the First Aid Certificate Course, Knotting Course, or Map Reading Course."
+            },
+            {
+              "id": "L3-SCOUT-02",
+              "name": "Complete one training course for instructors/assessors listed on the website of the Programme Branch.",
+              "detail": "e.g. Rope Course Instructor, Challenge Course Instructor, etc."
+            },
+            {
+              "id": "L3-SCOUT-03",
+              "name": "Complete the Chinese Foot Drill Workshop and one of the following courses: (i) Basic Etiquette and Foot Drill Course; or (ii) Foot Drill Basic Course.",
+              "detail": "If a Rover Scout has already completed the \"Scout Foot Drill Basic Course\", it is regarded as having fulfilled the Foot Drill Basic Course listed in item (ii)."
+            }
+          ]
+        },
+        {
+          "code": "L3-SERVICE",
+          "name": "Volunteerism",
+          "desc": "First aid + Scouts of the World Award",
+          "items": [
+            {
+              "id": "L3-SERVICE-01",
+              "name": "Hold a valid First Aid Certificate issued by the Scout Association of Hong Kong, or other certificates of 30-hour First Aid courses recognised by the Labour Department in accordance with the Occupational Safety and Health Ordinance (Chapter 509). The certificate must still be valid when submitting the Baden-Powell Award application.",
+              "detail": "e.g. St. John Ambulance or Hong Kong Red Cross 30-hour First Aid courses"
+            },
+            {
+              "id": "L3-SERVICE-02",
+              "name": "Complete the \"Scouts of the World Award Discovery Workshop\".",
+              "detail": "A Discovery Workshop recognised by the Programme Branch"
+            },
+            {
+              "id": "L3-SERVICE-03",
+              "name": "Complete the Voluntary Service of the \"Scouts of the World Award\", or equivalent service.",
+              "detail": "Organise and complete a period of voluntary service of at least 14 days in group. This item must be completed after the commencement of this assessment.",
+              "tip": "Discovery + Voluntary Service are the two parts of the Scouts of the World Award"
+            }
+          ]
+        },
+        {
+          "code": "L3-INTL",
+          "name": "Global Vision",
+          "desc": "Daily Interactions or International Exchange (complete Item A or B)",
+          "items": [
+            {
+              "id": "L3-INTL-A",
+              "name": "A) Daily Interactions - choose an exchange or cooperation task with people of different nationalities during group activities held on campus, office and/or workplace. Carry out a research regarding the experience for not less than 6 months, and share the experience and research with others.",
+              "detail": "The method of sharing can be formulated after discussion with the corresponding Headquarters Commissioner (Rover Scouts)."
+            },
+            {
+              "id": "L3-INTL-B",
+              "name": "B) International Exchange - participate in one international exchange programme that lasts for at least \"5 days and 4 nights\", and share your experience upon completion of the programme.",
+              "detail": "Examples: World Scout Jamboree, World Scout Moot, World Scout Conference, APR Scout Conference, Scout Group Exchange Tour, international or Asia youth exchange programme, or an exchange tour in the Belt and Road Initiative Countries. The location is recommended to be outside Hong Kong and the activity must comprise international exchange; activities that are purely for tourism purposes cannot be regarded as an international exchange. The method of sharing can be formulated after discussion with the corresponding Headquarters Commissioner (Rover Scouts).",
+              "tip": "Recommended outside Hong Kong; must include international exchange elements"
+            }
+          ]
+        },
+        {
+          "code": "L3-INT",
+          "name": "Tenacity",
+          "desc": "52 hours in 12 months - non-sports interest or skill",
+          "items": [
+            {
+              "id": "L3-INT-01",
+              "name": "Choose a non-sports activity, interest or skill. Further develop or participate in this activity/interest/skill for no less than 52 hours within no less than 12 months, demonstrating progress in it (e.g. deeper understanding or mastering an appropriate level).",
+              "detail": "Examples: Drone Piloting, Rope Access/Rescue Techniques, Generative AI Application, Robotics application, eSports, Motorsport, Dirt bike, Astrology, Cosmetics, Opera, Amateur Radio, 3D printing, Card games, Coffee Brewing or foaming, Wine Tasting or Cocktail Mixing, research on culture/economics/history/science, etc.",
+              "tip": "52 hours + evidence of progress"
+            }
+          ]
+        },
+        {
+          "code": "L3-HEALTH",
+          "name": "Mental and Physical Wellness",
+          "desc": "Mental health + physical activity",
+          "items": [
+            {
+              "id": "L3-HEALTH-01",
+              "name": "Complete one or more certificates from \"The Friendly Community - SOUL Keeper Scheme\" or other mental-health-related certificates/courses, and carry out no less than 10 hours of related services, with more than 50 hours of training and service in total.",
+              "detail": "Certificates or courses may fall under \"Prevention\" (understanding and promoting mental health) and/or \"Intervention\" (identifying mental health issues and providing support). Course hours are recognised retrospectively; the related service must be carried out after commencing this assessment."
+            },
+            {
+              "id": "L3-HEALTH-02",
+              "name": "Learn or participate in one physical activity, further developing or participating in it for no less than 52 hours within no less than 12 months, demonstrating sustained progress.",
+              "detail": "Examples: Inline skating, Artistic Cycling, Skateboarding, Street dance, Surfing, Skiing, Ice-skating, Rock climbing, Bodybuilding, Lifesaving (e.g. beach rescue, canoe rescue, rescue diver), etc."
+            }
+          ]
+        },
+        {
+          "code": "L3-CHALLENGE",
+          "name": "Intrepidity",
+          "desc": "Wilderness Challenge or Personal Challenge (complete Item A or B)",
+          "items": [
+            {
+              "id": "L3-CHAL-A",
+              "name": "A) Wilderness Challenge - conduct an expedition journey of \"3 days and 2 nights\" or more with other Rover Scouts and/or Venture Scouts. Submit an expedition plan before the journey, and an expedition log and project log after the journey. Complete recognised expedition training before starting.",
+              "detail": "The journey should be done as a team of 3 to 6 members (mixed-gender teams need at least two members of each gender); all participating members must never have conducted a \"3 days and 2 nights\" expedition assessment; at least 21 hours of related activities including the expedition journey process, achieving the purpose of the journey, campcraft, cooking and expedition projects; each member should take up some important roles and complete 2 projects together with the teammates. The assessment must be conducted by Senior Expedition Assessors or Expedition Assessors recognised by the Association Headquarters.",
+              "tip": "Requires a recognised Expedition Assessor"
+            },
+            {
+              "id": "L3-CHAL-B",
+              "name": "B) Personal Challenge - complete a challenge that has never been done before, to challenge oneself.",
+              "detail": "Examples: Cross Harbour Race, triathlon, marathon, cycling expedition journey, overseas expedition journey, HKAYP Gold Award Adventurous Journey, Scout Wings, Scout Canopy Wings, completing 1 challenging charity activity e.g. Oxfam Trailwalker, etc. If a member has never completed a challenge of the same content or a higher level than the Wilderness Challenge, they must complete Item (A); conversely, if they have already completed such a challenge, they must complete Item (B) to embrace new challenges.",
+              "tip": "Must be something never done before"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L4",
+      "icon": "🎖️",
+      "name": "Baden-Powell Award",
+      "en": "Baden-Powell Award",
+      "color": "#FFD700",
+      "purpose": "Complete all 7 assessment components; the District Commissioner and Regional Commissioner interview and recommend the member, and the Headquarters endorses and issues the award — the highest honour of the Rover Scout Section",
+      "description": "After completing the Rover Scout Award, continue and complete the remaining 3 components so that all 7 components are completed. Average completion time: 12-18 months (18 months+ on average overall).",
+      "requirements": "Complete all 7 components",
+      "segments": [
+        {
+          "code": "L4-ALL",
+          "name": "Baden-Powell Award - all 7 components",
+          "desc": "All 7 components of the Rover Scout Award must be completed before applying",
+          "items": [
+            {
+              "id": "L4-ALL-01",
+              "name": "Completed the Rover Scout Award (4 components) plus the remaining 3 components, i.e. all 7 components completed in total.",
+              "detail": "The seven components: Dedication, Scoutcraft, Volunteerism, Global Vision, Tenacity, Mental and Physical Wellness, and Intrepidity."
+            },
+            {
+              "id": "L4-ALL-02",
+              "name": "Interview and recommendation by the District Commissioner and the Regional Commissioner.",
+              "detail": "After completing all seven components, the District Commissioner and Regional Commissioner interview the member concerned and make recommendations.",
+              "tip": "District & Regional interview"
+            },
+            {
+              "id": "L4-ALL-03",
+              "name": "Submit the application for the Baden-Powell Award; the Headquarters endorses and issues the award and certificate.",
+              "detail": "Records and certificates must be submitted with the application."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "otherBadges": [
+    {
+      "id": "OT-WOSM-SW",
+      "name": "Scouts of the World Award",
+      "icon": "🌍",
+      "desc": "Complete the WOSM Scouts of the World Award: Discovery + Voluntary Service",
+      "detail": "Full attendance in the Discovery Workshop + organise and complete a period of voluntary service of at least 14 days in group"
+    },
+    {
+      "id": "OT-WOSM-ET",
+      "name": "Earth Tribe Programme",
+      "icon": "🌏",
+      "desc": "Complete one of the three Earth Tribe challenges: Plastic Tide Turners / Champions for Nature / Scouts Go Solar",
+      "detail": "Completing any one challenge makes you a member of the Earth Tribe; wear the Earth Tribe Badge plus at least one challenge badge"
+    },
+    {
+      "id": "OT-WOSM-WH",
+      "name": "Patrimonito Scout Badge",
+      "icon": "🏛️",
+      "desc": "WOSM World Heritage related badge",
+      "detail": "Patrimonito is the WOSM World Heritage mascot; badge issued under the World Scout Heritage programme"
+    },
+    {
+      "id": "OT-FA",
+      "name": "First Aid Badge",
+      "icon": "🩺",
+      "desc": "Hold a valid 30-hour First Aid certificate",
+      "detail": "Recognised by the Labour Department (Occupational Safety and Health Ordinance, Cap. 509)"
+    },
+    {
+      "id": "OT-RESCUE",
+      "name": "Scout Lifesaving Badge",
+      "icon": "🏊",
+      "desc": "Lifesaving related qualification",
+      "detail": "Issued under the Scout Lifesaving scheme"
+    },
+    {
+      "id": "OT-AIR-SENIOR",
+      "name": "Advance Aircrew Badge",
+      "icon": "✈️",
+      "desc": "Advanced aviation activities",
+      "detail": "Advanced level of the air activity scheme"
+    },
+    {
+      "id": "OT-SEA-HELM",
+      "name": "Coxswain Badge",
+      "icon": "⛵",
+      "desc": "Sea activity coxswain",
+      "detail": "Coxswain qualification for sea activities"
+    },
+    {
+      "id": "OT-FLY",
+      "name": "Scout Wings",
+      "icon": "🛩️",
+      "desc": "Attain the Scout Wings",
+      "detail": "Scout Wings / Scout Canopy Wings can be attained through the flying scheme"
+    },
+    {
+      "id": "OT-PARA",
+      "name": "Scout Canopy Wings",
+      "icon": "🪂",
+      "desc": "Attain the Scout Canopy Wings (parachuting)",
+      "detail": "Parachuting wings issued under the Scout flying scheme"
+    },
+    {
+      "id": "OT-ACTIVE",
+      "name": "Active Citizenship Badge Series",
+      "icon": "🗳️",
+      "desc": "Active Citizenship Badge Series",
+      "detail": "A series of badges on active citizenship issued by WOSM"
+    },
+    {
+      "id": "OT-COMM",
+      "name": "Rover Scout Community Involvement Badge",
+      "icon": "🤝",
+      "desc": "Rover Scout Community Involvement Badge programme",
+      "detail": "Community involvement badge programme for Rover Scouts"
+    },
+    {
+      "id": "OT-REL",
+      "name": "Rover Scout Religious Badge",
+      "icon": "🙏",
+      "desc": "Religious Badge",
+      "detail": "Religious badge issued under the Rover Scout Section scheme"
+    },
+    {
+      "id": "OT-CATH",
+      "name": "Kiro Badge",
+      "icon": "✝️",
+      "desc": "Kiro Badge",
+      "detail": "The Kiro Badge is the Catholic Scout badge programme"
+    },
+    {
+      "id": "OT-AYP-G",
+      "name": "HKAYP Gold Award",
+      "icon": "🥇",
+      "desc": "The Hong Kong Award for Young People - Gold Award",
+      "detail": "Gold Award of the Hong Kong Award for Young People"
+    },
+    {
+      "id": "OT-AYP-S",
+      "name": "HKAYP Silver Award",
+      "icon": "🥈",
+      "desc": "The Hong Kong Award for Young People - Silver Award",
+      "detail": "Silver Award of the Hong Kong Award for Young People"
+    }
+  ],
+  "trainingPlan": {
+    "title": "Training Scheme of the Rover Scout Section (5th Edition, effective 15 August 2026)",
+    "purpose": "The Rover Scout Section (aged 18-25; membership ends upon reaching 26) aims to connect and provide opportunities and support to young people who care about our society and are devoted to services, serving the Scout Movement and the community. Through a challenging award scheme, young people are encouraged to make personal progress and develop their potentials so as to become responsible and useful citizens in society.",
+    "method": [
+      "Self-governing and self-programming: the Rover Scout Crew is self-governing, with the Crew Management Committee elected by members",
+      "Service-mindedness: develop personal potential and contribute to society through service",
+      "Global vision: cultivate global citizenship through international and cultural exchanges",
+      "Prospective leader training: Wood Badge training system + Group service, nurturing future leaders",
+      "Progressive awards: the 7 components can be conducted simultaneously; complete 4 to earn the Rover Scout Award, complete all 7 for the Baden-Powell Award"
+    ],
+    "expected": [
+      "Prospective leader capability: complete Wood Badge basic training and Group service",
+      "Passing on Scoutcraft: master traditional skills and instructor training, able to teach others",
+      "Spirit of service: first aid capability + Scouts of the World Award service, improving the community",
+      "Global vision: 6 months of daily cross-cultural interactions or a 5-day-4-night international exchange with sharing",
+      "Personal interest: 12 months / 52 hours of sustained progress in a non-sports interest",
+      "Mental and physical wellness: mental health training + 50 hours of service + 12 months / 52 hours of physical activity",
+      "Spirit of challenge: a 3-day-2-night wilderness expedition or a personal challenge never done before"
+    ],
+    "progressFlow": "Membership Badge (3 activities) → Rover Scout Epaulettes (Introductory Course) → Rover Scout Award (4 of 7 components) → Baden-Powell Award (all 7 components)",
+    "assessmentPrinciples": "The 7 components can be conducted simultaneously. Rover Scouts must plan their personal progress and gain approval from the affiliated Headquarters Commissioner (Rover Scouts) by submitting the \"Application for Assessment of the Rover Scout Award and Baden-Powell Award\" before the initiation of the assessment. Parts completed beforehand can be recognised retrospectively.",
+    "links": [
+      {
+        "title": "Rover Scout Training Scheme 5th Edition 2026 - English version (Google Drive)",
+        "url": "https://drive.google.com/file/d/1l-TVstxy94F526DEFN8M7BIYBFhL2p-A/view",
+        "desc": "Official English version, published February 2026, effective 15 August 2026"
+      },
+      {
+        "title": "Rover Scout Training Scheme 5th Edition 2026 - Chinese version (Google Drive)",
+        "url": "https://drive.google.com/file/d/16DQ-MhjRp3LU5Im3IoeJQGqi0Rhgx0iw/view",
+        "desc": "Official Chinese version, published February 2026"
+      },
+      {
+        "title": "Rover Scout Information Website",
+        "url": "https://sites.google.com/view/hong-kong-rover-scout/",
+        "desc": "Official website of the Rover Scout Section, full 5th edition download"
+      },
+      {
+        "title": "Circular P022-26 - Revised Sectional Training Schemes",
+        "url": "https://www.scout.org.hk/uploads/tc/circulars/23585/p022-26.pdf",
+        "desc": "Transitional arrangements: 15 August 2026 - 14 August 2029 (3 years)"
+      },
+      {
+        "title": "Positioning of the Rover Scout Section: Service-Mindedness and Global Vision",
+        "url": "https://sites.google.com/scouting.org.hk/sections/%E6%94%AF%E9%83%A8%E8%A8%93%E7%B7%B4%E6%AA%A2%E8%A8%8E"
+      }
+    ]
+  },
+  "safeFromHarm": {
+    "title": "Protecting Scout Members from Harm - Safe from Harm",
+    "policy": "All Scouting activities must be carried out in a safe environment with suitable equipment, to protect members from harm and to ensure Scouting activities can be conducted safely for members at all levels.",
+    "learning": [
+      {
+        "title": "Safe from Harm Online Self-Learning Course",
+        "url": "https://sfh.scout.org.hk",
+        "desc": "Mandatory for the Membership Badge from 1 July 2025",
+        "mandatory": true
+      },
+      {
+        "title": "eLearning platform",
+        "url": "https://elearning.scout.org.hk/",
+        "desc": "Account registration required"
+      },
+      {
+        "title": "Rover Scout Information Website - Membership Badge (revised)",
+        "url": "https://drive.google.com/file/d/1lOuv21j6dj5_617uFYu90F8ypZfdA0hz/view",
+        "desc": "Effective from 1 July 2025"
+      }
+    ],
+    "prevention": [
+      "Two-person rule (never be alone with a child)",
+      "Keep boundaries transparent",
+      "Avoid one-on-one private contact",
+      "Respect privacy",
+      "Check the safety of the environment"
+    ],
+    "handling": [
+      "Stay calm and listen",
+      "Believe in and support the victim",
+      "Record the facts",
+      "Report immediately to the leader / District Commissioner / Association Headquarters",
+      "Call the police when necessary"
+    ],
+    "hotlines": [
+      {
+        "name": "Scout Association of Hong Kong - Programme Branch",
+        "tel": "2957 6414",
+        "email": "progse@scout.org.hk"
+      },
+      {
+        "name": "Social Welfare Department Hotline",
+        "tel": "2343 2255"
+      }
+    ]
+  },
+  "forms": {
+    "PT21": {
+      "name": "Application Form for the Rover Scout Award and Certificate (PT/21)",
+      "code": "PT/21",
+      "description": "Apply after completing 4 assessment components"
+    },
+    "PT22": {
+      "name": "Application Form for the Baden-Powell Award and Certificate (PT/22)",
+      "code": "PT/22",
+      "description": "Complete all 7 components - the highest honour; interview by the District Commissioner and Regional Commissioner"
+    },
+    "PT69": {
+      "name": "Application for Assessment of the Rover Scout Award and Baden-Powell Award (PT/69)",
+      "code": "PT/69",
+      "description": "Submit the assessment plan to the Headquarters Commissioner (Rover Scouts) for approval before commencing the assessment"
+    }
+  }
+}
