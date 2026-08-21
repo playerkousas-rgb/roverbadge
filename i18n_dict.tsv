@@ -685,3 +685,64 @@ DEMO 範例資料	DEMO sample data
 角色已更新	Role updated
 ，可勾選及管理。	, can tick and manage.
 進度性獎章 (段章層級)	Progressive badges (segment level)
+方法一（最推薦）：YMIS 報表匯入	Method 1 (most recommended): YMIS report import
+在 YMIS 匯出「自訂報表」PDF（欄位次序：	Export a "Custom Report" PDF from YMIS (column order: 
+童軍成員編號 → 中文姓名 → 電郵地址	Scout Member No. → Chinese Name → Email Address
+），直接上載，系統會自動讀出成員資料，預覽確認後一次過開戶。	); upload it directly and the system will read member data automatically, preview and onboard in one go.
+📘 如何在 YMIS 匯出指定格式報告？（點擊展開）	📘 How to export a report in the required format from YMIS? (click to expand)
+PDF 密碼（如有）	PDF password (if any)
+📄 上載 YMIS PDF 報表	📄 Upload YMIS PDF report
+讀不到 PDF？可把報表文字複製貼上（每行：編號 姓名 電郵）：	PDF unreadable? Copy and paste the report text (one per line: ID Name Email):
+🔍 解析貼上的文字	🔍 Parse pasted text
+🔒 PDF 解密在瀏覽器內以 pdf.js 完成，檔案與密碼都不會上傳伺服器。	🔒 PDF decryption happens in your browser with pdf.js; the file and password are never uploaded.
+方法二：上傳 CSV	Method 2: upload CSV
+先按「⬇️ 下載成員範本」取得範本，填寫後上傳。有填密碼／角色會開立可登入帳號，否則只加入成員。	Download the member template first, fill it in, then upload. Rows with password/role create login accounts; others join the member list only.
+方法三（進階／備用，日常不建議）：Google Sheets 直接寫入	Method 3 (advanced/backup, not for daily use): write directly in Google Sheets
+把 CSV 匯入 Google Sheets → 填寫 → 用附帶的 Apps Script（	Import the CSV into Google Sheets → fill in → use the bundled Apps Script (
+）轉 JSON 並直接寫入旅團主資料表。詳見 	) to convert to JSON and write into the Group's master sheet. See 
+批量開戶說明	bulk onboarding guide
+📄 下載 Sheets Script（進階備用）	📄 Download Sheets Script (advanced backup)
+📘 YMIS 匯出教學	📘 YMIS export guide
+📘 YMIS 匯出教學 MD	📘 YMIS export guide MD
+📋 匯入預覽（可直接修改）	📋 Import preview (editable)
+☑️ 全選	☑️ Select all
+⬜ 全不選	⬜ Select none
+匯入	Import
+聯絡電郵	Email
+狀態	Status
+✅ 可匯入	✅ Ready to import
+⏭️ 已存在	⏭️ Exists
+⚠️ 編號非10位	⚠️ ID not 10 digits
+⚠️ 缺姓名	⚠️ No name
+ℹ️ 缺電郵	ℹ️ No email
+預設小隊／支部（可留空）	Default squad/branch (optional)
+預設角色	Default role
+初始密碼（留空＝只加入成員，不開登入帳號）	Initial password (blank = member list only, no login)
+例如 rover2026（首次登入須更改）	e.g. rover2026 (must change on first login)
+🔢 全部補零至10位	🔢 Pad all IDs to 10 digits
+🗑️ 清除預覽	🗑️ Clear preview
+🚀 確認批量開戶（	🚀 Confirm bulk onboarding (
+ 人）	 members)
+（共 	 (total 
+ 筆，已選 	, selected 
+ 筆）	)
+團員 member	Member
+管委 exec_committee	CMC exec_committee
+支部領袖 branch_leader	Branch leader branch_leader
+團長 group_leader	Group leader group_leader
+管理員 admin	Admin admin
+請至少勾選一位有效成員（YMIS 須10位數字且有姓名）	Select at least one valid member (10-digit YMIS with a name)
+此 PDF 有密碼保護，請輸入密碼：	This PDF is password-protected. Enter the password:
+PDF 密碼不正確，請重新輸入	Incorrect PDF password, please re-enter
+未輸入密碼，已取消讀取 PDF	No password entered; PDF reading cancelled
+正在讀取 PDF	Reading PDF
+正在讀取第 	Reading page 
+頁...	 of pages...
+無法載入 PDF 解析元件（需要網絡），請改用「貼上文字」或先用瀏覽器另存為無密碼 PDF	Cannot load the PDF parser (network required). Use "paste text" instead, or re-save the PDF without a password first
+讀不到成員資料，請確認報表欄位次序為：	No member data found. Check the column order: 
+assets/ymis-parse.js 未載入	assets/ymis-parse.js not loaded
+✅ 已讀出 	✅ Parsed 
+位成員（共 	 members (
+ 頁），略過 	 pages), skipped 
+位成員，略過 	 members, skipped 
+ 行	 lines

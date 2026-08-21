@@ -6,6 +6,6 @@
   "description": "樂行童軍進度及行政平台（多旅團，同源 Proxy 架構）",
   "scripts": {
     "dev": "node tests/dev-server.mjs 3000",
-    "test": "node tests/run-e2e.mjs"
+    "test": "node tests/ymis-parse.test.mjs && node tests/run-e2e.mjs"
   }
 }

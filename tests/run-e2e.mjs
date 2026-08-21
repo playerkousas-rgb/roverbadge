@@ -426,6 +426,48 @@ console.log('\n【14】index.html 靜態安全檢查（代替 Browser Network �
   check('index.html JavaScript 語法解析無誤', scriptSyntaxOk);
 }
 
+// ================== 15. 批量開戶（bulkAddMembers 同路徑）==================
+console.log('\n【15】批量開戶 API 路徑（addMember / addUser → 新帳號可登入 → 旅團隔離）');
+{
+  // 模擬前端 bulkAddMembers() 的逐筆迴圈（含 existing 跳過邏輯）
+  const bulkList = [
+    { ymis: '1234560088', name: '陳一批', password: '' },                                  // addMember：只加入名單
+    { ymis: '1234560099', name: '李二批', email: 'b2@example.org', role: 'member', can_tick: false, password: 'Bulk!23456' } // addUser：開登入帳號
+  ];
+  const existing = new Set((await apiRequest('load', { token: tokenA }, { troopId: '0082' })).members.map(m => m.ymis));
+  let ok = 0, skip = 0;
+  for (const m of bulkList) {
+    if (existing.has(m.ymis)) { skip++; continue; }
+    const action = m.password ? 'addUser' : 'addMember';
+    const payload = { token: tokenA, ymis: m.ymis, name: m.name };
+    if (action === 'addUser') { payload.email = m.email || ''; payload.role = m.role || 'member'; payload.can_tick = !!m.can_tick; payload.password = m.password; }
+    const d = await apiRequest(action, payload, { troopId: '0082' });
+    if (d.success) { ok++; existing.add(m.ymis); } else skip++;
+  }
+  check('批量開戶 2 筆全部成功', ok === 2 && skip === 0, `ok=${ok} skip=${skip}`);
+
+  // 重跑一次 → 前端 existing 邏輯應全部略過（不重複開戶）
+  let skip2 = 0;
+  for (const m of bulkList) { if (existing.has(m.ymis)) skip2++; }
+  check('重複 YMIS 被前端略過', skip2 === 2);
+
+  // 新開帳號可以密碼登入（批量開戶 → 可登入閉環）
+  const loginNew = await apiRequest('login', { login_id: '1234560099', password: 'Bulk!23456' }, { troopId: '0082' });
+  check('新開帳號可用初始密碼登入', loginNew.success === true && typeof loginNew.token === 'string');
+
+  // 只加名單者（無密碼）不可登入
+  const loginNoPwd = await apiRequest('login', { login_id: '1234560088', password: '' }, { troopId: '0082' });
+  check('無密碼成員不可登入', loginNoPwd.success === false);
+
+  // 旅團隔離：B 旅看不到 A 旅批量開的帳號
+  check('旅團 B 無 A 旅新成員（隔離）', !mockB.state.users['1234560088'] && !mockB.state.users['1234560099']);
+
+  // ymis-parse.js 已隨 index.html 一起提供（批量開戶主路依賴）
+  const rParse = await fetch(`${APP_BASE}/assets/ymis-parse.js`);
+  const parseText = await rParse.text();
+  check('assets/ymis-parse.js 可由靜態站提供', rParse.status === 200 && parseText.includes('YmisParse'));
+}
+
 // ================== 收尾 ==================
 console.log('\n========================================');
 console.log(`結果：${passed} 通過, ${failed} 失敗`);
