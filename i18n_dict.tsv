@@ -88,6 +88,7 @@ YMIS 10位	YMIS (10 digits)
 YMIS 須為 10位數字	YMIS must be 10 digits
 例如 1234567890	e.g. 1234567890
 例如 1234560001	e.g. 1234560001
+YMIS 提供的密碼	YMIS export password
 密碼	Password
 請輸入密碼	Enter password
 登入	Login
