@@ -670,7 +670,7 @@ a:hover{text-decoration:underline}
           <ol>
             <li>登入 <a href="https://ymis.scout.org.hk/#/private/MemberSearch" target="_blank" rel="noopener">青少年成員資訊系統 (YMIS)</a>。</li>
             <li>點選頂部選單「功能」→「搜尋成員紀錄」。</li>
-            <li>展開「成員紀錄」區塊：選擇所屬「地域」及「童軍區」，在「童軍旅」輸入旅團代號（例如 82）。</li>
+            <li>展開「成員紀錄」區塊：選擇所屬「地域」及「童軍區」，在「童軍旅」輸入你的旅團代號。</li>
             <li>按「搜尋」，在成員列表勾選要匯出的成員，或勾選最上方的「全選」。</li>
           </ol>
           <b>步驟二：編製報告 → 自訂報表</b>
@@ -692,7 +692,7 @@ a:hover{text-decoration:underline}
       </details>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px">
         <label style="font-size:11px;color:var(--text-light)">PDF 密碼（如有）</label>
-        <input type="text" id="ymisPdfPw" placeholder="例如 M28858467" style="flex:1;min-width:150px;padding:6px;border:1px solid var(--border);border-radius:8px;font-size:12px">
+        <input type="text" id="ymisPdfPw" placeholder="YMIS 提供的密碼" style="flex:1;min-width:150px;padding:6px;border:1px solid var(--border);border-radius:8px;font-size:12px">
         <label class="btn btn-sm btn-primary" style="cursor:pointer"><span>📄 上載 YMIS PDF 報表</span><input type="file" accept="application/pdf,.pdf" onchange="importYmisPdf(this.files[0]);this.value=''" style="display:none"></label>
       </div>
       <div style="margin-top:8px">
@@ -843,6 +843,7 @@ const LANG_DICT={
   "YMIS 須為 10位數字": "YMIS must be 10 digits",
   "例如 1234567890": "e.g. 1234567890",
   "例如 1234560001": "e.g. 1234560001",
+  "YMIS 提供的密碼": "YMIS export password",
   "密碼": "Password",
   "請輸入密碼": "Enter password",
   "登入": "Login",
