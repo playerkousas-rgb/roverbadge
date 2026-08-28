@@ -136,7 +136,14 @@ console.log('\n【5】api/ 目錄結構符合 Vercel 零配置約定');
   }
   const pk = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
   check('package.json type=module（api/*.js 用 ESM import）', pk.type === 'module');
-  check('package.json engines 指定 node>=18（fetch/AbortSignal.timeout 需要）', /18|>=18/.test((pk.engines || {}).node || ''), JSON.stringify(pk.engines || {}));
+  check('package.json 冇 engines（Vercel 會用佢覆寫 Project Settings 嘅 Node 版本；range/被淘汰版本會令 build 失敗）',
+    pk.engines === undefined, JSON.stringify(pk.engines || {}));
+  // Vercel 將 ESM 編譯成 lambda 時，import.meta 有Chance 爆「outside a module」→ build fail
+  for (const f of fs.readdirSync(path.join(ROOT, 'api')).filter(f => f.endsWith('.js'))) {
+    const src = fs.readFileSync(path.join(ROOT, 'api', f), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, ''); // 註解提到得唔算
+    check(`api/${f} 嘅實際程式碼唔使用 import.meta / __dirname`, !/import\.meta|__dirname/.test(src));
+  }
 }
 
 console.log('\n【6】_troops_static.js 與 data/troops.json 不可漂移');

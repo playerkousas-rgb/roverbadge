@@ -84,8 +84,8 @@ console.log('\n【2】functions 區塊');
       const ok = (typeof entry.maxDuration === 'number' && entry.maxDuration >= 1 && entry.maxDuration <= 1800)
         || entry.maxDuration === 'max';
       check(`functions["${k}"].maxDuration 合法（1-1800 或 "max"）`, ok, String(entry.maxDuration));
-      const num = typeof entry.maxDuration === 'number' ? entry.maxDuration : 1800;
-      check(`functions["${k}"].maxDuration 足夠長（≥60s，GAS 批量寫入需要）`, num >= 60, String(num));
+      check(`functions["${k}"].maxDuration 唔超過 plan 上限（10-300 之間先安全；唔設就用平台預設）`,
+        typeof entry.maxDuration === 'string' || (entry.maxDuration >= 10 && entry.maxDuration <= 300), String(entry.maxDuration));
     }
     if ('memory' in entry) {
       check(`functions["${k}"].memory 喺 128-10240`, entry.memory >= 128 && entry.memory <= 10240, String(entry.memory));

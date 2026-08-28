@@ -13,12 +13,12 @@
 
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { STATIC_TROOPS, STATIC_TROOPS_SOURCE } from './_troops_static.js';
 
-const __dirname = (() => {
-  try { return path.dirname(fileURLToPath(import.meta.url)); } catch (e) { return null; }
-})();
+// 刻意唔使用 import.meta.url / __dirname：Vercel 嘅 Node builder 將 ESM 編譯成 lambda 時，
+// import.meta 有機會爆「Cannot use 'import.meta' outside a module」而整次 build 失敗。
+// lambda 內 process.cwd() 就係 /var/task（includeFiles 嘅檔案亦落喺度），所以 cwd 已經夠用；
+// 需要指定別的位置時用 ROVERBADGE_PROJECT_ROOT（只供本機／測試）。
 
 // 已登記的 GAS /exec URL 白名單格式（只接受 HTTPS 正式部署 URL，不接受 /dev）
 const EXEC_URL_RE = /^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]{10,}\/exec\/?$/i;
@@ -41,11 +41,8 @@ function candidateRoots() {
   const push = (r) => { if (r && !roots.includes(r)) roots.push(r); };
   const envRoot = process.env.ROVERBADGE_PROJECT_ROOT;
   push(envRoot ? path.resolve(envRoot) : null);
-  push(process.cwd());
-  if (__dirname) {
-    push(path.resolve(__dirname, '..'));        // /var/task（includeFiles 落地）或 repo root
-    push(path.resolve(__dirname, '..', '..'));  // repo/src 之類多一層的配置
-  }
+  push(process.cwd());                       // Vercel: /var/task（includeFiles 嘅 data/ 就喺呢度）
+  push(path.resolve(process.cwd(), '..'));    // 万一 lambda cwd 落咗喺子目錄
   return roots;
 }
 
@@ -108,7 +105,6 @@ export function getRegistryDiagnostics() {
   const { at, fileTroops, source } = fileTroopsWithSource();
   return {
     cwd: process.cwd(),
-    moduleDir: __dirname,
     rootsTried: candidateRoots(),
     fileTroopsFound: Object.keys(fileTroops).length,
     staticTroopsFound: Object.keys((STATIC_TROOPS && typeof STATIC_TROOPS === 'object') ? STATIC_TROOPS : {}).length,

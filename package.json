@@ -4,9 +4,6 @@
   "private": true,
   "type": "module",
   "description": "樂行童軍進度及行政平台（多旅團，同源 Proxy 架構）",
-  "engines": {
-    "node": ">=18"
-  },
   "scripts": {
     "dev": "node tests/dev-server.mjs 3000",
     "demo": "node tests/demo-server.mjs 3000",
