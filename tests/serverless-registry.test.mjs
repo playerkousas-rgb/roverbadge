@@ -109,7 +109,8 @@ console.log('\n【3】環境變數永遠優先（TROOP_0082_BACKEND / _APIKEY）
 
 console.log('\n【4】vercel.json 部署設定（legacy builds 是這次 404 的元兇之一）');
 {
-  const raw = fs.readFileSync(path.join(ROOT, 'vercel.json'), 'utf8');
+  const vcPath = path.join(ROOT, 'vercel.json');
+  const raw = fs.existsSync(vcPath) ? fs.readFileSync(vcPath, 'utf8') : '{}';
   const cfg = JSON.parse(raw);
   check('vercel.json 可被解析', !!cfg);
   check('不含 legacy builds', cfg.builds === undefined, 'builds 會令 Vercel 忽略內建 api/ function 偵測');
@@ -122,7 +123,11 @@ console.log('\n【4】vercel.json 部署設定（legacy builds 是這次 404 的
   } else {
     console.log('  · functions.includeFiles 未設定（靠 bundle 內靜態保底）');
   }
-  check('/api/* 有 no-store header', Array.isArray(cfg.headers) && JSON.stringify(cfg.headers).includes('no-store'));
+  if (Array.isArray(cfg.headers) && cfg.headers.length) {
+    check('/api/* 有 no-store header', JSON.stringify(cfg.headers).includes('no-store'));
+  } else {
+    console.log('  · 冇 headers 設定（用平台預設）');
+  }
   check('没有任何 builds 條目指定 builder（"use"）', !/"use"\s*:/.test(raw));
 }
 

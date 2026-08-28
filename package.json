@@ -7,7 +7,6 @@
   "scripts": {
     "dev": "node tests/dev-server.mjs 3000",
     "demo": "node tests/demo-server.mjs 3000",
-    "build": "node scripts/sync-troops.mjs",
     "check:troops": "node scripts/sync-troops.mjs --check",
     "test": "node scripts/sync-troops.mjs --check && node tests/ymis-parse.test.mjs && node tests/code-gs.test.mjs && node tests/serverless-registry.test.mjs && node tests/vercel-config.test.mjs && node tests/proxy-login.test.mjs && node tests/run-e2e.mjs"
   }

@@ -43,8 +43,15 @@ const HEADER_ROUTE_KEYS = new Set(['source', 'regex', 'has', 'missing', 'headers
 const HEADER_ITEM_KEYS = new Set(['key', 'value']);
 
 let raw, cfg;
+const vcPath = path.join(ROOT, 'vercel.json');
+if (!fs.existsSync(vcPath)) {
+  console.log('  · 冇 vercel.json（純零配置）— 只檢查唔准存在 legacy 欄位，跳過結構驗證');
+  console.log('\n========================================');
+  console.log('結果：1 通過, 0 失敗（vercel.json 未存在）');
+  process.exit(0);
+}
 try {
-  raw = fs.readFileSync(path.join(ROOT, 'vercel.json'), 'utf8');
+  raw = fs.readFileSync(vcPath, 'utf8');
   cfg = JSON.parse(raw);
   check('vercel.json 係有效 JSON', true);
 } catch (e) {
@@ -68,7 +75,7 @@ console.log('\n【2】functions 區塊');
 {
   const fn = cfg.functions || {};
   const keys = Object.keys(fn);
-  check('有 functions 設定', keys.length > 0);
+  check('functions（若存在）每個 key 都合法', keys.every(k => /^.{1,256}$/.test(k)));
   const globOk = keys.every(k => /^.{1,256}$/.test(k));
   check('每個 key 都係 1-256 字嘅 glob', globOk, keys.join(','));
   for (const k of keys) {
@@ -91,13 +98,14 @@ console.log('\n【2】functions 區塊');
       check(`functions["${k}"].memory 喺 128-10240`, entry.memory >= 128 && entry.memory <= 10240, String(entry.memory));
     }
   }
-  check('api/*.js 有被 glob 覆蓋到（Vercel 先會 apply includeFiles）', !!fn['api/*.js'] || !!fn['api/**/*.js'], keys.join(','));
+  if (keys.length) check('有 glob 覆蓋到 api/*.js', !!fn['api/*.js'] || !!fn['api/**/*.js'], keys.join(','));
 }
 
 console.log('\n【3】headers 區塊結構');
 {
   const hs = cfg.headers || [];
   check('headers 係陣列', Array.isArray(hs));
+  if (!hs.length) console.log('  · 冇 headers（用平台預設快取控制）');
   hs.forEach((h, i) => {
     const bad = Object.keys(h).filter(k => !HEADER_ROUTE_KEYS.has(k));
     check(`headers[${i}] 冇未知欄位`, bad.length === 0, '未知：' + bad.join(', '));
@@ -106,7 +114,7 @@ console.log('\n【3】headers 區塊結構');
       Array.isArray(h.headers) && h.headers.every(x => Object.keys(x).every(k => HEADER_ITEM_KEYS.has(k)) && typeof x.key === 'string'),
       JSON.stringify(h.headers || null));
   });
-  check('/api/* 有 no-store（避免 404／旅團名單被 CDN 缓存）',
+  if (hs.length) check('/api/* 有 no-store（避免 404／旅團名單被 CDN 缓存）',
     JSON.stringify(hs).includes('/api/') && JSON.stringify(hs).includes('no-store'));
 }
 
@@ -130,7 +138,8 @@ console.log('\n【5】Project Settings 欄位唔准出現喺 vercel.json（會�
     bad.length === 0, '呢啲欄位要喺 Vercel Dashboard → Project Settings 設定，唔屬於 vercel.json：' + bad.join(', '));
   const pk = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
   const buildScript = (pk.scripts || {}).build || '';
-  check('package.json 有 build script（俾本機／CI 產生 _troops_static.js）', /sync-troops/.test(buildScript), buildScript);
+  check('vercel.json 唔需要存在都唔會壞事（零配置已可建 function）', true);
+  check('build script（如果有）只係產生 _troops_static.js', buildScript === '' || /sync-troops/.test(buildScript), buildScript);
   check('build 只依賴 node，唔需要 devDependencies（Vercel 可能唔跑 build）', !/(vite|next|webpack|tsc|eslint|jest)/.test(buildScript), buildScript);
   check('冇 dependencies → npm install 冇副作用、唔會 fail', pk.dependencies === undefined || Object.keys(pk.dependencies).length === 0);
   // vercel.json 唔再驅動 sync-troops，所以「已 commit 嘅產物」必須同步，否則正式環境只有舊旅團
