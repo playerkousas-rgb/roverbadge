@@ -65,37 +65,43 @@ function 一個都冇。呢個就係 404 嘅直接原因。
 現新增 `tests/serverless-registry.test.mjs` + `tests/proxy-login.test.mjs`：專門喺
 「冇 `data/` 目錄嘅空 `/var/task`」度跑真正嘅 `api/*.js`。
 
-### 根因 D（我哋自己 introduce 嘅回帰，2026-08-28 稍後）— `vercel.json` 寫入咗**不屬於佢**嘅欄位
+### 根因 D（我哋自己 introduce 嘅部署失敗，2026-08-28）— 真正兇手係 `package.json` 嘅 `build` script
 
-呢一條搞咗兩先至搵到，因為每次都要重新部署至見到 `Error`（Vercel 會喺 commit status 顯示
-`Deployment has failed — run this Vercel CLI command: npx vercel inspect dpl_xxx --logs`，
-冇 token 就睇唔到 log，所以我哋用 `gh api .../commits/<sha>/status` 做回饋）：
+改完 `vercel.json` 之後，Vercel **連續 5 次 Preview 都 `Error`**，而我哋冇 Vercel token 睇唔到 log。
+用 `gh api /repos/…/commits/<sha>/status` 讀 Vercel 寫返嘅 commit status 做 1-bit oracle，逐個變數
+拆走（每次都係一次真實部署）：
 
-**第 1 次**：`_comment`（為咺寫低「唔准用 builds」嘅說明）
-**第 2 次**：`buildCommand: "npm run build"`（以為 vercel.json 可以改 build command）
+| 輪次 | 配置狀態 | Vercel status |
+| --- | --- | --- |
+| 1 | vercel.json 有 `_comment`（註解）+ `buildCommand` + `functions` + `headers`，package 有 `engines`/`build` | ❌ failure |
+| 2 | 刪 `_comment`（保留 `buildCommand`） | ❌ failure |
+| 3 | 刪 `buildCommand` + `engines` + `maxDuration`（保留 `functions.includeFiles`/`headers`/`build`） | ❌ failure |
+| 4 | 刪 `functions`（淨低 `headers` + `build`） | ❌ failure |
+| 5 | **刪晒 vercel.json + 刪 `build` script** | ✅ **success** |
+| 6 | 加返 `build` script（冇 vercel.json） | ❌ **failure** ← _single variable_ |
+| 7（最終）| 還原 vercel.json（`functions.includeFiles` + `headers`），**冇** `build` script | ✅ success（見下） |
 
-官方 schema（`https://openapi.vercel.sh/vercel.json`）根節點係：
+**結論：`package.json` 有 `scripts.build` 就係致命點。** Vercel 對「有 build script 嘅專案」會拿佢做
+Build Command，於是每次部署都執行 `node scripts/sync-troops.mjs`，而呢個腳本要喺 build 環境把
+`api/_troops_static.js` **寫返入來源目錄** → Vercel build container 唔容許 → 非零出口 → 成次部署
+`Error`（同 config 寫法無關）。第 6 輪只加返一個 `build` script、其他全部唔變，就由 success 變返
+failure，係最乾淨嘅證據。
 
-```json
-{ "type": "object", "additionalProperties": false, "properties": { ... } }
-```
+規則（四個支部 app 都適用）：
 
-即 **任何未知頂層欄位都會令整次 build 失敗**（Preview 顯示 `Error`，function 一個都冇 —— 後果同
-`/api/*` 404 一樣，但更加早、更加明顯）。而 `buildCommand`／`installCommand`／`devCommand`／
-`outputDirectory`／`framework` 呢類**係 Dashboard → Project Settings，唔係 vercel.json 欄位**
-（vercel.json 嘅根節點無呢幾條；佢哋只喺 Project Settings 或 `vercel.ts` 生效）。
-
-規則：
-
-- `vercel.json` **只准寫官方欄位**；JSON 冇註解，自訂 key（`_comment`／`_note`）就係炸彈。
-  註解放 `.md`，規則寫成測試
-- 需要「部署時執行嘢」就喺 Dashboard 改 Build Command，或者（呢個 repo 嘅做法）**把產物 commit 入
-  Git**：`api/_troops_static.js` 已入庫，`npm test` 用 `sync-troops.mjs --check` 盯住唔好漂移
-- Function 設定（`maxDuration`／`includeFiles`）**只喺 `vercel.json` 的 `functions` 寫一次**，
-  唔好再喺 `api/*.js` 用 `export const config`（兩邊重複會互相覆蓋）
-- `tests/vercel-config.test.mjs` 用官方 allow-list 驗證頂層／`functions`／`headers` 欄位，並**明確
-  禁止 Project Settings 欄位**；已用 `_comment` 同 `buildCommand` 兩做負面測試確認會 fail
-
+- **`package.json` 唔准有 `build` script**；需要產生嘅檔案（例如 `api/_troops_static.js`）
+  **一律 commit 入 Git**，本機用 `npm run sync:troops` 產生、`npm test` 用 `--check` 盯住唔好漂移
+- `vercel.json` 只准官方欄位：`additionalProperties:false` 嘅 root schema 會 reject 自訂 key
+  （`_comment`）同 Project Settings 欄位（`buildCommand`/`installCommand`/`devCommand`/
+  `outputDirectory`/`framework`）——呢啲要喺 Dashboard 改
+- Function 設定（`maxDuration`／`includeFiles`）只喺 `vercel.json` 的 `functions` 寫一次，
+  唔好再喺 `api/*.js` 出 `export const config`（兩邊重複會互相覆蓋）
+- 呢啲規則全部有測試守：`tests/vercel-config.test.mjs`【6】+ `tests/serverless-registry.test.mjs`
+  （已用 `_comment`、`buildCommand`、`build` script 三份負面測試確認會 fail）
+- **冇 Vercel token 時點樣驗證部署**：`git push` 後
+  `gh api repos/<owner>/<repo>/commits/<sha>/status --jq '.statuses[]|{state,description,target_url}'`
+  （description 會俾 `npx vercel inspect dpl_xxx --logs` 呢條 command 同 deployment id；
+  有 token 就先见到真正 log）
 
 ## 3. 本次修正
 
@@ -103,8 +109,8 @@ function 一個都冇。呢個就係 404 嘅直接原因。
 | --- | --- |
 | `vercel.json` | 改成零配置：刪除 `builds`/`routes`/`version`，只留 `functions`（`includeFiles` + `maxDuration`）、`headers`、`buildCommand` |
 | `api/_registry.js` | Registry 來源改成 **env → `data/troops.json`（多候选根目錄）→ bundle 內靜態保底**；加 `getRegistryDiagnostics()` |
-| `api/_troops_static.js` | 新增（自動產生，`npm run build`）：把 `data/troops.json` 編譯入 bundle；**不含 apikey** |
-| `scripts/sync-troops.mjs` | 產生上面個檔；`--check` 模式供 CI 防漂移 |
+| `api/_troops_static.js` | 新增（自動產生，`npm run sync:troops`；**千祈唔好命名做 `build`**，見根因 D）：把 `data/troops.json` 編譯入 bundle；**不含 apikey** |
+| `scripts/sync-troops.mjs` | 產生上面個檔（`npm run sync:troops`，**唔好叫 build**）；`--check` 供 CI 防漂移 |
 | `api/health.js` | 新增 `GET /api/health`：回 JSON 講明 function 有冇部署、registry 用咗邊個來源、有效旅團幾多個（永不回 GAS URL / apikey） |
 | `package.json` | `engines.node >= 18`；`build` = sync troops；`test` 串埋兩個新測試 |
 | `index.html` | `apiRequest()` 回應非 JSON 時自動查 `/api/health` → 提示「後端 API 未部署」；`selectTroop()` 喺登入頁预先顯示部署診斷；兩個新字串已入 `i18n_dict.tsv` + `LANG_DICT` |
@@ -169,7 +175,8 @@ npm test
 
 1. **`vercel.json` 永遠唔准出現 `builds`、`routes`、`version`。** 需要改函式設定就用 `functions`；
    需要路徑覆寫就用 `rewrites`/`redirects`。`tests/serverless-registry.test.mjs` 會 fail 掉違規嘅 PR。
-2. **改咗 `data/troops.json` / `troops.json` 一定要 `npm run build`** 再 commit（`api/_troops_static.js`
+2. **改咗 `data/troops.json` / `troops.json` 一定要 `npm run sync:troops`** 再 commit（`api/_troops_static.js`；
+   唔好用 `build` 做名 —— Vercel 會自動執行 `build` script 然後炸，見根因 D）
    要同步；`npm test` 會 check）。或者索性只靠 `TROOP_{ID}_BACKEND` 環境變數（env 優先於檔案）。
 3. **部署完成 = 開 `/api/health`**，唔好睇綠燈。`includeFilesWorking:false` 表示 Vercel 冇把
    `data/*.json` 放進 lambda（此時會用 bundle 保底，仍然可用）。

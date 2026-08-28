@@ -1,4 +1,4 @@
-// ⚠️ 自動產生，請勿手動修改：修改 data/troops.json（或 troops.json）後執行 `npm run build`
+// ⚠️ 自動產生，請勿手動修改：修改 data/troops.json（或 troops.json）後執行 `npm run sync:troops`
 // 來源：scripts/sync-troops.mjs ｜ 用途：Serverless Function 內的旅團 Registry 保底來源
 export const STATIC_TROOPS = {
   "0082": {

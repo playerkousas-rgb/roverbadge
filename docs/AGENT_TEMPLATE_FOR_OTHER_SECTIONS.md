@@ -115,9 +115,9 @@
   `/api/proxy` 變 Vercel HTML 404，全站沒人登入得到；2026-08 事故，詳見 `docs/VERCEL_API_404_POSTMORTEM.md`）
 - **Serverless function 內 `fs` 讀唔到 `data/troops.json`**（喺 `/var/task`，冇 bundle 就冇檔）→ Registry
   必須有第二/第三來源：`vercel.json` 的 `functions["api/*.js"].includeFiles` **加** 一個被 `import` 的
-  保底來源（本 repo 係 `api/_troops_static.js`，由 `npm run build` 從 `data/troops.json` 產生）。
+  保底來源（本 repo 係 `api/_troops_static.js`，由 `npm run sync:troops` 從 `data/troops.json` 產生）。
   只靠 `fs` + 只靠 `DEFAULT_TROOPS` 硬編碼都係半成品
-- 改咗 `data/troops.json` / `troops.json` 一定要 `npm run build` 再 commit（並用 `sync-troops.mjs --check` 防漂移）
+- 改咗 `data/troops.json` / `troops.json` 一定要 `npm run sync:troops` 再 commit（並用 `sync-troops.mjs --check` 防漂移）
 - 前端 `apiRequest()` 喺回應非 JSON 時查 `/api/health`，將「部署壞咗」同「密碼錯」分開講
 - `loadTroops()` 加時間戳 `?_=` 防快取 + 硬編碼後備（注意：呢個後備會令「旅團列表見到但登入死咗」
   成為部署問題嘅典型外觀，唔好靠佢當後端存在嘅證據）
@@ -133,6 +133,11 @@
   `api/_troops_static.js` commit 入 Git + `npm test` 盯漂移」，唔靠 build command）
 - Function 設定（`maxDuration`／`includeFiles`）**只喺 `vercel.json` 寫一次**，
   唔好同時喺 `api/*.js` 用 `export const config`（兩邊會互相覆蓋）
+- **`package.json` 唔准有 `scripts.build`**：Vercel 對「有 build script 嘅專案」會自動拿佢做 Build Command，
+  而 build container 唔俾你把檔案寫返入來源目錄 → 只要 build script 係「產生檔案」嘅腳本，
+  **成次部署就會 `Error`**（roverbadge 2026-08-28 用 6 次真實部署單變量對照證實：加返 `build` 即 failure、
+  移除即 success）。做法：產物一律 **commit 入 Git**，script 改名做 `sync:troops` / `gen:*` 呢類，
+  漂移由 `npm test`（`--check`）負責盯
 
 ### COPYRIGHT
 - Footer：`COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 v4.8`
@@ -217,7 +222,7 @@
 - [ ] 單一 Code.gs，扁平ZIP，17-21文件，無舊文件
 - [ ] MOCK 10成員 + CSV，系統管理員 測試工具
 - [ ] `vercel.json` **冇** `builds` / `routes` / `version`，亦**冇任何自訂欄位**（`_comment` 之類）；有 `functions["api/*.js"].includeFiles`
-- [ ] Registry 有 bundle 內保底來源（`_troops_static.js` 之類），並已 `npm run build` 後 commit
+- [ ] Registry 有 bundle 內保底來源（`_troops_static.js` 之類），並已 `npm run sync:troops` 後 commit
 - [ ] `troops.json` 保留 0082 後備
 - [ ] 有 `tests/serverless-registry.test.mjs` 同等測試：喺**冇 `data/` 目錄**嘅空目錄（模擬 `/var/task`）
       跑真正 handler；淨係用 `TROOP_x_BACKEND` env 注入嘅測試**唔算數**（會遮蔽呢個坑）

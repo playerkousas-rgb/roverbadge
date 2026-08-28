@@ -159,7 +159,7 @@ console.log('\n【5】api/ 目錄結構符合 Vercel 零配置約定');
 console.log('\n【6】_troops_static.js 與 data/troops.json 不可漂移');
 {
   const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'sync-troops.mjs'), '--check'], { cwd: ROOT, encoding: 'utf8' });
-  check('npm run build 產物與 troops.json 同步（--check）', r.status === 0, (r.stdout || '') + (r.stderr || ''));
+  check('npm run sync:troops 產物與 troops.json 同步（--check）', r.status === 0, (r.stdout || '') + (r.stderr || ''));
 }
 
 fs.rmSync(tmp, { recursive: true, force: true });

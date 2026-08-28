@@ -30,7 +30,7 @@
 
 **管理員做：**
 1. 編輯 `data/troops.json` + `troops.json` (公開)
-2. **`npm run build`**（重新產生 `api/_troops_static.js`；漏咗呢步 = function 讀唔到旅團 = 該旅團登入死，
+2. **`npm run sync:troops`**（重新產生 `api/_troops_static.js`；漏咗呢步 = function 讀唔到旅團 = 該旅團登入死，
    `npm test` 會 fail 住提醒你）
 3. Vercel 加1個環境變數 `TROOP_0082_APIKEY=rover_xxxx` (防爬虫，不進 GitHub)
 4. Redeploy，然後開 `https://<app>.vercel.app/api/health` 確認 `"success":true`

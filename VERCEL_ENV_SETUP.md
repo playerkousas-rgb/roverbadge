@@ -6,8 +6,8 @@
 >    靜態站照樣綠燈）。而家嘅寫法係零配置 + `functions.includeFiles`，詳細見
 >    [`docs/VERCEL_API_404_POSTMORTEM.md`](docs/VERCEL_API_404_POSTMORTEM.md)。
 > 2. **Serverless function 入面 `fs` 讀唔到 `data/troops.json`**（除非 `includeFiles` 生效）。
->    所以 Registry 有第三條保底路徑：`api/_troops_static.js`（由 `npm run build` 產生、必定被 bundle）。
->    **改咗 troops.json 就記得 `npm run build` 再 commit。**
+>    所以 Registry 有第三條保底路徑：`api/_troops_static.js`（由 `npm run sync:troops` 產生、必定被 bundle）。
+>    **改咗 troops.json 就記得 `npm run sync:troops` 再 commit。**
 > 3. 部署完成嘅定義唔係綠燈，而係呢條 line 有 JSON：
 >    `curl -s https://roverbadge.vercel.app/api/health` → 期望 `"success":true`。
 > 4. 淨係用 env 注入 backend 嘅測試（`TROOP_0082_BACKEND=...`）**唔能**證明 troops.json 讀到；
@@ -88,11 +88,13 @@ Vercel Dashboard → 你的 Project (vsbadge) → Settings → Environment Varia
 
 **Step C - Build + Redeploy + 驗證**
 ```bash
-npm run build     # 把 data/troops.json 編譯入 api/_troops_static.js（serverless 保底來源）
+npm run sync:troops     # 把 data/troops.json 編譯入 api/_troops_static.js（serverless 保底來源）
 npm test          # 包含「模擬 /var/task（冇 data/）」嘅 function 測試
 git add -A && git commit -m "troops: add 0082" && git push
 ```
-Push 後 Vercel 會自動重新部署（`vercel.json` 嘅 `buildCommand` 就係 `npm run build`）。**部署完一定要驗證：**
+Push 後 Vercel 會自動重新部署（零配置，冇 Build Command）。**千祈唔好喺 `package.json` 加 `build` script** —— Vercel 會自動將佢當 Build Command 執行，而本專案嘅 `api/_troops_static.js` 係「commit 入 Git」嘅產物，build 階段喺 Vercel 寫唔返入來源目錄 → 成次部署 `Error`（2026-08-28 用 6 次部署實測對照出嚟）。所以同步靜態保底要用 `npm run sync:troops`（本機／CI 執行），再用 `npm test` 盯住冇漂移。
+
+**部署完一定要驗證：**
 ```bash
 curl -s https://roverbadge.vercel.app/api/health | head -c 400   # 期望 "success":true
 curl -s https://roverbadge.vercel.app/api/troops  | head -c 200   # 期望 troops 入面有新旅團 id
@@ -159,7 +161,7 @@ function initializeSheets() {
 2. `data/troops.json` + `troops.json` 磁碟檔案 — 需要 `vercel.json` 嘅
    `functions["api/*.js"].includeFiles`（已設 `"{data/*.json,troops.json}"`）先會喺 function 內存在；
    `_registry.js` 會試 `cwd`、`__dirname/..`、`__dirname/../..`、`ROVERBADGE_PROJECT_ROOT`
-3. `api/_troops_static.js`（`npm run build` 產生、被 `import` → 一定喺 bundle 內）— **保底**，
+3. `api/_troops_static.js`（`npm run sync:troops` 產生、被 `import` → 一定喺 bundle 內）— **保底**，
    就算 includeFiles 失效都仍然揾到旅團；呢檔唔含 apikey
 
 合併規則不變：backend = env > file > static；apikey = env > file；

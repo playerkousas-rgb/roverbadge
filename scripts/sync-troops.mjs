@@ -9,7 +9,7 @@
 //   import 一定被打包器跟隨，因此不依賴 includeFiles / fs，作為獨立可用的保底來源。
 //
 // 用法：
-//   node scripts/sync-troops.mjs            # 重新產生（npm run build，Vercel build 時自動跑）
+//   node scripts/sync-troops.mjs            # 重新產生（npm run sync:troops，Vercel build 時自動跑）
 //   node scripts/sync-troops.mjs --check    # 只檢查是否同步（CI / npm test 用，不同步即 fail）
 
 import fs from 'fs';
@@ -54,7 +54,7 @@ if (strippedApikey.length) {
 
 const ids = Object.keys(troops).sort();
 const body =
-  '// ⚠️ 自動產生，請勿手動修改：修改 data/troops.json（或 troops.json）後執行 `npm run build`\n' +
+  '// ⚠️ 自動產生，請勿手動修改：修改 data/troops.json（或 troops.json）後執行 `npm run sync:troops`\n' +
   '// 來源：scripts/sync-troops.mjs ｜ 用途：Serverless Function 內的旅團 Registry 保底來源\n' +
   `export const STATIC_TROOPS = ${JSON.stringify(troops, null, 2)};\n` +
   `export const STATIC_TROOPS_SOURCE = 'data/troops.json+troops.json';\n`;
@@ -63,7 +63,7 @@ if (CHECK) {
   let current = '';
   try { current = fs.readFileSync(OUT, 'utf8'); } catch (e) { /* 尚未產生 */ }
   if (current.replace(/^\/\/.*\n/gm, '') !== body.replace(/^\/\/.*\n/gm, '')) {
-    console.error('[sync-troops] ❌ api/_troops_static.js 與 troops.json 不同步。請執行：npm run build');
+    console.error('[sync-troops] ❌ api/_troops_static.js 與 troops.json 不同步。請執行：npm run sync:troops');
     process.exit(1);
   }
   console.log(`[sync-troops] ✅ 已同步（旅團：${ids.length ? ids.join(', ') : '無'}）`);

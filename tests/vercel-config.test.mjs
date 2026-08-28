@@ -9,6 +9,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { spawnSync } from 'child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -148,5 +149,17 @@ console.log('\n【5】Project Settings 欄位唔准出現喺 vercel.json（會�
 }
 
 console.log('\n========================================');
+console.log('\n【6】package.json 唔准有 build script（實測證明：有佢 = Vercel build 必然失敗）');
+{
+  const pk = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+  check('冇 scripts.build（Vercel 會自動把佢當 Build Command 執行）', (pk.scripts || {}).build === undefined,
+    '有 build script → Vercel 以「npm run build」做 Build Command；喺 build 環境把 api/_troops_static.js 寫返入來源目錄會失敗 → 成次部署 Error（2026-08-28 實測：加返 build script 即 failure，移除即 success）');
+  check('有 scripts.sync:troops（本機／CI 手動產生靜態保底）', /sync-troops/.test((pk.scripts || {})['sync:troops'] || ''), (pk.scripts || {})['sync:troops'] || '');
+  check('test 鏈包含 sync --check（靠測試盯漂移，而唔係靠 Vercel build）', /sync-troops\.mjs --check/.test((pk.scripts || {}).test || ''));
+  check('api/_troops_static.js 已經喺 Git 裡面（Vercel 唔會幫你產生）', fs.existsSync(path.join(ROOT, 'api', '_troops_static.js')));
+  const gitLs = spawnSync('git', ['ls-files', '--error-unmatch', 'api/_troops_static.js'], { cwd: ROOT, encoding: 'utf8' });
+  check('api/_troops_static.js 有被 Git 追蹤（冇俾 gitignore 吃掉）', gitLs.status === 0, (gitLs.stderr || '').trim());
+}
+
 console.log(`結果：${passed} 通過, ${failed} 失敗`);
 if (failed > 0) process.exit(1);
