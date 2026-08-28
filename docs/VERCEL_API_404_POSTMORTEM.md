@@ -114,10 +114,33 @@ npm test
    `data/*.json` 放進 lambda（此時會用 bundle 保底，仍然可用）。
 4. 新旅團接入後自檢順序：`/api/troops` 有無呢個 id → `/api/health` 個 `source` → 先講帳號密碼問題。
 5. **其餘三個支部 app（`scoutbadge` / `cubbadge` / `vsbadge`）係獨立 repo、獨立 Vercel Project，
-   要各自 apply 同一份改動**（本次只改 `roverbadge`）。佢哋嘅 `vercel.json` 大概率同樣有 legacy
-   `builds`，`/api/*` 一樣係 404 —— 照上面第 4 節逐個 curl 一次就知。
+   要各自 apply 同一份改動**（本次只改 `roverbadge`）；照上面第 4 節逐個 `curl /api/health` 就知有事冇事。
+   已覆查過嘅結果見第 6 節。`docs/AGENT_TEMPLATE_FOR_OTHER_SECTIONS.md` 已改寫成正確規則
+   （舊版嗰段「`vercel.json` 必須開放 assets/docs/data/apps-script/api」正係本事故嘅源頭，照住做會再生返 legacy builds）。
 
-## 6. 順記（本次冇改，留待管理員決定）
+## 6. 其他支部 app 覆查（2026-08-28，同日稍後）
+
+`scoutbadge` 已由該 repo 嘅 agent 將 `vercel.json` 改成 `{"version": 2}` 零配置並重新部署，
+`/api/troops`、`/api/proxy`、`/api/health` 都已經回 JSON（`GET /api/proxy` → `{"success":false,
+"error":"Missing required parameter: action"}`，即 function 已上線）。但佢嘅修法留低三個問題，
+**其他支部 agent 請跟返本 repo 嘅做法，唔好抄 scoutbadge**：
+
+1. **`/api/health` 大量洩漏**：公開 GET 就回 `fullBackend`（完整 GAS `/exec` URL）、`hasApikey`、
+   **`spreadsheetId` 同 `docs.google.com/spreadsheets/<id>/edit` 連結**，仲會即時打一次 GAS
+   `diagnose`/`health` 並將 Sheet 名稱、各表 row/col、Users 數、Tokens 數原樣 echo。
+   即等於將「童軍成員資料表」嘅入口＋結構交畀任何匿名訪客，亦變相免認證鏡像後端。
+   → 健康檢查只准回布林值／host／來源（見本 repo `api/health.js`），並加 `Cache-Control: no-store`。
+2. **`/api/troops` 回傳 `backend`**：v3.0 之後 frontend 唔應該再見到 GAS URL；佢而家兩份都回
+   （仲多咗 `_debug`）。應該只回 `{id:{name}}`。
+3. **登入仍然會失敗，但原因唔同咗**：佢嘅 `health` 自己講咗 —— Users 表只有 1 行（預設 admin）、
+   `成員名單 rows:1`、`membersCount:0`、`progressCount:0`。即嗰個 GAS 連嘅係**空/被重置/連錯嘅
+   Spreadsheet**。呢種情況下 `/api/*` 修好都只係由「404」變做「找不到此帳號」，
+   要管理員喺 Sheet 那边 `initializeSheets()` + 確認部署 URL 指向正確嘅試算表先算搞掂。
+
+（另：`cubbadge` / `vsbadge` 未覆查；照第 5 節規則逐個 `curl /api/health` 即可判斷。）
+
+## 7. 順記（本次冇改，留待管理員決定）
+
 
 - `i18n_dict.tsv`（840 keys）與 `index.html` 內 `LANG_DICT`（846 keys）有 6 條字串唔同步：
   即管唔會壞嘢，但下一次有人跑 `build_i18n.py` 就會覆蓋咗嗰 6 條人工修訂。建議找個時間
