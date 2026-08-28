@@ -147,7 +147,7 @@ if (backend) troops[id] = { name, backend, apikey };
 ## 檢查清單 (管理員)
 
 - [x] GS Code.gs 有 getApiKey 自動生成 + showApiKey + initializeSheets 回傳
-- [x] 超管隱藏：Code.gs `ymis==='系統管理員'` 特判 `super_admin`，前端 `loadUsers()` 過濾 `系統管理員` 非 super_admin 不可見
+- [x] 超管隱藏：sheep（密碼 0728）為寫死後門（Code.gs `handleLogin`），不存於 Users 表；`removeSuperAdminRows()` 自動清除殘留列；用戶管理／成員名單任何角色（包括 super_admin）都睇唔到 sheep；防護保留（不能停用／重設密碼／改角色）
 - [x] URL https://script.google.com/macros/s/AKfycbw81wLR5NZtRk4m1ptSAoFBueoqwIZ5hcM_apHJa2xMmlVfUvZsS8R45nTIKTOIuBB2KQ/exec 已更新到所有 `troops.json` + `index.html fallbackTroops`
 - [x] 全面排查 vsbadge 內容：scoutbadge 曾有 0082R 已移除，roverbadge/cubbadge/scoutbadge 內 `vsbadge 管理員` 文字已改為各自 app 管理員，session key 已修正 `scoutbadge_session_v1` / `cubbadge_session_v1` / `roverbadge_session_v1` / `vsbadge_session_v4`
 - [x] Vercel 功能變數名稱：`TROOP_0082_APIKEY` (推薦) ，向後兼容 `TROOP_0082_BACKEND` (可選)
