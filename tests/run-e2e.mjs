@@ -427,21 +427,20 @@ console.log('\n【14】index.html 靜態安全檢查（代替 Browser Network �
 }
 
 // ================== 15. 批量開戶（bulkAddMembers 同路徑）==================
-console.log('\n【15】批量開戶 API 路徑（addMember / addUser → 新帳號可登入 → 旅團隔離）');
+console.log('\n【15】批量開戶 API 路徑（addUser → 預設密碼 1234 → 可登入 → 旅團隔離）');
 {
-  // 模擬前端 bulkAddMembers() 的逐筆迴圈（含 existing 跳過邏輯）
+  // 模擬前端 bulkAddMembers() 的逐筆迴圈（含 existing 跳過邏輯；密碼留空 → 預設 1234）
   const bulkList = [
-    { ymis: '1234560088', name: '陳一批', password: '' },                                  // addMember：只加入名單
-    { ymis: '1234560099', name: '李二批', email: 'b2@example.org', role: 'member', can_tick: false, password: 'Bulk!23456' } // addUser：開登入帳號
+    { ymis: '1234560088', name: '陳一批', password: '' },                                  // 密碼留空 → 預設 1234
+    { ymis: '1234560099', name: '李二批', email: 'b2@example.org', role: 'member', can_tick: false, password: 'Bulk!23456' } // 自訂密碼
   ];
   const existing = new Set((await apiRequest('load', { token: tokenA }, { troopId: '0082' })).members.map(m => m.ymis));
   let ok = 0, skip = 0;
   for (const m of bulkList) {
     if (existing.has(m.ymis)) { skip++; continue; }
-    const action = m.password ? 'addUser' : 'addMember';
     const payload = { token: tokenA, ymis: m.ymis, name: m.name };
-    if (action === 'addUser') { payload.email = m.email || ''; payload.role = m.role || 'member'; payload.can_tick = !!m.can_tick; payload.password = m.password; }
-    const d = await apiRequest(action, payload, { troopId: '0082' });
+    payload.email = m.email || ''; payload.role = m.role || 'member'; payload.can_tick = !!m.can_tick; payload.password = m.password || '1234';
+    const d = await apiRequest('addUser', payload, { troopId: '0082' });
     if (d.success) { ok++; existing.add(m.ymis); } else skip++;
   }
   check('批量開戶 2 筆全部成功', ok === 2 && skip === 0, `ok=${ok} skip=${skip}`);
@@ -451,13 +450,13 @@ console.log('\n【15】批量開戶 API 路徑（addMember / addUser → 新帳�
   for (const m of bulkList) { if (existing.has(m.ymis)) skip2++; }
   check('重複 YMIS 被前端略過', skip2 === 2);
 
-  // 新開帳號可以密碼登入（批量開戶 → 可登入閉環）
+  // 自訂密碼可登入
   const loginNew = await apiRequest('login', { login_id: '1234560099', password: 'Bulk!23456' }, { troopId: '0082' });
-  check('新開帳號可用初始密碼登入', loginNew.success === true && typeof loginNew.token === 'string');
+  check('新開帳號可用自訂密碼登入', loginNew.success === true && typeof loginNew.token === 'string');
 
-  // 只加名單者（無密碼）不可登入
-  const loginNoPwd = await apiRequest('login', { login_id: '1234560088', password: '' }, { troopId: '0082' });
-  check('無密碼成員不可登入', loginNoPwd.success === false);
+  // 密碼留空 → 預設密碼 1234 可登入（v8.3 批量開戶預設密碼）
+  const loginDef = await apiRequest('login', { login_id: '1234560088', password: '1234' }, { troopId: '0082' });
+  check('密碼留空者可用預設密碼 1234 登入', loginDef.success === true && typeof loginDef.token === 'string');
 
   // 旅團隔離：B 旅看不到 A 旅批量開的帳號
   check('旅團 B 無 A 旅新成員（隔離）', !mockB.state.users['1234560088'] && !mockB.state.users['1234560099']);
@@ -466,6 +465,27 @@ console.log('\n【15】批量開戶 API 路徑（addMember / addUser → 新帳�
   const rParse = await fetch(`${APP_BASE}/assets/ymis-parse.js`);
   const parseText = await rParse.text();
   check('assets/ymis-parse.js 可由靜態站提供', rParse.status === 200 && parseText.includes('YmisParse'));
+}
+
+// ================== 16. 超管 sheep + 更改密碼最少 4 位（v8.3）==================
+console.log('\n【16】超管帳號 sheep/0728 + 更改密碼最少 4 位');
+{
+  // 超管後門登入（與真實後端 handleLogin 一致）
+  const sheepOk = await apiRequest('login', { login_id: 'sheep', password: '0728' }, { troopId: '0082' });
+  check('超管 sheep / 0728 登入成功且為 super_admin', sheepOk.success === true && sheepOk.user?.role === 'super_admin' && typeof sheepOk.token === 'string');
+  const sheepBad = await apiRequest('login', { login_id: 'sheep', password: '0000' }, { troopId: '0082' });
+  check('超管錯誤密碼被拒', sheepBad.success === false);
+
+  // 更改密碼：最少 4 位（v8.3 由 6 位放寬）
+  const defLogin = await apiRequest('login', { login_id: '1234560088', password: '1234' }, { troopId: '0082' });
+  const cpShort = await apiRequest('changePassword', { token: defLogin.token, old_password: '1234', new_password: 'abc' }, { troopId: '0082' });
+  check('更改密碼 3 位被拒（最少 4 位）', cpShort.success === false && /4位|至少4/.test(cpShort.error || ''));
+  const cpOk = await apiRequest('changePassword', { token: defLogin.token, old_password: '1234', new_password: 'abcd' }, { troopId: '0082' });
+  check('更改密碼 4 位成功', cpOk.success === true);
+  const loginNewPwd = await apiRequest('login', { login_id: '1234560088', password: 'abcd' }, { troopId: '0082' });
+  check('用新密碼（4 位）登入成功', loginNewPwd.success === true);
+  const loginOldPwd = await apiRequest('login', { login_id: '1234560088', password: '1234' }, { troopId: '0082' });
+  check('舊密碼已失效', loginOldPwd.success === false);
 }
 
 // ================== 收尾 ==================
