@@ -50,7 +50,7 @@
 
 ## 檢查
 
-- 超管隱藏：已實作，非 super_admin 睇唔到 系統管理員 帳號
+- 超管隱藏：已實作，sheep 為寫死後門（Code.gs `handleLogin`，不存於 Users 表），用戶管理／成員名單任何角色都睇唔到
 - 0082R 已移除：scoutbadge 之前有殘留，已清
 - vsbadge 文字殘留：roverbadge/cubbadge/scoutbadge 之前寫 vsbadge 管理員，已改為各自 app 管理員
 - fallback URL 已更新為最新 https://script.google.com/macros/s/AKfycbw81wLR5NZtRk4m1ptSAoFBueoqwIZ5hcM_apHJa2xMmlVfUvZsS8R45nTIKTOIuBB2KQ/exec

