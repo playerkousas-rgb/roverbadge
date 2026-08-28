@@ -48,9 +48,33 @@
 - `showApiKey()`：隨時查看
 - `initializeSheets()`：初始化完彈出 KEY + URL
 
+## 超管（super_admin）- v8.6：只存在於 Code.gs
+
+**規格：超管實際存在、裝完即用；除咗 Code.gs 本身，任何地方都不提佢。**
+
+| 位置 | 會唔會出現超管 |
+| --- | --- |
+| `Code.gs`（`getSuperAdminUser()` / `getSuperAdminPass()`） | ✅ 唯一存在的地方 |
+| Google Sheet（Users 表） | ❌ 冇這列；`initializeSheets()` 會自動清走舊版殘留列 |
+| Google Sheet（Tokens 表） | ❌ 超管 session 以中性代號 `__sys__` 儲存，唔會出現帳號 |
+| `initializeSheets()` 完成小視窗 | ❌ 只顯示 Sheets / API Key / URL / 本旅團管理員 |
+| 用戶管理 / 成員名單 / load | ❌ 任何角色（包括超管本人）都睇唔到 |
+| 任何 API 回應 / 錯誤訊息 | ❌ 不會回傳帳號或密碼（舊版錯誤訊息曾直接寫出密碼，已移除） |
+| 本 repo 文件 | ❌ 刻意不記錄憑證 |
+
+**要点：**
+
+- 憑證只寫喺 `Code.gs` 頂部嘅兩個函式，用字串拼接避免明文凭證被搜尋到（**注意：這不是加密** —— `Code.gs` 是部署指南頁嘅公開下載檔，拿到檔案嘅人讀得到）
+- 唔使任何設定：新旅團貼上 `Code.gs` → 執行 `initializeSheets()` → 部署，超管即刻可用
+- `checkSuperAdmin()` 只回 `{enabled:true/false}`，供你核對，永不回傳憑證
+- `removeSuperAdminRows()` 可單獨執行，清走 Users 表殘留嘅 super_admin 列
+- 防護保留：不能停用／重設密碼／更改角色／自行更改密碼／以此帳號開戶
+- 進度紀錄嘅「確認者」欄寫嘅係顯示名稱（`系統管理員`），唔係帳號
+
+**如要換憑證：** 改 `Code.gs` 內 `getSuperAdminUser()` / `getSuperAdminPass()` 兩行，然後逐團重新貼上並重新部署。
+
 ## 檢查
 
-- 超管隱藏：已實作，sheep 為寫死後門（Code.gs `handleLogin`，不存於 Users 表），用戶管理／成員名單任何角色都睇唔到
 - 0082R 已移除：scoutbadge 之前有殘留，已清
 - vsbadge 文字殘留：roverbadge/cubbadge/scoutbadge 之前寫 vsbadge 管理員，已改為各自 app 管理員
 - fallback URL 已更新為最新 https://script.google.com/macros/s/AKfycbw81wLR5NZtRk4m1ptSAoFBueoqwIZ5hcM_apHJa2xMmlVfUvZsS8R45nTIKTOIuBB2KQ/exec

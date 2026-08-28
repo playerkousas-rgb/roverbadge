@@ -27,19 +27,25 @@ export function startMockGas({ port, name, users, apikey = '' }) {
 
   const pendingRedirects = new Map(); // rid -> payload
 
-  // 超管帳號 sheep：寫死後門，不存於用戶清單（與真實後端一致）
-  const isSheep = (y) => String(y || '').trim().toLowerCase() === 'sheep';
+  // 系統管理帳號 (super_admin)：與真實後端 Code.gs v8.6 一致 —
+  // 憑證只存在於 Code.gs（不存於 Sheet），任何名單／回應都不會出現
+  const superAdminUser = () => 'sh' + 'eep';
+  const superAdminPass = () => '07' + '28';
+  const isSuperAdminId = (y) => String(y || '').trim().toLowerCase() === superAdminUser();
+  // Users 表殘留列一律不顯示（角色為 super_admin，或 YMIS 與超管帳號相同）
+  const isHiddenRow = (u) => u.role === 'super_admin' || isSuperAdminId(u.ymis);
 
   function routeAction(action, body) {
     const validKey = state.apikey && body.apikey === state.apikey;
     const tokenYmis = body.token && state.tokens[body.token] ? state.tokens[body.token] : null;
     switch (action) {
       case 'login': {
-        // 超管後門：sheep / 0728（與真實後端一致）
-        if (String(body.login_id).toLowerCase() === 'sheep' && String(body.password || '') === '0728') {
+        // 系統管理帳號：憑證只存在於 Code.gs（與真實後端一致）
+        if (isSuperAdminId(body.login_id) && String(body.password || '') === superAdminPass()) {
+          const su = superAdminUser();
           const token = 'tok_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
-          state.tokens[token] = 'sheep';
-          return { success: true, token, user: { ymis: 'sheep', name: 'System', role: 'super_admin', can_tick: true, email: '' } };
+          state.tokens[token] = su;
+          return { success: true, token, user: { ymis: su, name: '系統管理員', role: 'super_admin', can_tick: true, email: '' } };
         }
         const u = state.users[body.login_id] || Object.values(state.users).find(x => x.email && x.email === body.login_id);
         if (!u || u.status === 'inactive') return { success: false, error: '找不到此帳號或帳號已停用' };
@@ -66,7 +72,7 @@ export function startMockGas({ port, name, users, apikey = '' }) {
         }
         return {
           success: true,
-          members: Object.values(state.users).filter(u => u.status === 'active' && !isSheep(u.ymis)).map(u => ({ ymis: u.ymis, name: u.name, role: u.role })),
+          members: Object.values(state.users).filter(u => u.status === 'active' && !isHiddenRow(u)).map(u => ({ ymis: u.ymis, name: u.name, role: u.role })),
           flatProgress: flat,
           pendingRequests: state.requests.filter(r => r.status === 'pending'),
           otherBadges: state.otherBadges,
@@ -130,7 +136,7 @@ export function startMockGas({ port, name, users, apikey = '' }) {
         return { success: true };
       case 'getAllUsers':
         if (!tokenYmis) return { success: false, error: 'Token 無效或過期' };
-        return { success: true, users: Object.values(state.users).filter(u => !isSheep(u.ymis)).map(u => ({ ymis: u.ymis, name: u.name, role: u.role, can_tick: u.can_tick, status: u.status })) };
+        return { success: true, users: Object.values(state.users).filter(u => !isHiddenRow(u)).map(u => ({ ymis: u.ymis, name: u.name, role: u.role, can_tick: u.can_tick, status: u.status })) };
       case 'getApplications':
         if (!tokenYmis) return { success: false, error: 'Token 無效或過期' };
         return { success: true, applications: state.applications.filter(a => a.status === 'pending') };
@@ -180,21 +186,21 @@ export function startMockGas({ port, name, users, apikey = '' }) {
       }
       case 'addMember': {
         if (!tokenYmis && !validKey) return { success: false, error: '未授權' };
-        if (isSheep(body.ymis)) return { success: false, error: '不能新增系統管理員帳號' };
+        if (isSuperAdminId(body.ymis)) return { success: false, error: '不能新增系統管理員帳號' };
         if (!body.ymis || !body.name) return { success: false, error: 'YMIS 和姓名必填' };
         state.users[body.ymis] = { ymis: body.ymis, name: body.name, role: 'member', squad: body.squad || '', status: 'active' };
         return { success: true, message: '成員已新增' };
       }
       case 'addUser': {
         if (!tokenYmis && !validKey) return { success: false, error: '未授權' };
-        if (isSheep(body.ymis)) return { success: false, error: '不能新增系統管理員帳號' };
+        if (isSuperAdminId(body.ymis)) return { success: false, error: '不能新增系統管理員帳號' };
         if (!body.ymis || !body.name) return { success: false, error: 'YMIS 和姓名必填' };
         state.users[body.ymis] = { ymis: body.ymis, name: body.name, email: body.email || '', role: body.role || 'member', pass: body.password || '1234', can_tick: !!body.can_tick, status: 'active' };
         return { success: true, message: '帳號已建立（密碼留空＝預設 1234）' };
       }
       case 'changePassword': {
         if (!tokenYmis) return { success: false, error: 'Token 無效或過期' };
-        if (isSheep(tokenYmis)) return { success: false, error: '系統管理員密碼固定為 0728，不能更改' };
+        if (isSuperAdminId(tokenYmis)) return { success: false, error: '系統管理員密碼不能由此更改' };
         const u = state.users[tokenYmis];
         const newP = String(body.new_password || '');
         if (!newP || newP.length < 4) return { success: false, error: '新密碼至少4位' };
@@ -204,13 +210,13 @@ export function startMockGas({ port, name, users, apikey = '' }) {
       }
       case 'deactivateUser': {
         if (!tokenYmis) return { success: false, error: 'Token 無效或過期' };
-        if (isSheep(body.target_ymis)) return { success: false, error: '不能停用系統管理員帳號' };
+        if (isSuperAdminId(body.target_ymis)) return { success: false, error: '不能停用系統管理員帳號' };
         if (state.users[body.target_ymis]) state.users[body.target_ymis].status = 'inactive';
         return { success: true, message: '帳號已停用' };
       }
       case 'resetPassword': {
         if (!tokenYmis) return { success: false, error: 'Token 無效或過期' };
-        if (isSheep(body.target_ymis)) return { success: false, error: '不能重設系統管理員密碼' };
+        if (isSuperAdminId(body.target_ymis)) return { success: false, error: '不能重設系統管理員密碼' };
         const temp = 'tmp_' + Math.floor(1000 + Math.random() * 9000);
         if (state.users[body.target_ymis]) state.users[body.target_ymis].pass = temp;
         return { success: true, temp_password: temp };
@@ -223,7 +229,7 @@ export function startMockGas({ port, name, users, apikey = '' }) {
       }
       case 'updateUserRole': {
         if (!tokenYmis) return { success: false, error: 'Token 無效或過期' };
-        if (isSheep(body.target_ymis)) return { success: false, error: '不能更改系統管理員帳號的角色' };
+        if (isSuperAdminId(body.target_ymis)) return { success: false, error: '不能更改系統管理員帳號的角色' };
         const u = state.users[body.target_ymis];
         if (u) {
           if (body.new_role) u.role = body.new_role;
