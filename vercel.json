@@ -1,19 +1,20 @@
 {
-  "version": 2,
-  "builds": [
-    { "src": "index.html", "use": "@vercel/static" },
-    { "src": "data/**", "use": "@vercel/static" },
-    { "src": "assets/**", "use": "@vercel/static" },
-    { "src": "docs/**", "use": "@vercel/static" },
-    { "src": "apps-script/**", "use": "@vercel/static" },
-    { "src": "api/**", "use": "@vercel/node" }
-  ],
-  "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" },
-    { "src": "/apps-script/(.*)", "dest": "/apps-script/$1" },
-    { "src": "/data/(.*)", "dest": "/data/$1" },
-    { "src": "/assets/(.*)", "dest": "/assets/$1" },
-    { "src": "/docs/(.*)", "dest": "/docs/$1" },
-    { "src": "/(.*)", "dest": "/$1" }
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "api/*.js": {
+      "includeFiles": "{data/*.json,troops.json}",
+      "maxDuration": 60
+    }
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    }
   ]
 }

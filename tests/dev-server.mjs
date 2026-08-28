@@ -13,6 +13,7 @@ const PORT = parseInt(process.argv[2] || process.env.PORT || '3000', 10);
 
 const { default: proxyHandler } = await import('../api/proxy.js');
 const { default: troopsHandler } = await import('../api/troops.js');
+const { default: healthHandler } = await import('../api/health.js');
 
 function vercelize(res) {
   res.status = (code) => { res.statusCode = code; return res; };
@@ -25,6 +26,7 @@ const server = http.createServer((req, res) => {
   const u = new URL(req.url, 'http://local');
   if (u.pathname === '/api/proxy') return proxyHandler(req, vercelize(res));
   if (u.pathname === '/api/troops') return troopsHandler(req, vercelize(res));
+  if (u.pathname === '/api/health') return healthHandler(req, vercelize(res));
   let p = u.pathname === '/' ? '/index.html' : decodeURIComponent(u.pathname);
   const fp = path.join(ROOT, p);
   if (!fp.startsWith(ROOT) || !fs.existsSync(fp) || fs.statSync(fp).isDirectory()) {
@@ -33,4 +35,11 @@ const server = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': MIME[path.extname(fp)] || 'application/octet-stream', 'Cache-Control': 'no-store' });
   fs.createReadStream(fp).pipe(res);
 });
-server.listen(PORT, '0.0.0.0', () => console.log(`roverbadge dev server on http://0.0.0.0:${PORT}`));
+server.listen(PORT, '0.0.0.0', async () => {
+  console.log(`roverbadge dev server on http://0.0.0.0:${PORT}`);
+  // 與 Vercel 行為對齊：開站即講明 Registry 來源，避免「綠燈但 /api 死咗」
+  const { getRegistryDiagnostics, listPublicTroops } = await import('../api/_registry.js');
+  const d = getRegistryDiagnostics();
+  const ids = Object.keys(listPublicTroops());
+  console.log(`  /api/health 來源=${d.source} 有效旅團=${ids.length ? ids.join(',') : '⚠️ 無（proxy 會回 404）'}`);
+});

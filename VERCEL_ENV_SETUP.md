@@ -1,6 +1,20 @@
-# Vercel 環境變數設定指南 v7.0 FINAL - 按你最終要求定版
+# Vercel 環境變數設定指南 v7.1 FINAL - 按你最終要求定版
+
+> ## ⚠️ 睺住呢段先部署（2026-08 全站登入失效嘅教訓）
+>
+> 1. **`vercel.json` 永遠唔准用 legacy `builds` / `routes`**（會令 Vercel 唔建立任何 `/api/*` function，
+>    靜態站照樣綠燈）。而家嘅寫法係零配置 + `functions.includeFiles`，詳細見
+>    [`docs/VERCEL_API_404_POSTMORTEM.md`](docs/VERCEL_API_404_POSTMORTEM.md)。
+> 2. **Serverless function 入面 `fs` 讀唔到 `data/troops.json`**（除非 `includeFiles` 生效）。
+>    所以 Registry 有第三條保底路徑：`api/_troops_static.js`（由 `npm run sync:troops` 產生、必定被 bundle）。
+>    **改咗 troops.json 就記得 `npm run sync:troops` 再 commit。**
+> 3. 部署完成嘅定義唔係綠燈，而係呢條 line 有 JSON：
+>    `curl -s https://roverbadge.vercel.app/api/health` → 期望 `"success":true`。
+> 4. 淨係用 env 注入 backend 嘅測試（`TROOP_0082_BACKEND=...`）**唔能**證明 troops.json 讀到；
+>    `npm test` 而家會喺「冇 `data/` 目錄嘅模擬 `/var/task`」度跑真正 handler。
 
 > 你的要求原文：
+
 > 1. URL 不用功能變數, API KEY 是防爬虫的, 人類靠登入就可以防 請寫入MD
 > 2. 要加 TROOP_0082_APIKEY 只是每個旅團只需要提交URL 及API KEY 給管理員,而管理員也只要改TROOPS JSON 及加1個功能變數就能完成,管理員是指向同1個APP ADMIN 的對吧
 > 3. GS 有加入自動生成API KEY 對吧
@@ -72,8 +86,21 @@ Vercel Dashboard → 你的 Project (vsbadge) → Settings → Environment Varia
 - 編號保留前導0，例如 0082 就係 `TROOP_0082_APIKEY`，唔係 `TROOP_82_APIKEY` (但程式有兼容，寫 0082 最穩陣)
 - 若想兼容舊版 `TROOP_0082_BACKEND` (將 URL 都放環境變數)，程式亦支援向後兼容，但按你要求 URL 唔使放功能變數，放 `troops.json` 公開就得
 
-**Step C - Redeploy**
-Push GitHub 或 Vercel 點 Redeploy → 完成。該旅團即刻喺首頁 `troopGrid` 見到。
+**Step C - Build + Redeploy + 驗證**
+```bash
+npm run sync:troops     # 把 data/troops.json 編譯入 api/_troops_static.js（serverless 保底來源）
+npm test          # 包含「模擬 /var/task（冇 data/）」嘅 function 測試
+git add -A && git commit -m "troops: add 0082" && git push
+```
+Push 後 Vercel 會自動重新部署（零配置，冇 Build Command）。**千祈唔好喺 `package.json` 加 `build` script** —— Vercel 會自動將佢當 Build Command 執行，而本專案嘅 `api/_troops_static.js` 係「commit 入 Git」嘅產物，build 階段喺 Vercel 寫唔返入來源目錄 → 成次部署 `Error`（2026-08-28 用 6 次部署實測對照出嚟）。所以同步靜態保底要用 `npm run sync:troops`（本機／CI 執行），再用 `npm test` 盯住冇漂移。
+
+**部署完一定要驗證：**
+```bash
+curl -s https://roverbadge.vercel.app/api/health | head -c 400   # 期望 "success":true
+curl -s https://roverbadge.vercel.app/api/troops  | head -c 200   # 期望 troops 入面有新旅團 id
+curl -s -o /dev/null -w '%{http_code}\n' https://roverbadge.vercel.app/api/proxy  # 期望 405（404 = function 冇建好）
+```
+該旅團即刻喺首頁 `troopGrid` 見到。
 
 ---
 
@@ -123,15 +150,24 @@ function initializeSheets() {
 
 ---
 
-## api/troops.js v2.0 點運作 (已修復)
+## api/_registry.js（/api/troops 背後）v3.1 點運作
 
-**舊版問題：** 只讀 `TROOP_*_BACKEND` 環境變數，若你按「URL不用功能變數」不設 BACKEND 環境變數，佢就回空 `{}`
-**新版已修復：**
-1. 先讀 `data/troops.json` + `troops.json` 磁碟文件 (backend 公開來源)
-2. 再掃所有 `TROOP_*_BACKEND` 及 `TROOP_*_APIKEY` 環境變數
-3. 合併：backend = env BACKEND > file backend ; apikey = env APIKEY > file apikey
-4. 只有有 backend 才算有效旅團
-5. 前端 `loadTroops()` 亦會同時 fetch `data/troops.json` + `/api/troops` 再合併，雙保險
+**v2.0 遺留問題：** `fs` 讀 `data/troops.json`。Vercel Node function 跑喺 `/var/task`，
+冇被 bundle 嘅檔案唔存在 → 讀唔到 → registry 變空 `{}` → `/api/proxy` 對任何旅團回
+`404 找不到此旅團` → **全站登入失敗**（2026-08 事故嘅真正原因，見 `docs/VERCEL_API_404_POSTMORTEM.md`）。
+
+**v3.1 已修復 — 三條來源，順序由上而下：**
+1. `TROOP_{ID}_BACKEND` / `TROOP_{ID}_APIKEY` 環境變數（最高優先，永远有效）
+2. `data/troops.json` + `troops.json` 磁碟檔案 — 需要 `vercel.json` 嘅
+   `functions["api/*.js"].includeFiles`（已設 `"{data/*.json,troops.json}"`）先會喺 function 內存在；
+   `_registry.js` 會試 `cwd`、`__dirname/..`、`__dirname/../..`、`ROVERBADGE_PROJECT_ROOT`
+3. `api/_troops_static.js`（`npm run sync:troops` 產生、被 `import` → 一定喺 bundle 內）— **保底**，
+   就算 includeFiles 失效都仍然揾到旅團；呢檔唔含 apikey
+
+合併規則不變：backend = env > file > static；apikey = env > file；
+只有 `backend` 通過 `isTrustedExecUrl()`（HTTPS `script.google.com/macros/s/.../exec`）先算有效旅團。
+前端 `loadTroops()` 亦會 fetch `/api/troops` + `data/troops.json` 再合併（雙保險）。
+除錯：`GET /api/health` 會回 `registry.source`（`file:...` 或 `static:...`）同 `includeFilesWorking`。
 
 ```javascript
 // 節錄
@@ -177,4 +213,4 @@ A: `Utilities.getUuid()` 幾乎不會重複，24 hex chars 足夠。
 
 ---
 
-COPYRIGHT 2026 Scout System - Vercel Env v7.0 FINAL per User Request
+COPYRIGHT 2026 Scout System - Vercel Env v7.1 FINAL（+ serverless Registry 保底、/api/health 自檢）

@@ -16,8 +16,8 @@
 ├── troops.json (根，同 data/troops.json 備份)
 ├── assets/ (bp-award-logo-256.png, bp-award-logo-128.png — 貝登堡獎章作 Logo)
 ├── apps-script/Code.gs (單一檔案版，28600 bytes, 含 系統管理員、細緻權限、私隱開關)
-├── api/troops.js (Vercel 讀環境變數)
-├── vercel.json (開放 data/, assets/, docs/, apps-script/, api/)
+├── api/ (proxy.js / troops.js / health.js + _registry.js / _troops_static.js 保底)
+├── vercel.json (零配置：functions.includeFiles + headers，見下方「Vercel 部署」，唔准用 builds/routes)
 ├── docs/ (MEMBER_GUIDE.md, EXEC_GUIDE.md, LEADER_GUIDE.md, MAIN_SYSTEM_INTEGRATION.md)
 ├── data/mock_members.json + mock_import.csv (10 MOCK成員測試)
 └── README.md / DEPLOY_GUIDE_FOR_TROOPS.md (雙軌部署指南)
@@ -108,9 +108,36 @@
 - Welcome 頁 `已修復問題` 及 `V4.0新增` 已刪除，保留空框架 `#home-future-framework` 註解，未來新版本資訊加在此，避免 Agent 亂加
 - `welcome-changelog` 按鈕隱藏，內容改為版本更新框架，說明新後端GS保有舊資料
 
-### Vercel NOT_FOUND 修復
-- `vercel.json` 必須開放 `assets/**` + `docs/**` + `data/**` + `apps-script/**`
-- `loadTroops()` 加時間戳 `?_=` 防快取 + 硬編碼後備
+### Vercel 部署（**照呢份做，唔好用 builds**）
+- `vercel.json` 用**零配置**：只寫 `functions` / `headers` / `buildCommand`，
+  **絕對唔准出現 `builds`、`routes`、`version`**（legacy `builds` 會令 Vercel 忽略專案 build 設定、
+  又同 `functions` 互斥 → `api/*` 一個 function 都冇建，靜態站照樣綠燈，
+  `/api/proxy` 變 Vercel HTML 404，全站沒人登入得到；2026-08 事故，詳見 `docs/VERCEL_API_404_POSTMORTEM.md`）
+- **Serverless function 內 `fs` 讀唔到 `data/troops.json`**（喺 `/var/task`，冇 bundle 就冇檔）→ Registry
+  必須有第二/第三來源：`vercel.json` 的 `functions["api/*.js"].includeFiles` **加** 一個被 `import` 的
+  保底來源（本 repo 係 `api/_troops_static.js`，由 `npm run sync:troops` 從 `data/troops.json` 產生）。
+  只靠 `fs` + 只靠 `DEFAULT_TROOPS` 硬編碼都係半成品
+- 改咗 `data/troops.json` / `troops.json` 一定要 `npm run sync:troops` 再 commit（並用 `sync-troops.mjs --check` 防漂移）
+- 前端 `apiRequest()` 喺回應非 JSON 時查 `/api/health`，將「部署壞咗」同「密碼錯」分開講
+- `loadTroops()` 加時間戳 `?_=` 防快取 + 硬編碼後備（注意：呢個後備會令「旅團列表見到但登入死咗」
+  成為部署問題嘅典型外觀，唔好靠佢當後端存在嘅證據）
+- **`/api/*` 一律唔准洩漏機密**：`/api/troops` 只回 `{id:{name}}`（**唔好回 `backend`**，GAS `/exec` URL
+  加 apikey 一旦公開就等于交出後端入口）；`/api/health` 只回布林值／host／來源，
+  **唔准回 `fullBackend`、`spreadsheetId`、`docs.google.com/spreadsheets/.../edit` 連結、
+  唔准喺健康檢查入面實打 GAS 上游並把回應原樣 echo 出嚟**（會變成免認證嘅後端鏡像＋個資外洩）
+- 部署完成嘅定義：`curl /api/health` 有 JSON + `GET /api/proxy` 回 **405**（回 404 即 function 冇建好）
+- **`vercel.json` 只准官方欄位**：官方 schema 根節點係 `additionalProperties:false`，多一個欄位就整次
+  build `Error`。兩類禁忌：(1) 自訂 key（`_comment`／`_note` — JSON 冇註解，註解放 docs）；
+  (2) **Project Settings 欄位**（`buildCommand`／`installCommand`／`devCommand`／`outputDirectory`／
+  `framework` 都唔屬於 vercel.json，要嘛喺 Dashboard 改，要嘛根本唔使 —— 呢個 repo 靠「把
+  `api/_troops_static.js` commit 入 Git + `npm test` 盯漂移」，唔靠 build command）
+- Function 設定（`maxDuration`／`includeFiles`）**只喺 `vercel.json` 寫一次**，
+  唔好同時喺 `api/*.js` 用 `export const config`（兩邊會互相覆蓋）
+- **`package.json` 唔准有 `scripts.build`**：Vercel 對「有 build script 嘅專案」會自動拿佢做 Build Command，
+  而 build container 唔俾你把檔案寫返入來源目錄 → 只要 build script 係「產生檔案」嘅腳本，
+  **成次部署就會 `Error`**（roverbadge 2026-08-28 用 6 次真實部署單變量對照證實：加返 `build` 即 failure、
+  移除即 success）。做法：產物一律 **commit 入 Git**，script 改名做 `sync:troops` / `gen:*` 呢類，
+  漂移由 `npm test`（`--check`）負責盯
 
 ### COPYRIGHT
 - Footer：`COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 v4.8`
@@ -167,7 +194,8 @@
 - 用法：主系統 Dashboard 點卡片自動帶入 ?u=&role=&ymis=&from=portal&embed=1 → 免密碼
 - 有主系統≠一定要接，可自由選擇獨立用，藉此宣傳主系統有 Dashboard、考勤、財務、活動報名等更多功能
 
-**重要**：`vercel.json` 必須開放 `assets/**`, `docs/**`, `data/**`, `apps-script/**`
+**重要**：`vercel.json` 零配置即可（靜態檔自動全站提供）；需要嘅係 `functions["api/*.js"].includeFiles`，
+而**唔係** `builds`/`routes`。用 `builds` 係 2026-08 全站登入失效嘅起因。
 
 ---
 
@@ -193,8 +221,12 @@
 - [ ] COPYRIGHT 2026 Scout System footer
 - [ ] 單一 Code.gs，扁平ZIP，17-21文件，無舊文件
 - [ ] MOCK 10成員 + CSV，系統管理員 測試工具
-- [ ] `vercel.json` 開放 assets/docs/data/apps-script/api
+- [ ] `vercel.json` **冇** `builds` / `routes` / `version`，亦**冇任何自訂欄位**（`_comment` 之類）；有 `functions["api/*.js"].includeFiles`
+- [ ] Registry 有 bundle 內保底來源（`_troops_static.js` 之類），並已 `npm run sync:troops` 後 commit
 - [ ] `troops.json` 保留 0082 後備
+- [ ] 有 `tests/serverless-registry.test.mjs` 同等測試：喺**冇 `data/` 目錄**嘅空目錄（模擬 `/var/task`）
+      跑真正 handler；淨係用 `TROOP_x_BACKEND` env 注入嘅測試**唔算數**（會遮蔽呢個坑）
+- [ ] 部署後實測：`/api/health` 回 JSON、`/api/troops` 有旅團且**無** `backend`/`apikey` 欄位、`GET /api/proxy` 回 405
 
 ---
 
