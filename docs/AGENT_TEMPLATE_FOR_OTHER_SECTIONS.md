@@ -183,7 +183,9 @@
 - [ ] 權限：高層可設低層可勾什麼，領袖默認全部，管委可按個別成員勾選會員章/活動段章(細項不用)/其他逐個勾
 - [ ] 成員預設只看自己，能否看其他由團長在用戶管理→系統設定開關 `allow_member_view_others`
 - [ ] 教學按角色分開：❓教學 tab 內嵌版，不依賴 fetch，成員不關心其他功能，登入後方便查閱
-- [ ] 系統管理員 超管為寫死後門（handleLogin，不存於 Users 表），用戶管理／成員名單任何角色都看不到 super_admin 行
+- [ ] 系統管理員（super_admin）程式碼零憑證：Code.gs 內沒有任何寫死帳號／密碼，憑證只存 Script Properties（密碼存 SHA-256 雜湊），由部署者執行 `setSuperAdmin()` 設定、`clearSuperAdmin()` 停用；未設定＝沒有超管帳號
+- [ ] `initializeSheets()` 完成提示不會顯示任何系統管理帳號資訊（只有 API Key / URL / 本旅團管理員）
+- [ ] 用戶管理／成員名單任何角色都看不到 super_admin 行（包括超管本人），`removeSuperAdminRows()` 可清除 Users 表殘留列
 - [ ] 審批中心合併：獎章審批+用戶審批同一分頁，子切換
 - [ ] V4.0更新及已修復問題已移除，保留 `#home-future-framework` 空框
 - [ ] COPYRIGHT 2026 Scout System footer

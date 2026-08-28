@@ -48,9 +48,26 @@
 - `showApiKey()`：隨時查看
 - `initializeSheets()`：初始化完彈出 KEY + URL
 
+## 超管（super_admin）- v8.5 起：程式碼零憑證
+
+**舊做法（v8.4 及以前）已廢除：** 帳號密碼寫死在 `Code.gs`（並由 `initializeSheets()` 彈框顯示）。
+問題：`Code.gs` 是部署指南頁上的公開下載檔，任何人都能下載看到；而每個旅團執行 `initializeSheets()` 時彈框還會直接把帳號密碼顯示給該旅團的部署者。
+
+**現行做法：**
+
+- `Code.gs` 內 **沒有任何** 超管帳號或密碼（只有 Script Properties 的鍵名）
+- `initializeSheets()` 完成提示只顯示：Sheets 清單、API Key、URL、**本旅團**管理員帳號 — 不會提及系統管理帳號
+- 憑證只存於該 Apps Script 專案的 `Script Properties`（`SUPER_ADMIN_USER` + `SUPER_ADMIN_PASS_HASH`，密碼只存 SHA-256 雜湊）
+- 由部署者本人執行 `setSuperAdmin()` 設定（三次 prompt：帳號 / 密碼 / 確認密碼；密碼不回顯、不寫入任何工作表）
+- `clearSuperAdmin()` 停用；`getSuperAdminStatus()` 只回 `{enabled:true/false}`，永不回傳憑證
+- 未執行 `setSuperAdmin()` ＝ 該旅團 **沒有** 超管帳號，不存在預設後門
+- 用戶管理／成員名單任何角色（包括 super_admin 自己）都睇唔到 super_admin 列；`removeSuperAdminRows()` 自動清除 Users 表殘留列
+- 防護保留：不能停用／重設密碼／更改角色／自行更改密碼
+
+**⚠️ 舊版憑證已作廢：** 任何仍在使用 v8.4 及以前 `Code.gs` 的旅團 Sheet，其寫死後門仍然生效 — 請盡快把新版 `Code.gs` 貼到各旅團的 Apps Script 並重新部署，然後按需執行 `setSuperAdmin()`（每個旅團用不同密碼）。
+
 ## 檢查
 
-- 超管隱藏：已實作，sheep 為寫死後門（Code.gs `handleLogin`，不存於 Users 表），用戶管理／成員名單任何角色都睇唔到
 - 0082R 已移除：scoutbadge 之前有殘留，已清
 - vsbadge 文字殘留：roverbadge/cubbadge/scoutbadge 之前寫 vsbadge 管理員，已改為各自 app 管理員
 - fallback URL 已更新為最新 https://script.google.com/macros/s/AKfycbw81wLR5NZtRk4m1ptSAoFBueoqwIZ5hcM_apHJa2xMmlVfUvZsS8R45nTIKTOIuBB2KQ/exec

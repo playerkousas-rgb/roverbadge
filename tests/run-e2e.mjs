@@ -48,8 +48,8 @@ const mockA = await startMockGas({
   users: [
     { ymis: '1234567890', name: '陳大文', role: 'group_leader', pass: 'PassA!234567', can_tick: true, email: 'a@example.org' },
     { ymis: '1234560001', name: '成員甲', role: 'member', pass: 'MemberA!234', can_tick: false },
-    // 舊版殘留：模擬舊版 ensureSuperAdmin 寫入 Users 表的 sheep 列（v8.4 起不應出現在任何名單）
-    { ymis: 'sheep', name: '系統管理員', role: 'super_admin', pass: '0728', can_tick: true, status: 'active' }
+    // 舊版殘留：模擬舊版寫入 Users 表的 super_admin 列（v8.5 起不應出現在任何名單）
+    { ymis: 'legacy_sysop', name: '系統管理員', role: 'super_admin', pass: 'legacy', can_tick: true, status: 'active' }
   ]
 });
 const mockB = await startMockGas({
@@ -469,44 +469,72 @@ console.log('\n【15】批量開戶 API 路徑（addUser → 預設密碼 1234 �
   check('assets/ymis-parse.js 可由靜態站提供', rParse.status === 200 && parseText.includes('YmisParse'));
 }
 
-// ================== 16. 超管 sheep + 更改密碼最少 4 位（v8.3 / v8.4 純後門）==================
-console.log('\n【16】超管帳號 sheep/0728（純後門）+ 更改密碼最少 4 位');
+// ================== 16. 系統管理帳號（v8.5：程式碼零憑證）+ 更改密碼最少 4 位 ==================
+console.log('\n【16】系統管理帳號（super_admin）：程式碼零憑證、無預設後門 + 更改密碼最少 4 位');
 {
-  // 超管後門登入（與真實後端 handleLogin 一致）
-  const sheepOk = await apiRequest('login', { login_id: 'sheep', password: '0728' }, { troopId: '0082' });
-  check('超管 sheep / 0728 登入成功且為 super_admin', sheepOk.success === true && sheepOk.user?.role === 'super_admin' && typeof sheepOk.token === 'string');
-  const sheepBad = await apiRequest('login', { login_id: 'sheep', password: '0000' }, { troopId: '0082' });
-  check('超管錯誤密碼被拒', sheepBad.success === false);
+  // (a) 預設狀態：未執行 setSuperAdmin() → 這個旅團根本沒有超管帳號，也沒有預設後門
+  const legacyOk = await apiRequest('login', { login_id: 'sheep', password: '0728' }, { troopId: '0082' });
+  check('舊版寫死帳號 sheep / 0728 已失效（無預設後門）', legacyOk.success === false);
+  check('未執行 setSuperAdmin() 時，此旅團沒有系統管理帳號', mockA.state.superAdmin === null);
 
-  // v8.4：mock A Users 表預載一列舊版殘留的 sheep 列 → 任何名單一律不出現 sheep
-  check('模擬環境：Users 表仍殘留 sheep 列（舊版資料）', !!mockA.state.users['sheep']);
-  const sheepListSelf = await apiRequest('getAllUsers', { token: sheepOk.token }, { troopId: '0082' });
-  check('用戶管理名單（超管本人查看）不出現 sheep', sheepListSelf.success === true && Array.isArray(sheepListSelf.users) && !sheepListSelf.users.some(u => String(u.ymis || '').trim().toLowerCase() === 'sheep' || u.role === 'super_admin'));
-  const sheepListLeader = await apiRequest('getAllUsers', { token: tokenA }, { troopId: '0082' });
-  check('用戶管理名單（領袖查看）不出現 sheep', sheepListLeader.success === true && Array.isArray(sheepListLeader.users) && !sheepListLeader.users.some(u => String(u.ymis || '').trim().toLowerCase() === 'sheep'));
-  const sheepLoad = await apiRequest('load', { token: tokenA }, { troopId: '0082' });
-  check('成員名單（load）不出現 sheep', sheepLoad.success === true && Array.isArray(sheepLoad.members) && !sheepLoad.members.some(m => String(m.ymis || '').trim().toLowerCase() === 'sheep'));
+  // (b) 舊版殘留列：Users 表內 role=super_admin 的列一律不出現在任何名單
+  check('模擬環境：Users 表仍殘留 super_admin 列（舊版資料）', !!mockA.state.users['legacy_sysop']);
+  const leaderList = await apiRequest('getAllUsers', { token: tokenA }, { troopId: '0082' });
+  check('用戶管理名單（領袖查看）不出現 super_admin 列',
+    leaderList.success === true && Array.isArray(leaderList.users)
+    && !leaderList.users.some(u => u.role === 'super_admin' || String(u.ymis || '').trim().toLowerCase() === 'legacy_sysop'));
+  const leaderLoad = await apiRequest('load', { token: tokenA }, { troopId: '0082' });
+  check('成員名單（load）不出現 super_admin 列',
+    leaderLoad.success === true && Array.isArray(leaderLoad.members)
+    && !leaderLoad.members.some(m => String(m.ymis || '').trim().toLowerCase() === 'legacy_sysop'));
 
-  // 防護保留：sheep 不能被停用／重設密碼／改角色／改密碼
-  const deactSheep = await apiRequest('deactivateUser', { token: sheepOk.token, target_ymis: 'sheep' }, { troopId: '0082' });
-  check('防護：不能停用系統管理員帳號', deactSheep.success === false && /不能停用系統管理員/.test(deactSheep.error || ''));
-  const rstSheep = await apiRequest('resetPassword', { token: sheepOk.token, target_ymis: 'sheep' }, { troopId: '0082' });
-  check('防護：不能重設系統管理員密碼', rstSheep.success === false && /不能重設系統管理員/.test(rstSheep.error || ''));
-  const roleSheep = await apiRequest('updateUserRole', { token: sheepOk.token, target_ymis: 'sheep', new_role: 'member' }, { troopId: '0082' });
-  check('防護：不能更改系統管理員帳號的角色', roleSheep.success === false && /不能更改系統管理員/.test(roleSheep.error || ''));
-  const cpSheep = await apiRequest('changePassword', { token: sheepOk.token, old_password: '0728', new_password: 'abcd' }, { troopId: '0082' });
-  check('防護：系統管理員密碼固定，不能自行更改', cpSheep.success === false && /不能更改/.test(cpSheep.error || ''));
-  const addSheep = await apiRequest('addMember', { token: sheepOk.token, ymis: 'sheep', name: 'X' }, { troopId: '0082' });
-  check('防護：不能以 sheep 為 YMIS 新增成員', addSheep.success === false);
-  const addSheep2 = await apiRequest('addUser', { token: sheepOk.token, ymis: 'sheep', name: 'X' }, { troopId: '0082' });
-  check('防護：不能以 sheep 為 YMIS 開新帳號', addSheep2.success === false);
+  // (c) 執行 setSuperAdmin()（模擬部署者在 Apps Script 執行）→ 憑證只存雜湊
+  const SU_USER = 'sysop_rover', SU_PASS = 'S3cret-Pass-2026';
+  mockA.setSuperAdmin(SU_USER, SU_PASS);
+  const suOk = await apiRequest('login', { login_id: SU_USER, password: SU_PASS }, { troopId: '0082' });
+  check('setSuperAdmin() 後可用新憑證登入且為 super_admin',
+    suOk.success === true && suOk.user?.role === 'super_admin' && typeof suOk.token === 'string');
+  const suBad = await apiRequest('login', { login_id: SU_USER, password: 'wrong-pass' }, { troopId: '0082' });
+  check('系統管理帳號錯誤密碼被拒', suBad.success === false);
+  const legacyAgain = await apiRequest('login', { login_id: 'sheep', password: '0728' }, { troopId: '0082' });
+  check('設定新系統管理帳號後，舊版 sheep / 0728 仍然無效', legacyAgain.success === false);
 
-  // 後門不依賴 Users 表：即使殘留列被刪，sheep / 0728 仍可登入
-  delete mockA.state.users['sheep'];
-  const sheepAgain = await apiRequest('login', { login_id: 'sheep', password: '0728' }, { troopId: '0082' });
-  check('刪除 Users 表殘留列後，sheep / 0728 登入照樣有效（後門不靠 Sheet）', sheepAgain.success === true && sheepAgain.user?.role === 'super_admin');
+  // (d) 憑證不落明文：Script Properties 只存雜湊，名單不出現帳號
+  check('Script Properties 只存 SHA-256 雜湊（非明文密碼）',
+    !!mockA.state.superAdmin && mockA.state.superAdmin.passHash !== SU_PASS
+    && /^[0-9a-f]{64}$/.test(mockA.state.superAdmin.passHash));
+  const suListSelf = await apiRequest('getAllUsers', { token: suOk.token }, { troopId: '0082' });
+  check('用戶管理名單（超管本人查看）不出現系統管理帳號',
+    suListSelf.success === true && Array.isArray(suListSelf.users)
+    && !suListSelf.users.some(u => u.role === 'super_admin' || String(u.ymis || '').trim().toLowerCase() === SU_USER));
 
-  // 更改密碼：最少 4 位（v8.3 由 6 位放寬）
+  // (e) 旅團隔離：旅團 B 未執行 setSuperAdmin() → 同一組憑證無效
+  const suOtherTroop = await apiRequest('login', { login_id: SU_USER, password: SU_PASS }, { troopId: '1001' });
+  check('其他旅團用同一組憑證登入失敗（每旅團獨立設定，無共用後門）', suOtherTroop.success === false);
+
+  // (f) 防護：不能停用／重設密碼／改角色／自行改密碼／以此帳號開戶
+  const deactSu = await apiRequest('deactivateUser', { token: suOk.token, target_ymis: SU_USER }, { troopId: '0082' });
+  check('防護：不能停用系統管理員帳號', deactSu.success === false && /不能停用系統管理員/.test(deactSu.error || ''));
+  const rstSu = await apiRequest('resetPassword', { token: suOk.token, target_ymis: SU_USER }, { troopId: '0082' });
+  check('防護：不能重設系統管理員密碼', rstSu.success === false && /不能重設系統管理員/.test(rstSu.error || ''));
+  const roleSu = await apiRequest('updateUserRole', { token: suOk.token, target_ymis: SU_USER, new_role: 'member' }, { troopId: '0082' });
+  check('防護：不能更改系統管理員帳號的角色', roleSu.success === false && /不能更改系統管理員/.test(roleSu.error || ''));
+  const cpSu = await apiRequest('changePassword', { token: suOk.token, old_password: SU_PASS, new_password: 'abcd' }, { troopId: '0082' });
+  check('防護：系統管理員不能自行更改密碼', cpSu.success === false);
+  check('防護：錯誤訊息不洩漏任何密碼字串', !/0728|S3cret-Pass-2026/.test(cpSu.error || ''));
+  const addSuM = await apiRequest('addMember', { token: suOk.token, ymis: SU_USER, name: 'X' }, { troopId: '0082' });
+  check('防護：不能以系統管理帳號為 YMIS 新增成員', addSuM.success === false);
+  const addSuU = await apiRequest('addUser', { token: suOk.token, ymis: SU_USER, name: 'X' }, { troopId: '0082' });
+  check('防護：不能以系統管理帳號開新帳號', addSuU.success === false);
+
+  // (g) clearSuperAdmin() → 帳號即刻失效，不影響其他資料
+  mockA.clearSuperAdmin();
+  const suAfterClear = await apiRequest('login', { login_id: SU_USER, password: SU_PASS }, { troopId: '0082' });
+  check('clearSuperAdmin() 後系統管理帳號登入失效', suAfterClear.success === false);
+  const normalAfterClear = await apiRequest('login', { login_id: '1234567890', password: 'PassA!234567' }, { troopId: '0082' });
+  check('clearSuperAdmin() 不影響一般用戶登入', normalAfterClear.success === true);
+
+  // (h) 更改密碼：最少 4 位（v8.3 由 6 位放寬）
   const defLogin = await apiRequest('login', { login_id: '1234560088', password: '1234' }, { troopId: '0082' });
   const cpShort = await apiRequest('changePassword', { token: defLogin.token, old_password: '1234', new_password: 'abc' }, { troopId: '0082' });
   check('更改密碼 3 位被拒（最少 4 位）', cpShort.success === false && /4位|至少4/.test(cpShort.error || ''));
