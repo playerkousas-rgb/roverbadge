@@ -186,6 +186,46 @@ npm test
    已覆查過嘅結果見第 6 節。`docs/AGENT_TEMPLATE_FOR_OTHER_SECTIONS.md` 已改寫成正確規則
    （舊版嗰段「`vercel.json` 必須開放 assets/docs/data/apps-script/api」正係本事故嘅源頭，照住做會再生返 legacy builds）。
 
+## 5.5 合併後嘅 production 實測（2026-08-28，`main` = `00d3d67`）
+
+Vercel commit status：`success | Deployment has completed`（region `iad1`，Node `v24.18.0`）。
+喺 production 直接擷取三個端點：
+
+```jsonc
+// GET https://roverbadge.vercel.app/api/health
+{"success":true,"runtime":{"node":"v24.18.0","vercel":true,"env":"production"},
+ "registry":{"source":"file:data/troops.json,troops.json","includeFilesWorking":true,
+             "fileTroopsFound":1,"staticTroopsFound":1,"cwd":"/var/task"},
+ "troops":[{"id":"0082","name":"第 82 旅 (樂行)","backendHost":"script.google.com","apikeyConfigured":true}]}
+
+// GET /api/troops → 200（以前係平台 HTML 404）
+{"troops":{"0082":{"name":"第 82 旅 (樂行)"}},"_note":"v3.0：backend/apikey 不再對前端公開…"}
+
+// GET /api/proxy?troopId=0082&action=load → 405 {"success":false,"error":"此 API 只接受 POST 請求"}
+```
+
+重點解讀（比「冇 404」更強嘅證據）：
+
+- `cwd:"/var/task"` + `includeFilesWorking:true` + `fileTroopsFound:1`
+  → **`vercel.json` 嘅 `functions.includeFiles` 喺 Vercel 真係有效**（网上有話佢會靜默失效，呢度實測係 work）；
+  同時 `staticTroopsFound:1` 證明 bundle 內保底都populate咗，兩條路徑任何一条斷咗都唔會再出現「找不到此旅團」
+- `backendHost` 只暴露 hostname、`apikeyConfigured:true` 布林 → **冇外洩 apikey／spreadsheetId**
+- `/api/proxy` 回 405 係**設計如此**：瀏覽器一律 POST 俾我哋呢層，`GET_ACTIONS`（`load`／`getLoginMode`）
+  只決定「我哋轉發畀 GAS 時用邊個 method」，因為 `Code.gs doGet` 只認呢兩個 action。
+  即：**前端 POST `load` → 後層用 GET 打上游**，兩邊先至夾到。
+- 合併本次修復**唔使重新部署 Apps Script**：本次 diff 冇新增／改名任何 action，
+  `api/proxy.js` 只刪咗 `export const config`（`git diff origin/main...HEAD -- api/proxy.js` 得 3 行）
+
+沙箱限制記錄（下次唔好撞）：呢個環境只有 `api.github.com` 等白名單可達，`*.vercel.app`／`script.google.com`
+既唔俾 raw egress（`curl` → `SSL_ERROR_SYSCALL`）、preview URL 又俾 Vercel Authentication 擋住。
+所以部署結論要用 GitHub API 攞：
+
+```bash
+gh api "repos/<owner>/<repo>/commits/<sha>/status" --jq '.statuses[]|{state,description}'
+gh api "repos/<owner>/<repo>/deployments?per_page=1" --jq '.[0].id'          # 再取 /statuses 攞 environment_url
+npx vercel inspect <dpl_xxx> --logs                                          # 有 Vercel token 先見到 log
+```
+
 ## 6. 其他支部 app 覆查（2026-08-28，同日稍後）
 
 `scoutbadge` 已由該 repo 嘅 agent 將 `vercel.json` 改成 `{"version": 2}` 零配置並重新部署，
