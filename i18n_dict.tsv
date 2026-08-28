@@ -858,3 +858,6 @@ YMIS 匯出教學	YMIS export guide
 ｜後端找不到此旅團，請檢查 troops.json 已否同步	| the backend cannot find this troop; please check that troops.json has been synced
 ⚠️ 後端 API 未部署（/api/* 無回應），登入一定失敗；請聯絡管理員喺 Vercel 重新部署	⚠️ Backend API is not deployed (/api/* does not respond), so sign-in will always fail. Please ask your section admin to redeploy on Vercel
 ⚠️ 後端未登記此旅團（troops.json 未同步），登入會失敗	⚠️ This troop is not registered in the backend (troops.json not synced); sign-in will fail
+⚠️ 雲端資料載入失敗，而家顯示嘅係本機快取	⚠️ Cloud data failed to load; the view below is your local cache
+⚠️ 雲端載入失敗，顯示緊上次快取（唔係你斷網）	⚠️ Cloud load failed; showing the last cached copy (your connection is not the problem)
+❌ 雲端載入失敗，本機亦冇快取可顯示	❌ Cloud load failed and there is no local cache to show

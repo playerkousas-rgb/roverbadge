@@ -1336,6 +1336,9 @@ const LANG_DICT={
   "此旅團未在系統登記，請聯絡管理員": "This Group is not registered in the system; please contact the admin",
   "無法取得旅團設定": "Failed to get Group settings",
   "⚠️ 離線模式：顯示快取資料": "⚠️ Offline mode: showing cached data",
+  "⚠️ 雲端資料載入失敗，而家顯示嘅係本機快取": "⚠️ Cloud data failed to load; the view below is your local cache",
+  "⚠️ 雲端載入失敗，顯示緊上次快取（唔係你斷網）": "⚠️ Cloud load failed; showing the last cached copy (your connection is not the problem)",
+  "❌ 雲端載入失敗，本機亦冇快取可顯示": "❌ Cloud load failed and there is no local cache to show",
   "沒有需要保存的變更": "No changes to save",
   "正在寫入雲端...": "Writing to cloud...",
   "準備寫入 ": "Preparing to write ",
@@ -2412,6 +2415,37 @@ function showToast(m,t=''){
   const e=document.getElementById('toast'); e.textContent=tr(m); e.className='toast show '+t; setTimeout(()=>e.className='toast',3500);
 }
 
+/* ---- 雲端載入失敗嘅「快取/離線」提示：必須講明係載入失敗、資料幾舊，唔好只講「離線模式」 ----
+   背景：舊寫法只有一個 3.5 秒 toast「⚠️ 離線模式：顯示快取資料」，用戶會誤會成自己斷網，
+   而真實原因可能係後端／部署問題（2026-08 兩次事故都係咁被_masked_咗）。
+   而家用持久橫幅講清楚：邊個來源、幾舊、原因、可一鍵重試。 */
+let __staleInfo=null;
+function setStaleBanner(savedAt,reason){
+  __staleInfo={savedAt:savedAt||0,reason:reason||''};
+  let el=document.getElementById('staleBanner');
+  if(!el){
+    el=document.createElement('div'); el.id='staleBanner';
+    el.setAttribute('style','position:sticky;top:0;z-index:9995;background:#FFF3CD;color:#6b5200;border-bottom:1px solid #ffe08a;padding:8px 12px;font-size:12.5px;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;text-align:center');
+    document.body.insertBefore(el,document.body.firstChild);
+  }
+  el.textContent='';
+  const txt=document.createElement('span');
+  let age='';
+  if(savedAt){
+    const mins=Math.max(0,Math.round((Date.now()-savedAt)/60000));
+    age=mins<1?'（1 分鐘內）':(mins<60?`（${mins} 分鐘前）`:`（${Math.round(mins/60)} 小時前）`);
+  } else { age='（本機未成功載入過）'; }
+  txt.textContent=tr('⚠️ 雲端資料載入失敗，而家顯示嘅係本機快取')+age+(reason?('：'+reason):'');
+  el.appendChild(txt);
+  const btn=document.createElement('button');
+  btn.className='btn btn-sm btn-outline'; btn.textContent=tr('🔄 重新載入');
+  btn.onclick=()=>{ clearStaleBanner(); try{ loadItemsAndProgress(); }catch(e){ console.error(e); } };
+  el.appendChild(btn);
+  return el;
+}
+function clearStaleBanner(){ __staleInfo=null; const el=document.getElementById('staleBanner'); if(el&&el.parentNode) el.parentNode.removeChild(el); }
+function isStaleView(){ return !!__staleInfo; }
+
 /* ================== Load Data ================== */
 async function loadAppConfig(){
   try{
@@ -2431,11 +2465,13 @@ async function loadItemsAndProgress(){
     await loadAppConfig();
     const r1=await fetch(itemsDataUrl()); itemsData=await r1.json();
     // backend load
-    let backendData=null;
+    let backendData=null, loadErr='';
     try{
       backendData=await apiRequest('load',{token:currentToken});
-    }catch(e){ console.warn('backend load fail',e); backendData={success:false}; }
+      if(!backendData.success) loadErr=backendData.error||'';
+    }catch(e){ console.warn('backend load fail',e); loadErr=(e&&e.message)||''; backendData={success:false}; }
     if(backendData.success){
+      clearStaleBanner();
       members=backendData.members||[];
       // compat: progress may be flat or rich
       if(backendData.flatProgress){ progressFlat=backendData.flatProgress; }
@@ -2469,10 +2505,19 @@ async function loadItemsAndProgress(){
       // cache
       localStorage.setItem(LS.cacheProgress(currentTroopId), JSON.stringify({flat:progressFlat, rich:progressRich, members, logs:logRecords, savedAt:Date.now()}));
     }else{
-      // fallback to cache
+      // fallback to cache：講明「係雲端載入失敗」+ 原因 + 幾舊，唔好再只講「離線模式」
       const cached=localStorage.getItem(LS.cacheProgress(currentTroopId));
-      if(cached){ const c=JSON.parse(cached); progressFlat=c.flat||{}; progressRich=c.rich||{}; members=c.members||[]; logRecords=c.logs||[]; showToast('⚠️ 離線模式：顯示快取資料','warning'); }
-      else{ progressFlat={}; members=[]; }
+      if(cached){
+        let c={}; try{ c=JSON.parse(cached)||{}; }catch(e2){ c={}; }
+        progressFlat=c.flat||{}; progressRich=c.rich||{}; members=c.members||[]; logRecords=c.logs||[];
+        setStaleBanner(c.savedAt||0, loadErr);
+        showToast('⚠️ 雲端載入失敗，顯示緊上次快取（唔係你斷網）','warning');
+      }
+      else{
+        progressFlat={}; progressRich={}; members=[];
+        setStaleBanner(0, loadErr);
+        showToast('❌ 雲端載入失敗，本機亦冇快取可顯示','error');
+      }
     }
     selectedProgressYmis=currentUser.ymis;
     renderProgressTab();

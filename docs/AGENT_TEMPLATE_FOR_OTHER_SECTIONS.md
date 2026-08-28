@@ -126,6 +126,10 @@
   **唔准回 `fullBackend`、`spreadsheetId`、`docs.google.com/spreadsheets/.../edit` 連結、
   唔准喺健康檢查入面實打 GAS 上游並把回應原樣 echo 出嚟**（會變成免認證嘅後端鏡像＋個資外洩）
 - 部署完成嘅定義：`curl /api/health` 有 JSON + `GET /api/proxy` 回 **405**（回 404 即 function 冇建好）
+- **`vercel.json` 只准官方欄位**：官方 schema 根節點係 `additionalProperties:false`，多一個自訂 key
+  （例如 `_comment`／`_note`）就係整次 build `Error`；註解放 docs，唔好放 config
+- Function 設定（`maxDuration`／`includeFiles`）**只喺 `vercel.json` 寫一次**，
+  唔好同時喺 `api/*.js` 用 `export const config`（兩邊會互相覆蓋）
 
 ### COPYRIGHT
 - Footer：`COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 v4.8`
@@ -209,7 +213,7 @@
 - [ ] COPYRIGHT 2026 Scout System footer
 - [ ] 單一 Code.gs，扁平ZIP，17-21文件，無舊文件
 - [ ] MOCK 10成員 + CSV，系統管理員 測試工具
-- [ ] `vercel.json` **冇** `builds` / `routes` / `version`；有 `functions["api/*.js"].includeFiles`
+- [ ] `vercel.json` **冇** `builds` / `routes` / `version`，亦**冇任何自訂欄位**（`_comment` 之類）；有 `functions["api/*.js"].includeFiles`
 - [ ] Registry 有 bundle 內保底來源（`_troops_static.js` 之類），並已 `npm run build` 後 commit
 - [ ] `troops.json` 保留 0082 後備
 - [ ] 有 `tests/serverless-registry.test.mjs` 同等測試：喺**冇 `data/` 目錄**嘅空目錄（模擬 `/var/task`）

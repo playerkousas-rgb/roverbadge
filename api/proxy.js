@@ -14,7 +14,8 @@
 
 import { getTrustedTroop, isTrustedExecUrl } from './_registry.js';
 
-export const config = { maxDuration: 60 };
+// maxDuration／includeFiles 等 Function 設定一律由 vercel.json 的 functions["api/*.js"] 管理，
+// 這裡刻意唔再用 `export const config`，免得兩邊衝突（見 docs/VERCEL_API_404_POSTMORTEM.md 第 5 節）。
 
 // ---- 可調參數（皆可由 Vercel env 覆寫）----
 const UPSTREAM_TIMEOUT_MS = (() => {

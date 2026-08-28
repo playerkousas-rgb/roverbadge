@@ -259,6 +259,33 @@ console.log('\n【8】index.html 的 apiDiagnose()：區分「function 未部署
   check('舊版冇 /api/health 時唔會誤判「API 未部署」', c.deployed === true && c.troopsOk === true, JSON.stringify(c));
 }
 
+// ---- 9. doGet/doPost 路由（scoutbadge 2026-08 的「登入成功但一入面就離線模式」bug 類別）----
+console.log('\n【9】method 路由必須同 Code.gs 一致：doGet 只認 load / getLoginMode');
+{
+  const gm = await proxy('getLoginMode', {});
+  check('getLoginMode 通過 proxy 成功（GET → doGet）', gm.json && gm.json.success === true, gm.text.slice(0, 120));
+
+  const recv = mock.state.received || [];
+  check('load 用 GET 打去 GAS（用 POST 會上 doPost → Unknown action → 「離線模式」）',
+    recv.some(r => r.action === 'load' && r.method === 'GET'), JSON.stringify(recv.slice(-6)));
+  check('load 從未用 POST 打去 GAS', !recv.some(r => r.action === 'load' && r.method === 'POST'), '');
+  check('getLoginMode 用 GET', recv.some(r => r.action === 'getLoginMode' && r.method === 'GET'), '');
+  check('login / save 用 POST（doPost 先有呢兩條分支）',
+    recv.some(r => r.action === 'login' && r.method === 'POST') && recv.some(r => r.action === 'save' && r.method === 'POST'),
+    JSON.stringify(recv.slice(-6)));
+  check('mock 有記錄 received（無則上面啲斷言會空轉）', recv.length > 0, String(recv.length));
+
+  // 對照組：證明 mock 真係模擬咗 doGet/doPost 嘅分工（否則上面嘅綠燈冇意義）
+  const badPost = await fetch(mock.url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'load' }) });
+  const badJson = await badPost.json().catch(() => null);
+  check('對照組：直接 POST load 俾 GAS → Unknown action（mock 有 enforce 方法分工）',
+    badJson && badJson.success === false && /Unknown action/.test(badJson.error || ''), JSON.stringify(badJson));
+  // GET load 要帶 apikey（mock 同一樣嘢）；正式環境由 proxy 喺伺服器端注入，前端永遠唔使帶
+  const goodGet = await fetch(`${mock.url}?action=load&apikey=KEY_LAMBDA`);
+  const goodJson = await goodGet.json().catch(() => null);
+  check('對照組：GET load（帶 apikey）俾 GAS → 成功', goodJson && goodJson.success === true, JSON.stringify(goodJson || {}).slice(0, 120));
+}
+
 // ---- 收尾 ----
 console.log('\n========================================');
 console.log(`結果：${passed} 通過, ${failed} 失敗`);

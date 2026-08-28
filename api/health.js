@@ -12,7 +12,7 @@
 
 import { getRegistryDiagnostics, listTroopHealth } from './_registry.js';
 
-export const config = { maxDuration: 10 };
+// Function 設定（maxDuration / includeFiles）統一喺 vercel.json 管理
 
 function send(res, status, obj) {
   res.setHeader('Cache-Control', 'no-store');

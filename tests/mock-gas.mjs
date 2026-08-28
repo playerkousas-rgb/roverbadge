@@ -21,7 +21,9 @@ export function startMockGas({ port, name, users, apikey = '' }) {
     mode: 'normal',               // normal | html-error | http500 | slow
     slowMs: 0,
     lastExecPath: '',             // 觀測上游實際被打的 URL（SSRF 測試用）
-    execCount: 0
+    execCount: 0,
+    received: []                  // 每次 /exec 的 {method, action}，用黎驗證 GET/POST 路由啱唔啱
+
   };
   for (const u of users) state.users[u.ymis] = { status: 'active', email: '', ...u };
 
@@ -34,6 +36,11 @@ export function startMockGas({ port, name, users, apikey = '' }) {
   const isSuperAdminId = (y) => String(y || '').trim().toLowerCase() === superAdminUser();
   // Users 表殘留列一律不顯示（角色為 super_admin，或 YMIS 與超管帳號相同）
   const isHiddenRow = (u) => u.role === 'super_admin' || isSuperAdminId(u.ymis);
+
+  // 真實 Code.gs 嘅分工：doGet 只認 load / getLoginMode，其餘 action 只存在於 doPost。
+  // 呢度必須照做 —— 否則「proxy 誤用 POST 打 load」呢類 bug 喺測試入面永遠唔會浮現
+  // （scoutbadge 2026-08 就係咁：登入 OK、load 變 Unknown action、前端顯示「離線模式」）。
+  const GET_ONLY_ACTIONS = new Set(['load', 'getLoginMode']);
 
   function routeAction(action, body) {
     const validKey = state.apikey && body.apikey === state.apikey;
@@ -286,6 +293,8 @@ export function startMockGas({ port, name, users, apikey = '' }) {
     if (u.pathname === '/exec' || u.pathname === '/exec/') {
       state.execCount++;
       state.lastExecPath = req.url;
+      const _actHint = req.method === 'GET' ? (u.searchParams.get('action') || '') : '';
+      if (state.received.length < 500) state.received.push({ method: req.method, action: _actHint, pending: true });
       let bodyStr = '';
       req.on('data', c => bodyStr += c);
       req.on('end', () => {
@@ -310,6 +319,19 @@ export function startMockGas({ port, name, users, apikey = '' }) {
       if (!payload) return sendJson({ success: false, error: 'invalid redirect session' }, 400);
       pendingRedirects.delete(rid);
       const action = payload.body.action || '';
+      for (let i = state.received.length - 1; i >= 0; i--) {
+        if (state.received[i].pending && state.received[i].method === payload.method) {
+          state.received[i].action = action || state.received[i].action;
+          delete state.received[i].pending;
+          break;
+        }
+      }
+      // 方法不對 → 照真實 GAS 一樣回 Unknown action
+      if (action) {
+        const wantsGet = GET_ONLY_ACTIONS.has(action);
+        if (wantsGet && payload.method !== 'GET') return sendJson({ success: false, error: 'Unknown action' });
+        if (!wantsGet && payload.method === 'GET') return sendJson({ success: false, error: 'Unknown action' });
+      }
       const ans = routeAction(action, payload.body);
       return sendJson(ans);
     }

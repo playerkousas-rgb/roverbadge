@@ -28,7 +28,7 @@ curl -s -o /dev/null -w '%{http_code} %{content_type}\n' https://<app>.vercel.ap
 # 而家：404 text/html  ← 即係 function 冇被建立
 ```
 
-## 2. 三條根因（缺一都未 fix 完）
+## 2. 四條根因（缺一都未 fix 完）
 
 ### 根因 A — `vercel.json` 用咗被淘汰嘅 legacy `builds` + `routes`
 
@@ -65,6 +65,25 @@ function 一個都冇。呢個就係 404 嘅直接原因。
 現新增 `tests/serverless-registry.test.mjs` + `tests/proxy-login.test.mjs`：專門喺
 「冇 `data/` 目錄嘅空 `/var/task`」度跑真正嘅 `api/*.js`。
 
+### 根因 D（我哋自己 introduce 嘅回帰，2026-08-28 稍後）— `vercel.json` 加咗自訂欄位 `_comment`
+
+為咺將「唔准用 builds」寫喺 config 旁邊，我喺 `vercel.json` 加咗一個 `_comment` 数组。Vercel 官方
+schema（`https://openapi.vercel.sh/vercel.json`）根節點係：
+
+```json
+{ "type": "object", "additionalProperties": false, "properties": { ... } }
+```
+
+即 **任何未知頂層欄位都會令整次 build 失敗**（Preview 顯示 `Error`，function 一個都冇 —— 後果同
+`/api/*` 404 一樣，但更加早、更加明顯）。教訓：
+
+- `vercel.json` **只准寫官方欄位**，註解放 `.md` 或測試檔（JSON 冇註解，自訂 key 就係炸彈）
+- 需要「寫低點理由」就放 `docs/`，需要「睇住唔好改返」就寫成測試：
+  `tests/vercel-config.test.mjs` 會用官方 allow-list 驗證頂層／`functions`／`headers` 欄位，
+  多一個未知 key 即刻 fail（已用 `_comment` 做過負面測試確認會抓到）
+- 同一理由刪走 `api/proxy.js`／`api/health.js` 嘅 `export const config = { maxDuration }`：
+  **Function 設定只可以有一個來源**（vercel.json），兩邊重複將來會互相覆蓋
+
 ## 3. 本次修正
 
 | 檔案 | 改動 |
@@ -78,6 +97,35 @@ function 一個都冇。呢個就係 404 嘅直接原因。
 | `index.html` | `apiRequest()` 回應非 JSON 時自動查 `/api/health` → 提示「後端 API 未部署」；`selectTroop()` 喺登入頁预先顯示部署診斷；兩個新字串已入 `i18n_dict.tsv` + `LANG_DICT` |
 | `tests/serverless-registry.test.mjs`、`tests/proxy-login.test.mjs` | 新增（33 + 29 項斷言） |
 | `.gitignore` | 加 `.vercel/`、`.tmp-lambda/` |
+
+## 3.5 同類問題覆查：`load` 嘅 GET/POST 路由（scoutbadge 出現「離線模式」嗰個）
+
+scoutbadge 嗰邊第二擊：登入成功，但一入主畫面就彈「⚠️ 離線模式：顯示快取資料」。佢哋嘅成因係
+**前端一律 POST → `/api/proxy` → GAS `doPost`，但 `load` 只寫喺 `doGet`** → 後端回
+`Unknown action` → 前端 fall back 去 localStorage 快取。
+
+**roverbadge 無呢個問題**（已逐層核對）：
+
+| 層 | 事實 |
+| --- | --- |
+| `apps-script/Code.gs` | `doGet` 只處理 `load` + `getLoginMode`；其餘 action 全喺 `doPost`，末尾 `return jsonResponse({success:false,error:'Unknown action'})` |
+| `api/proxy.js` | `const GET_ACTIONS = new Set(['load','getLoginMode'])` → 呢兩個 action **由 proxy 轉成 GET** 打去 GAS，其餘用 POST。前端永遠只 POST 俾 proxy，唔使知道分工 |
+| 前端 `index.html` | `apiRequest('load',{token})` → proxy → GAS `doGet` ✓ |
+
+但測試原先**抓唔到呢類 bug**：`tests/mock-gas.mjs` 得 `routeAction(action)`，GET/POST 都照做，
+所以就算有人把 `load` 由 `GET_ACTIONS` 移除，100 項 e2e 都會全綠。已修：
+
+- mock 加入 `GET_ONLY_ACTIONS`（`load`/`getLoginMode`）**照 Code.gs 一樣 enforce HTTP 方法**，
+  方法唔啱就回 `Unknown action`；又加咗 `state.received[]`（每次 `/exec` 的 method+action）
+- `tests/proxy-login.test.mjs`【9】斷言：`load`/`getLoginMode` 必須係 GET、`login`/`save` 必須係 POST，
+  並附兩個「對照組」（直接 POST `load` 俾 GAS 一定 `Unknown action`），證明個守門唔係空轉
+- 已做負面測試：把 `load` 由 `GET_ACTIONS` 移除 → 5 項即刻 fail（含 `Unknown action` 原文），還原後全綠
+
+**順手修咗「離線模式」本身嘅誤導性**（呢個 message 喺兩個 app 都讲錯自己）：
+載入失敗而家會話明「係雲端載入失敗、唔係你斷網」、顯示快取幾舊（1 分鐘前／N 小時前／未載入過）、
+附上後端回嘅原因，並提供「🔄 重新載入」按鈕（`setStaleBanner()`，成功載入後自動清除）。
+重要：原因只用 `textContent` 放入橫幅，唔经 `innerHTML`（後端字串唔可以變 HTML）。
+判讀口訣：**登入成功 + 一入面就「離線模式」→ 唔係網絡，係 action 嘅 HTTP 方法／後端版本唔匹配。**
 
 ## 4. 部署後點驗證（1 分鐘）
 
