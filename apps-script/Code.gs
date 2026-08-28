@@ -1,10 +1,15 @@
 // ============================================================
-// 樂行童軍進度追蹤系統 - Apps Script 後端 v8.1 - 全功能版 (樂行童軍支部 Rover Scout)
+// 樂行童軍進度追蹤系統 - Apps Script 後端 v8.2 - 全功能版 (樂行童軍支部 Rover Scout)
 // 完全兼容舊版 + 新增待批申請、批量寫入優化、日誌
 // v8.1 新增：活動履歷（服務紀錄／活動紀錄／訓練班紀錄）
 //   - 新工作表「活動履歷」（執行 initializeSheets() 自動補建，不影響既有資料）
 //   - 新 action：getLogRecords / saveLogRecord（支援批量 records[]）/ deleteLogRecord
 //   - handleLoad 回應新增 logs + logsSupported
+// v8.2 新增：活動履歷「成員自行申報 → 領袖審批」
+//   - 新工作表「待批履歷」（執行 initializeSheets() 自動補建，不影響既有資料）
+//   - 新 action：getPendingLogRequests / submitLogRequest / reviewLogRequest
+//   - 成員可申報自己的活動履歷（新申報或申請修改已批紀錄），領袖批准後寫入「活動履歷」
+//   - 修改類批准後更新原有紀錄（record_id 不變）；其他（進度/其他獎章）批准後成員不能自行修改
 // ============================================================
 
 const ADMIN_YMIS = '1111111111';
@@ -16,6 +21,13 @@ const ADMIN_PASS = 'changeme';
 const LOG_SHEET_NAME = '活動履歷';
 const LOG_HEADERS = ['record_id','type','ymis','name','date','title','role','hours','cert_no','detail','recorder','recorded_at','updated_at'];
 const LOG_TYPES = ['service','activity','training'];
+
+// v8.2：活動履歷 - 成員自行申報 → 領袖審批
+//  - 新工作表「待批履歷」（執行 initializeSheets() 自動補建，不影響既有資料）
+//  - 新 action：getPendingLogRequests / submitLogRequest / reviewLogRequest
+//  - 成員可申報自己的活動履歷；批准後寫入「活動履歷」；批准後成員仍可申請修改（重新待批）
+const LOG_PENDING_SHEET_NAME = '待批履歷';
+const LOG_PENDING_HEADERS = ['request_id','record_id','type','ymis','name','date','title','role','hours','cert_no','detail','status','requested_at','submitted_by','reviewed_by','reviewed_at','review_note','submission_type'];
 function safeSheetText(v,maxLen){
   let text=String(v||'').trim().substring(0,maxLen||200);
   if(/^['=+\-@\t\r]/.test(text)) text="'"+text;
@@ -161,6 +173,14 @@ function initializeSheets() {
     lSheet.appendRow(LOG_HEADERS);
     lSheet.getRange(1,1,1,LOG_HEADERS.length).setFontWeight('bold').setBackground('#8B0000').setFontColor('#FFFFFF');
     lSheet.setFrozenRows(1);
+  }
+  // v8.2：待批履歷（成員申報 → 領袖審批）
+  let lpSheet = ss.getSheetByName(LOG_PENDING_SHEET_NAME);
+  if(!lpSheet){
+    lpSheet = ss.insertSheet(LOG_PENDING_SHEET_NAME);
+    lpSheet.appendRow(LOG_PENDING_HEADERS);
+    lpSheet.getRange(1,1,1,LOG_PENDING_HEADERS.length).setFontWeight('bold').setBackground('#8B0000').setFontColor('#FFFFFF');
+    lpSheet.setFrozenRows(1);
   }
   // 確保系統設定有 allow_member_view_others
   let cfgSheet = ss.getSheetByName('SystemConfig');
@@ -349,6 +369,13 @@ function doPost(e){
     if(action==='deleteLogRecord'){
       if(!canUserTick(user.role) || user.can_tick!==true) return jsonResponse({success:false,error:'權限不足，需已獲勾選權限的領袖'});
       return handleDeleteLogRecord(body.record_id, ymis);
+    }
+    // v8.2：活動履歷 - 成員自行申報 → 領袖審批。任何登入成員可申報／查看自己的申請；審批需領袖。
+    if(action==='getPendingLogRequests') return handleGetPendingLogRequests(user);
+    if(action==='submitLogRequest') return handleSubmitLogRequest(body, ymis, user);
+    if(action==='reviewLogRequest'){
+      if(!canUserTick(user.role)) return jsonResponse({success:false,error:'權限不足，需領袖權限'});
+      return handleReviewLogRequest(body.request_id, body.decision, ymis, body.review_note);
     }
 
     // 以下為高權限
@@ -810,4 +837,140 @@ function handleDeleteLogRecord(recordId, recorderYmis){
     }
   }
   return jsonResponse({success:false,error:'找不到紀錄'});
+}
+
+// ===== v8.2：活動履歷 - 成員自行申報 → 領袖審批 =====
+function getPendingLogRequestsList(viewYmis, isLeader){
+  const sheet=getSheet().getSheetByName(LOG_PENDING_SHEET_NAME); const list=[];
+  if(!sheet) return list;
+  const data=sheet.getDataRange().getValues();
+  for(let i=1;i<data.length;i++){
+    if(!data[i][0]) continue;
+    if(!isLeader && String(data[i][3])!==String(viewYmis)) continue; // 成員只看到自己的申請
+    list.push({
+      request_id:String(data[i][0]),
+      record_id:String(data[i][1]||''),
+      type:String(data[i][2]||'activity'),
+      ymis:String(data[i][3]||''),
+      name:String(data[i][4]||''),
+      date:data[i][5]?formatDate(data[i][5]):'',
+      title:String(data[i][6]||''),
+      role:String(data[i][7]||''),
+      hours:String(data[i][8]||''),
+      cert_no:String(data[i][9]||''),
+      detail:String(data[i][10]||''),
+      status:String(data[i][11]||'pending'),
+      requested_at:data[i][12]?String(data[i][12]):'',
+      submitted_by:String(data[i][13]||''),
+      reviewed_by:String(data[i][14]||''),
+      reviewed_at:data[i][15]?String(data[i][15]):'',
+      review_note:String(data[i][16]||''),
+      submission_type:String(data[i][17]||'new')
+    });
+  }
+  return list;
+}
+function handleGetPendingLogRequests(user){
+  if(!getSheet().getSheetByName(LOG_PENDING_SHEET_NAME)) return jsonResponse({success:false,error:'「'+LOG_PENDING_SHEET_NAME+'」工作表不存在：請在 Apps Script 執行 initializeSheets() 補建'});
+  const isLeader=canUserTick(user.role);
+  return jsonResponse({success:true,requests:getPendingLogRequestsList(user.ymis, isLeader),canApprove:isLeader});
+}
+function handleSubmitLogRequest(body, requesterYmis, user){
+  const sheet=getSheet().getSheetByName(LOG_PENDING_SHEET_NAME);
+  if(!sheet) return jsonResponse({success:false,error:'「'+LOG_PENDING_SHEET_NAME+'」工作表不存在：請在 Apps Script 執行 initializeSheets() 補建'});
+  let rows=[];
+  if(body.record_id){
+    // 修改既有（已批）紀錄：重新待批
+    const lSheet=getSheet().getSheetByName(LOG_SHEET_NAME);
+    if(!lSheet) return jsonResponse({success:false,error:'「'+LOG_SHEET_NAME+'」工作表不存在'});
+    let found=false, origYmis='';
+    const ld=lSheet.getDataRange().getValues();
+    for(let i=1;i<ld.length;i++){ if(String(ld[i][0])===String(body.record_id)){ found=true; origYmis=String(ld[i][2]||''); break; } }
+    if(!found) return jsonResponse({success:false,error:'找不到原有紀錄'});
+    if(String(origYmis)!==String(requesterYmis)) return jsonResponse({success:false,error:'只能申請修改自己的紀錄'});
+    // 防止重複待批修改
+    const pd=sheet.getDataRange().getValues();
+    for(let i=1;i<pd.length;i++){ if(String(pd[i][1])===String(body.record_id) && String(pd[i][11])==='pending') return jsonResponse({success:false,error:'此紀錄已有待批的修改申請'});
+    }
+    const d=body.data||{};
+    const rec=sanitizeLogRecord({...d, ymis:origYmis});
+    rows.push({record_id:String(body.record_id),type:rec.type,ymis:rec.ymis,name:user.name||'',date:rec.date,title:rec.title,role:rec.role,hours:rec.hours,cert_no:rec.cert_no,detail:rec.detail,submission_type:'edit'});
+  }else{
+    // 新增申報
+    const records=Array.isArray(body.records)?body.records:[];
+    if(records.length===0) return jsonResponse({success:false,error:'沒有可申報的紀錄'});
+    if(records.length>20) return jsonResponse({success:false,error:'一次最多 20 筆，請分批'});
+    records.forEach(function(r){
+      const rec=sanitizeLogRecord(r);
+      rows.push({record_id:'',type:rec.type,ymis:rec.ymis,name:user.name||'',date:rec.date,title:rec.title,role:rec.role,hours:rec.hours,cert_no:rec.cert_no,detail:rec.detail,submission_type:'new'});
+    });
+  }
+  // 驗證只能申報自己的紀錄
+  const selfCheck=rows.filter(function(r){ return String(r.ymis)!==String(requesterYmis); });
+  if(selfCheck.length>0) return jsonResponse({success:false,error:'只能申報自己的活動履歷'});
+  const validCheck=rows.filter(function(r){ return !r.ymis||!r.title||!r.date; });
+  if(validCheck.length>0) return jsonResponse({success:false,error:'YMIS、名稱及日期必填'});
+  const results=[]; let processed=0;
+  rows.forEach(function(r){
+    const rid='LOGRQ_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);
+    sheet.appendRow([rid,r.record_id,r.type,r.ymis,r.name,r.date,r.title,r.role,r.hours,r.cert_no,r.detail,'pending',now(),requesterYmis,'','','',r.submission_type]);
+    results.push({success:true,request_id:rid}); processed++;
+    writeAudit(requesterYmis,'submit_log_request',r.ymis,(r.submission_type==='edit'?'修改':'申報')+': '+r.type+' '+r.title+' '+r.date);
+  });
+  return jsonResponse({success:true,processed:processed,results:results,message:processed+' 筆已送交審批'});
+}
+function handleReviewLogRequest(reqId, decision, reviewer, note){
+  const sheet=getSheet().getSheetByName(LOG_PENDING_SHEET_NAME);
+  if(!sheet) return jsonResponse({success:false,error:'「'+LOG_PENDING_SHEET_NAME+'」工作表不存在：請在 Apps Script 執行 initializeSheets() 補建'});
+  const data=sheet.getDataRange().getValues(); let row=null, rowIndex=null;
+  for(let i=1;i<data.length;i++){ if(String(data[i][0])===String(reqId)){ row=data[i]; rowIndex=i+1; break; } }
+  if(!row) return jsonResponse({success:false,error:'找不到申請'});
+  if(String(row[11])!=='pending') return jsonResponse({success:false,error:'此申請已處理'});
+  if(decision!=='approved' && decision!=='rejected') return jsonResponse({success:false,error:'無效決策'});
+  // 更新狀態
+  sheet.getRange(rowIndex,12).setValue(decision);
+  sheet.getRange(rowIndex,15).setValue(reviewer);
+  sheet.getRange(rowIndex,16).setValue(now());
+  sheet.getRange(rowIndex,17).setValue(note||'');
+  if(decision==='rejected'){
+    writeAudit(reviewer,'review_log_request',row[3]||'','拒絕: '+row[6]+' '+row[5]);
+    return jsonResponse({success:true,message:'已拒絕申請'});
+  }
+  // approved：寫入 活動履歷
+  const lSheet=getSheet().getSheetByName(LOG_SHEET_NAME);
+  if(!lSheet) return jsonResponse({success:false,error:'「'+LOG_SHEET_NAME+'」工作表不存在'});
+  const rec={
+    type:String(row[2]||'activity'),
+    ymis:String(row[3]||''),
+    name:String(row[4]||''),
+    date:String(row[5]||''),
+    title:String(row[6]||''),
+    role:String(row[7]||''),
+    hours:String(row[8]||''),
+    cert_no:String(row[9]||''),
+    detail:String(row[10]||'')
+  };
+  const submissionType=String(row[17]||'new');
+  const submittedBy=String(row[13]||reviewer);
+  let newRecordId='';
+  if(submissionType==='edit' && String(row[1]||'')){
+    // 更新原有紀錄（record_id 不變）
+    const oldId=String(row[1]);
+    const ld=lSheet.getDataRange().getValues();
+    let updated=false;
+    for(let i=1;i<ld.length;i++){
+      if(String(ld[i][0])===oldId){
+        lSheet.getRange(i+1,2,1,12).setValues([[rec.type,rec.ymis,rec.name,rec.date,rec.title,rec.role,rec.hours,rec.cert_no,rec.detail,submittedBy,String(ld[i][11]||''),now()]]);
+        updated=true; newRecordId=oldId; break;
+      }
+    }
+    if(!updated) return jsonResponse({success:false,error:'原有紀錄不存在，請先聯絡領袖處理'});
+  }else{
+    newRecordId='LOG_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);
+    lSheet.appendRow([newRecordId,rec.type,rec.ymis,rec.name,rec.date,rec.title,rec.role,rec.hours,rec.cert_no,rec.detail,submittedBy,now(),'']);
+  }
+  // 將 record_id 回填到待批表
+  sheet.getRange(rowIndex,2).setValue(newRecordId);
+  writeAudit(reviewer,'approve_log_request',rec.ymis,rec.type+': '+rec.title+' '+rec.date+' -> '+newRecordId);
+  return jsonResponse({success:true,message:'已批准並寫入活動履歷',record_id:newRecordId});
 }

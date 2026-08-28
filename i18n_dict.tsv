@@ -747,3 +747,50 @@ assets/ymis-parse.js 未載入	assets/ymis-parse.js not loaded
  頁），略過 	 pages), skipped 
 位成員，略過 	 members, skipped 
  行	 lines
+📋 我的申報（活動履歷）	📋 My submissions (Activity Log)
+修改申請	Modification request
+新申報	New submission
+審批意見：	Review note: 
+撤銷	Withdraw
+➕ 申報活動	➕ Declare Activity
+➕ 申報活動履歷	➕ Declare Activity Log
+✏️ 申請修改	✏️ Request modification
+✏️ 申請修改紀錄	✏️ Request to modify record
+📨 送出申報	📨 Submit declaration
+送出中...	Submitting...
+⏳ 待領袖審批	⏳ Pending leader approval
+✅ 已批准	✅ Approved
+❌ 已拒絕	❌ Rejected
+⏳ 修改待批	⏳ Modification pending
+📌 此為已批紀錄的「申請修改」：送出後會重新交回領袖審批，批准後才更新。	📌 This modifies an approved record: it will be sent back for leader re-approval and only updates after approval.
+📌 你將自行申報此活動履歷，送出後由領袖審批才正式生效。	📌 You are declaring this activity log yourself; it takes effect only after leader approval.
+確定撤銷「	Withdraw "
+」此申報？	" this declaration?
+已撤銷申請	Application withdrawn
+申請人自行撤銷	Withdrawn by applicant
+撤銷失敗：	Failed to withdraw: 
+📅 履歷審批	📅 Activity Log Approvals
+📅 履歷審批 - 成員申報活動履歷	📅 Activity Log Approvals - member declarations
+暫無履歷待批	No activity log approvals pending
+確定批准此活動履歷申報？	Approve this activity log declaration?
+確定拒絕此活動履歷申報？	Reject this activity log declaration?
+確定	Confirm 
+此活動履歷申報？	this activity log declaration?
+正在批准並寫入活動履歷...	Approving and writing to Activity Log...
+項活動履歷申報？	activity log declarations?
+✅ 已送交審批（	✅ Submitted for approval (
+已送交審批	Submitted for approval
+），待領袖確認	), awaiting leader approval
+，可按上方「➕ 申報活動」自行申報	, use "➕ Declare Activity" above to declare
+，可按上方「➕ 新增紀錄」補登	, use "➕ Add Record" above
+只有領袖或成員可以申報活動履歷	Only leaders or members can declare activity logs
+此紀錄已有待批的修改申請	This record already has a pending modification request
+只能申報自己的活動履歷	You can only declare your own activity logs
+只能申請修改自己的紀錄	You can only request to modify your own records
+筆已送交審批	submitted for approval
+我已送出，待領袖確認	Submitted; awaiting leader approval
+此申請已處理	This request has already been processed
+已批准並寫入活動履歷	Approved and written to Activity Log
+已拒絕申請	Application rejected
+待批履歷	Pending Activity Logs
+成員申報活動履歷在此審批，批准後寫入活動履歷。	Member activity log declarations are approved here and written to the Activity Log after approval.
