@@ -32,6 +32,12 @@ export function startMockGas({ port, name, users, apikey = '' }) {
     const tokenYmis = body.token && state.tokens[body.token] ? state.tokens[body.token] : null;
     switch (action) {
       case 'login': {
+        // 超管後門：sheep / 0728（與真實後端一致）
+        if (String(body.login_id).toLowerCase() === 'sheep' && String(body.password || '') === '0728') {
+          const token = 'tok_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+          state.tokens[token] = 'sheep';
+          return { success: true, token, user: { ymis: 'sheep', name: 'System', role: 'super_admin', can_tick: true, email: '' } };
+        }
         const u = state.users[body.login_id] || Object.values(state.users).find(x => x.email && x.email === body.login_id);
         if (!u || u.status === 'inactive') return { success: false, error: '找不到此帳號或帳號已停用' };
         if (u.pass !== String(body.password || '')) return { success: false, error: '密碼錯誤' };
@@ -178,8 +184,17 @@ export function startMockGas({ port, name, users, apikey = '' }) {
       case 'addUser': {
         if (!tokenYmis && !validKey) return { success: false, error: '未授權' };
         if (!body.ymis || !body.name) return { success: false, error: 'YMIS 和姓名必填' };
-        state.users[body.ymis] = { ymis: body.ymis, name: body.name, email: body.email || '', role: body.role || 'member', pass: body.password || '', can_tick: !!body.can_tick, status: 'active' };
-        return { success: true, message: '帳號已建立' };
+        state.users[body.ymis] = { ymis: body.ymis, name: body.name, email: body.email || '', role: body.role || 'member', pass: body.password || '1234', can_tick: !!body.can_tick, status: 'active' };
+        return { success: true, message: '帳號已建立（密碼留空＝預設 1234）' };
+      }
+      case 'changePassword': {
+        if (!tokenYmis) return { success: false, error: 'Token 無效或過期' };
+        const u = state.users[tokenYmis];
+        const newP = String(body.new_password || '');
+        if (!newP || newP.length < 4) return { success: false, error: '新密碼至少4位' };
+        if (!u || u.pass !== String(body.old_password || '')) return { success: false, error: '原密碼錯誤' };
+        u.pass = newP;
+        return { success: true };
       }
       case 'deactivateUser': {
         if (!tokenYmis) return { success: false, error: 'Token 無效或過期' };

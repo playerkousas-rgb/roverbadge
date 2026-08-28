@@ -74,7 +74,7 @@ scoutsystem-2.0 主系統平台	scoutsystem-2.0 main system platform
 有主系統不等於一定要接，可自由選擇獨立用。若旅團重私隱，成員預設只看自己；若想互相鼓勵，團長可在用戶管理→系統設定開啟「允許成員互相查看進度」	Having a main system does not mean you must connect. For privacy-focused Groups, members see only themselves by default; for mutual encouragement, the Group Scout Leader can enable "Allow members to view each other's progress" in User Management → System Settings
 💡 提示：若您的旅團不在列表，請到「新旅團部署」查看10分鐘自助部署教學。	💡 Tip: if your Group is not in the list, see the 10-minute self-deployment guide in "New Group Deployment".
 首頁點擊旅團卡片（例如 0082 第82旅）	Click the Group card on the home page (e.g. 0082, 82nd Group)
-成員：YMIS 10位數字 + 密碼；領袖：Email + 密碼。首次登入預設密碼請洽管理員。	Member: YMIS (10 digits) + password; Leader: Email + password. For the default first-login password, contact the admin.
+成員：YMIS 10位數字 + 密碼；領袖：Email + 密碼。首次登入預設密碼：1234（登入後可更改）。	Member: YMIS (10 digits) + password; Leader: Email + password. Default first-login password: 1234 (change it after login).
 成員不可直接勾選，點擊「📝 申請完成」→選擇日期→填寫證據→提交。領袖會在「待批」頁看到。	Members cannot tick directly: click "📝 Request" → choose the date → fill in evidence → submit. Leaders see it in the Pending page.
 領袖可直接勾選，系統自動填今日日期，亦可手動改日期。所有勾選先存瀏覽器，底部顯示未保存數量，按「確認寫入」才批量寫入雲端，寫入時有進度提示。	Leaders can tick directly; today's date is auto-filled and can be changed. All ticks are staged in the browser first — the unsaved count is shown at the bottom — and are written to the cloud in batch when you press "Confirm write", with progress feedback.
 按「👀 試用 MOCK 效果」可免登入、免選旅團，直接用瀏覽器看 10個MOCK成員的進度、全團總覽、批量剔選、表格列印等效果，方便其他旅團了解系統。	Press "👀 Try the MOCK demo" to see, without logging in or selecting a Group, the progress of 10 MOCK members, Group overview, batch ticking, print forms etc. — a convenient way for other Groups to understand the system.
@@ -133,7 +133,7 @@ YMIS 提供的密碼	YMIS export password
 電郵（填了才可登入 Email 模式）	Email (needed only for Email login mode)
 角色：member / exec_committee / branch_leader / group_leader / admin	Role: member / exec_committee / branch_leader / group_leader / admin
 true / false 是否可勾選	true / false - can tick
-留空＝只加成員（無登入）；有填＝建立可登入帳號	Empty = add member only (no login); filled = create a login-enabled account
+留空＝預設密碼 1234；有填＝用自訂密碼	Empty = default password 1234; filled = custom password
 備註（聯絡方式/特殊需要等）	Notes (contact method / special needs etc.)
 ⬇️ 下載成員範本 CSV	⬇️ Download Member Template CSV
 📤 上傳填好的 CSV	📤 Upload the filled CSV
@@ -423,7 +423,7 @@ USER 總數	Total USERs
 成員姓名	Member name
 備註（可留空）	Notes (optional)
 聯絡電郵（可留空）	Contact email (optional)
-密碼（留空＝只加成員，無登入）	Password (leave empty = member only, no login)
+密碼（留空＝預設密碼 1234）	Password (leave empty = default password 1234)
 是否可勾選進度？	Can this user tick progress?
 備註（留空代表未填）	Notes (blank = not filled)
 建立失敗：	Create failed: 
@@ -697,7 +697,7 @@ PDF 密碼（如有）	PDF password (if any)
 🔍 解析貼上的文字	🔍 Parse pasted text
 🔒 PDF 解密在瀏覽器內以 pdf.js 完成，檔案與密碼都不會上傳伺服器。	🔒 PDF decryption happens in your browser with pdf.js; the file and password are never uploaded.
 方法二：上傳 CSV	Method 2: upload CSV
-先按「⬇️ 下載成員範本」取得範本，填寫後上傳。有填密碼／角色會開立可登入帳號，否則只加入成員。	Download the member template first, fill it in, then upload. Rows with password/role create login accounts; others join the member list only.
+先按「⬇️ 下載成員範本」取得範本，填寫後上傳。全部成員都會開立可登入帳號（密碼留空＝預設 1234）。	Download the member template first, fill it in, then upload. Every row gets a login account (empty password = default 1234).
 方法三（進階／備用，日常不建議）：Google Sheets 直接寫入	Method 3 (advanced/backup, not for daily use): write directly in Google Sheets
 把 CSV 匯入 Google Sheets → 填寫 → 用附帶的 Apps Script（	Import the CSV into Google Sheets → fill in → use the bundled Apps Script (
 ）轉 JSON 並直接寫入旅團主資料表。詳見 	) to convert to JSON and write into the Group's master sheet. See 
@@ -718,7 +718,7 @@ PDF 密碼（如有）	PDF password (if any)
 ℹ️ 缺電郵	ℹ️ No email
 預設小隊／支部（可留空）	Default squad/branch (optional)
 預設角色	Default role
-初始密碼（留空＝只加入成員，不開登入帳號）	Initial password (blank = member list only, no login)
+初始密碼（預設 1234，全體統一）	Initial password (default 1234, same for all)
 例如 rover2026（首次登入須更改）	e.g. rover2026 (must change on first login)
 🔢 全部補零至10位	🔢 Pad all IDs to 10 digits
 🗑️ 清除預覽	🗑️ Clear preview
