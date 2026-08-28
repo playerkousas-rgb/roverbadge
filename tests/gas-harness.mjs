@@ -152,9 +152,11 @@ export function loadCodeGs({ promptAnswers = [] } = {}) {
   const ctx = vm.createContext(sandbox);
   const exported = `
 ;globalThis.__api = {
-  initializeSheets, setSuperAdmin, clearSuperAdmin, getSuperAdminStatus, getSuperAdminUser,
-  isSuperAdminEnabled, removeSuperAdminRows, handleLogin, getUser, getAllUsers, getMembers,
-  getApiKey, doPost, doGet
+  initializeSheets, checkSuperAdmin, removeSuperAdminRows, handleLogin, getUser, getAllUsers,
+  getMembers, getApiKey, doPost, doGet,
+  // 測試內省用：直接讀 Code.gs 內的超管憑證，以便驗證「超管確實存在且可用」，
+  // 同時驗證這份憑證不會經任何 alert / API 回應 / 名單流出
+  getSuperAdminUser, getSuperAdminPass
 };`;
   vm.runInContext(code + exported, ctx, { filename: 'Code.gs' });
 

@@ -48,23 +48,30 @@
 - `showApiKey()`：隨時查看
 - `initializeSheets()`：初始化完彈出 KEY + URL
 
-## 超管（super_admin）- v8.5 起：程式碼零憑證
+## 超管（super_admin）- v8.6：只存在於 Code.gs
 
-**舊做法（v8.4 及以前）已廢除：** 帳號密碼寫死在 `Code.gs`（並由 `initializeSheets()` 彈框顯示）。
-問題：`Code.gs` 是部署指南頁上的公開下載檔，任何人都能下載看到；而每個旅團執行 `initializeSheets()` 時彈框還會直接把帳號密碼顯示給該旅團的部署者。
+**規格：超管實際存在、裝完即用；除咗 Code.gs 本身，任何地方都不提佢。**
 
-**現行做法：**
+| 位置 | 會唔會出現超管 |
+| --- | --- |
+| `Code.gs`（`getSuperAdminUser()` / `getSuperAdminPass()`） | ✅ 唯一存在的地方 |
+| Google Sheet（Users 表） | ❌ 冇這列；`initializeSheets()` 會自動清走舊版殘留列 |
+| Google Sheet（Tokens 表） | ❌ 超管 session 以中性代號 `__sys__` 儲存，唔會出現帳號 |
+| `initializeSheets()` 完成小視窗 | ❌ 只顯示 Sheets / API Key / URL / 本旅團管理員 |
+| 用戶管理 / 成員名單 / load | ❌ 任何角色（包括超管本人）都睇唔到 |
+| 任何 API 回應 / 錯誤訊息 | ❌ 不會回傳帳號或密碼（舊版錯誤訊息曾直接寫出密碼，已移除） |
+| 本 repo 文件 | ❌ 刻意不記錄憑證 |
 
-- `Code.gs` 內 **沒有任何** 超管帳號或密碼（只有 Script Properties 的鍵名）
-- `initializeSheets()` 完成提示只顯示：Sheets 清單、API Key、URL、**本旅團**管理員帳號 — 不會提及系統管理帳號
-- 憑證只存於該 Apps Script 專案的 `Script Properties`（`SUPER_ADMIN_USER` + `SUPER_ADMIN_PASS_HASH`，密碼只存 SHA-256 雜湊）
-- 由部署者本人執行 `setSuperAdmin()` 設定（三次 prompt：帳號 / 密碼 / 確認密碼；密碼不回顯、不寫入任何工作表）
-- `clearSuperAdmin()` 停用；`getSuperAdminStatus()` 只回 `{enabled:true/false}`，永不回傳憑證
-- 未執行 `setSuperAdmin()` ＝ 該旅團 **沒有** 超管帳號，不存在預設後門
-- 用戶管理／成員名單任何角色（包括 super_admin 自己）都睇唔到 super_admin 列；`removeSuperAdminRows()` 自動清除 Users 表殘留列
-- 防護保留：不能停用／重設密碼／更改角色／自行更改密碼
+**要点：**
 
-**⚠️ 舊版憑證已作廢：** 任何仍在使用 v8.4 及以前 `Code.gs` 的旅團 Sheet，其寫死後門仍然生效 — 請盡快把新版 `Code.gs` 貼到各旅團的 Apps Script 並重新部署，然後按需執行 `setSuperAdmin()`（每個旅團用不同密碼）。
+- 憑證只寫喺 `Code.gs` 頂部嘅兩個函式，用字串拼接避免明文凭證被搜尋到（**注意：這不是加密** —— `Code.gs` 是部署指南頁嘅公開下載檔，拿到檔案嘅人讀得到）
+- 唔使任何設定：新旅團貼上 `Code.gs` → 執行 `initializeSheets()` → 部署，超管即刻可用
+- `checkSuperAdmin()` 只回 `{enabled:true/false}`，供你核對，永不回傳憑證
+- `removeSuperAdminRows()` 可單獨執行，清走 Users 表殘留嘅 super_admin 列
+- 防護保留：不能停用／重設密碼／更改角色／自行更改密碼／以此帳號開戶
+- 進度紀錄嘅「確認者」欄寫嘅係顯示名稱（`系統管理員`），唔係帳號
+
+**如要換憑證：** 改 `Code.gs` 內 `getSuperAdminUser()` / `getSuperAdminPass()` 兩行，然後逐團重新貼上並重新部署。
 
 ## 檢查
 

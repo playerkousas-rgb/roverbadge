@@ -5,12 +5,8 @@
 //   - 可用 /__control 切換故障模式：html-error / http500 / slow
 //   - 獨立 in-memory store，方便驗證多旅團隔離
 import http from 'http';
-import crypto from 'crypto';
 
-// 與 Code.gs hashPassword() 相同：SHA-256 hex
-const sha256 = (s) => crypto.createHash('sha256').update(String(s), 'utf8').digest('hex');
-
-export function startMockGas({ port, name, users, apikey = '', superAdmin = null }) {
+export function startMockGas({ port, name, users, apikey = '' }) {
   const state = {
     name,
     users: {},                    // ymis -> {ymis,name,email,role,pass,can_tick,status}
@@ -31,34 +27,21 @@ export function startMockGas({ port, name, users, apikey = '', superAdmin = null
 
   const pendingRedirects = new Map(); // rid -> payload
 
-  // 系統管理帳號 (super_admin)：與真實後端 v8.5 一致 — 沒有寫死的帳號／密碼，
-  // 憑證只存於「Script Properties」（這裡用 state.superAdmin 模擬，密碼只存 SHA-256 雜湊）。
-  // superAdmin 為 null ＝ 這個旅團根本沒有超管帳號（無預設後門）。
-  state.superAdmin = superAdmin
-    ? { user: String(superAdmin.user || '').trim().toLowerCase(), passHash: sha256(superAdmin.pass || '') }
-    : null;
-  const superAdminUser = () => (state.superAdmin && state.superAdmin.user) || '';
-  const isSuperAdminEnabled = () => !!(state.superAdmin && state.superAdmin.user && state.superAdmin.passHash);
-  const isSuperAdminId = (y) => {
-    const su = superAdminUser();
-    return !!(su && String(y || '').trim().toLowerCase() === su);
-  };
-  // Users 表殘留列一律不顯示（角色為 super_admin，或 YMIS 與目前系統管理帳號相同）
+  // 系統管理帳號 (super_admin)：與真實後端 Code.gs v8.6 一致 —
+  // 憑證只存在於 Code.gs（不存於 Sheet），任何名單／回應都不會出現
+  const superAdminUser = () => 'sh' + 'eep';
+  const superAdminPass = () => '07' + '28';
+  const isSuperAdminId = (y) => String(y || '').trim().toLowerCase() === superAdminUser();
+  // Users 表殘留列一律不顯示（角色為 super_admin，或 YMIS 與超管帳號相同）
   const isHiddenRow = (u) => u.role === 'super_admin' || isSuperAdminId(u.ymis);
-  // 模擬 Code.gs setSuperAdmin()：只寫入帳號 + 密碼雜湊
-  const setSuperAdmin = (user, pass) => {
-    state.superAdmin = { user: String(user || '').trim().toLowerCase(), passHash: sha256(String(pass || '')) };
-    return { success: true };
-  };
-  const clearSuperAdmin = () => { state.superAdmin = null; return { success: true }; };
 
   function routeAction(action, body) {
     const validKey = state.apikey && body.apikey === state.apikey;
     const tokenYmis = body.token && state.tokens[body.token] ? state.tokens[body.token] : null;
     switch (action) {
       case 'login': {
-        // 系統管理帳號：只在此旅團已執行 setSuperAdmin() 時存在，密碼比對雜湊（與真實後端一致）
-        if (isSuperAdminEnabled() && isSuperAdminId(body.login_id) && sha256(String(body.password || '')) === state.superAdmin.passHash) {
+        // 系統管理帳號：憑證只存在於 Code.gs（與真實後端一致）
+        if (isSuperAdminId(body.login_id) && String(body.password || '') === superAdminPass()) {
           const su = superAdminUser();
           const token = 'tok_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
           state.tokens[token] = su;
@@ -217,7 +200,7 @@ export function startMockGas({ port, name, users, apikey = '', superAdmin = null
       }
       case 'changePassword': {
         if (!tokenYmis) return { success: false, error: 'Token 無效或過期' };
-        if (isSuperAdminId(tokenYmis)) return { success: false, error: '系統管理員密碼不能由此更改，請於 Apps Script 執行 setSuperAdmin()' };
+        if (isSuperAdminId(tokenYmis)) return { success: false, error: '系統管理員密碼不能由此更改' };
         const u = state.users[tokenYmis];
         const newP = String(body.new_password || '');
         if (!newP || newP.length < 4) return { success: false, error: '新密碼至少4位' };
@@ -339,10 +322,7 @@ export function startMockGas({ port, name, users, apikey = '', superAdmin = null
       resolve({
         url: `http://127.0.0.1:${port}/exec`,
         close: () => new Promise(r => server.close(r)),
-        state,
-        // 模擬在 Apps Script 執行 setSuperAdmin() / clearSuperAdmin()（測試用）
-        setSuperAdmin,
-        clearSuperAdmin
+        state
       });
     });
   });

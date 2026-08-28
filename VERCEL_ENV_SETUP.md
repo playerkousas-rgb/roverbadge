@@ -147,10 +147,13 @@ if (backend) troops[id] = { name, backend, apikey };
 ## 檢查清單 (管理員)
 
 - [x] GS Code.gs 有 getApiKey 自動生成 + showApiKey + initializeSheets 回傳
-- [x] 超管隱藏（v8.5 重做）：`Code.gs` 內 **不再有任何** 超管帳號／密碼；憑證只存於該 Apps Script 專案的 `Script Properties`（`SUPER_ADMIN_USER` + `SUPER_ADMIN_PASS_HASH`，密碼只存 SHA-256 雜湊），由部署者執行 `setSuperAdmin()` 設定，`clearSuperAdmin()` 停用，`getSuperAdminStatus()` 只回 `{enabled:true/false}`
-- [x] `initializeSheets()` 彈框已移除超管資訊：只顯示 Sheets 清單 / API Key / URL / 本旅團管理員帳號
-- [x] 未執行 `setSuperAdmin()` 的旅團沒有超管帳號（無預設後門）；`removeSuperAdminRows()` 自動清除 Users 表殘留 super_admin 列；用戶管理／成員名單任何角色（包括 super_admin）都睇唔到；防護保留（不能停用／重設密碼／改角色／自行改密碼）
-- [ ] **待辦：各旅團 Sheet 需換上新版 `Code.gs` 並重新部署**（舊版寫死後門在換掉之前仍然有效），之後按需逐團執行 `setSuperAdmin()`，每團用不同密碼
+- [x] 超管（v8.6）：**只存在於 `Code.gs`**（`getSuperAdminUser()` / `getSuperAdminPass()`），裝完即用、唔使任何設定；本文件刻意不記錄憑證
+- [x] Sheet 完全冇蹤跡：Users 表冇這列（`removeSuperAdminRows()` 自動清走舊版殘留列），Tokens 表以中性代號 `__sys__` 儲存超管 session
+- [x] `initializeSheets()` 小視窗只顯示 Sheets 清單 / API Key / URL / 本旅團管理員帳號，唔會出現超管任何資訊
+- [x] 用戶管理／成員名單任何角色（包括超管本人）都睇唔到；任何 API 回應／錯誤訊息都不含超管帳號或密碼（舊版錯誤訊息曾直接寫出密碼，已移除）
+- [x] 防護保留：不能停用／重設密碼／改角色／自行改密碼／以此帳號開戶
+- [x] 驗證：`node tests/code-gs.test.mjs` 會真正載入執行 `apps-script/Code.gs`（GAS API 模擬），掃描全部工作表所有儲存格確認冇超管蹤跡
+- ⚠️ **注意：** `Code.gs` 是部署指南頁嘅公開下載檔（`/apps-script/Code.gs`），能取得該檔嘅人都讀得到憑證；要換就改嗰兩行再逐團重新部署
 - [x] URL https://script.google.com/macros/s/AKfycbw81wLR5NZtRk4m1ptSAoFBueoqwIZ5hcM_apHJa2xMmlVfUvZsS8R45nTIKTOIuBB2KQ/exec 已更新到所有 `troops.json` + `index.html fallbackTroops`
 - [x] 全面排查 vsbadge 內容：scoutbadge 曾有 0082R 已移除，roverbadge/cubbadge/scoutbadge 內 `vsbadge 管理員` 文字已改為各自 app 管理員，session key 已修正 `scoutbadge_session_v1` / `cubbadge_session_v1` / `roverbadge_session_v1` / `vsbadge_session_v4`
 - [x] Vercel 功能變數名稱：`TROOP_0082_APIKEY` (推薦) ，向後兼容 `TROOP_0082_BACKEND` (可選)

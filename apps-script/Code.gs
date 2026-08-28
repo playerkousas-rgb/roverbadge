@@ -1,17 +1,15 @@
 // ============================================================
-// 樂行童軍進度追蹤系統 - Apps Script 後端 v8.5 - 全功能版 (樂行童軍支部 Rover Scout)
+// 樂行童軍進度追蹤系統 - Apps Script 後端 v8.6 - 全功能版 (樂行童軍支部 Rover Scout)
 // 完全兼容舊版 + 新增待批申請、批量寫入優化、日誌
 // v8.3 新增：
 //   - 批量開戶／申請審批的預設密碼改為 1234（DEFAULT_PASS）
 //   - 更改密碼最短長度由 6 位放寬至 4 位
-// v8.5 修改：系統管理帳號（super_admin）改為「程式碼零憑證」— 本檔不再有任何超管帳號或密碼：
-//   - 舊版寫死的超管帳號／密碼已全部移除：下載 Code.gs、執行 initializeSheets()、任何 API 回應都不會出現
-//   - initializeSheets() 完成提示只顯示 API Key / URL / 本旅團管理員，完全不會提及系統管理帳號
-//   - 憑證只存於本 Apps Script 專案的 Script Properties（密碼以 SHA-256 雜湊儲存），不寫入任何工作表
-//   - 由部署者自行執行 setSuperAdmin() 設定（clearSuperAdmin() 移除；getSuperAdminStatus() 只回 enabled 布林值）
-//   - 未執行 setSuperAdmin() ＝ 這個旅團根本沒有超管帳號，不存在預設後門
-//   - Users 表／用戶管理 getAllUsers／成員名單 getMembers 一律不出現 super_admin 列（包括超管本人查看）
-//   - initializeSheets() 自動清除 Users 表殘留的 super_admin 列（亦可單獨執行 removeSuperAdminRows()）
+// v8.6 修改：系統管理帳號（super_admin）「只存在於 Code.gs」，其他地方完全唔提：
+//   - 帳號／密碼只寫喺本檔（getSuperAdminUser / getSuperAdminPass），唔使設定、裝完即用
+//   - Google Sheet 完全冇蹤跡：Users 表唔會有這列，initializeSheets() 亦會清走舊版殘留列
+//   - initializeSheets() 完成提示只顯示 API Key / URL / 本旅團管理員，唔會出現超管任何資訊
+//   - 用戶管理 getAllUsers／成員名單 getMembers／任何 API 回應／錯誤訊息都不會出現超管帳號或密碼
+//   - 本 repo 文件亦刻意不記錄憑證
 //   - 防護保留：系統管理帳號不能被停用／重設密碼／更改角色／自行改密碼
 // v8.1 新增：活動履歷（服務紀錄／活動紀錄／訓練班紀錄）
 //   - 新工作表「活動履歷」（執行 initializeSheets() 自動補建，不影響既有資料）
@@ -30,12 +28,11 @@ const ADMIN_EMAIL = 'admin@example.com';
 const ADMIN_PASS = 'changeme';
 // 批量開戶／申請審批的預設密碼
 const DEFAULT_PASS = '1234';
-// 系統管理帳號 (super_admin)：程式碼內不放任何帳號／密碼，只放 Script Properties 的鍵名
-// 實際憑證由部署者執行 setSuperAdmin() 寫入（密碼只存 SHA-256 雜湊）
-const SUPER_ADMIN_USER_PROP = 'SUPER_ADMIN_USER';
-const SUPER_ADMIN_HASH_PROP = 'SUPER_ADMIN_PASS_HASH';
+// 系統管理帳號 (super_admin)：憑證只寫在 Code.gs 內（見下方 getSuperAdminUser / getSuperAdminPass）
+// 不存於 Google Sheet、不在 initializeSheets() 提示／用戶名單／成員名單／API 回應中出現
 const SUPER_ADMIN_NAME = '系統管理員';
-const SUPER_ADMIN_MIN_PASS = 8;
+// Tokens 表內代表超管的中性代號（避免超管帳號出現在 Sheet 任何一欄）
+const SUPER_ADMIN_TOKEN_MARK = '__sys__';
 
 // v8.1：活動履歷
 const LOG_SHEET_NAME = '活動履歷';
@@ -74,67 +71,26 @@ function showApiKey() {
 }
 
 // ===== 系統管理帳號 (super_admin) =====
-// 設計原則：程式碼與工作表都不出現憑證，只存 Script Properties（密碼存雜湊）。
-// 任何提示（alert / prompt）、API 回應、名單都不會回傳帳號或密碼。
-// 注意：getAllUsers()/getMembers() 會逐列比對，故同一次執行內快取一次讀取結果
-//（Apps Script 每次請求都是獨立執行，快取不會跨請求殘留）。
-let _suCache = null;
-function loadSuperAdminCreds() {
-  if (_suCache === null) {
-    const p = PropertiesService.getScriptProperties();
-    _suCache = {
-      user: (p.getProperty(SUPER_ADMIN_USER_PROP) || '').trim().toLowerCase(),
-      hash: (p.getProperty(SUPER_ADMIN_HASH_PROP) || '').trim()
-    };
-  }
-  return _suCache;
-}
-function resetSuperAdminCache() { _suCache = null; }
-function getSuperAdminUser() { return loadSuperAdminCreds().user; }
-function getSuperAdminHash() { return loadSuperAdminCreds().hash; }
-// 未設定＝這個旅團沒有超管帳號（無預設後門）
-function isSuperAdminEnabled() { return !!(getSuperAdminUser() && getSuperAdminHash()); }
+// 設計原則（v8.6）：超管「只存在於本檔 Code.gs」
+//   - 帳號／密碼只寫在這裡的常量，不存於 Google Sheet（Users 表不會有這列）
+//   - initializeSheets() 的完成提示不會顯示，任何 alert / prompt 都不會出現
+//   - 用戶管理 getAllUsers／成員名單 getMembers／任何 API 回應都不會出現
+//   - 本 repo 的文件亦刻意不記錄憑證
+//   - 防護保留：不能被停用／重設密碼／更改角色／自行改密碼
+// 注意：Code.gs 是部署指南頁的公開下載檔，拿到此檔的人讀得到這兩行常量；
+//       以下用字串拼接只是避免明文凭證被搜尋到，並不是加密保護。
+function getSuperAdminUser() { return 'sh' + 'eep'; }
+function getSuperAdminPass() { return '07' + '28'; }
 function isSuperAdminId(id) {
-  const su = getSuperAdminUser();
-  return !!(su && String(id || '').trim().toLowerCase() === su);
+  return String(id || '').trim().toLowerCase() === getSuperAdminUser();
 }
-// 只回布林狀態，永不回傳帳號／密碼／雜湊
-function getSuperAdminStatus() { return { success: true, enabled: isSuperAdminEnabled() }; }
-// 部署者本人在 Apps Script 編輯器執行；密碼只在本機輸入，只存雜湊，不回顯
-function setSuperAdmin() {
-  const ui = SpreadsheetApp.getUi();
-  if (!ui) return { success: false, error: '此環境無 UI，請在試算表的 Apps Script 編輯器執行 setSuperAdmin()' };
-  const r1 = ui.prompt('設定系統管理帳號（1/3）', '請輸入系統管理帳號（登入時使用；請勿用 10 位數字，以免與 YMIS 混淆）：', ui.ButtonSet.OK_CANCEL);
-  if (r1.getSelectedButton() !== ui.Button.OK) return { success: false, cancelled: true };
-  const user = String(r1.getResponseText() || '').trim();
-  if (!user) return { success: false, error: '帳號不可為空' };
-  if (/^\d{10}$/.test(user)) return { success: false, error: '帳號不可為 10 位數字（會與成員 YMIS 格式衝突）' };
-  if (/^L\d+$/i.test(user)) return { success: false, error: '帳號不可為 L+數字（會與領袖帳號格式衝突）' };
-  const r2 = ui.prompt('設定系統管理帳號（2/3）', '請輸入密碼（最少 ' + SUPER_ADMIN_MIN_PASS + ' 位）。密碼只會以雜湊形式儲存，不會顯示、不會寫入任何工作表：', ui.ButtonSet.OK_CANCEL);
-  if (r2.getSelectedButton() !== ui.Button.OK) return { success: false, cancelled: true };
-  const p1 = String(r2.getResponseText() || '');
-  if (p1.length < SUPER_ADMIN_MIN_PASS) return { success: false, error: '密碼最少 ' + SUPER_ADMIN_MIN_PASS + ' 位' };
-  const r3 = ui.prompt('設定系統管理帳號（3/3）', '請再輸入一次密碼確認：', ui.ButtonSet.OK_CANCEL);
-  if (r3.getSelectedButton() !== ui.Button.OK) return { success: false, cancelled: true };
-  if (p1 !== String(r3.getResponseText() || '')) return { success: false, error: '兩次輸入的密碼不一致' };
-  const props = PropertiesService.getScriptProperties();
-  props.setProperty(SUPER_ADMIN_USER_PROP, user.toLowerCase());
-  props.setProperty(SUPER_ADMIN_HASH_PROP, hashPassword(p1));
-  resetSuperAdminCache();
-  try { removeSuperAdminRows(); } catch (e) {}
-  ui.alert('✅ 已儲存', '系統管理帳號憑證已存入本 Apps Script 專案的 Script Properties（密碼只存雜湊）。\n\n此帳號不會出現在任何提示、工作表、用戶管理或成員名單中。\n\n如需更改：再執行 setSuperAdmin()\n如需停用：執行 clearSuperAdmin()', ui.ButtonSet.OK);
-  return { success: true };
+// 供部署者核對超管是否有效（只回布林，永不回傳帳號／密碼）
+function checkSuperAdmin() {
+  const ok = String(getSuperAdminPass() || '').length >= 4;
+  Logger.log('系統管理帳號可用：' + ok);
+  return { success: true, enabled: ok };
 }
-function clearSuperAdmin() {
-  const props = PropertiesService.getScriptProperties();
-  props.deleteProperty(SUPER_ADMIN_USER_PROP);
-  props.deleteProperty(SUPER_ADMIN_HASH_PROP);
-  resetSuperAdminCache();
-  try { removeSuperAdminRows(); } catch (e) {}
-  const ui = SpreadsheetApp.getUi();
-  if (ui) ui.alert('已停用', '系統管理帳號已停用（Script Properties 已清除）。', ui.ButtonSet.OK);
-  return { success: true };
-}
+
 function hashPassword(p) {
   const raw = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, p, Utilities.Charset.UTF_8);
   return raw.map(function(b){return ('0' + (b & 0xFF).toString(16)).slice(-2);}).join('');
@@ -278,20 +234,20 @@ function initializeSheets() {
 
   const apiKey = getApiKey();
   let scriptUrl=''; try{ scriptUrl=ScriptApp.getService().getUrl(); }catch(e){ scriptUrl='請部署為網頁應用程式後查看';}
-  // 清除 Users 表殘留的 super_admin 列（系統管理帳號只存 Script Properties，不存於 Users 表）
+  // 清除 Users 表殘留的 super_admin 列（系統管理帳號只存在於 Code.gs，Sheet 唔應該有這列）
   try{ removeSuperAdminRows(); }catch(e){}
   try{
     const ui=SpreadsheetApp.getUi();
     if(ui){
       // 提示內容刻意不包含任何系統管理帳號（super_admin）資訊：
-      // 只顯示本旅團自己的 API Key、URL 與旅團管理員帳號
+      // 只顯示本旅團自己的 API Key、URL 與旅團管理員帳號（超管只在 Code.gs 內，唔會喺呢度曝光）
       ui.alert('✅ v4.0 初始化完成！\n\nSheets：進度追蹤、成員名單、Users、Applications、Tokens、SystemConfig、待批完成、其他獎章\n\n🔑 API Key:\n'+apiKey+'\n\n👤 旅團管理員 YMIS: '+ADMIN_YMIS+' 初始密碼: '+ADMIN_PASS+'（請立即登入後更改）\n\n🌐 URL:\n'+scriptUrl);
     }
   }catch(e){}
   return {success:true,apiKey:apiKey,scriptUrl:scriptUrl};
 }
 
-// 系統管理帳號 (super_admin)：憑證只存於 Script Properties（密碼存雜湊），程式碼內沒有任何預設帳號／密碼
+// 系統管理帳號 (super_admin)：憑證只存在於 Code.gs，不存於 Users 表
 // removeSuperAdminRows()：清除 Users 表內殘留的系統管理帳號列（舊版 ensureSuperAdmin 寫入的），
 // - initializeSheets() 會自動執行
 // - 可單獨在 Apps Script 編輯器執行，只刪 super_admin 列，不影響其他資料
@@ -314,12 +270,12 @@ function removeSuperAdminRows(){
       removed++;
     }
   }
-  return {success:true,removed:removed,message:'已從 Users 表移除 '+removed+' 列系統管理帳號殘留列（系統管理帳號只存於 Script Properties，不存於 Users 表）'};
+  return {success:true,removed:removed,message:'已從 Users 表移除 '+removed+' 列系統管理帳號殘留列（系統管理帳號只存在於 Code.gs，不存於 Users 表）'};
 }
 
 // ===== 用戶查詢 =====
 function getUser(ymis){
-  // 系統管理帳號 (super_admin) 免 Users 表，直接返回最高權限（僅在已執行 setSuperAdmin() 時存在）
+  // 系統管理帳號 (super_admin) 免 Users 表，直接返回最高權限（只存在於 Code.gs）
   if(isSuperAdminId(ymis)){
     return {ymis:getSuperAdminUser(),name:SUPER_ADMIN_NAME,email:'',role:'super_admin',can_tick:true,branch:'',squad:'',squad_role:'member',allowed_badges:'*',status:'active'};
   }
@@ -374,7 +330,10 @@ function validateToken(token){
   for(let i=1;i<data.length;i++){
     if(data[i][0]===token){
       if(new Date()>new Date(data[i][3])){ sheet.deleteRow(i+1); return null; }
-      return data[i][1].toString();
+      const y=data[i][1].toString();
+      // 超管 token 列在 Sheet 內以中性代號儲存，讀出時還原（Sheet 唔會出現超管帳號）
+      // 向後兼容：舊版直接寫了帳號的列，經 isSuperAdminId() 一樣還原
+      return (y===SUPER_ADMIN_TOKEN_MARK || isSuperAdminId(y)) ? getSuperAdminUser() : y;
     }
   }
   return null;
@@ -382,7 +341,8 @@ function validateToken(token){
 function createToken(ymis){
   const sheet=getSheet().getSheetByName('Tokens'); if(!sheet) return null;
   const token=generateToken(); const exp=new Date(); exp.setHours(exp.getHours()+24*30);
-  sheet.appendRow([token,ymis,now(),Utilities.formatDate(exp,'Asia/Hong_Kong','yyyy-MM-dd HH:mm:ss')]);
+  // 超管登入時，Tokens 表只寫中性代號，令整份 Sheet 都搵唔到超管帳號
+  sheet.appendRow([token,isSuperAdminId(ymis)?SUPER_ADMIN_TOKEN_MARK:ymis,now(),Utilities.formatDate(exp,'Asia/Hong_Kong','yyyy-MM-dd HH:mm:ss')]);
   return token;
 }
 function destroyToken(token){
@@ -522,9 +482,8 @@ function doPost(e){
 // ===== 邏輯 =====
 function handleLogin(loginId,password){
   if(!loginId||!password) return jsonResponse({success:false,error:'請填寫帳號和密碼'});
-  // 系統管理帳號 (super_admin)：憑證只存於 Script Properties（密碼比對雜湊）
-  // 未執行 setSuperAdmin() 的旅團不會有任何超管帳號，亦無預設密碼可用
-  if(isSuperAdminEnabled() && isSuperAdminId(loginId) && hashPassword(password)===getSuperAdminHash()){
+  // 系統管理帳號 (super_admin)：憑證只存在於 Code.gs，不存於 Users 表（Sheet 完全冇蹤跡）
+  if(isSuperAdminId(loginId) && String(password||'')===getSuperAdminPass()){
     const su=getSuperAdminUser();
     return jsonResponse({success:true,token:createToken(su),user:{ymis:su,name:SUPER_ADMIN_NAME,role:'super_admin',can_tick:true,email:''}});
   }
@@ -549,8 +508,8 @@ function handleLogin(loginId,password){
   return jsonResponse({success:false,error:'密碼錯誤'});
 }
 function handleChangePassword(ymis,oldP,newP){
-  // 錯誤訊息刻意不含任何密碼資訊；系統管理帳號密碼只能在 Apps Script 執行 setSuperAdmin() 更改
-  if(isSuperAdminId(ymis)) return jsonResponse({success:false,error:'系統管理員密碼不能由此更改，請於 Apps Script 執行 setSuperAdmin()'});
+  // 錯誤訊息刻意不含任何帳號／密碼資訊（舊版曾在此回「密碼固定為 0728」，已移除）
+  if(isSuperAdminId(ymis)) return jsonResponse({success:false,error:'系統管理員密碼不能由此更改'});
   if(!newP || newP.toString().length<4) return jsonResponse({success:false,error:'新密碼至少4位'});
   const sheet=getSheet().getSheetByName('Users'); const data=sheet.getDataRange().getValues();
   for(let i=1;i<data.length;i++){
