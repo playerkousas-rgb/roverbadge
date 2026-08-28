@@ -854,3 +854,7 @@ YMIS 匯出教學	YMIS export guide
 協助訓練班	assisting a training course
 任教	teaching
 必須	Must
+｜後端 API 未部署，請聯絡管理員重新部署	| the backend API is not deployed; please ask your section admin to redeploy on Vercel
+｜後端找不到此旅團，請檢查 troops.json 已否同步	| the backend cannot find this troop; please check that troops.json has been synced
+⚠️ 後端 API 未部署（/api/* 無回應），登入一定失敗；請聯絡管理員喺 Vercel 重新部署	⚠️ Backend API is not deployed (/api/* does not respond), so sign-in will always fail. Please ask your section admin to redeploy on Vercel
+⚠️ 後端未登記此旅團（troops.json 未同步），登入會失敗	⚠️ This troop is not registered in the backend (troops.json not synced); sign-in will fail

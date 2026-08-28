@@ -1358,6 +1358,10 @@ const LANG_DICT={
   "無法連接伺服器，請檢查網絡連線": "Cannot reach the server; please check your network",
   "無法連接伺服器": "Cannot reach the server",
   "伺服器回應格式異常 (HTTP": "Unexpected server response format (HTTP ",
+  "｜後端 API 未部署，請聯絡管理員重新部署": "| the backend API is not deployed; please ask your section admin to redeploy on Vercel",
+  "｜後端找不到此旅團，請檢查 troops.json 已否同步": "| the backend cannot find this troop; please check that troops.json has been synced",
+  "\u26a0\ufe0f 後端 API 未部署（/api/* 無回應），登入一定失敗；請聯絡管理員喺 Vercel 重新部署": "\u26a0\ufe0f Backend API is not deployed (/api/* does not respond), so sign-in will always fail. Please ask your section admin to redeploy on Vercel",
+  "\u26a0\ufe0f 後端未登記此旅團（troops.json 未同步），登入會失敗": "\u26a0\ufe0f This troop is not registered in the backend (troops.json not synced); sign-in will fail",
   "伺服器回應異常 (HTTP": "Unexpected server response (HTTP ",
   ")，請稍後重試": "), please try again later",
   "你沒有勾選權限，請使用申請功能": "You have no ticking permission; please use the request feature",
@@ -1622,7 +1626,35 @@ const API_ENDPOINT='/api/proxy';
 /* ================== 統一後端請求封裝（唯一出口：同源 /api/proxy） ==================
    - 所有 GAS 通訊必須經過這裡，禁止各自直接 fetch GAS URL
    - 網絡／逾時／非 JSON 回應一律 throw 友善錯誤
-   - Proxy 業務錯誤（404/502/504...）統一化成 {success:false,error} 交呼叫端處理 */
+   - Proxy 業務錯誤（404/502/504...）統一化成 {success:false,error} 交呼叫端處理
+   - 回應不是 JSON 時（例如 Vercel 沒有建成 function 的 HTML 404），自動查 /api/health
+     好讓用戶睇到「後端未部署／旅團未登記」，而不是誤以為密碼錯 */
+let __apiDiag=null, __apiDiagAt=0;
+async function apiDiagnose(){
+  if(__apiDiag!==null && Date.now()-__apiDiagAt<60000) return __apiDiag;
+  const out={deployed:false, troopsOk:false};
+  // 依序探測兩個同源端點：/api/health（新版診斷）→ /api/troops（舊版保底）。
+  // 只要其中一個回傳 JSON，就代表 Vercel 已建成 function；兩個都是 HTML 404
+  // 即代表 /api/* 整條路徑未被部署（登入必然失敗，同账号密碼無關）。
+  for(const p of ['/api/health','/api/troops']){
+    let j=null;
+    try{ const r=await fetch(p,{cache:'no-store'}); j=await r.json().catch(()=>null); }catch(e){ j=null; }
+    if(j && typeof j==='object'){
+      out.deployed=true;
+      const t=j.troops;
+      out.troopsOk = !!t && (Array.isArray(t) ? t.length>0 : Object.keys(t).length>0);
+      break;
+    }
+  }
+  __apiDiag=out; __apiDiagAt=Date.now();
+  return out;
+}
+async function apiFailureSuffix(){
+  const d=await apiDiagnose();
+  if(!d.deployed) return '｜後端 API 未部署，請聯絡管理員重新部署';
+  if(!d.troopsOk) return '｜後端找不到此旅團，請檢查 troops.json 已否同步';
+  return '';
+}
 async function apiRequest(action, data={}, opts={}){
   const timeoutMs=opts.timeout||45000;
   const controller=new AbortController();
@@ -1644,8 +1676,16 @@ async function apiRequest(action, data={}, opts={}){
     throw new Error('無法連接伺服器，請檢查網絡連線');
   }finally{ clearTimeout(timer); }
   let payload;
-  try{ payload=await res.json(); }catch(e){ throw new Error('伺服器回應格式異常 (HTTP '+res.status+')，請稍後重試'); }
-  if(!payload || typeof payload!=='object') throw new Error('伺服器回應異常 (HTTP '+res.status+')，請稍後重試');
+  try{ payload=await res.json(); }
+  catch(e){
+    // typeof 守則：本函數會被 e2e 測試抽出來獨立執行，API 診斷函數未必存在
+    const sfx=(typeof apiFailureSuffix==='function')?await apiFailureSuffix():'';
+    throw new Error('伺服器回應格式異常 (HTTP '+res.status+')，請稍後重試'+sfx);
+  }
+  if(!payload || typeof payload!=='object'){
+    const sfx2=(typeof apiFailureSuffix==='function')?await apiFailureSuffix():'';
+    throw new Error('伺服器回應異常 (HTTP '+res.status+')，請稍後重試'+sfx2);
+  }
   if(!res.ok && payload.success!==false) payload.success=false;
   return payload;
 }
@@ -1842,6 +1882,17 @@ async function selectTroop(id){
     document.getElementById('loginPage').style.display='block';
     document.getElementById('loginMsg').className='login-msg';
     document.getElementById('loginId').value=''; document.getElementById('loginPassword').value='';
+    // 早期診斷：/api/* 沒有部署成 function 時，登入必然失敗；
+    // 與其讓用戶以為係密碼錯，不如喺登入頁直接講明係部署問題。
+    try{
+      if(typeof apiDiagnose==='function'){
+        const dd=await apiDiagnose(); const el=document.getElementById('loginMsg');
+        if(el){
+          if(!dd.deployed){ el.className='login-msg error'; el.textContent='⚠️ 後端 API 未部署（/api/* 無回應），登入一定失敗；請聯絡管理員喺 Vercel 重新部署'; }
+          else if(!dd.troopsOk){ el.className='login-msg error'; el.textContent='⚠️ 後端未登記此旅團（troops.json 未同步），登入會失敗'; }
+        }
+      }
+    }catch(e){ console.warn('api diagnose skipped',e); }
     switchLoginType('member');
   }catch(e){ console.error(e); showToast('無法取得旅團設定','error'); }
 }

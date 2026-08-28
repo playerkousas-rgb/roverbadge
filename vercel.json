@@ -1,19 +1,25 @@
 {
-  "version": 2,
-  "builds": [
-    { "src": "index.html", "use": "@vercel/static" },
-    { "src": "data/**", "use": "@vercel/static" },
-    { "src": "assets/**", "use": "@vercel/static" },
-    { "src": "docs/**", "use": "@vercel/static" },
-    { "src": "apps-script/**", "use": "@vercel/static" },
-    { "src": "api/**", "use": "@vercel/node" }
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "_comment": [
+    "零配置部署：Vercel 會自動把 api/*.js 建成 Node Serverless Function。",
+    "絕對不要再加回 legacy 的 builds / routes —— 一旦定義 builds，",
+    "Vercel 便會忽略 Build & Development Settings，且 functions 設定與 builds 互斥，",
+    "過去就是因為用 builds + {\"src\":\"api/**\",\"use\":\"@vercel/node\"} 令 /api/* 整條路徑 404。",
+    "詳細說明見 docs/VERCEL_API_404_POSTMORTEM.md"
   ],
-  "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" },
-    { "src": "/apps-script/(.*)", "dest": "/apps-script/$1" },
-    { "src": "/data/(.*)", "dest": "/data/$1" },
-    { "src": "/assets/(.*)", "dest": "/assets/$1" },
-    { "src": "/docs/(.*)", "dest": "/docs/$1" },
-    { "src": "/(.*)", "dest": "/$1" }
+  "buildCommand": "npm run build",
+  "functions": {
+    "api/*.js": {
+      "includeFiles": "{data/*.json,troops.json}",
+      "maxDuration": 60
+    }
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, max-age=0" }
+      ]
+    }
   ]
 }
