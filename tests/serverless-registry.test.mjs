@@ -115,8 +115,13 @@ console.log('\n【4】vercel.json 部署設定（legacy builds 是這次 404 的
   check('不含 legacy builds', cfg.builds === undefined, 'builds 會令 Vercel 忽略內建 api/ function 偵測');
   check('不含 legacy routes', cfg.routes === undefined, 'routes 屬 legacy 路由表，與 rewrites/functions 互斥');
   check('不含 legacy version 欄位', cfg.version === undefined);
-  check('functions 對 api/*.js 設定 includeFiles', !!(cfg.functions && cfg.functions['api/*.js'] && cfg.functions['api/*.js'].includeFiles), JSON.stringify(cfg.functions || {}));
-  check('includeFiles 涵蓋 data/*.json', /data\/\*\.json/.test((cfg.functions || {})['api/*.js'] ? cfg.functions['api/*.js'].includeFiles : ''));
+  // includeFiles 而家係「有就檢查格式」：旅團名單已有 bundle 內保底（api/_troops_static.js），
+  // 冇 includeFiles 都唔會影響登入，所以唔再硬性要求（見 POSTMORTEM 根因 D 嘅部署隔離過程）
+  if (cfg.functions && cfg.functions['api/*.js'] && cfg.functions['api/*.js'].includeFiles) {
+    check('includeFiles 涵蓋 data/*.json', /data\/\*\.json/.test(cfg.functions['api/*.js'].includeFiles), cfg.functions['api/*.js'].includeFiles);
+  } else {
+    console.log('  · functions.includeFiles 未設定（靠 bundle 內靜態保底）');
+  }
   check('/api/* 有 no-store header', Array.isArray(cfg.headers) && JSON.stringify(cfg.headers).includes('no-store'));
   check('没有任何 builds 條目指定 builder（"use"）', !/"use"\s*:/.test(raw));
 }
