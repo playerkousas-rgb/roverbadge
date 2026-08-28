@@ -32,6 +32,8 @@
 - SystemConfig (login_mode, allow_member_view_others 等)
 - 待批完成 (request_id, ymis, name, item_id, item_name, requested_date, evidence, status, created_at, reviewed_by, reviewed_at, review_note, confirmed_date)
 - 其他獎章
+- 活動履歷 (v8.1：record_id, type, ymis, name, date, title, role, hours, cert_no, detail, recorder, recorded_at, updated_at)
+- 待批履歷 (v8.2：request_id, record_id, type, ymis, name, date, title, role, hours, cert_no, detail, status, requested_at, submitted_by, reviewed_by, reviewed_at, review_note, submission_type)
 
 **不要改動後端邏輯**，只需改 `items.json` 及前端文案，後端已支援：
 - 批量寫入、離線暫存、成員申請→領袖審批、其他獎章、細緻權限 (allowed_badges)、私隱開關 (allow_member_view_others)、系統管理員
@@ -70,6 +72,13 @@
 
 ### 其他獎章併入進度
 - `items.json` `otherBadges` 17項，進度頁底部虛線卡片顯示，其他獎章 tab 已隱藏（手機省闊度），領袖可直接剔日期+證書編號
+
+### 活動履歷：成員自行申報 → 領袖審批（v8.2）
+- 活動履歷（服務／活動／訓練班）支援成員自行申報：任何登入成員可用「➕ 申報活動」提交自己的紀錄，或對已批紀錄用「✏️ 申請修改」→ 全部寫入「待批履歷」→ 領袖在「✅審批中心 → 📅履歷審批」批准 → 寫入「活動履歷」sheet
+- 領袖仍可直接寫入／編輯／刪除（saveLogRecord / deleteLogRecord）；成員不能
+- 修改類申請批准後更新原有紀錄（record_id 不變）；新申報批准後新增紀錄
+- 權限：任何登入者可 submitLogRequest（只限自己 ymis）；getPendingLogRequests 領袖見全部、成員見自己；reviewLogRequest 需領袖（canUserTick）
+- 其他（進度勾選、其他獎章）保持「批准後不可由成員自行修改，只有領袖可改」
 
 ### 全團一眼睇 + 批量剔
 - 全團總覽卡片顯示每人完成度% + 四獎章百分比，會員章✓標籤

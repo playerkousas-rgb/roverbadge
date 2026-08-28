@@ -598,6 +598,7 @@ a:hover{text-decoration:underline}
 <div id="logRecordModal" class="modal">
   <div class="modal-content">
     <h3 id="logModalTitle">➕ 新增活動履歷紀錄</h3>
+    <div id="logModalHint" style="display:none;font-size:12px;color:var(--maroon);background:var(--bg);padding:8px 10px;border-radius:6px;margin-bottom:10px;border-left:3px solid var(--maroon)"></div>
     <div class="form-group">
       <label>類型 *</label>
       <select id="lgType" onchange="syncLogTypeFields()">
@@ -1496,6 +1497,110 @@ const LANG_DICT={
   " 頁），略過 ": " pages), skipped ",
   "位成員，略過 ": " members, skipped ",
   " 行": " lines",
+  "📋 我的申報（活動履歷）": "📋 My submissions (Activity Log)",
+  "修改申請": "Modification request",
+  "新申報": "New submission",
+  "審批意見：": "Review note: ",
+  "撤銷": "Withdraw",
+  "➕ 申報活動": "➕ Declare Activity",
+  "➕ 申報活動履歷": "➕ Declare Activity Log",
+  "✏️ 申請修改": "✏️ Request modification",
+  "✏️ 申請修改紀錄": "✏️ Request to modify record",
+  "📨 送出申報": "📨 Submit declaration",
+  "送出中...": "Submitting...",
+  "⏳ 待領袖審批": "⏳ Pending leader approval",
+  "✅ 已批准": "✅ Approved",
+  "❌ 已拒絕": "❌ Rejected",
+  "⏳ 修改待批": "⏳ Modification pending",
+  "📌 此為已批紀錄的「申請修改」：送出後會重新交回領袖審批，批准後才更新。": "📌 This modifies an approved record: it will be sent back for leader re-approval and only updates after approval.",
+  "📌 你將自行申報此活動履歷，送出後由領袖審批才正式生效。": "📌 You are declaring this activity log yourself; it takes effect only after leader approval.",
+  "確定撤銷「": "Withdraw \"",
+  "」此申報？": "\" this declaration?",
+  "已撤銷申請": "Application withdrawn",
+  "申請人自行撤銷": "Withdrawn by applicant",
+  "撤銷失敗：": "Failed to withdraw: ",
+  "📅 履歷審批": "📅 Activity Log Approvals",
+  "📅 履歷審批 - 成員申報活動履歷": "📅 Activity Log Approvals - member declarations",
+  "暫無履歷待批": "No activity log approvals pending",
+  "確定批准此活動履歷申報？": "Approve this activity log declaration?",
+  "確定拒絕此活動履歷申報？": "Reject this activity log declaration?",
+  "正在批准並寫入活動履歷...": "Approving and writing to Activity Log...",
+  "項活動履歷申報？": "activity log declarations?",
+  "✅ 已送交審批（": "✅ Submitted for approval (",
+  "已送交審批": "Submitted for approval",
+  "），待領袖確認": "), awaiting leader approval",
+  "，可按上方「➕ 申報活動」自行申報": ", use \"➕ Declare Activity\" above to declare",
+  "此紀錄已有待批的修改申請": "This record already has a pending modification request",
+  "只能申報自己的活動履歷": "You can only declare your own activity logs",
+  "只能申請修改自己的紀錄": "You can only request to modify your own records",
+  "筆已送交審批": "submitted for approval",
+  "此申請已處理": "This request has already been processed",
+  "已批准並寫入活動履歷": "Approved and written to Activity Log",
+  "已拒絕申請": "Application rejected",
+  "待批履歷": "Pending Activity Logs",
+  "，失敗": ", failed",
+  "準備寫入": "Preparing to write ",
+  "確定": "Confirm ",
+  "此活動履歷申報？": "this activity log declaration?",
+  "只有領袖或成員可以申報活動履歷": "Only leaders or members can declare activity logs",
+  "我已送出，待領袖確認": "Submitted; awaiting leader approval",
+  "成員申報活動履歷在此審批，批准後寫入活動履歷。": "Member activity log declarations are approved here and written to the Activity Log after approval.",
+  "同樣交 roverbadge 管理員 + 額外交主系統管理員填入旅團設定→元件設定 backend+apikey → 用法：主系統 Dashboard 點卡片 → 自動帶入 from=portal&embed=1 → 直接用": "Also give the same to the roverbadge Admin + additionally ask the main-system admin to fill in the Group settings → Widget settings backend+apikey → Usage: click the card on the main-system Dashboard → identity is auto-carried from=portal&embed=1 → use directly",
+  "建新試算表": "Create a new spreadsheet",
+  "私隱選擇": "Privacy choice",
+  "其他功能": "Other features",
+  "全團總覽：按段章篩選，避免卡死；按項目統計：百分比+人數；其他獎章已併入我的進度；表格列印：樂行童軍官方格式 (PT/21 / PT/22 / PT/69) 自動填入後列印。": "Group Overview: filter by section to avoid freezing; by-item stats: percentage + headcount; Other Badges are merged into My Progress; printable official Rover Scout forms (PT/21 / PT/22 / PT/69) auto-filled then printed.",
+  "👥 角色功能教學（登入後）": "👥 Role feature guide (after login)",
+  "只能看自己進度": "Can only view own progress",
+  "不能直接剔，按📝申請": "Cannot tick directly; use 📝 Request",
+  "成員全部功能": "All member functions",
+  "默認：會員章+活動段章(細項不用)+其他逐個勾": "Default: Membership Badge + Activities segments (no need to tick each sub-item) + Other Badges individually",
+  "全部功能": "All features",
+  "我的進度選任何成員看紀錄": "My Progress: select any member to see records",
+  "待批批量批准": "Approve requests in batch in Pending",
+  "用戶管理改成員為管委+⚙️權限設定": "User Management: change members to CMC + ⚙️ permission settings",
+  "領袖默認全部，團長/管理員可改低層級": "Leaders default to all; the Group Scout Leader/Admin can change lower levels",
+  "審批新帳號": "Approve new accounts",
+  "⚙️ 設定可勾選權限 -": "⚙️ Set assessable permissions -",
+  "領袖默認全部 (*)，團長/管理員可更改。管委可按個別成員勾選可考核範圍。": "Leaders default to all (*); the Group Scout Leader/Admin can change it. CMC members can have their assessable scope ticked individually.",
+  "成員改為管理委員會後，可設定其可考核：會員章、活動段章(細項不用)、其他獎章逐個勾。": "After changing a member to the Crew Management Committee, you can set what they can assess: Membership Badge, Activities segments (no need to tick each sub-item), and Other Badges individually.",
+  "📝 申請完成 -": "📝 Request completion -",
+  "若成員為協助訓練班（如擔任助教、導師、工作人員等），請直接選擇上方「": "If a member is assisting a training course (e.g. as assistant, instructor, staff, etc.), please choose above: \"",
+  "」填寫。": "\" to fill in.",
+  "步驟一：搜尋與篩選旅團成員": "Step 1: Search and filter Group members",
+  "青少年成員資訊系統 (YMIS)": "Youth Member Information System (YMIS)",
+  "點選頂部選單「功能」→「搜尋成員紀錄」。": "Click the top menu \"Functions\" → \"Search member records\".",
+  "展開「成員紀錄」區塊：選擇所屬「地域」及「童軍區」，在「童軍旅」輸入你的旅團代號。": "Expand the \"Member Records\" section: choose the \"Region\" and \"District\", and enter your Group code in \"Scout Group\".",
+  "按「搜尋」，在成員列表勾選要匯出的成員，或勾選最上方的「全選」。": "Click \"Search\", tick the members to export in the member list, or tick \"Select All\" at the top.",
+  "步驟二：編製報告 → 自訂報表": "Step 2: Compile Report → Custom Report",
+  "按搜尋結果上方的「編製報告」。": "Click \"Compile Report\" above the search results.",
+  "報告種類：切換為「自訂報表」；上方「排列」與「第二排列」可略過不變。": "Report type: switch to \"Custom Report\"; the \"Sort\" and \"Secondary Sort\" above can be left unchanged.",
+  "步驟三：欄位次序（最關鍵！）": "Step 3: Field order (most critical!)",
+  "嚴格依序": "In strict order",
+  "把左側欄位加入右側「已選擇之項目」：": "Add the left-side fields to the right-side \"Selected Items\":",
+  "童軍成員編號（＝系統的 YMIS）": "Scout Member No. (= the system's YMIS)",
+  "電郵地址（＝聯絡電郵）": "Email address (= contact email)",
+  "💡 欄位先後次序完全取決於加入右側的先後次序；右側每欄的寬度百分比可維持預設（例如 100%）。": "💡 The field order depends entirely on the order you add them to the right; each column's width percentage can stay at the default (e.g. 100%).",
+  "步驟四：產出與下載": "Step 4: Generate and download",
+  "確認右側次序為：童軍成員編號 → 中文姓名 → 電郵地址。": "Confirm the right-side order is: Scout Member No. → Chinese Name → Email Address.",
+  "按右下角「確定」，系統自動產生並下載 PDF。": "Click \"OK\" at the bottom right; the system auto-generates and downloads the PDF.",
+  "🔐 PDF 有密碼？": "🔐 PDF password-protected?",
+  "YMIS 匯出的 PDF 多數帶密碼保護。本 APP 支援直接輸入密碼解鎖讀取；若仍讀不到，可用 Chrome／Edge 開啟 PDF（輸入密碼）→ 列印 → 目的地選「另存為 PDF」，儲存出來的新檔案就沒有密碼。詳見": "Most PDFs exported from YMIS are password-protected. This APP supports unlocking by entering the password directly; if it still cannot be read, open the PDF in Chrome/Edge (enter the password) → Print → destination \"Save as PDF\", and the saved new file has no password. See",
+  "YMIS 匯出教學": "YMIS export guide",
+  "）轉 JSON 並直接寫入旅團主資料表。詳見": ") to JSON and write directly into the Group's main data sheet. See",
+  "統籌": "Coordinator",
+  "助教": "Teaching assistant",
+  "導師": "Instructor",
+  "班領導人": "Course leader",
+  "工作人員": "Staff",
+  "領隊": "Team leader",
+  "服務紀錄": "Service Record",
+  "活動紀錄": "Activity Record",
+  "訓練班紀錄": "Training Course Record",
+  "學員身份": "as a trainee",
+  "協助訓練班": "assisting a training course",
+  "任教": "teaching",
+  "必須": "Must",
 };
 const LANG_KEYS=Object.keys(LANG_DICT).sort(function(a,b){ return b.length-a.length; });
 const LANG_RE=new RegExp('('+LANG_KEYS.map(function(k){ return k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }).join('|')+')','g');
@@ -1505,7 +1610,7 @@ function itemsDataUrl(){ return UI_LANG==='en'?'data/items_en.json':'data/items.
 function setUILang(l){ try{ localStorage.setItem('roverbadge_lang',l); }catch(e){} location.reload(); }
 function translateTextNode(node){ if(UI_LANG!=='en'||!node) return; const v=node.nodeValue; if(!v||!v.trim()) return; const t=tr(v); if(t!==v) node.nodeValue=t; }
 function translateAttrs(el){ if(UI_LANG!=='en'||!el||el.nodeType!==1) return; ['placeholder','title','aria-label','alt'].forEach(function(a){ if(el.hasAttribute(a)){ const v=el.getAttribute(a); if(v){ const t=tr(v); if(t!==v) el.setAttribute(a,t); } } }); }
-function translateNode(node){ if(!node) return; if(node.nodeType===3){ translateTextNode(node); return; } if(node.nodeType!==1) return; const tag=(node.tagName||'').toLowerCase(); if(tag==='script'||tag==='style'||tag==='textarea') return; translateAttrs(node); if(tag==='input'||tag==='select') return; let n=node.firstChild; while(n){ const nx=n.nextSibling; translateNode(n); n=nx; } }
+function translateNode(node){ if(!node) return; if(node.nodeType===3){ translateTextNode(node); return; } if(node.nodeType!==1) return; const tag=(node.tagName||'').toLowerCase(); if(tag==='script'||tag==='style'||tag==='textarea') return; translateAttrs(node); if(tag==='input') return; let n=node.firstChild; while(n){ const nx=n.nextSibling; translateNode(n); n=nx; } }
 function translatePage(root){ if(!root) return; translateNode(root); }
 let __i18nApplying=false;
 function startI18nObserver(){ if(typeof MutationObserver==='undefined') return; const obs=new MutationObserver(function(muts){ if(__i18nApplying) return; __i18nApplying=true; try{ for(let i=0;i<muts.length;i++){ const m=muts[i]; if(m.type==='characterData'){ const p=m.target.parentNode; if(p && !/^(script|style|textarea|code)$/i.test(p.tagName||'')) translateTextNode(m.target); } else if(m.type==='attributes'){ translateAttrs(m.target); } else if(m.type==='childList'){ for(let j=0;j<m.addedNodes.length;j++) translateNode(m.addedNodes[j]); } } }finally{ __i18nApplying=false; } }); obs.observe(document.body,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['placeholder','title','aria-label','alt']}); return obs; }
@@ -1547,6 +1652,7 @@ async function apiRequest(action, data={}, opts={}){
 let currentUser=null,currentToken='',loginType='member';
 let itemsData=null,progressFlat={},progressRich={},members=[],pendingChanges=[],pendingRequestsQueue=[],otherBadgesMap={},currentRequestItem=null;
 let logRecords=[],logRecordsSupported=false,logFilterType='all'; // v8.1 活動履歷
+let pendingLogRequests=[],pendingLogRequestsSupported=false; // v8.2 活動履歷申報 → 審批
 let selectedProgressYmis=null; // 領袖查看他人進度
 let appConfig={allow_member_view_others:'false'}; // 系統設定
 
@@ -2314,6 +2420,8 @@ async function loadItemsAndProgress(){
         pendingRequestsQueue=[...pr, ...localQueue.filter(l=>l.status==='local_draft')];
       }catch(e){ pendingRequestsQueue=pr; }
       updateRequestsBadge();
+      // v8.2：活動履歷申報 → 領袖審批（載入自己的待批履歷）
+      loadPendingLogRequests();
       // cache
       localStorage.setItem(LS.cacheProgress(currentTroopId), JSON.stringify({flat:progressFlat, rich:progressRich, members, logs:logRecords, savedAt:Date.now()}));
     }else{
@@ -3068,9 +3176,11 @@ function renderByItemList(){
 /* ================== Requests Tab ================== */
 function updateRequestsBadge(){
   const pending=pendingRequestsQueue.filter(r=>r.status==='pending'||r.status==='local_draft');
+  const pendingLogs=pendingLogRequests.filter(r=>r.status==='pending').length;
+  const total=pending.length+pendingLogs;
   const badge=document.getElementById('badgeRequestsCount');
   if(badge){
-    if(pending.length>0){ badge.textContent=pending.length; badge.style.display='inline-block'; }
+    if(total>0){ badge.textContent=total; badge.style.display='inline-block'; }
     else badge.style.display='none';
   }
 }
@@ -3099,6 +3209,12 @@ async function renderRequestsTab(){
       if(d2.success) userApplications=d2.applications||[];
     }catch(e){ console.warn(e); }
   }
+  // v8.2：載入活動履歷申報（領袖審批用）
+  if(canUserTickRole(currentUser.role)){
+    await loadPendingLogRequests();
+  }
+  const pendingLogRequestsView = pendingLogRequests.filter(r=>r.status==='pending');
+  const logCanApprove = canUserTickRole(currentUser.role);
   // 合併本地暫存
   try{
     const localKey=LS.requests(currentTroopId, currentUser.ymis);
@@ -3115,18 +3231,20 @@ async function renderRequestsTab(){
 
   const totalBadge=badgeRequests.length;
   const totalUser=userApplications.length;
-  const totalAll=totalBadge+totalUser;
-  // 更新紅點數字包含兩種
+  const totalLog=pendingLogRequestsView.length;
+  const totalAll=totalBadge+totalUser+totalLog;
+  // 更新紅點數字包含多種
   const badgeEl=document.getElementById('badgeRequestsCount');
   if(badgeEl){ if(totalAll>0){ badgeEl.textContent=totalAll; badgeEl.style.display='inline-block'; } else badgeEl.style.display='none'; }
 
   if(totalAll===0){
-    c.innerHTML=`<div style="text-align:center;padding:30px;color:var(--text-light)"><div style="font-size:36px">📭</div><p>目前沒有待審批項目</p><p style="font-size:11px;margin-top:6px">成員的獎章申請及新用戶註冊申請都會在此顯示</p></div>`;
+    c.innerHTML=`<div style="text-align:center;padding:30px;color:var(--text-light)"><div style="font-size:36px">📭</div><p>目前沒有待審批項目</p><p style="font-size:11px;margin-top:6px">成員的獎章申請、活動履歷申報及新用戶註冊申請都會在此顯示</p></div>`;
     return;
   }
 
   let html=`<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
     <button class="btn btn-sm btn-primary" onclick="showApprovalSubTab('badge')">🏅 獎章審批 (${totalBadge})</button>
+    ${logCanApprove?`<button class="btn btn-sm btn-secondary" onclick="showApprovalSubTab('log')">📅 履歷審批 (${totalLog})</button>`:''}
     ${isManage?`<button class="btn btn-sm btn-secondary" onclick="showApprovalSubTab('user')">👤 用戶審批 (${totalUser})</button>`:''}
     <button class="btn btn-sm btn-secondary" onclick="renderRequestsTab()">🔄 刷新</button>
   </div>`;
@@ -3157,6 +3275,38 @@ async function renderRequestsTab(){
   }
   html+=`</div>`;
 
+  // 履歷審批區 (領袖：活動履歷申報 → 審批 → 寫入活動履歷)
+  if(logCanApprove){
+    html+=`<div id="approvalLogView" style="display:none;margin-top:16px">`;
+    html+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="font-size:14px;color:var(--maroon)">📅 履歷審批 - 成員申報活動履歷</h3><button class="btn btn-sm btn-success" onclick="batchApproveLog()">✅ 批量批准選中</button></div>`;
+    if(totalLog===0){
+      html+=`<p style="color:var(--text-light);font-size:12px;padding:10px;background:var(--bg);border-radius:8px">暫無履歷待批</p>`;
+    }else{
+      html+=pendingLogRequestsView.map(p=>{
+        const isLocal=/^DEMOLOGRQ_/.test(p.request_id);
+        return `<div class="app-item" style="align-items:flex-start">
+          <div class="app-item-info">
+            <div style="font-weight:600">${p.name||p.ymis} <small style="color:var(--text-light)">(${p.ymis})</small> ${p.submission_type==='edit'?'<span style="background:var(--blue);color:#fff;padding:1px 6px;border-radius:999px;font-size:9px">修改</span>':'<span style="background:var(--orange);color:#fff;padding:1px 6px;border-radius:999px;font-size:9px">新申報</span>'}</div>
+            <div style="font-size:12px;margin:4px 0">${logTypeIcon(p.type)} ${escapeHtmlText(p.title)} <small style="color:var(--text-light)">(${logTypeLabel(p.type)})</small></div>
+            <div style="font-size:11px;color:var(--text-light)">📅 ${escapeHtmlText(p.date)} | 提交：${escapeHtmlText(p.requested_at||'')}</div>
+            <div style="font-size:11px;margin-top:3px;display:flex;gap:6px;flex-wrap:wrap">
+              ${p.role?`<span style="background:var(--bg);padding:1px 8px;border-radius:999px">崗位：${escapeHtmlText(p.role)}</span>`:''}
+              ${p.hours?`<span style="background:var(--bg);padding:1px 8px;border-radius:999px">時數：${escapeHtmlText(p.hours)}</span>`:''}
+              ${p.cert_no?`<span style="background:var(--bg);padding:1px 8px;border-radius:999px">證書：${escapeHtmlText(p.cert_no)}</span>`:''}
+            </div>
+            ${p.detail?`<div style="font-size:11px;background:#FAFAFA;padding:6px;border-radius:6px;margin-top:4px;border-left:2px solid var(--border)">${escapeHtmlText(p.detail)}</div>`:''}
+          </div>
+          <div class="app-item-actions" style="flex-direction:column">
+            <label style="font-size:11px"><input type="checkbox" class="batch-check-log" data-req="${p.request_id}"> 選中</label>
+            <button class="btn btn-sm btn-success" onclick="reviewSingleLogRequest('${p.request_id}','approved')">✅ 批准</button>
+            <button class="btn btn-sm btn-danger" onclick="reviewSingleLogRequest('${p.request_id}','rejected')">❌ 拒絕</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+    html+=`</div>`;
+  }
+
   // 用戶審批區 (僅管理層)
   if(isManage){
     html+=`<div id="approvalUserView" style="display:none;margin-top:16px">`;
@@ -3174,12 +3324,19 @@ async function renderRequestsTab(){
 function showApprovalSubTab(which){
   const bv=document.getElementById('approvalBadgeView');
   const uv=document.getElementById('approvalUserView');
+  const lv=document.getElementById('approvalLogView');
   if(which==='badge'){
     if(bv) bv.style.display='block';
     if(uv) uv.style.display='none';
+    if(lv) lv.style.display='none';
+  }else if(which==='log'){
+    if(bv) bv.style.display='none';
+    if(uv) uv.style.display='none';
+    if(lv) lv.style.display='block';
   }else{
     if(bv) bv.style.display='none';
     if(uv) uv.style.display='block';
+    if(lv) lv.style.display='none';
   }
 }
 
@@ -3245,6 +3402,84 @@ async function batchApprove(){
   if(overlay) overlay.classList.remove('active');
   renderRequestsTab();
   updateSaveBar();
+  showToast(`批量批准完成：成功 ${ok} 筆${fail>0?`，失敗 ${fail} 筆`:''}`, fail>0?'warning':'success');
+}
+
+// ===== v8.2：活動履歷申報審批（履歷審批） =====
+async function reviewSingleLogRequest(reqId, decision){
+  if(!confirm(tr(`確定${decision==='approved'?'批准':'拒絕'}此活動履歷申報？`))) return;
+  const p=pendingLogRequests.find(x=>x.request_id===reqId);
+  if(!p) return;
+  if(currentTroopId==='DEMO'){
+    if(decision==='approved'){
+      // DEMO 批准：寫入本機 logRecords
+      const base={type:p.type,ymis:p.ymis,name:p.name,date:p.date,title:p.title,role:p.role,hours:p.hours,cert_no:p.cert_no,detail:p.detail,recorder:currentUser.name,recorded_at:todayISO()};
+      if(p.submission_type==='edit' && p.record_id){
+        const idx=logRecords.findIndex(x=>x.record_id===p.record_id);
+        if(idx>=0) logRecords[idx]={...logRecords[idx],...base};
+        else logRecords.push({...base,record_id:p.record_id});
+      }else{
+        logRecords.push({...base,record_id:'DEMOLOG_'+Date.now()+'_'+Math.random().toString(36).slice(2,5)});
+      }
+      showToast('✅ 已批准並寫入活動履歷（DEMO）','success');
+    }else{
+      showToast('已拒絕申請（DEMO）','success');
+    }
+    pendingLogRequests=pendingLogRequests.filter(x=>x.request_id!==reqId);
+    renderRequestsTab();
+    return;
+  }
+  try{
+    document.getElementById('savingOverlay').classList.add('active');
+    document.getElementById('savingText').textContent=decision==='approved'?'正在批准並寫入活動履歷...':'正在拒絕...';
+    const d=await apiRequest('reviewLogRequest',{token:currentToken,request_id:reqId,decision,review_note:''});
+    document.getElementById('savingOverlay').classList.remove('active');
+    if(!d.success) throw new Error(d.error||'操作失敗');
+    showToast('✅ '+d.message,'success');
+    await Promise.all([refreshLogRecords(), loadPendingLogRequests()]);
+    renderRequestsTab();
+  }catch(e){
+    document.getElementById('savingOverlay').classList.remove('active');
+    showToast('操作失敗：'+e.message,'error');
+  }
+}
+async function batchApproveLog(){
+  const checks=document.querySelectorAll('.batch-check-log:checked');
+  if(checks.length===0){ showToast('請先選中要批准的項目','warning'); return; }
+  if(!confirm(tr(`確定批量批准 ${checks.length} 項活動履歷申報？`))) return;
+  const overlay=document.getElementById('savingOverlay');
+  if(overlay) overlay.classList.add('active');
+  const txt=document.getElementById('savingText');
+  if(txt) txt.textContent=`正在批量批准 ${checks.length} 項...`;
+  let ok=0, fail=0;
+  for(const ch of checks){
+    const reqId=ch.dataset.req;
+    try{
+      let success=false;
+      if(currentTroopId==='DEMO'){
+        // 本機處理
+        const p=pendingLogRequests.find(x=>x.request_id===reqId);
+        if(p){
+          const base={type:p.type,ymis:p.ymis,name:p.name,date:p.date,title:p.title,role:p.role,hours:p.hours,cert_no:p.cert_no,detail:p.detail,recorder:currentUser.name,recorded_at:todayISO()};
+          if(p.submission_type==='edit' && p.record_id){
+            const idx=logRecords.findIndex(x=>x.record_id===p.record_id);
+            if(idx>=0) logRecords[idx]={...logRecords[idx],...base}; else logRecords.push({...base,record_id:p.record_id});
+          }else{
+            logRecords.push({...base,record_id:'DEMOLOG_'+Date.now()+'_'+Math.random().toString(36).slice(2,5)});
+          }
+          success=true;
+        }
+      }else{
+        const d=await apiRequest('reviewLogRequest',{token:currentToken,request_id:reqId,decision:'approved',review_note:''});
+        success=d.success;
+      }
+      if(success){ ok++; pendingLogRequests=pendingLogRequests.filter(x=>x.request_id!==reqId); }
+      else fail++;
+    }catch(e){ fail++; }
+  }
+  if(overlay) overlay.classList.remove('active');
+  await loadPendingLogRequests();
+  renderRequestsTab();
   showToast(`批量批准完成：成功 ${ok} 筆${fail>0?`，失敗 ${fail} 筆`:''}`, fail>0?'warning':'success');
 }
 
@@ -3351,6 +3586,13 @@ const LOG_TYPES_CONFIG={
 function logTypeLabel(t){ return (LOG_TYPES_CONFIG[t]||LOG_TYPES_CONFIG.activity).label; }
 function logTypeIcon(t){ return (LOG_TYPES_CONFIG[t]||LOG_TYPES_CONFIG.activity).icon; }
 
+function logPendingStatusLabel(s){
+  const m={'pending':'⏳ 待領袖審批','approved':'✅ 已批准','rejected':'❌ 已拒絕'};
+  return m[s]||s;
+}
+function hasPendingLogEdit(recordId){
+  return pendingLogRequests.some(p=>p.record_id===recordId && p.status==='pending');
+}
 function renderLogsTab(){
   const c=document.getElementById('tab-logs');
   const isLeader=canUserTickRole(currentUser.role);
@@ -3359,8 +3601,8 @@ function renderLogsTab(){
   if(!logRecordsSupported && currentTroopId!=='DEMO'){
     c.innerHTML=`<div class="info-section" style="border-left:4px solid var(--orange);background:#FFFBEB">
       <h3>📅 活動履歷（服務／活動／訓練班紀錄）</h3>
-      <p style="font-size:13px;margin-top:6px">⚠️ 此旅團後端尚未升級到 <b>v8.1</b>，暫未能使用活動履歷。進度、審批、用戶管理等現有功能完全不受影響。</p>
-      <p style="font-size:12px;color:var(--text-light);margin-top:8px">升級方法（約 5 分鐘）：Apps Script 貼上最新 Code.gs → 執行 initializeSheets() 補建「活動履歷」工作表 → 部署 → 管理部署 → 編輯 → 版本選「新版本」→ 部署。URL 不變。</p>
+      <p style="font-size:13px;margin-top:6px">⚠️ 此旅團後端尚未升級到 <b>v8.2</b>，暫未能使用活動履歷（成員申報→領袖審批）。進度、審批、用戶管理等現有功能完全不受影響。</p>
+      <p style="font-size:12px;color:var(--text-light);margin-top:8px">升級方法（約 5 分鐘）：Apps Script 貼上最新 Code.gs → 執行 initializeSheets() 補建「活動履歷」及「待批履歷」工作表 → 部署 → 管理部署 → 編輯 → 版本選「新版本」→ 部署。URL 不變。</p>
       <button class="btn btn-sm btn-secondary" style="margin-top:8px" onclick="refreshLogRecords()">🔄 重新檢查</button>
     </div>`;
     return;
@@ -3376,9 +3618,30 @@ function renderLogsTab(){
   html+=`<span style="font-size:11px;color:var(--text-light)">🤝 服務 ${countOf('service')} · 🏕️ 活動 ${countOf('activity')} · 🎓 訓練班 ${countOf('training')}${serviceHours?` · 服務總時數 <b>${serviceHours}</b>`:''}</span>`;
   html+=`<button class="btn btn-sm btn-secondary" onclick="refreshLogRecords()" title="重新載入">🔄</button>`;
   if(isLeader) html+=`<button class="btn btn-sm btn-primary" onclick="openLogRecordModal()">➕ 新增紀錄</button>`;
+  else html+=`<button class="btn btn-sm btn-primary" onclick="openLogRecordModal()">➕ 申報活動</button>`;
   html+='</div>';
   // 類型篩選
   html+=`<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">${['all','service','activity','training'].map(t=>`<button class="btn btn-sm ${logFilterType===t?'btn-primary':'btn-outline'}" onclick="logFilterType='${t}';renderLogsTab()">${t==='all'?'全部':logTypeIcon(t)+' '+logTypeLabel(t)}</button>`).join('')}</div>`;
+  // 成員：顯示自己的申報／修改狀態（待審批）
+  if(!isLeader){
+    const myPending=pendingLogRequests.filter(r=>r.ymis===targetYmis).sort((a,b)=>(b.requested_at||'').localeCompare(a.requested_at||''));
+    if(myPending.length>0){
+      html+=`<div class="info-section" style="border-left:4px solid var(--orange)"><h3>📋 我的申報（活動履歷）<small style="color:var(--text-light)">(${myPending.length})</small></h3>`;
+      html+=myPending.map(p=>{
+        const pending=p.status==='pending';
+        return `<div class="app-item" style="align-items:flex-start">
+          <div class="app-item-info">
+            <div style="font-weight:600">${logTypeIcon(p.type)} ${escapeHtmlText(p.title)} ${p.submission_type==='edit'?'<span style="background:var(--blue);color:#fff;padding:1px 6px;border-radius:999px;font-size:9px">修改申請</span>':'<span style="background:var(--orange);color:#fff;padding:1px 6px;border-radius:999px;font-size:9px">新申報</span>'}</div>
+            <div style="font-size:11px;color:var(--text-light);margin-top:3px">📅 ${escapeHtmlText(p.date)} ${p.role?` · 崗位：${escapeHtmlText(p.role)}`:''}${p.hours?` · 時數：${escapeHtmlText(p.hours)}`:''}${p.cert_no?` · 證書：${escapeHtmlText(p.cert_no)}`:''}</div>
+            <div style="font-size:11px;margin-top:3px">${logPendingStatusLabel(p.status)} · 提交：${escapeHtmlText(p.requested_at||'')}</div>
+            ${p.review_note?`<div style="font-size:11px;background:#FAFAFA;padding:6px;border-radius:6px;margin-top:4px;border-left:2px solid var(--border)">審批意見：${escapeHtmlText(p.review_note)}</div>`:''}
+          </div>
+          ${pending?`<div class="app-item-actions"><button class="btn btn-sm btn-danger" onclick="cancelLogRequest('${escapeAttr(p.request_id)}')">撤銷</button></div>`:''}
+        </div>`;
+      }).join('');
+      html+='</div>';
+    }
+  }
   // 三類區塊
   ['service','activity','training'].forEach(t=>{
     if(logFilterType!=='all'&&logFilterType!==t) return;
@@ -3386,9 +3649,12 @@ function renderLogsTab(){
     const rows=memberLogs.filter(r=>r.type===t).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
     html+=`<div class="info-section" style="border-left:4px solid ${cfg.color}"><h3>${cfg.icon} ${cfg.label} <small style="color:var(--text-light)">(${rows.length})</small></h3>`;
     if(rows.length===0){
-      html+=`<p style="font-size:12px;color:var(--text-light);padding:8px 0">暫無紀錄${isLeader?'，可按上方「➕ 新增紀錄」補登':''}</p>`;
+      html+=`<p style="font-size:12px;color:var(--text-light);padding:8px 0">暫無紀錄${isLeader?'，可按上方「➕ 新增紀錄」補登':'，可按上方「➕ 申報活動」自行申報'}</p>`;
     }else{
-      html+=rows.map(r=>`<div class="app-item" style="align-items:flex-start">
+      html+=rows.map(r=>{
+        const myPendingEdit = !isLeader && r.ymis===currentUser.ymis && hasPendingLogEdit(r.record_id);
+        const canMemberEdit = !isLeader && r.ymis===currentUser.ymis;
+        return `<div class="app-item" style="align-items:flex-start">
         <div class="app-item-info">
           <b>${escapeHtmlText(r.title)}</b> <small style="color:var(--text-light)">📅 ${escapeHtmlText(r.date)}</small>
           <div style="font-size:11px;margin-top:3px;display:flex;gap:6px;flex-wrap:wrap">
@@ -3402,22 +3668,36 @@ function renderLogsTab(){
         ${isLeader?`<div class="app-item-actions" style="flex-direction:column">
           <button class="btn btn-sm btn-outline" title="編輯" onclick="openLogRecordModal('${escapeAttr(r.record_id)}')">✏️</button>
           <button class="btn btn-sm btn-danger" title="刪除" onclick="deleteLogRecord('${escapeAttr(r.record_id)}')">🗑️</button>
-        </div>`:''}
-      </div>`).join('');
+        </div>`:(canMemberEdit?`<div class="app-item-actions" style="flex-direction:column">
+          ${myPendingEdit?`<span style="font-size:10px;color:var(--orange)">⏳ 修改待批</span>`:`<button class="btn btn-sm btn-outline" title="申請修改（領袖重批）" onclick="openLogRecordModal('${escapeAttr(r.record_id)}')">✏️ 申請修改</button>`}
+        </div>`:'')}
+      </div>`;
+      }).join('');
     }
     html+='</div>';
   });
   c.innerHTML=html;
 }
 
+async function loadPendingLogRequests(){
+  try{
+    const d=await apiRequest('getPendingLogRequests',{token:currentToken});
+    if(d.success){
+      pendingLogRequests=d.requests||[]; pendingLogRequestsSupported=true;
+    }else{
+      pendingLogRequests=[]; pendingLogRequestsSupported=false;
+    }
+  }catch(e){ pendingLogRequests=[]; pendingLogRequestsSupported=false; }
+}
 async function refreshLogRecords(){
   try{
     const d=await apiRequest('getLogRecords',{token:currentToken});
     if(d.success){
       logRecords=d.logs||[]; logRecordsSupported=true;
+      await loadPendingLogRequests();
       renderLogsTab(); showToast('✅ 活動履歷已更新','success');
     }else{
-      // 後端未升級 v8.1 → 顯示升級提示
+      // 後端未升級 v8.2 → 顯示升級提示
       logRecordsSupported=false; renderLogsTab();
       showToast(d.error||'未能讀取紀錄','warning');
     }
@@ -3426,21 +3706,33 @@ async function refreshLogRecords(){
 
 let editingLogRecordId=null;
 function openLogRecordModal(recordId){
-  if(!canUserTickRole(currentUser.role)){ showToast('只有領袖可以新增／編輯紀錄','warning'); return; }
-  if(!logRecordsSupported && currentTroopId!=='DEMO'){ showToast('後端未升級 v8.1，暫未能儲存','error'); return; }
+  if(!logRecordsSupported && currentTroopId!=='DEMO'){ showToast('後端未升級 v8.2，暫未能申報／儲存','error'); return; }
+  const isLeader=canUserTickRole(currentUser.role);
   editingLogRecordId=recordId||null;
+  const isEdit=!!recordId;
+  // 成員：隱藏「選擇成員／批量」區，顯示申報提示
+  const memberSelGroup=document.getElementById('lgMemberGroup');
+  if(memberSelGroup) memberSelGroup.style.display=isLeader?'block':'none';
+  const hintEl=document.getElementById('logModalHint');
+  if(hintEl){
+    if(isLeader){ hintEl.style.display='none'; }
+    else{
+      hintEl.style.display='block';
+      hintEl.textContent=isEdit?'📌 此為已批紀錄的「申請修改」：送出後會重新交回領袖審批，批准後才更新。':'📌 你將自行申報此活動履歷，送出後由領袖審批才正式生效。';
+    }
+  }
   const opts=members.map(m=>`<option value="${m.ymis}">${escapeHtmlText(m.name)} (${m.ymis})</option>`).join('');
   document.getElementById('lgMember').innerHTML=opts;
   document.getElementById('lgBatchMembers').innerHTML=opts;
   document.getElementById('lgBatchMode').checked=false;
+  document.getElementById('lgBatchMode').disabled=!isLeader;
   syncLogBatchMode();
-  if(recordId){
+  if(isEdit){
     const r=logRecords.find(x=>x.record_id===recordId);
     if(!r){ showToast('找不到紀錄，請先重新載入','error'); return; }
-    document.getElementById('logModalTitle').textContent='✏️ 編輯紀錄';
+    document.getElementById('logModalTitle').textContent=isLeader?'✏️ 編輯紀錄':'✏️ 申請修改紀錄';
     document.getElementById('lgType').value=r.type; document.getElementById('lgType').disabled=true;
     document.getElementById('lgMember').value=r.ymis; document.getElementById('lgMember').disabled=true;
-    document.getElementById('lgBatchMode').disabled=true;
     document.getElementById('lgDate').value=r.date||todayISO();
     document.getElementById('lgTitle').value=r.title||'';
     document.getElementById('lgRole').value=r.role||'';
@@ -3448,15 +3740,16 @@ function openLogRecordModal(recordId){
     document.getElementById('lgCertNo').value=r.cert_no||'';
     document.getElementById('lgDetail').value=r.detail||'';
   }else{
-    document.getElementById('logModalTitle').textContent='➕ 新增活動履歷紀錄';
+    document.getElementById('logModalTitle').textContent=isLeader?'➕ 新增活動履歷紀錄':'➕ 申報活動履歷';
     document.getElementById('lgType').disabled=false;
     document.getElementById('lgMember').disabled=false;
-    document.getElementById('lgBatchMode').disabled=false;
     document.getElementById('lgType').value='service';
-    document.getElementById('lgMember').value=selectedProgressYmis||currentUser.ymis;
+    document.getElementById('lgMember').value=isLeader?(selectedProgressYmis||currentUser.ymis):currentUser.ymis;
     document.getElementById('lgDate').value=todayISO();
     ['lgTitle','lgRole','lgHours','lgCertNo','lgDetail'].forEach(id=>document.getElementById(id).value='');
   }
+  const saveBtn=document.getElementById('btnSaveLogRecord');
+  if(saveBtn) saveBtn.textContent=isLeader?'💾 儲存':'📨 送出申報';
   syncLogTypeFields();
   document.getElementById('logRecordModal').classList.add('active');
 }
@@ -3484,6 +3777,7 @@ function syncLogTypeFields(){
 async function submitLogRecord(){
   const btn=document.getElementById('btnSaveLogRecord');
   if(btn.disabled) return; // 防止重複提交
+  const isLeader=canUserTickRole(currentUser.role);
   const oldRec=editingLogRecordId?logRecords.find(x=>x.record_id===editingLogRecordId):null;
   const type=oldRec?oldRec.type:document.getElementById('lgType').value;
   const date=document.getElementById('lgDate').value;
@@ -3498,50 +3792,90 @@ async function submitLogRecord(){
   if(type==='training' && !role){
     role='學員';
   }
-  // 目標成員：編輯=原成員；批量=多選；否則單選
+  // 目標成員：編輯=原成員；批量=多選；否則單選（成員固定自己）
   let targets=[];
   if(oldRec){
     targets=[{ymis:oldRec.ymis,name:oldRec.name||(members.find(m=>m.ymis===oldRec.ymis)||{}).name||''}];
-  }else if(document.getElementById('lgBatchMode').checked){
+  }else if(isLeader && document.getElementById('lgBatchMode').checked){
     targets=[...document.getElementById('lgBatchMembers').selectedOptions].map(o=>({ymis:o.value,name:(members.find(m=>m.ymis===o.value)||{}).name||''}));
     if(targets.length===0){ showToast('請選擇至少一位成員','error'); return; }
   }else{
-    const y=document.getElementById('lgMember').value;
-    targets=[{ymis:y,name:(members.find(m=>m.ymis===y)||{}).name||''}];
+    const y=isLeader?document.getElementById('lgMember').value:currentUser.ymis;
+    targets=[{ymis:y,name:(members.find(m=>m.ymis===y)||{}).name||currentUser.name||''}];
   }
   const records=targets.map(t=>({...(oldRec?{record_id:oldRec.record_id}:{}),type,ymis:t.ymis,name:t.name,date,title,role,hours:hours!==''?String(hours):'',cert_no,detail}));
-  btn.disabled=true; btn.textContent='儲存中...';
+  btn.disabled=true; btn.textContent='送出中...';
   try{
     if(currentTroopId==='DEMO'){
-      // DEMO：本機寫入（重新整理即消失），方便試用
-      records.forEach(r=>{
-        const idx=logRecords.findIndex(x=>x.record_id===r.record_id);
-        if(idx>=0) logRecords[idx]={...logRecords[idx],...r};
-        else logRecords.push({...r,record_id:'DEMOLOG_'+Date.now()+'_'+Math.random().toString(36).slice(2,5),recorder:currentUser.name});
-      });
-      closeModal('logRecordModal'); renderLogsTab();
-      showToast('✅ 已儲存（DEMO 本機模式，不寫入雲端）','success');
+      if(isLeader){
+        // DEMO 領袖：本機寫入（重新整理即消失）
+        records.forEach(r=>{
+          const idx=logRecords.findIndex(x=>x.record_id===r.record_id);
+          if(idx>=0) logRecords[idx]={...logRecords[idx],...r};
+          else logRecords.push({...r,record_id:'DEMOLOG_'+Date.now()+'_'+Math.random().toString(36).slice(2,5),recorder:currentUser.name});
+        });
+        closeModal('logRecordModal'); renderLogsTab();
+        showToast('✅ 已儲存（DEMO 本機模式，不寫入雲端）','success');
+      }else{
+        // DEMO 成員：加入本機待批
+        records.forEach(r=>{
+          pendingLogRequests.unshift({request_id:'DEMOLOGRQ_'+Date.now()+'_'+Math.random().toString(36).slice(2,5),record_id:oldRec?oldRec.record_id:'',type:r.type,ymis:r.ymis,name:currentUser.name,date:r.date,title:r.title,role:r.role,hours:r.hours,cert_no:r.cert_no,detail:r.detail,status:'pending',requested_at:todayISO(),submitted_by:currentUser.ymis,submission_type:oldRec?'edit':'new'});
+        });
+        closeModal('logRecordModal'); renderLogsTab();
+        showToast('✅ 已送交審批（DEMO 本機模式）','success');
+      }
       return;
     }
-    // await 真實後端回應；確認成功才更新畫面
-    const d=await apiRequest('saveLogRecord',{token:currentToken,records,recorder_name:currentUser.name});
-    if(!d.success){
-      throw new Error(/工作表不存在|Unknown action/i.test(d.error||'')?'旅團後端未升級 v8.1：請通知管理員更新 Code.gs 並執行 initializeSheets()':(d.error||'儲存失敗'));
+    if(isLeader){
+      // 領袖：直接寫入活動履歷
+      const d=await apiRequest('saveLogRecord',{token:currentToken,records,recorder_name:currentUser.name});
+      if(!d.success){
+        throw new Error(/工作表不存在|Unknown action/i.test(d.error||'')?'旅團後端未升級 v8.2：請通知管理員更新 Code.gs 並執行 initializeSheets()':(d.error||'儲存失敗'));
+      }
+      (d.results||[]).forEach((res,i)=>{
+        if(!res.success) return;
+        const localRec={...records[i],record_id:res.record_id,recorder:currentUser.name};
+        const idx=logRecords.findIndex(x=>x.record_id===res.record_id);
+        if(idx>=0) logRecords[idx]={...logRecords[idx],...localRec};
+        else logRecords.push(localRec);
+      });
+      const failed=(d.results||[]).filter(r=>!r.success);
+      try{ localStorage.setItem(LS.cacheProgress(currentTroopId), JSON.stringify({flat:progressFlat,rich:progressRich,members,logs:logRecords,savedAt:Date.now()})); }catch(e){}
+      closeModal('logRecordModal'); renderLogsTab();
+      if(failed.length===0) showToast(`✅ 已儲存 ${d.processed||records.length} 筆活動履歷`,'success');
+      else showToast(`已儲存 ${d.processed||0} 筆；${failed.length} 筆失敗（${failed[0].error||''}）`,'error');
+    }else{
+      // 成員：送出申報／修改 → 領袖審批
+      let res;
+      if(oldRec){
+        res=await apiRequest('submitLogRequest',{token:currentToken,record_id:oldRec.record_id,data:{type,date,title,role,hours:hours!==''?String(hours):'',cert_no,detail}});
+      }else{
+        res=await apiRequest('submitLogRequest',{token:currentToken,records});
+      }
+      if(!res.success){
+        throw new Error(/工作表不存在|Unknown action/i.test(res.error||'')?'旅團後端未升級 v8.2：請通知管理員更新 Code.gs 並執行 initializeSheets()':(res.error||'送出失敗'));
+      }
+      await loadPendingLogRequests();
+      closeModal('logRecordModal'); renderLogsTab(); renderRequestsTab();
+      showToast(`✅ 已送交審批（${res.processed||records.length} 筆），待領袖確認`,'success');
     }
-    (d.results||[]).forEach((res,i)=>{
-      if(!res.success) return;
-      const localRec={...records[i],record_id:res.record_id,recorder:currentUser.name};
-      const idx=logRecords.findIndex(x=>x.record_id===res.record_id);
-      if(idx>=0) logRecords[idx]={...logRecords[idx],...localRec};
-      else logRecords.push(localRec);
-    });
-    const failed=(d.results||[]).filter(r=>!r.success);
-    try{ localStorage.setItem(LS.cacheProgress(currentTroopId), JSON.stringify({flat:progressFlat,rich:progressRich,members,logs:logRecords,savedAt:Date.now()})); }catch(e){}
-    closeModal('logRecordModal'); renderLogsTab();
-    if(failed.length===0) showToast(`✅ 已儲存 ${d.processed||records.length} 筆活動履歷`,'success');
-    else showToast(`已儲存 ${d.processed||0} 筆；${failed.length} 筆失敗（${failed[0].error||''}）`,'error');
-  }catch(e){ showToast('儲存失敗：'+e.message,'error'); }
-  finally{ btn.disabled=false; btn.textContent='💾 儲存'; }
+  }catch(e){ showToast('送出失敗：'+e.message,'error'); }
+  finally{ btn.disabled=false; btn.textContent=isLeader?'💾 儲存':'📨 送出申報'; }
+}
+async function cancelLogRequest(requestId){
+  const p=pendingLogRequests.find(x=>x.request_id===requestId);
+  if(!confirm(tr(`確定撤銷「${p?p.title:requestId}」此申報？`))) return;
+  if(currentTroopId==='DEMO'){
+    pendingLogRequests=pendingLogRequests.filter(x=>x.request_id!==requestId);
+    renderLogsTab(); showToast('已撤銷（DEMO 本機模式）','success'); return;
+  }
+  // 撤銷 = 將該申請標記為取消（後端不設刪除以保留審批軌跡）→ 用 review 記為 rejected，保留原申請
+  try{
+    const d=await apiRequest('reviewLogRequest',{token:currentToken,request_id:requestId,decision:'rejected',review_note:'申請人自行撤銷'});
+    if(!d.success) throw new Error(d.error||'撤銷失敗');
+    await loadPendingLogRequests();
+    renderLogsTab(); showToast('✅ 已撤銷申請','success');
+  }catch(e){ showToast('撤銷失敗：'+e.message,'error'); }
 }
 async function deleteLogRecord(recordId){
   if(!canUserTickRole(currentUser.role)){ showToast('只有領袖可以刪除紀錄','warning'); return; }
@@ -4153,6 +4487,9 @@ async function enterDemoMode(){
     appConfig={allow_member_view_others:'true'};
     // v8.1：DEMO 範例活動履歷（僅本機記憶體，方便試用）
     logRecordsSupported=true;
+    // v8.2：DEMO 本機待批履歷
+    pendingLogRequestsSupported=true;
+    pendingLogRequests=[];
     const demoY=mockMembers.slice(0,3).map(m=>({y:m.ymis,n:m.name}));
     demoY.push({y:'DEMO_LEADER',n:'DEMO 團長 (免登入試用)'});
     logRecords=[];

@@ -747,3 +747,110 @@ assets/ymis-parse.js 未載入	assets/ymis-parse.js not loaded
  頁），略過 	 pages), skipped 
 位成員，略過 	 members, skipped 
  行	 lines
+📋 我的申報（活動履歷）	📋 My submissions (Activity Log)
+修改申請	Modification request
+新申報	New submission
+審批意見：	Review note: 
+撤銷	Withdraw
+➕ 申報活動	➕ Declare Activity
+➕ 申報活動履歷	➕ Declare Activity Log
+✏️ 申請修改	✏️ Request modification
+✏️ 申請修改紀錄	✏️ Request to modify record
+📨 送出申報	📨 Submit declaration
+送出中...	Submitting...
+⏳ 待領袖審批	⏳ Pending leader approval
+✅ 已批准	✅ Approved
+❌ 已拒絕	❌ Rejected
+⏳ 修改待批	⏳ Modification pending
+📌 此為已批紀錄的「申請修改」：送出後會重新交回領袖審批，批准後才更新。	📌 This modifies an approved record: it will be sent back for leader re-approval and only updates after approval.
+📌 你將自行申報此活動履歷，送出後由領袖審批才正式生效。	📌 You are declaring this activity log yourself; it takes effect only after leader approval.
+確定撤銷「	Withdraw "
+」此申報？	" this declaration?
+已撤銷申請	Application withdrawn
+申請人自行撤銷	Withdrawn by applicant
+撤銷失敗：	Failed to withdraw: 
+📅 履歷審批	📅 Activity Log Approvals
+📅 履歷審批 - 成員申報活動履歷	📅 Activity Log Approvals - member declarations
+暫無履歷待批	No activity log approvals pending
+確定批准此活動履歷申報？	Approve this activity log declaration?
+確定拒絕此活動履歷申報？	Reject this activity log declaration?
+確定	Confirm 
+此活動履歷申報？	this activity log declaration?
+正在批准並寫入活動履歷...	Approving and writing to Activity Log...
+項活動履歷申報？	activity log declarations?
+✅ 已送交審批（	✅ Submitted for approval (
+已送交審批	Submitted for approval
+），待領袖確認	), awaiting leader approval
+，可按上方「➕ 申報活動」自行申報	, use "➕ Declare Activity" above to declare
+，可按上方「➕ 新增紀錄」補登	, use "➕ Add Record" above
+只有領袖或成員可以申報活動履歷	Only leaders or members can declare activity logs
+此紀錄已有待批的修改申請	This record already has a pending modification request
+只能申報自己的活動履歷	You can only declare your own activity logs
+只能申請修改自己的紀錄	You can only request to modify your own records
+筆已送交審批	submitted for approval
+我已送出，待領袖確認	Submitted; awaiting leader approval
+此申請已處理	This request has already been processed
+已批准並寫入活動履歷	Approved and written to Activity Log
+已拒絕申請	Application rejected
+待批履歷	Pending Activity Logs
+成員申報活動履歷在此審批，批准後寫入活動履歷。	Member activity log declarations are approved here and written to the Activity Log after approval.
+同樣交 roverbadge 管理員 + 額外交主系統管理員填入旅團設定→元件設定 backend+apikey → 用法：主系統 Dashboard 點卡片 → 自動帶入 from=portal&embed=1 → 直接用	Also give the same to the roverbadge Admin + additionally ask the main-system admin to fill in the Group settings → Widget settings backend+apikey → Usage: click the card on the main-system Dashboard → identity is auto-carried from=portal&embed=1 → use directly
+建新試算表	Create a new spreadsheet
+私隱選擇	Privacy choice
+其他功能	Other features
+全團總覽：按段章篩選，避免卡死；按項目統計：百分比+人數；其他獎章已併入我的進度；表格列印：樂行童軍官方格式 (PT/21 / PT/22 / PT/69) 自動填入後列印。	Group Overview: filter by section to avoid freezing; by-item stats: percentage + headcount; Other Badges are merged into My Progress; printable official Rover Scout forms (PT/21 / PT/22 / PT/69) auto-filled then printed.
+👥 角色功能教學（登入後）	👥 Role feature guide (after login)
+只能看自己進度	Can only view own progress
+不能直接剔，按📝申請	Cannot tick directly; use 📝 Request
+成員全部功能	All member functions
+默認：會員章+活動段章(細項不用)+其他逐個勾	Default: Membership Badge + Activities segments (no need to tick each sub-item) + Other Badges individually
+全部功能	All features
+我的進度選任何成員看紀錄	My Progress: select any member to see records
+待批批量批准	Approve requests in batch in Pending
+用戶管理改成員為管委+⚙️權限設定	User Management: change members to CMC + ⚙️ permission settings
+領袖默認全部，團長/管理員可改低層級	Leaders default to all; the Group Scout Leader/Admin can change lower levels
+審批新帳號	Approve new accounts
+⚙️ 設定可勾選權限 -	⚙️ Set assessable permissions -
+領袖默認全部 (*)，團長/管理員可更改。管委可按個別成員勾選可考核範圍。	Leaders default to all (*); the Group Scout Leader/Admin can change it. CMC members can have their assessable scope ticked individually.
+成員改為管理委員會後，可設定其可考核：會員章、活動段章(細項不用)、其他獎章逐個勾。	After changing a member to the Crew Management Committee, you can set what they can assess: Membership Badge, Activities segments (no need to tick each sub-item), and Other Badges individually.
+📝 申請完成 -	📝 Request completion -
+若成員為協助訓練班（如擔任助教、導師、工作人員等），請直接選擇上方「	If a member is assisting a training course (e.g. as assistant, instructor, staff, etc.), please choose above: "
+」填寫。	" to fill in.
+步驟一：搜尋與篩選旅團成員	Step 1: Search and filter Group members
+青少年成員資訊系統 (YMIS)	Youth Member Information System (YMIS)
+點選頂部選單「功能」→「搜尋成員紀錄」。	Click the top menu "Functions" → "Search member records".
+展開「成員紀錄」區塊：選擇所屬「地域」及「童軍區」，在「童軍旅」輸入你的旅團代號。	Expand the "Member Records" section: choose the "Region" and "District", and enter your Group code in "Scout Group".
+按「搜尋」，在成員列表勾選要匯出的成員，或勾選最上方的「全選」。	Click "Search", tick the members to export in the member list, or tick "Select All" at the top.
+步驟二：編製報告 → 自訂報表	Step 2: Compile Report → Custom Report
+按搜尋結果上方的「編製報告」。	Click "Compile Report" above the search results.
+報告種類：切換為「自訂報表」；上方「排列」與「第二排列」可略過不變。	Report type: switch to "Custom Report"; the "Sort" and "Secondary Sort" above can be left unchanged.
+步驟三：欄位次序（最關鍵！）	Step 3: Field order (most critical!)
+嚴格依序	In strict order
+把左側欄位加入右側「已選擇之項目」：	Add the left-side fields to the right-side "Selected Items":
+童軍成員編號（＝系統的 YMIS）	Scout Member No. (= the system's YMIS)
+電郵地址（＝聯絡電郵）	Email address (= contact email)
+💡 欄位先後次序完全取決於加入右側的先後次序；右側每欄的寬度百分比可維持預設（例如 100%）。	💡 The field order depends entirely on the order you add them to the right; each column's width percentage can stay at the default (e.g. 100%).
+步驟四：產出與下載	Step 4: Generate and download
+確認右側次序為：童軍成員編號 → 中文姓名 → 電郵地址。	Confirm the right-side order is: Scout Member No. → Chinese Name → Email Address.
+按右下角「確定」，系統自動產生並下載 PDF。	Click "OK" at the bottom right; the system auto-generates and downloads the PDF.
+🔐 PDF 有密碼？	🔐 PDF password-protected?
+YMIS 匯出的 PDF 多數帶密碼保護。本 APP 支援直接輸入密碼解鎖讀取；若仍讀不到，可用 Chrome／Edge 開啟 PDF（輸入密碼）→ 列印 → 目的地選「另存為 PDF」，儲存出來的新檔案就沒有密碼。詳見	Most PDFs exported from YMIS are password-protected. This APP supports unlocking by entering the password directly; if it still cannot be read, open the PDF in Chrome/Edge (enter the password) → Print → destination "Save as PDF", and the saved new file has no password. See
+YMIS 匯出教學	YMIS export guide
+）轉 JSON 並直接寫入旅團主資料表。詳見	) to JSON and write directly into the Group's main data sheet. See
+服務員	Server
+統籌	Coordinator
+助教	Teaching assistant
+導師	Instructor
+班領導人	Course leader
+工作人員	Staff
+領隊	Team leader
+參加者	Participant
+籌委	Organising committee
+學員	Trainee
+服務紀錄	Service Record
+活動紀錄	Activity Record
+訓練班紀錄	Training Course Record
+學員身份	as a trainee
+協助訓練班	assisting a training course
+任教	teaching
+必須	Must
