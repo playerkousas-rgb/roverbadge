@@ -126,8 +126,11 @@
   **唔准回 `fullBackend`、`spreadsheetId`、`docs.google.com/spreadsheets/.../edit` 連結、
   唔准喺健康檢查入面實打 GAS 上游並把回應原樣 echo 出嚟**（會變成免認證嘅後端鏡像＋個資外洩）
 - 部署完成嘅定義：`curl /api/health` 有 JSON + `GET /api/proxy` 回 **405**（回 404 即 function 冇建好）
-- **`vercel.json` 只准官方欄位**：官方 schema 根節點係 `additionalProperties:false`，多一個自訂 key
-  （例如 `_comment`／`_note`）就係整次 build `Error`；註解放 docs，唔好放 config
+- **`vercel.json` 只准官方欄位**：官方 schema 根節點係 `additionalProperties:false`，多一個欄位就整次
+  build `Error`。兩類禁忌：(1) 自訂 key（`_comment`／`_note` — JSON 冇註解，註解放 docs）；
+  (2) **Project Settings 欄位**（`buildCommand`／`installCommand`／`devCommand`／`outputDirectory`／
+  `framework` 都唔屬於 vercel.json，要嘛喺 Dashboard 改，要嘛根本唔使 —— 呢個 repo 靠「把
+  `api/_troops_static.js` commit 入 Git + `npm test` 盯漂移」，唔靠 build command）
 - Function 設定（`maxDuration`／`includeFiles`）**只喺 `vercel.json` 寫一次**，
   唔好同時喺 `api/*.js` 用 `export const config`（兩邊會互相覆蓋）
 

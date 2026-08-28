@@ -20,13 +20,20 @@ function check(name, cond, extra = '') {
 }
 
 // vercel.json 頂層合法欄位（Vercel 官方文件所列；additionalProperties:false）
+// 只列 Vercel 官方 schema（https://openapi.vercel.sh/vercel.json，根節點 additionalProperties:false）
+// 真係存在嘅根欄位。注意：buildCommand / installCommand / outputDirectory / framework
+// **唔係** vercel.json 欄位（佢哋係 Dashboard 嘅 Project Settings）—— 寫入去就會
+// 「should NOT have additional properties」令成次 build 失敗（2026-08-28 我踩過两次：
+// 第一次 _comment，第二次 buildCommand）。
 const ROOT_KEYS = new Set([
-  '$schema', 'alias', 'buildCommand', 'builds', 'cache', 'cleanUrls', 'crons', 'decompress',
-  'deployments', 'env', 'filesystem', 'framework', 'functionFailoverRegions', 'functions',
-  'git', 'headers', 'ignoreCommand', 'installCommand', 'mount', 'outputDirectory', 'passiveRegions',
-  'public', 'redirects', 'regions', 'rewrites', 'routes', 'skill', 'skipsDeployment',
-  'static', 'trailingSlash', 'unlisted', 'version', 'wildcard'
+  '$schema', 'alias', 'assetIgnore', 'build', 'builds', 'cache', 'cleanUrls', 'crons',
+  'decompress', 'deployments', 'env', 'filesystem', 'framework', 'functionFailoverRegions',
+  'functions', 'git', 'github', 'headers', 'ignoreCommand', 'mount', 'outputDirectory',
+  'passiveRegions', 'public', 'redirects', 'regions', 'rewrites', 'routes', 'skill',
+  'skipsDeployment', 'static', 'trailingSlash', 'unlisted', 'version', 'wildcard'
 ]);
+// Project Settings only（絕對唔可以出現喺 vercel.json）
+const SETTINGS_ONLY = new Set(['buildCommand', 'installCommand', 'devCommand', 'commandForIgnoringBuildStep']);
 // functions["<glob>"] 合法欄位（照官方 schema 節點）
 const FUNC_KEYS = new Set([
   'excludeFiles', 'includeFiles', 'maxDuration', 'maxConcurrency', 'memory', 'runtime',
@@ -116,14 +123,19 @@ console.log('\n【4】設定來源唯一：maxDuration 只可以喺 vercel.json 
   check('api/ 無任何地方硬寫 maxDuration（全部由 vercel.json 管）', hasTimeoutInCode === false);
 }
 
-console.log('\n【5】buildCommand 一定要存在且只依賴 node（Vercel 會跑佢產生 _troops_static.js）');
+console.log('\n【5】Project Settings 欄位唔准出現喺 vercel.json（會令 build 直接失敗）');
 {
-  check('buildCommand = npm run build', cfg.buildCommand === 'npm run build', String(cfg.buildCommand));
+  const bad = Object.keys(cfg).filter(k => SETTINGS_ONLY.has(k));
+  check('冇 buildCommand/installCommand/devCommand 等 Project Settings 欄位',
+    bad.length === 0, '呢啲欄位要喺 Vercel Dashboard → Project Settings 設定，唔屬於 vercel.json：' + bad.join(', '));
   const pk = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
-  check('package.json 有 build script', typeof (pk.scripts || {}).build === 'string' && /sync-troops/.test(pk.scripts.build), (pk.scripts || {}).build || '');
   const buildScript = (pk.scripts || {}).build || '';
-  check('build 唔依賴 devDependencies（Vercel build 環境未必裝 devDeps）', !/(vite|next|webpack|tsc|eslint|jest)/.test(buildScript), buildScript);
-  check('冇 dependencies 都唔會 fail（冇 install 副作用）', pk.dependencies === undefined || Object.keys(pk.dependencies).length === 0);
+  check('package.json 有 build script（俾本機／CI 產生 _troops_static.js）', /sync-troops/.test(buildScript), buildScript);
+  check('build 只依賴 node，唔需要 devDependencies（Vercel 可能唔跑 build）', !/(vite|next|webpack|tsc|eslint|jest)/.test(buildScript), buildScript);
+  check('冇 dependencies → npm install 冇副作用、唔會 fail', pk.dependencies === undefined || Object.keys(pk.dependencies).length === 0);
+  // vercel.json 唔再驅動 sync-troops，所以「已 commit 嘅產物」必須同步，否則正式環境只有舊旅團
+  check('api/_troops_static.js 已經喺 Git 入面（Vercel 唔會幫你產生）',
+    fs.existsSync(path.join(ROOT, 'api', '_troops_static.js')));
 }
 
 console.log('\n========================================');

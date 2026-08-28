@@ -65,24 +65,37 @@ function 一個都冇。呢個就係 404 嘅直接原因。
 現新增 `tests/serverless-registry.test.mjs` + `tests/proxy-login.test.mjs`：專門喺
 「冇 `data/` 目錄嘅空 `/var/task`」度跑真正嘅 `api/*.js`。
 
-### 根因 D（我哋自己 introduce 嘅回帰，2026-08-28 稍後）— `vercel.json` 加咗自訂欄位 `_comment`
+### 根因 D（我哋自己 introduce 嘅回帰，2026-08-28 稍後）— `vercel.json` 寫入咗**不屬於佢**嘅欄位
 
-為咺將「唔准用 builds」寫喺 config 旁邊，我喺 `vercel.json` 加咗一個 `_comment` 数组。Vercel 官方
-schema（`https://openapi.vercel.sh/vercel.json`）根節點係：
+呢一條搞咗兩先至搵到，因為每次都要重新部署至見到 `Error`（Vercel 會喺 commit status 顯示
+`Deployment has failed — run this Vercel CLI command: npx vercel inspect dpl_xxx --logs`，
+冇 token 就睇唔到 log，所以我哋用 `gh api .../commits/<sha>/status` 做回饋）：
+
+**第 1 次**：`_comment`（為咺寫低「唔准用 builds」嘅說明）
+**第 2 次**：`buildCommand: "npm run build"`（以為 vercel.json 可以改 build command）
+
+官方 schema（`https://openapi.vercel.sh/vercel.json`）根節點係：
 
 ```json
 { "type": "object", "additionalProperties": false, "properties": { ... } }
 ```
 
 即 **任何未知頂層欄位都會令整次 build 失敗**（Preview 顯示 `Error`，function 一個都冇 —— 後果同
-`/api/*` 404 一樣，但更加早、更加明顯）。教訓：
+`/api/*` 404 一樣，但更加早、更加明顯）。而 `buildCommand`／`installCommand`／`devCommand`／
+`outputDirectory`／`framework` 呢類**係 Dashboard → Project Settings，唔係 vercel.json 欄位**
+（vercel.json 嘅根節點無呢幾條；佢哋只喺 Project Settings 或 `vercel.ts` 生效）。
 
-- `vercel.json` **只准寫官方欄位**，註解放 `.md` 或測試檔（JSON 冇註解，自訂 key 就係炸彈）
-- 需要「寫低點理由」就放 `docs/`，需要「睇住唔好改返」就寫成測試：
-  `tests/vercel-config.test.mjs` 會用官方 allow-list 驗證頂層／`functions`／`headers` 欄位，
-  多一個未知 key 即刻 fail（已用 `_comment` 做過負面測試確認會抓到）
-- 同一理由刪走 `api/proxy.js`／`api/health.js` 嘅 `export const config = { maxDuration }`：
-  **Function 設定只可以有一個來源**（vercel.json），兩邊重複將來會互相覆蓋
+規則：
+
+- `vercel.json` **只准寫官方欄位**；JSON 冇註解，自訂 key（`_comment`／`_note`）就係炸彈。
+  註解放 `.md`，規則寫成測試
+- 需要「部署時執行嘢」就喺 Dashboard 改 Build Command，或者（呢個 repo 嘅做法）**把產物 commit 入
+  Git**：`api/_troops_static.js` 已入庫，`npm test` 用 `sync-troops.mjs --check` 盯住唔好漂移
+- Function 設定（`maxDuration`／`includeFiles`）**只喺 `vercel.json` 的 `functions` 寫一次**，
+  唔好再喺 `api/*.js` 用 `export const config`（兩邊重複會互相覆蓋）
+- `tests/vercel-config.test.mjs` 用官方 allow-list 驗證頂層／`functions`／`headers` 欄位，並**明確
+  禁止 Project Settings 欄位**；已用 `_comment` 同 `buildCommand` 兩做負面測試確認會 fail
+
 
 ## 3. 本次修正
 
