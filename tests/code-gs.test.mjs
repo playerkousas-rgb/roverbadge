@@ -176,6 +176,21 @@ console.log('\n【6】回歸檢查');
     env.call({ action: 'getAllUsers', token: after.token }).success === true);
 }
 
+// ================== 7. 超管實際做行政操作後，Sheet 仍然冇蹤跡 ==================
+console.log('\n【7】超管做行政操作（寫入操作紀錄）後，Sheet 仍然冇超管帳號');
+{
+  const login = env.call({ action: 'login', login_id: SU_USER, password: SU_PASS });
+  const rst = env.call({ action: 'resetPassword', token: login.token, target_ymis: '1111111111' });
+  check('超管可執行行政操作（重設成員密碼）', rst.success === true && typeof rst.temp_password === 'string', JSON.stringify(rst));
+  const audit = env.ss.getSheetByName('操作紀錄');
+  check('操作紀錄有寫入這筆操作', !!audit && audit.rows.length >= 2, JSON.stringify(audit && audit.rows));
+  check('操作紀錄嘅「操作者」欄寫顯示名稱，唔係帳號',
+    audit.rows.slice(1).some(r => String(r[1]) === '系統管理員') && !audit.rows.slice(1).some(r => String(r[1]).toLowerCase() === SU_USER),
+    JSON.stringify(audit.rows.slice(1)));
+  const hits = scanSheets();
+  check('再掃一次全部工作表所有儲存格：仍然搵唔到超管帳號或密碼', hits.length === 0, hits.join(', '));
+}
+
 console.log('\n========================================');
 console.log(`Code.gs 實測結果：${passed} 通過, ${failed} 失敗`);
 if (failed > 0) process.exit(1);

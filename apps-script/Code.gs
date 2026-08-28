@@ -700,7 +700,9 @@ function writeAudit(actor,action,target,detail){
     const ss=getSheet();
     let sh=ss.getSheetByName('操作紀錄');
     if(!sh){ sh=ss.insertSheet('操作紀錄'); sh.appendRow(['時間','操作者','操作','對象','詳情']); sh.getRange(1,1,1,5).setFontWeight('bold').setBackground('#8B0000').setFontColor('#FFFFFF'); sh.setFrozenRows(1); }
-    sh.appendRow([now(),actor||'',action||'',target||'',detail||'']);
+    // 超管做嘅操作只記顯示名稱，唔記帳號（整份 Sheet 都搵唔到超管帳號）
+    const who=isSuperAdminId(actor)?SUPER_ADMIN_NAME:(actor||'');
+    sh.appendRow([now(),who,action||'',target||'',detail||'']);
   }catch(e){ console.warn('writeAudit failed',e); }
 }
 // 重設密碼 - 生成一次性臨時密碼
