@@ -191,6 +191,80 @@ console.log('\n【7】超管做行政操作（寫入操作紀錄）後，Sheet �
   check('再掃一次全部工作表所有儲存格：仍然搵唔到超管帳號或密碼', hits.length === 0, hits.join(', '));
 }
 
+
+// ================== 8. v8.7 團長唯一／領袖免 YMIS／批核密碼 1234＋強制改密 ==================
+console.log('\n【8】v8.7 團長唯一鎖、領袖免 YMIS、批核預設密碼 1234、首次登入強制改密');
+{
+  const su = env.call({ action: 'login', login_id: SU_USER, password: SU_PASS });
+  const tk = su.token;
+  check('超管可登入以執行行政測試', su.success === true);
+
+  const badRole = env.call({ action: 'apply', ymis: '1234567001', name: '假團長', email: 'fake-gsl@x.com', requested_role: 'group_leader' });
+  check('公開申請不接受團長', badRole.success === false && /無效的申請角色/.test(badRole.error || ''), JSON.stringify(badRole));
+  const badExec = env.call({ action: 'apply', ymis: '1234567002', name: '假管委', email: 'fake-cmc@x.com', requested_role: 'exec_committee' });
+  check('公開申請不接受管委', badExec.success === false);
+
+  const noYmisMember = env.call({ action: 'apply', ymis: '', name: '缺號成員', requested_role: 'member' });
+  check('成員申請缺 YMIS 被拒', noYmisMember.success === false);
+
+  const leaderApply = env.call({ action: 'apply', ymis: '9999999999', name: '領袖乙', email: 'leader-b@x.com', requested_role: 'branch_leader' });
+  check('領袖申請可提交（YMIS 被忽略）', leaderApply.success === true, JSON.stringify(leaderApply));
+  const memApply = env.call({ action: 'apply', ymis: '1234567003', name: '成員丙', email: 'mem-c@x.com', requested_role: 'member' });
+  check('成員申請需 10 位 YMIS', memApply.success === true);
+
+  const apps = env.call({ action: 'getApplications', token: tk });
+  const leaderApp = (apps.applications || []).find(a => a.name === '領袖乙');
+  const memApp = (apps.applications || []).find(a => a.name === '成員丙');
+  check('待批名單有領袖及成員申請', !!leaderApp && !!memApp, JSON.stringify(apps));
+
+  const revL = env.call({ action: 'reviewApplication', token: tk, app_id: leaderApp && leaderApp.app_id, decision: 'approved' });
+  check('批准領袖：預設密碼 1234', revL.success === true && revL.temp_password === '1234', JSON.stringify(revL));
+  check('批准領袖：角色為支部領袖', revL.final_role === 'branch_leader');
+  check('批准領袖：內部編號以 L 開頭（不展示給領袖）', typeof revL.ymis === 'string' && /^L/.test(revL.ymis), JSON.stringify(revL));
+
+  const loginL = env.call({ action: 'login', login_id: 'leader-b@x.com', password: '1234' });
+  check('領袖用電郵 + 1234 登入且須改密', loginL.success === true && loginL.force_change_password === true, JSON.stringify(loginL));
+  const samePw = env.call({ action: 'changePassword', token: loginL.token, old_password: '1234', new_password: '1234' });
+  check('新密碼不可與原密碼相同', samePw.success === false);
+  const cpL = env.call({ action: 'changePassword', token: loginL.token, old_password: '1234', new_password: 'abcd' });
+  check('首次改密成功', cpL.success === true, JSON.stringify(cpL));
+  const loginL2 = env.call({ action: 'login', login_id: 'leader-b@x.com', password: 'abcd' });
+  check('改密後不再強制改密', loginL2.success === true && loginL2.force_change_password === false, JSON.stringify(loginL2));
+
+  const revM = env.call({ action: 'reviewApplication', token: tk, app_id: memApp && memApp.app_id, decision: 'approved' });
+  check('批准成員保留原 YMIS、密碼 1234', revM.success === true && revM.ymis === '1234567003' && revM.temp_password === '1234' && revM.final_role === 'member', JSON.stringify(revM));
+
+  const aSheet = env.ss.getSheetByName('Applications');
+  aSheet.appendRow(['APP_FAKE_GSL', '', '假團長申請', 'fake-gsl2@x.com', 'group_leader', '', 'pending', '2026-09-05', '', '', '']);
+  const revFake = env.call({ action: 'reviewApplication', token: tk, app_id: 'APP_FAKE_GSL', decision: 'approved' });
+  check('Sheet 人手改寫的團長申請退回 member', revFake.success === true && revFake.final_role === 'member', JSON.stringify(revFake));
+
+  const gsl1 = env.call({ action: 'addUser', token: tk, ymis: '', name: '團長甲', email: 'gsl-a@x.com', role: 'group_leader', password: '1234', can_tick: true });
+  check('可開立第一位團長（免 YMIS）', gsl1.success === true && /^L/.test(gsl1.ymis || ''), JSON.stringify(gsl1));
+  const gsl2 = env.call({ action: 'addUser', token: tk, ymis: '', name: '團長乙', email: 'gsl-b@x.com', role: 'group_leader', password: '1234', can_tick: true });
+  check('第二位團長被拒', gsl2.success === false && /團長只能有一位/.test(gsl2.error || ''), JSON.stringify(gsl2));
+
+  const bl = env.call({ action: 'addUser', token: tk, ymis: '1234567004', name: '支領丁', email: 'bl-d@x.com', role: 'branch_leader', password: 'PassB!234', can_tick: true });
+  check('超管可開支部領袖（自訂密碼）', bl.success === true);
+  const blLogin = env.call({ action: 'login', login_id: 'bl-d@x.com', password: 'PassB!234' });
+  check('自訂密碼開戶不強制改密', blLogin.success === true && blLogin.force_change_password === false, JSON.stringify(blLogin));
+  const blAddAdmin = env.call({ action: 'addUser', token: blLogin.token, ymis: '1234567005', name: 'X', email: 'x-admin@x.com', role: 'admin', password: '1234' });
+  check('支部領袖不可開管理員', blAddAdmin.success === false && /權限不足/.test(blAddAdmin.error || ''), JSON.stringify(blAddAdmin));
+
+  const suAddAdmin = env.call({ action: 'addUser', token: tk, ymis: '1234567006', name: '新管理員', email: 'new-admin@x.com', role: 'admin', password: '1234' });
+  check('超管可開管理員', suAddAdmin.success === true, JSON.stringify(suAddAdmin));
+
+  const suFmt = env.call({ action: 'addUser', token: tk, ymis: SU_USER, name: 'X' });
+  check('超管以自身帳號開戶被拒（格式／保留帳號）', suFmt.success === false);
+
+  const defMem = env.call({ action: 'addUser', token: tk, ymis: '1234567007', name: '成員戊', email: 'mem-e@x.com', role: 'member', password: '1234' });
+  const defLogin = env.call({ action: 'login', login_id: '1234567007', password: '1234' });
+  check('預設密碼 1234 首次登入須改密', defMem.success === true && defLogin.success === true && defLogin.force_change_password === true);
+
+  const promote = env.call({ action: 'updateUserRole', token: tk, target_ymis: '1234567004', new_role: 'group_leader', can_tick: true });
+  check('已有團長時不能再升另一人為團長', promote.success === false && /團長只能有一位/.test(promote.error || ''), JSON.stringify(promote));
+}
+
 console.log('\n========================================');
 console.log(`Code.gs 實測結果：${passed} 通過, ${failed} 失敗`);
 if (failed > 0) process.exit(1);

@@ -41,6 +41,22 @@ export function startMockGas({ port, name, users, apikey = '' }) {
   // 呢度必須照做 —— 否則「proxy 誤用 POST 打 load」呢類 bug 喺測試入面永遠唔會浮現
   // （scoutbadge 2026-08 就係咁：登入 OK、load 變 Unknown action、前端顯示「離線模式」）。
   const GET_ONLY_ACTIONS = new Set(['load', 'getLoginMode']);
+  const VALID_ROLES = ['member', 'exec_committee', 'branch_leader', 'group_leader', 'admin'];
+  const APPLY_ROLES = ['member', 'branch_leader'];
+  const CAN_MANAGE_ROLES = {
+    super_admin: ['admin', 'group_leader', 'branch_leader', 'exec_committee', 'member'],
+    admin: ['group_leader', 'branch_leader', 'exec_committee', 'member'],
+    group_leader: ['branch_leader', 'exec_committee', 'member'],
+    branch_leader: ['exec_committee', 'member']
+  };
+  const managerOf = (tokenYmis, validKey) => {
+    if (isSuperAdminId(tokenYmis)) return { ymis: superAdminUser(), role: 'super_admin' };
+    if (tokenYmis && state.users[tokenYmis]) return state.users[tokenYmis];
+    if (validKey) return { role: 'admin' };
+    return null;
+  };
+  const canManageUser = (mgr, role) => mgr && (mgr.role === 'super_admin' || (CAN_MANAGE_ROLES[mgr.role] || []).includes(role));
+  const findActiveGsl = (exclude) => Object.values(state.users).find(u => u.role === 'group_leader' && u.status !== 'inactive' && u.ymis !== exclude);
 
   function routeAction(action, body) {
     const validKey = state.apikey && body.apikey === state.apikey;
@@ -59,14 +75,16 @@ export function startMockGas({ port, name, users, apikey = '' }) {
         if (u.pass !== String(body.password || '')) return { success: false, error: '密碼錯誤' };
         const token = 'tok_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
         state.tokens[token] = u.ymis;
-        return { success: true, token, user: { ymis: u.ymis, name: u.name, role: u.role, can_tick: u.can_tick, allowed_badges: '*' } };
+        return { success: true, token, user: { ymis: u.ymis, name: u.name, role: u.role, can_tick: u.can_tick, allowed_badges: '*' }, force_change_password: !!u.force_change_password };
       }
       case 'logout': {
         delete state.tokens[body.token];
         return { success: true };
       }
       case 'apply': {
-        state.applications.push({ app_id: 'APP_' + Date.now(), ymis: body.ymis, name: body.name, requested_role: body.requested_role || 'member', status: 'pending' });
+        const role = body.requested_role || 'member';
+        if (!APPLY_ROLES.includes(role)) return { success: false, error: '無效的申請角色' };
+        state.applications.push({ app_id: 'APP_' + Date.now(), ymis: body.ymis || '', name: body.name, email: body.email || '', requested_role: role, status: 'pending' });
         return { success: true, message: '申請已提交' };
       }
       case 'load': {
@@ -200,10 +218,23 @@ export function startMockGas({ port, name, users, apikey = '' }) {
       }
       case 'addUser': {
         if (!tokenYmis && !validKey) return { success: false, error: '未授權' };
-        if (isSuperAdminId(body.ymis)) return { success: false, error: '不能新增系統管理員帳號' };
-        if (!body.ymis || !body.name) return { success: false, error: 'YMIS 和姓名必填' };
-        state.users[body.ymis] = { ymis: body.ymis, name: body.name, email: body.email || '', role: body.role || 'member', pass: body.password || '1234', can_tick: !!body.can_tick, status: 'active' };
-        return { success: true, message: '帳號已建立（密碼留空＝預設 1234）' };
+        const mgr = managerOf(tokenYmis, validKey);
+        const role = body.role || 'member';
+        if (!VALID_ROLES.includes(role)) return { success: false, error: '無效的角色: ' + role };
+        if (!canManageUser(mgr, role)) return { success: false, error: '權限不足，你的等級不可開立此角色' };
+        let ymis = String(body.ymis || '').trim();
+        const email = body.email || '';
+        if (!ymis && role !== 'member') {
+          if (!email) return { success: false, error: '領袖開戶必須填寫 Email（用作登入帳號）' };
+          ymis = 'L' + Date.now();
+        }
+        if (isSuperAdminId(ymis) || isSuperAdminId(email)) return { success: false, error: '不能新增系統管理員帳號' };
+        if (!/^(\d{10}|L\d+)$/.test(ymis)) return { success: false, error: 'YMIS 須為 10 位數字（領袖可留空，會自動編配）' };
+        if (!body.name) return { success: false, error: '請填寫姓名' };
+        if (role === 'group_leader' && findActiveGsl('')) return { success: false, error: '團長只能有一位（現任：' + findActiveGsl('').name + '），如需更換請先將現任團長轉為其他角色' };
+        const pass = body.password || '1234';
+        state.users[ymis] = { ymis, name: body.name, email, role, pass, can_tick: !!body.can_tick, status: 'active', force_change_password: !body.password || body.password === '1234' };
+        return { success: true, message: '帳號已建立（密碼留空＝預設 1234）', ymis };
       }
       case 'changePassword': {
         if (!tokenYmis) return { success: false, error: 'Token 無效或過期' };
@@ -211,8 +242,10 @@ export function startMockGas({ port, name, users, apikey = '' }) {
         const u = state.users[tokenYmis];
         const newP = String(body.new_password || '');
         if (!newP || newP.length < 4) return { success: false, error: '新密碼至少4位' };
+        if (newP === String(body.old_password || '')) return { success: false, error: '新密碼不可與原密碼相同' };
         if (!u || u.pass !== String(body.old_password || '')) return { success: false, error: '原密碼錯誤' };
         u.pass = newP;
+        u.force_change_password = false;
         return { success: true };
       }
       case 'deactivateUser': {
@@ -225,14 +258,28 @@ export function startMockGas({ port, name, users, apikey = '' }) {
         if (!tokenYmis) return { success: false, error: 'Token 無效或過期' };
         if (isSuperAdminId(body.target_ymis)) return { success: false, error: '不能重設系統管理員密碼' };
         const temp = 'tmp_' + Math.floor(1000 + Math.random() * 9000);
-        if (state.users[body.target_ymis]) state.users[body.target_ymis].pass = temp;
+        if (state.users[body.target_ymis]) {
+          state.users[body.target_ymis].pass = temp;
+          state.users[body.target_ymis].force_change_password = true;
+        }
         return { success: true, temp_password: temp };
       }
       case 'reviewApplication': {
         if (!tokenYmis) return { success: false, error: 'Token 無效或過期' };
         const app = state.applications.find(a => a.app_id === body.app_id);
-        if (app) app.status = body.decision;
-        return { success: true, message: body.decision === 'approved' ? '申請已批准' : '申請已拒絕' };
+        if (!app) return { success: false, error: '找不到待審批申請' };
+        if (body.decision === 'rejected') {
+          app.status = 'rejected';
+          return { success: true, message: '已拒絕申請' };
+        }
+        const mgr = managerOf(tokenYmis, validKey);
+        const requestedRole = app.requested_role || 'member';
+        const finalRole = (APPLY_ROLES.includes(requestedRole) && canManageUser(mgr, requestedRole)) ? requestedRole : 'member';
+        let ymis = String(app.ymis || '').trim();
+        if (!ymis) ymis = 'L' + Date.now();
+        state.users[ymis] = { ymis, name: app.name, email: app.email || '', role: finalRole, pass: '1234', can_tick: finalRole !== 'member', status: 'active', force_change_password: true };
+        app.status = 'approved';
+        return { success: true, message: '已批准並建立帳戶，預設密碼：1234（首次登入須更改）', temp_password: '1234', final_role: finalRole, ymis };
       }
       case 'updateUserRole': {
         if (!tokenYmis) return { success: false, error: 'Token 無效或過期' };

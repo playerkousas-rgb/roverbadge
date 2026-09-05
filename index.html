@@ -642,11 +642,19 @@ a:hover{text-decoration:underline}
 <!-- v5.0 申請成員帳戶 modal (成員可在登入頁自申請) -->
 <div id="accountApplyModal" class="modal">
   <div class="modal-content">
-    <h3>📝 申請樂行童軍成員帳戶</h3>
-    <p style="font-size:11px;color:var(--text-light)">提交後由旅團領袖在 APP 內審批，批准後會建立帳戶並設置臨時密碼。</p>
-    <div class="form-group"><label>YMIS（10位數字） *</label><input id="applyYmis" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" placeholder="例如 1234560001"></div>
+    <h3>📝 申請樂行童軍帳戶</h3>
+    <p style="font-size:11px;color:var(--text-light)">提交後由旅團領袖在 APP 內審批，批准後預設密碼為 1234，首次登入須更改。</p>
+    <div class="form-group">
+      <label>申請身份 *</label>
+      <select id="applyRole" onchange="syncApplyRole()">
+        <option value="member">童軍成員</option>
+        <option value="branch_leader">領袖（支部領袖）</option>
+      </select>
+      <div style="font-size:10px;color:var(--text-light);margin-top:3px">成員、領袖都可自行申請；團長／管理員／管委須由現任管理層在「用戶管理」直接開立。</div>
+    </div>
+    <div class="form-group" id="applyYmisGroup"><label>YMIS（10位數字） *</label><input id="applyYmis" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" placeholder="例如 1234560001"></div>
     <div class="form-group"><label>姓名 *</label><input id="applyName" placeholder="中文姓名"></div>
-    <div class="form-group"><label>聯絡電郵（可留空）</label><input id="applyEmail" type="email" placeholder="your@email.com"></div>
+    <div class="form-group"><label>聯絡電郵 <span id="applyEmailReq" style="color:var(--red);display:none">* 領袖必填</span></label><input id="applyEmail" type="email" placeholder="your@email.com"></div>
     <div class="form-group"><label>備註（聯絡方式/特殊需要）</label><input id="applySquad" placeholder="例: 電話號碼 / 9月新入團"></div>
     <div id="applyMsg" class="login-msg"></div>
     <div class="modal-actions">
@@ -712,9 +720,9 @@ a:hover{text-decoration:underline}
       <p style="margin:6px 0 0"><b>方法三（進階／備用，日常不建議）：Google Sheets 直接寫入</b><br>把 CSV 匯入 Google Sheets → 填寫 → 用附帶的 Apps Script（<a href="assets/batch-onboard/Code.gs" target="_blank">Code.gs</a>）轉 JSON 並直接寫入旅團主資料表。詳見 <a href="docs/BULK_ONBOARD.md" target="_blank">批量開戶說明</a>。</p>
       <p style="margin:6px 0 0"><b>📝 CSV 欄位：</b>ymis,name,email,role,can_tick,password,note</p>
       <ul style="margin:4px 0 0 16px;padding:0;font-size:11px">
-        <li><b>ymis</b> (必填) 10位數字</li>
+        <li><b>ymis</b> 成員必填10位數字；領袖可留空（用電郵登入，系統自動編配）</li>
         <li><b>name</b> (必填) 中文姓名</li>
-        <li><b>email</b> 電郵（填了才可登入 Email 模式）</li>
+        <li><b>email</b> 電郵（領袖必填，用作登入帳號）</li>
         <li><b>role</b> 角色：member / exec_committee / branch_leader / group_leader / admin</li>
         <li><b>can_tick</b> true / false 是否可勾選</li>
         <li><b>password</b> 留空＝預設密碼 1234；有填＝用自訂密碼</li>
@@ -731,7 +739,7 @@ a:hover{text-decoration:underline}
     <textarea id="bulkJson" style="width:100%;height:130px;font-family:monospace;font-size:11px;padding:8px;border:1px solid var(--border);border-radius:8px;background:#FAFAFA;resize:vertical" placeholder='[
   {"ymis":"1234560001","name":"王小明","email":"wang@x.com","role":"member","can_tick":false,"password":""},
   {"ymis":"1234560002","name":"李小華","email":"lee@x.com","role":"member","can_tick":false,"password":""},
-  {"ymis":"1234560003","name":"陳小美","email":"","role":"member","can_tick":false,"password":"","note":"新入團"}
+  {"ymis":"","name":"張老師","email":"zhang@x.com","role":"branch_leader","can_tick":true,"password":""}
 ]'></textarea>
     <div id="bulkOnboardStatus" style="font-size:11px;margin-top:6px;padding:6px;border-radius:6px;display:none"></div>
     <div class="modal-actions">
@@ -862,6 +870,40 @@ const LANG_DICT={
   "備註（聯絡方式/特殊需要等）": "Notes (contact method / special needs, etc.)",
   "例: 電話號碼 / 9月新入團": "e.g. phone number / joining in September",
   "提交後由旅團領袖在 APP 內審批，批准後會建立帳戶並設置臨時密碼。": "After submission, the Group's leader approves it inside the APP; once approved, an account is created with a temporary password.",
+  "提交後由旅團領袖在 APP 內審批，批准後預設密碼為 1234，首次登入須更改。": "After submission, the Group's leader approves it inside the APP; once approved, the default password is 1234 and must be changed at first login.",
+  "申請身份 *": "Apply as *",
+  "童軍成員": "Rover member",
+  "領袖（支部領袖）": "Leader (Rover Scout Leader)",
+  "成員、領袖都可自行申請；團長／管理員／管委須由現任管理層在「用戶管理」直接開立。": "Members and leaders may apply themselves; GSL / Admin / CMC accounts must be created by current management in User Management.",
+  "* 領袖必填": "* required for leaders",
+  "YMIS 須為 10位數字": "YMIS must be 10 digits",
+  "領袖申請必須填寫聯絡電郵": "Leaders must provide a contact email",
+  "Email 格式不正確": "Invalid email format",
+  "首次登入／密碼已重設，請設定新密碼（至少4位，不可與原密碼相同）": "First login / password reset — set a new password (min 4 characters, not the same as the old one)",
+  "必須先更改密碼才能進入系統": "You must change your password before entering the system",
+  "新密碼至少4位": "New password must be at least 4 characters",
+  "新密碼不可與原密碼相同": "New password cannot be the same as the old password",
+  "更改密碼失敗": "Password change failed",
+  "密碼已更新": "Password updated",
+  "團長只能有一位，全團已有現任團長。如需更換，請先將現任團長轉為其他角色。": "There can only be one GSL. To replace them, change the current GSL to another role first.",
+  "此人是全團唯一的團長，轉走後全團將暫時沒有團長。確定繼續嗎？": "This person is the only GSL. The troop will temporarily have no GSL. Continue?",
+  "此人是全團唯一的團長，停用後全團將暫時沒有團長。確定繼續嗎？": "This person is the only GSL. Deactivating them leaves the troop with no GSL. Continue?",
+  "團長全團只可有一位。": "There can only be one GSL in the troop. ",
+  "現任：": "Current: ",
+  "如需更換，請先將現任團長轉為其他角色。": " To replace them, change the current GSL to another role first.",
+  "目前未有團長。": "There is currently no GSL.",
+  "請用電郵登入": "Please log in with email",
+  "YMIS：": "YMIS: ",
+  "✅ 已批准並建立帳戶": "✅ Application approved and account created",
+  "開立角色：": "Opened as: ",
+  "預設密碼：": "Default password: ",
+  "首次登入須更改密碼": "Must change password at first login",
+  "批量開戶失敗：": "Bulk onboarding failed:\n",
+  "領袖可留空 YMIS（用電郵登入）": "Leaders may leave YMIS empty (log in with email)",
+  "YMIS（成員必填10位；領袖可留空）": "YMIS (required 10 digits for members; optional for leaders)",
+  "聯絡電郵（領袖必填）": "Contact email (required for leaders)",
+  "CSV 中沒有有效資料（成員 YMIS 須為10位數字；領袖可留空）": "No valid rows in CSV (member YMIS must be 10 digits; leaders may leave it empty)",
+  "JSON 中沒有有效資料（成員 YMIS 須為10位數字；領袖可留空）": "No valid rows in JSON (member YMIS must be 10 digits; leaders may leave it empty)",
   "提交申請": "Submit Application",
   "提交": "Submit",
   "提交中...": "Submitting...",
@@ -1918,6 +1960,18 @@ async function doLogin(){
     const d=await apiRequest('login',{login_id:lid,password:pw});
     if(d.success){
       currentUser=d.user; currentToken=d.token;
+      if(d.force_change_password){
+        while(true){
+          const np=prompt(tr('首次登入／密碼已重設，請設定新密碼（至少4位，不可與原密碼相同）'));
+          if(!np){ msg.textContent=tr('必須先更改密碼才能進入系統'); msg.className='login-msg error'; return; }
+          if(np.length<4){ alert(tr('新密碼至少4位')); continue; }
+          if(np===pw){ alert(tr('新密碼不可與原密碼相同')); continue; }
+          const cd=await apiRequest('changePassword',{token:currentToken,old_password:pw,new_password:np});
+          if(!cd.success){ alert(cd.error||tr('更改密碼失敗')); continue; }
+          break;
+        }
+        showToast(tr('密碼已更新'),'success');
+      }
       localStorage.setItem(LS.session, JSON.stringify({troopId:currentTroopId,troopName:currentTroopName,token:currentToken,user:currentUser,savedAt:Date.now()}));
       msg.textContent='登入成功！載入資料...'; msg.className='login-msg success';
       setTimeout(()=>{
@@ -2007,18 +2061,38 @@ function canCurrentUserTickItem(itemId){
 function isMember(){ return currentUser.role==='member'; }
 
 /* ================== v5.0 申請成員帳戶 (前端) ================== */
-function showAccountApplyModal(){ document.getElementById('accountApplyModal').classList.add('active'); }
+function showAccountApplyModal(){
+  ['applyYmis','applyName','applyEmail','applySquad'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  const roleEl=document.getElementById('applyRole'); if(roleEl) roleEl.value='member';
+  syncApplyRole();
+  const msg=document.getElementById('applyMsg'); if(msg){ msg.className='login-msg'; msg.textContent=''; }
+  document.getElementById('accountApplyModal').classList.add('active');
+}
+function syncApplyRole(){
+  const role=(document.getElementById('applyRole')&&document.getElementById('applyRole').value)||'member';
+  const isLeader=(role!=='member');
+  const req=document.getElementById('applyEmailReq');
+  if(req) req.style.display=isLeader?'inline':'none';
+  const yg=document.getElementById('applyYmisGroup');
+  if(yg) yg.style.display=isLeader?'none':'block';
+}
 async function submitAccountApply(){
+  const role=(document.getElementById('applyRole')&&document.getElementById('applyRole').value)||'member';
   const ymis=document.getElementById('applyYmis').value.trim();
   const name=document.getElementById('applyName').value.trim();
   const email=document.getElementById('applyEmail').value.trim();
   const squad=document.getElementById('applySquad').value.trim();
   const msg=document.getElementById('applyMsg');
-  if(!/^\d{10}$/.test(ymis)){ msg.textContent='YMIS 須為 10位數字'; msg.className='login-msg error'; return; }
-  if(!name){ msg.textContent='請填寫姓名'; msg.className='login-msg error'; return; }
-  msg.textContent='提交中...'; msg.className='login-msg success';
+  if(!name){ msg.textContent=tr('請填寫姓名'); msg.className='login-msg error'; return; }
+  if(role==='member'){
+    if(!/^\d{10}$/.test(ymis)){ msg.textContent=tr('YMIS 須為 10位數字'); msg.className='login-msg error'; return; }
+  }else{
+    if(!email){ msg.textContent=tr('領袖申請必須填寫聯絡電郵'); msg.className='login-msg error'; return; }
+  }
+  if(email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ msg.textContent=tr('Email 格式不正確'); msg.className='login-msg error'; return; }
+  msg.textContent=tr('提交中...'); msg.className='login-msg success';
   try{
-    const d=await apiRequest('apply',{ymis,name,email:email||'',requested_role:'member',branch:squad||''});
+    const d=await apiRequest('apply',{ymis:(role==='member'?ymis:''),name,email:email||'',requested_role:role,branch:squad||''});
     if(d.success){
       msg.textContent='✅ 申請已提交，請等待領袖審批。審批後可登入。';
       msg.className='login-msg success';
@@ -2026,19 +2100,21 @@ async function submitAccountApply(){
       document.getElementById('applyName').value='';
       document.getElementById('applyEmail').value='';
       document.getElementById('applySquad').value='';
+      const roleEl=document.getElementById('applyRole'); if(roleEl) roleEl.value='member';
+      syncApplyRole();
     }else{
-      msg.textContent=d.error||'提交失敗';
+      msg.textContent=d.error||tr('提交失敗');
       msg.className='login-msg error';
     }
   }catch(e){
-    msg.textContent='提交失敗：'+e.message+'（可稍後重試或聯絡領袖）';
+    msg.textContent=tr('提交失敗')+'：'+e.message+tr('（可稍後重試或聯絡領袖）');
     msg.className='login-msg error';
   }
 }
 
 /* ================== v5.0 批量開戶 (全前端控制) ================== */
 function downloadMembersTemplate(){
-  const csv='ymis,name,email,role,can_tick,password,note\n1234560001,王小明,wong@example.org,member,false,,新團員\n1234560002,李小華,lee@example.org,member,false,Scout123,轉支部已設密碼\n1234560003,陳小美,chen@example.org,exec_committee,true,,管理委員會\n1234560004,張老師,zhang@example.org,branch_leader,true,Scout456,支部領袖\n';
+  const csv='ymis,name,email,role,can_tick,password,note\n1234560001,王小明,wong@example.org,member,false,,新團員\n1234560002,李小華,lee@example.org,member,false,Scout123,轉支部已設密碼\n1234560003,陳小美,chen@example.org,exec_committee,true,,管理委員會\n,張老師,zhang@example.org,branch_leader,true,,領袖免填YMIS用電郵登入\n';
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));
   a.download='rover_members_template.csv';
@@ -2069,7 +2145,8 @@ function parseMemberCSV(text){
     const cols=parseLine(lines[i]);
     const o={};
     headers.forEach((h,idx)=>o[h]=(cols[idx]||'').trim());
-    if(!/^\d{10}$/.test(o.ymis||'')) continue;
+    const prowRole=o.role||'member';
+    if(!/^\d{10}$/.test(o.ymis||'') && !(prowRole!=='member' && (o.email||'') && (o.name||''))) continue;
     out.push({
       ymis: o.ymis,
       name: o.name||'',
@@ -2089,7 +2166,7 @@ async function importMembersFull(file){
   try{
     const text=await file.text();
     const list=parseMemberCSV(text);
-    if(!list.length){ showToast('CSV 中沒有有效資料（YMIS 須為10位數字）','error'); return; }
+    if(!list.length){ showToast(tr('CSV 中沒有有效資料（成員 YMIS 須為10位數字；領袖可留空）'),'error'); return; }
     showToast(`解析到 ${list.length} 筆，開始批量開戶...`,'success');
     await bulkAddMembers(list);
   }catch(e){
@@ -2097,7 +2174,7 @@ async function importMembersFull(file){
   }
 }
 async function bulkAddMembers(list){
-  if(!list||!list.length){ showToast('沒有有效資料（YMIS 須為10位數字）','warning'); return; }
+  if(!list||!list.length){ showToast(tr('CSV 中沒有有效資料（成員 YMIS 須為10位數字；領袖可留空）'),'warning'); return; }
   const status=document.getElementById('bulkOnboardStatus');
   if(status){ status.style.display='block'; status.style.background='#FFFBEB'; status.style.color='#856404'; status.textContent=`⏳ 批量處理中：0/${list.length}`; }
   const existing=new Set(members.map(m=>m.ymis));
@@ -2105,7 +2182,7 @@ async function bulkAddMembers(list){
   for(let i=0;i<list.length;i++){
     const m=list[i];
     if(status) status.textContent=`⏳ 批量處理中：${i+1}/${list.length} (成功 ${ok} 略過 ${skip})`;
-    if(existing.has(m.ymis)){ skip++; continue; }
+    if(m.ymis && existing.has(m.ymis)){ skip++; continue; }
     try{
       // v8.3：批量開戶一律開立可登入帳號；密碼留空時使用預設密碼 1234
       const payload={token:currentToken,ymis:m.ymis,name:m.name};
@@ -2138,7 +2215,7 @@ async function bulkAddMembers(list){
     status.innerHTML=`✅ 批量開戶完成：<b>成功 ${ok}</b> 筆，<b>略過 ${skip}</b> 筆${errs.length?`。<br>失敗詳情：<br>${errs.slice(0,5).map(e=>'• '+e).join('<br>')}${errs.length>5?`<br>...及其他 ${errs.length-5} 筆，請看 console`:''}`:'。'}`;
   }
   showToast(`批量開戶完成：成功 ${ok} 筆，略過 ${skip} 筆`, errs.length?'warning':'success');
-  if(errs.length) console.warn('批量開戶失敗清單：',errs);
+  if(errs.length){ console.warn('批量開戶失敗清單：',errs); alert(tr('批量開戶失敗：')+'\n'+errs.slice(0,12).join('\n')+(errs.length>12?'\n…':'')); }
   // 重新載入用戶列表
   if(typeof loadUsers==='function'){ try{ await loadUsers(); }catch(e){} }
 }
@@ -2148,9 +2225,13 @@ async function bulkAddFromJSON(){
   let arr;
   try{ arr=JSON.parse(raw); }catch(e){ showToast('JSON 格式錯誤：'+e.message,'error'); return; }
   if(!Array.isArray(arr)) arr=[arr];
-  const list=arr.filter(o=>/^\d{10}$/.test(String(o.ymis||'').trim()))
-    .map(o=>({
-      ymis:String(o.ymis).trim(),
+  const list=arr.filter(o=>{
+      const y=String(o.ymis||'').trim();
+      const role=o.role||'member';
+      if(/^\d{10}$/.test(y)) return true;
+      return role!=='member' && (o.email||'') && (o.name||'');
+    }).map(o=>({
+      ymis:String(o.ymis||'').trim(),
       name:o.name||'',
       email:o.email||'',
       squad:o.squad||'',
@@ -2160,7 +2241,7 @@ async function bulkAddFromJSON(){
       password:o.password||'',
       note:o.note||''
     }));
-  if(!list.length){ showToast('JSON 中沒有有效資料（YMIS 須為10位數字）','error'); return; }
+  if(!list.length){ showToast(tr('JSON 中沒有有效資料（成員 YMIS 須為10位數字；領袖可留空）'),'error'); return; }
   await bulkAddMembers(list);
 }
 function openBulkOnboardModal(){ document.getElementById('bulkOnboardModal').classList.add('active'); }
@@ -2364,7 +2445,8 @@ async function confirmYmisImport(){
 }
 
 /* ================== v5.0 帳號管理 (停用/重設密碼) ================== */
-async function deactivateUser(ymis){
+async function deactivateUser(ymis,isSoleGsl){
+  if(isSoleGsl && !confirm(tr('此人是全團唯一的團長，停用後全團將暫時沒有團長。確定繼續嗎？'))) return;
   if(!confirm(tr(`確定停用此帳號 (${ymis})？\n\n停用後此成員將無法登入，但歷史進度會保留。\n如要恢復，請在 Users 表把 status 改回 active。`))) return;
   try{
     const d=await apiRequest('deactivateUser',{token:currentToken,target_ymis:ymis});
@@ -4414,7 +4496,9 @@ async function loadUsers(){
         </div>`;
       }
 
-      let h=roleExplain+systemSettingHtml+mockTool+`<div class="filter-bar" style="display:flex;gap:6px;flex-wrap:wrap">
+      const gslHolder=(d.users||[]).find(u=>u.role==='group_leader')||null;
+      const gslCount=(d.users||[]).filter(u=>u.role==='group_leader').length;
+      let h=roleExplain+systemSettingHtml+mockTool+`<div class="info-section" style="font-size:11px;border-left-color:var(--orange);background:#FFF7ED;margin-bottom:8px">${tr('團長全團只可有一位。')}${gslHolder?tr('現任：')+gslHolder.name+'。'+tr('如需更換，請先將現任團長轉為其他角色。'):tr('目前未有團長。')}</div><div class="filter-bar" style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="btn btn-sm btn-warning" onclick="openBulkOnboardModal()">📥 批量開戶</button>
         <button class="btn btn-sm btn-primary" onclick="addMemberFromApp()">➕ 新增成員</button>
         <button class="btn btn-sm btn-success" onclick="addUserFromApp()">🆕 開新帳號</button>
@@ -4426,17 +4510,19 @@ async function loadUsers(){
         const isSelf = u.ymis===currentUser.ymis;
         const squad=u.squad||'';
         const squad_role=u.squad_role||'member';
+        const hasOtherGsl=!!(gslHolder&&gslHolder.ymis!==u.ymis);
+        const isSoleGsl=u.role==='group_leader'&&gslCount<2;
         const actionBtns=[];
         if(isManage && !isSelf){
-          actionBtns.push(`<select onchange="updateUserRole('${u.ymis}',this.value)" title="更改角色"><option value="member" ${u.role==='member'?'selected':''}>團員</option><option value="exec_committee" ${u.role==='exec_committee'?'selected':''}>管委</option><option value="branch_leader" ${u.role==='branch_leader'?'selected':''}>支部領袖</option><option value="group_leader" ${u.role==='group_leader'?'selected':''}>團長</option><option value="admin" ${u.role==='admin'?'selected':''}>管理員</option></select>`);
+          actionBtns.push(`<select onchange="updateUserRole('${u.ymis}',this.value,'${u.role}',${hasOtherGsl},${isSoleGsl})" title="更改角色"><option value="member" ${u.role==='member'?'selected':''}>團員</option><option value="exec_committee" ${u.role==='exec_committee'?'selected':''}>管委</option><option value="branch_leader" ${u.role==='branch_leader'?'selected':''}>支部領袖</option><option value="group_leader" ${u.role==='group_leader'?'selected':''} ${hasOtherGsl?'disabled style="color:#999"':''}>團長</option><option value="admin" ${u.role==='admin'?'selected':''}>管理員</option></select>`);
           actionBtns.push(`<button class="btn btn-sm ${u.can_tick?'btn-danger':'btn-success'}" onclick="toggleCanTick('${u.ymis}',${!u.can_tick})" title="${u.can_tick?'收回勾選權限':'授權勾選權限'}">${u.can_tick?'收回':'授權'}</button>`);
           actionBtns.push(`<button class="btn btn-sm btn-warning" onclick="openPermissionModal('${u.ymis}','${u.name.replace(/'/g,"\'") }','${u.role}','${(u.allowed_badges||'').replace(/'/g,"")}')" title="設定可勾選權限">⚙️ 權限</button>`);
           actionBtns.push(`<button class="btn btn-sm btn-secondary" onclick="editSquad('${u.ymis}','${(squad||'').replace(/'/g,"\'")}','${squad_role.replace(/'/g,"\'")}')" title="📝 備註">📝 備註</button>`);
           actionBtns.push(`<button class="btn btn-sm btn-warning" onclick="resetMemberPassword('${u.ymis}')" title="重設密碼（生成一次性臨時密碼）">🔑 重設密碼</button>`);
-          actionBtns.push(`<button class="btn btn-sm btn-danger" onclick="deactivateUser('${u.ymis}')" title="停用帳號（清除token, 保留資料）">🗑️ 停用</button>`);
+          actionBtns.push(`<button class="btn btn-sm btn-danger" onclick="deactivateUser('${u.ymis}',${isSoleGsl})" title="停用帳號（清除token, 保留資料）">🗑️ 停用</button>`);
         }
         return `<div class="user-item" data-search="${(u.name+u.ymis+u.email).toLowerCase()}"><div class="user-item-info">
-          <b>${u.name}</b> ${u.ymis?`(${u.ymis})`:''} ${u.email?` - ${u.email}`:''}
+          <b>${u.name}</b> ${u.ymis&&String(u.ymis).charAt(0)!=='L'?`(${u.ymis})`:''} ${u.email?` - ${u.email}`:''}
           <span class="role-badge role-${u.role}">${getRoleName(u.role)}</span>
           ${u.can_tick?'<span style="background:var(--green-light);color:var(--green);padding:1px 6px;border-radius:999px;font-size:9px">可勾選</span>':''}
           ${isSelf?'<span style="background:var(--blue-light);color:var(--blue);padding:1px 6px;border-radius:999px;font-size:9px">自己</span>':''}
@@ -4657,11 +4743,13 @@ function clearMockMembers(){
   if(status) status.textContent='已清除MOCK快取，正在重新載入真實資料...';
   showToast('已清除MOCK','warning');
 }
-async function updateUserRole(tid,nr){
+async function updateUserRole(tid,nr,curRole,hasOtherGsl,isSoleGsl){
+  if(nr==='group_leader'&&curRole!=='group_leader'&&hasOtherGsl){ showToast(tr('團長只能有一位，全團已有現任團長。如需更換，請先將現任團長轉為其他角色。'),'error'); loadUsers(); return; }
+  if(curRole==='group_leader'&&nr!=='group_leader'&&isSoleGsl&&!confirm(tr('此人是全團唯一的團長，轉走後全團將暫時沒有團長。確定繼續嗎？'))){ loadUsers(); return; }
   try{
     const d=await apiRequest('updateUserRole',{token:currentToken,target_ymis:tid,new_role:nr,can_tick:true});
     if(d.success){ showToast('角色已更新','success'); loadUsers(); } else showToast(d.error,'error');
-  }catch(e){ showToast('錯誤：'+e.message,'error'); }
+  }catch(e){ showToast('錯誤：'+e.message,'error'); loadUsers(); }
 }
 async function toggleCanTick(tid,ct){
   try{
@@ -4688,13 +4776,15 @@ async function addMemberFromApp(){
   }catch(e){ showToast('新增失敗：'+e.message,'error'); }
 }
 async function addUserFromApp(){
-  const ymis=prompt('成員 YMIS（10位數字）');
-  if(!ymis) return;
-  if(!/^\d{10}$/.test(ymis)){ showToast('YMIS 須為 10位數字','error'); return; }
   const name=prompt('成員姓名');
   if(!name) return;
-  const email=prompt(tr('聯絡電郵（可留空）'),'')||'';
   const role=prompt(tr('角色：member / exec_committee / branch_leader / group_leader / admin'),'member')||'member';
+  let ymis=prompt(tr('YMIS（成員必填10位；領袖可留空）'),'')||'';
+  if(role==='member'){
+    if(!/^\d{10}$/.test(ymis)){ showToast(tr('YMIS 須為 10位數字'),'error'); return; }
+  }
+  const email=prompt(role==='member'?tr('聯絡電郵（可留空）'):tr('聯絡電郵（領袖必填）'),'')||'';
+  if(role!=='member' && !email){ showToast(tr('領袖申請必須填寫聯絡電郵'),'error'); return; }
   const password=prompt(tr('密碼（留空＝預設密碼 1234）'),'')||'';
   const squad=prompt('備註（可留空）','')||'';
   const canTick=confirm(tr('是否可勾選進度？'));
@@ -4753,17 +4843,27 @@ async function loadApplications(){
       let h='<h3 style="margin-bottom:12px;color:var(--maroon)">待審批帳號申請</h3>';
       if(d.applications.length===0) h+='<p style="color:var(--text-light)">目前沒有待審批的申請</p>';
       else d.applications.forEach(a=>{
-        h+=`<div class="app-item"><div class="app-item-info"><b>${a.name}</b> ${a.ymis?`(${a.ymis})`:''} ${a.email?`- ${a.email}`:''}<br><span style="font-size:11px;color:var(--text-light)">申請角色：${getRoleName(a.requested_role)} | ${a.applied_at}</span></div><div class="app-item-actions"><button class="btn btn-sm btn-success" onclick="reviewApp('${a.app_id}','approved')">批准</button><button class="btn btn-sm btn-danger" onclick="reviewApp('${a.app_id}','rejected')">拒絕</button></div></div>`;
+        h+=`<div class="app-item"><div class="app-item-info"><b>${a.name}</b> ${a.ymis&&String(a.ymis).charAt(0)!=='L'?`(${a.ymis})`:''} ${a.email?`- ${a.email}`:''}<br><span style="font-size:11px;color:var(--text-light)">申請角色：${getRoleName(a.requested_role)} | ${a.applied_at}</span></div><div class="app-item-actions"><button class="btn btn-sm btn-success" onclick="reviewApp('${a.app_id}','approved','${a.requested_role||'member'}')">批准</button><button class="btn btn-sm btn-danger" onclick="reviewApp('${a.app_id}','rejected')">拒絕</button></div></div>`;
       });
       c.innerHTML=h;
     }else c.innerHTML='<p style="color:var(--red)">載入失敗</p>';
   }catch(e){ c.innerHTML='<p style="color:var(--red)">錯誤：'+e.message+'</p>'; }
 }
-async function reviewApp(id,dec){
+async function reviewApp(id,dec,requestedRole){
   if(!confirm(tr(`確定要${dec==='approved'?'批准':'拒絕'}嗎？`))) return;
   try{
     const d=await apiRequest('reviewApplication',{token:currentToken,app_id:id,decision:dec,review_note:''});
-    showToast(d.message,d.success?'success':'error'); loadApplications();
+    if(!d.success) throw new Error(d.error||'失敗');
+    showToast(d.message,'success');
+    if(dec==='approved'){
+      const finalRole=d.final_role||'member';
+      let roleLine=tr('開立角色：')+getRoleName(finalRole);
+      if(requestedRole && d.final_role && d.final_role!==requestedRole) roleLine=tr('開立角色：')+getRoleName(finalRole)+'（申請為 '+getRoleName(requestedRole)+'）';
+      const loginLine=((d.ymis||'').charAt(0)==='L')?(tr('請用電郵登入')+'\n'):(d.ymis?(tr('YMIS：')+d.ymis+'\n'):'');
+      alert(tr('✅ 已批准並建立帳戶')+'\n'+roleLine+'\n'+loginLine+tr('預設密碼：')+(d.temp_password||'1234')+'\n'+tr('首次登入須更改密碼'));
+    }
+    loadApplications();
+    if(document.getElementById('tab-requests') && typeof renderRequestsTab==='function') renderRequestsTab();
   }catch(e){ showToast('錯誤：'+e.message,'error'); }
 }
 </script>
