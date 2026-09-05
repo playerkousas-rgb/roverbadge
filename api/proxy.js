@@ -31,7 +31,7 @@ const SCOUT_ADMIN_API = process.env.SCOUT_ADMIN_API ||
 
 // ---- action 白名單（對照 Code.gs doGet/doPost）----
 // 公開（無需 token）
-const PUBLIC_ACTIONS = new Set(['login', 'apply', 'getLoginMode']);
+const PUBLIC_ACTIONS = new Set(['login', 'apply', 'forgotPassword', 'getLoginMode']);
 // 需要登入 token 的旅團內操作
 const TOKEN_ACTIONS = new Set([
   'logout', 'load', 'getConfig', 'getMembers', 'getOtherBadges',
@@ -41,6 +41,7 @@ const TOKEN_ACTIONS = new Set([
   'getPendingLogRequests', 'submitLogRequest', 'reviewLogRequest',
   'getAllUsers', 'addMember', 'addUser',
   'resetPassword', 'changePassword', 'deactivateUser',
+  'reactivateUser', 'updateUserProfile', 'deleteMember', 'deleteUser',
   'getApplications', 'reviewApplication',
   'updateUserRole', 'updatePermissions', 'updateConfig'
 ]);

@@ -163,6 +163,11 @@ function writeToMainSheet() {
   var existing = lastRow > 1
     ? sh.getRange(2, ymisCol + 1, lastRow - 1, 1).getValues().map(function (r) { return String(r[0]).trim(); })
     : [];
+  // v8.8：Email 亦全表唯一（含已停用）—— 讀出現有 Email（小寫化比對）
+  var emailCol = headers.indexOf('email');
+  var existingEmails = (lastRow > 1 && emailCol >= 0)
+    ? sh.getRange(2, emailCol + 1, lastRow - 1, 1).getValues().map(function (r) { return String(r[0]).trim().toLowerCase(); })
+    : [];
 
   // 讀取成員名單已有的 YMIS，避免重複寫入
   var mSheet = null, mExisting = {};
@@ -176,12 +181,14 @@ function writeToMainSheet() {
 
   var validRoles = ['member', 'exec_committee', 'branch_leader', 'group_leader', 'admin'];
   var nowStr = Utilities.formatDate(new Date(), 'Asia/Hong_Kong', 'yyyy-MM-dd HH:mm:ss');
-  var added = 0, dup = 0, skipped = 0;
+  var added = 0, dup = 0, dupEmail = 0, skipped = 0;
   json.forEach(function (m) {
     if (!/^\d{10}$/.test(m.ymis)) { skipped++; return; } // 防呆：YMIS 須 10 位數字
     if (validRoles.indexOf(m.role) < 0) m.role = 'member';
     // 與後端行為一致：一律 addUser 開立可登入帳號（密碼留空＝預設 1234），並同步寫入成員名單
     if (existing.indexOf(m.ymis) >= 0) { dup++; return; }
+    var emKey = String(m.email || '').trim().toLowerCase(); // v8.8：Email 亦全表唯一
+    if (emKey && existingEmails.indexOf(emKey) >= 0) { dup++; dupEmail++; return; }
     var row = new Array(headers.length).fill('');
     function set(name, val) { var c = headers.indexOf(name); if (c >= 0) row[c] = (val === undefined ? '' : val); }
     set('ymis', m.ymis);
@@ -198,6 +205,7 @@ function writeToMainSheet() {
     set('allowed_badges', defaultAllowedBadges(m.role));
     sh.appendRow(row);
     existing.push(m.ymis);
+    if (emKey) existingEmails.push(emKey);
     added++;
     // 同步寫入成員名單（與後端 addUser 行為一致：ymis,姓名,加入日期,支部,聯絡,備註）
     if (mSheet && !mExisting[m.ymis]) {
@@ -205,5 +213,5 @@ function writeToMainSheet() {
       mExisting[m.ymis] = true;
     }
   });
-  SpreadsheetApp.getUi().alert('寫入主資料表完成：新增 ' + added + ' 筆，略過重複 ' + dup + ' 筆' + (skipped ? '，跳過無效 ' + skipped + ' 筆' : '') + (info.needsHeader ? '（已自動建立 Users 表頭）' : ''));
+  SpreadsheetApp.getUi().alert('寫入主資料表完成：新增 ' + added + ' 筆，略過重複 ' + dup + ' 筆' + (dupEmail ? '（其中 Email 重複 ' + dupEmail + ' 筆）' : '') + (skipped ? '，跳過無效 ' + skipped + ' 筆' : '') + (info.needsHeader ? '（已自動建立 Users 表頭）' : ''));
 }

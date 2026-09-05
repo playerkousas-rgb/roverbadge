@@ -238,15 +238,41 @@ console.log('\n【10】後端各種失敗模式：proxy 一律 success:false（�
 // ================== 10b. 會員與領袖管理操作 ==================
 console.log('\n【10b】會員與領袖管理操作（新增/修改/權限/停用/重設密碼）');
 {
+  // v8.8 真實語義：addMember 只寫成員名單、不開登入帳號
   const addMem = await apiRequest('addMember', {
     token: tokenA, ymis: '1234560002', name: '成員乙', squad: '雄鷹小隊'
   }, { troopId: '0082' });
-  check('新增成員（addMember）成功', addMem.success === true && mockA.state.users['1234560002']?.name === '成員乙');
+  check('新增成員（addMember）成功：只入名單、不開帳號',
+    addMem.success === true && mockA.state.roster['1234560002']?.name === '成員乙' && !mockA.state.users['1234560002']);
+
+  // 同一 YMIS 再 addMember → 重複阻擋
+  const addMemDup = await apiRequest('addMember', {
+    token: tokenA, ymis: '1234560002', name: '成員乙次', squad: ''
+  }, { troopId: '0082' });
+  check('重複 addMember 同一 YMIS 被拒', addMemDup.success === false && /已在|重複/.test(addMemDup.error || ''));
+
+  // 已有登入帳號者不能再 addMember
+  const addMemHasAcct = await apiRequest('addMember', {
+    token: tokenA, ymis: '1234560001', name: '成員甲', squad: ''
+  }, { troopId: '0082' });
+  check('已有登入帳號者 addMember 被拒', addMemHasAcct.success === false && /登入帳號/.test(addMemHasAcct.error || ''));
 
   const addUsr = await apiRequest('addUser', {
     token: tokenA, ymis: '1234560003', name: '領袖丙', email: 'c@example.org', role: 'branch_leader', password: 'PassC!234', can_tick: true
   }, { troopId: '0082' });
   check('建立帳號（addUser）成功', addUsr.success === true && mockA.state.users['1234560003']?.role === 'branch_leader');
+
+  // 同 YMIS 再 addUser → 阻擋（不可重複開戶）
+  const addUsrDup = await apiRequest('addUser', {
+    token: tokenA, ymis: '1234560003', name: '領袖丙次', email: 'c2@example.org', role: 'member', password: 'x'
+  }, { troopId: '0082' });
+  check('重複 YMIS 開戶被拒', addUsrDup.success === false && /已註冊|重複|已有/.test(addUsrDup.error || ''));
+
+  // 同 Email（大小寫不同）再 addUser → 阻擋
+  const addUsrDupEm = await apiRequest('addUser', {
+    token: tokenA, ymis: '1234560006', name: '領袖戊', email: 'C@EXAMPLE.ORG', role: 'member', password: 'x'
+  }, { troopId: '0082' });
+  check('重複 Email 開戶被拒（大小寫不敏感）', addUsrDupEm.success === false && /Email/.test(addUsrDupEm.error || ''));
 
   const updPerm = await apiRequest('updateUserRole', {
     token: tokenA, target_ymis: '1234560001', new_role: 'exec_committee', can_tick: true, allowed_badges: 'L1,L2'
@@ -258,10 +284,21 @@ console.log('\n【10b】會員與領袖管理操作（新增/修改/權限/停�
   }, { troopId: '0082' });
   check('重設密碼（resetPassword）成功並返回臨時密碼', rstPw.success === true && typeof rstPw.temp_password === 'string' && rstPw.temp_password.startsWith('tmp_'));
 
+  // v8.8：停用對象須為有登入帳號者（addMember 不再建 Users 列）；停用 0003（本節新建，零副作用）
   const deact = await apiRequest('deactivateUser', {
-    token: tokenA, target_ymis: '1234560002'
+    token: tokenA, target_ymis: '1234560003'
   }, { troopId: '0082' });
-  check('停用帳號（deactivateUser）成功', deact.success === true && mockA.state.users['1234560002']?.status === 'inactive');
+  check('停用帳號（deactivateUser）成功', deact.success === true && mockA.state.users['1234560003']?.status === 'inactive');
+
+  // 停用後登入被拒
+  const loginDeact = await apiRequest('login', { login_id: '1234560003', password: 'PassC!234' }, { troopId: '0082' });
+  check('已停用帳號無法登入', loginDeact.success === false);
+
+  // 停用中 YMIS／Email 仍被佔用，不可重複開戶
+  const addUsrDeact = await apiRequest('addUser', {
+    token: tokenA, ymis: '1234560003', name: '領袖丙3', email: 'c3@example.org', role: 'member', password: 'x'
+  }, { troopId: '0082' });
+  check('已停用 YMIS 不可重複開戶', addUsrDeact.success === false && /停用|已有|重複/.test(addUsrDeact.error || ''));
 
   // 成員申請帳號及領袖審批
   const appRes = await apiRequest('apply', {
@@ -528,6 +565,87 @@ console.log('\n【16】超管帳號：只存在 Code.gs，Sheet／名單／錯�
   check('用新密碼（4 位）登入成功', loginNewPwd.success === true);
   const loginOldPwd = await apiRequest('login', { login_id: '1234560088', password: '1234' }, { troopId: '0082' });
   check('舊密碼已失效', loginOldPwd.success === false);
+}
+
+// ================== 17. v8.8 用戶管理：唯一性／三區名單／自設密碼／找回密碼／恢復／刪除 ==================
+console.log('\n【17】v8.8 用戶管理：唯一性／三區名單／自設密碼／找回密碼／恢復／刪除');
+{
+  // (a) 純名單成員：addMember 後出現在 getMembers，但 getAllUsers 無帳號
+  const r1 = await apiRequest('addMember', { token: tokenA, ymis: '1234560101', name: '名單成員', squad: '測試小隊' }, { troopId: '0082' });
+  check('addMember 純名單成員成功（只入名單）', r1.success === true && mockA.state.roster['1234560101']?.name === '名單成員');
+  const gm1 = await apiRequest('getMembers', { token: tokenA }, { troopId: '0082' });
+  check('getMembers 包含純名單成員', gm1.success === true && gm1.members.some(m => m.ymis === '1234560101'));
+  const gu1 = await apiRequest('getAllUsers', { token: tokenA }, { troopId: '0082' });
+  check('getAllUsers 不含未開戶的純名單成員', gu1.success === true && !gu1.users.some(u => u.ymis === '1234560101'));
+
+  // (b) 為純名單成員開立登入帳號（升級）：addUser 同 YMIS 成功、名單不重複
+  const up1 = await apiRequest('addUser', { token: tokenA, ymis: '1234560101', name: '名單成員', email: 'roster1@example.org', role: 'member', password: 'Roster!234' }, { troopId: '0082' });
+  check('純名單成員可開立登入帳號（升級）', up1.success === true && mockA.state.users['1234560101']?.email === 'roster1@example.org');
+  const gm2 = await apiRequest('getMembers', { token: tokenA }, { troopId: '0082' });
+  check('升級後名單不重複（同一 YMIS 只出現一次）', gm2.members.filter(m => m.ymis === '1234560101').length === 1);
+
+  // (c) updateUserProfile 修改姓名／電郵／備註
+  const pf1 = await apiRequest('updateUserProfile', { token: tokenA, target_ymis: '1234560101', name: '名單成員改名', email: 'roster1b@example.org', branch: '新小隊' }, { troopId: '0082' });
+  check('updateUserProfile 修改成功', pf1.success === true && mockA.state.users['1234560101']?.name === '名單成員改名' && mockA.state.users['1234560101']?.email === 'roster1b@example.org');
+  // 改成已被佔用的 Email → 拒絕（c@example.org 屬 1234560003，雖已停用仍佔用）
+  const pfDup = await apiRequest('updateUserProfile', { token: tokenA, target_ymis: '1234560101', email: 'c@example.org' }, { troopId: '0082' });
+  check('updateUserProfile 改用已被佔用 Email 被拒', pfDup.success === false && /Email/.test(pfDup.error || ''));
+
+  // (d) resetPassword 自設密碼（領袖幫無 Email 成員重設）
+  const sp1 = await apiRequest('resetPassword', { token: tokenA, target_ymis: '1234560101', new_password: 'SetByLeader!1' }, { troopId: '0082' });
+  check('resetPassword 自設密碼成功（不回傳 temp_password）', sp1.success === true && !('temp_password' in sp1));
+  const loginSet = await apiRequest('login', { login_id: '1234560101', password: 'SetByLeader!1' }, { troopId: '0082' });
+  check('自設密碼可登入', loginSet.success === true);
+  const spShort = await apiRequest('resetPassword', { token: tokenA, target_ymis: '1234560101', new_password: 'abc' }, { troopId: '0082' });
+  check('自設密碼少於 4 位被拒', spShort.success === false);
+
+  // (e) forgotPassword 公開找回（免 token）：有 Email 者寄出、回遮罩提示
+  const fp1 = await apiRequest('forgotPassword', { login_id: '1234560101' }, { troopId: '0082' });
+  check('forgotPassword 有 Email 者成功（免 token）', fp1.success === true && (fp1.email_hint || '').includes('@') && !(fp1.email_hint || '').includes('roster1b'));
+  check('forgotPassword 回應不含臨時密碼', fp1.success === true && !('temp_password' in fp1) && !JSON.stringify(fp1).includes(mockA.state.users['1234560101'].pass));
+  const tmpAfterFp = mockA.state.users['1234560101'].pass;
+  const loginTmp = await apiRequest('login', { login_id: 'ROSTER1B@EXAMPLE.ORG', password: tmpAfterFp }, { troopId: '0082' });
+  check('Email 收到的臨時密碼可用 Email 登入（大小寫不敏感）', loginTmp.success === true);
+  // 無 Email 者 → 失敗並提示聯絡領袖（1234560001 成員甲無 Email）
+  const fpNo = await apiRequest('forgotPassword', { login_id: '1234560001' }, { troopId: '0082' });
+  check('無 Email 者找回失敗並提示聯絡領袖', fpNo.success === false && /聯絡領袖/.test(fpNo.error || ''));
+  const fpGhost = await apiRequest('forgotPassword', { login_id: '9999999999' }, { troopId: '0082' });
+  check('不存在帳號找回失敗', fpGhost.success === false);
+
+  // (f) 停用 → 恢復 → 徹底刪除
+  const de2 = await apiRequest('deactivateUser', { token: tokenA, target_ymis: '1234560101' }, { troopId: '0082' });
+  check('停用 1234560101 成功', de2.success === true && mockA.state.users['1234560101']?.status === 'inactive');
+  const gu2 = await apiRequest('getAllUsers', { token: tokenA }, { troopId: '0082' });
+  check('getAllUsers 含已停用帳號（帶 status=inactive）', gu2.users.some(u => u.ymis === '1234560101' && u.status === 'inactive'));
+  const re1 = await apiRequest('reactivateUser', { token: tokenA, target_ymis: '1234560101' }, { troopId: '0082' });
+  check('reactivateUser 恢復成功', re1.success === true && mockA.state.users['1234560101']?.status === 'active');
+  const au2 = await apiRequest('addUser', { token: tokenA, ymis: '1234560102', name: '待刪成員', email: 'del2@example.org', role: 'member', password: 'x' }, { troopId: '0082' });
+  check('建立待刪帳號成功', au2.success === true);
+  const delAct = await apiRequest('deleteUser', { token: tokenA, target_ymis: '1234560102' }, { troopId: '0082' });
+  check('啟用中帳號不可徹底刪除（須先停用）', delAct.success === false && /停用/.test(delAct.error || ''));
+  await apiRequest('deactivateUser', { token: tokenA, target_ymis: '1234560102' }, { troopId: '0082' });
+  const delOk = await apiRequest('deleteUser', { token: tokenA, target_ymis: '1234560102' }, { troopId: '0082' });
+  check('已停用帳號徹底刪除成功', delOk.success === true && !mockA.state.users['1234560102'] && !mockA.state.roster['1234560102']);
+  const reuse = await apiRequest('addUser', { token: tokenA, ymis: '1234560102', name: '重用帳號', email: 'del2@example.org', role: 'member', password: 'x' }, { troopId: '0082' });
+  check('徹底刪除後 YMIS／Email 可重用', reuse.success === true);
+
+  // (g) deleteMember 純名單刪除
+  const r3 = await apiRequest('addMember', { token: tokenA, ymis: '1234560103', name: '純名單丙', squad: '' }, { troopId: '0082' });
+  const dm1 = await apiRequest('deleteMember', { token: tokenA, target_ymis: '1234560103' }, { troopId: '0082' });
+  check('deleteMember 刪除純名單成員成功', r3.success === true && dm1.success === true && !mockA.state.roster['1234560103']);
+  const dmHasAcct = await apiRequest('deleteMember', { token: tokenA, target_ymis: '1234560101' }, { troopId: '0082' });
+  check('已有登入帳號者不可 deleteMember', dmHasAcct.success === false && /帳號/.test(dmHasAcct.error || ''));
+
+  // (h) 團長唯一：現任團長在任時不可再升團長
+  const au4 = await apiRequest('addUser', { token: tokenA, ymis: '1234560104', name: '支部丁', email: 'bl4@example.org', role: 'branch_leader', password: 'x' }, { troopId: '0082' });
+  const promoBlocked = await apiRequest('updateUserRole', { token: tokenA, target_ymis: '1234560104', new_role: 'group_leader' }, { troopId: '0082' });
+  check('現任團長在任時不可再升團長', au4.success === true && promoBlocked.success === false && /只能有一位/.test(promoBlocked.error || ''));
+
+  // (i) proxy 白名單：新動作須帶 token（401），forgotPassword 公開
+  const noTok = await postProxy({ troopId: '0082', action: 'reactivateUser', data: { target_ymis: '1234560101' } });
+  check('無 token 調 reactivateUser → HTTP 401', noTok.status === 401);
+  const noTokDel = await postProxy({ troopId: '0082', action: 'deleteUser', data: { target_ymis: '1234560101' } });
+  check('無 token 調 deleteUser → HTTP 401', noTokDel.status === 401);
 }
 
 // ================== 收尾 ==================

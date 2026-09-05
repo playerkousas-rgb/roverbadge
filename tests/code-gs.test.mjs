@@ -265,6 +265,99 @@ console.log('\n【8】v8.7 團長唯一鎖、領袖免 YMIS、批核預設密碼
   check('已有團長時不能再升另一人為團長', promote.success === false && /團長只能有一位/.test(promote.error || ''), JSON.stringify(promote));
 }
 
+console.log('\n【9】v8.8 唯一性／三區名單／自設密碼／找回密碼／恢復／刪除（真實 Code.gs）');
+{
+  const su = env.call({ action: 'login', login_id: SU_USER, password: SU_PASS });
+  const tk = su.token;
+  check('超管可登入以執行 v8.8 測試', su.success === true);
+
+  // (a) YMIS／Email 唯一：重複開戶被拒
+  const u1 = env.call({ action: 'addUser', token: tk, ymis: '1234568001', name: '唯一甲', email: 'uniq-a@x.com', role: 'member', password: '1234' });
+  check('addUser 首戶成功', u1.success === true, JSON.stringify(u1));
+  const uDup = env.call({ action: 'addUser', token: tk, ymis: '1234568001', name: '重複甲', email: 'uniq-a2@x.com', role: 'member', password: '1234' });
+  check('重複 YMIS 開戶被拒', uDup.success === false && /已註冊/.test(uDup.error || ''), JSON.stringify(uDup));
+  const eDup = env.call({ action: 'addUser', token: tk, ymis: '1234568002', name: '重複乙', email: 'UNIQ-A@X.COM', role: 'member', password: '1234' });
+  check('重複 Email 開戶被拒（大小寫不敏感）', eDup.success === false && /Email/.test(eDup.error || ''), JSON.stringify(eDup));
+
+  // (b) addMember 只入名單；同 YMIS 再加被拒；有帳號者被拒
+  const m1 = env.call({ action: 'addMember', token: tk, ymis: '1234568011', name: '名單丙', squad: '測試小隊' });
+  check('addMember 純名單成功', m1.success === true, JSON.stringify(m1));
+  const mDup = env.call({ action: 'addMember', token: tk, ymis: '1234568011', name: '名單丙2' });
+  check('重複 addMember 同一 YMIS 被拒', mDup.success === false && /已在成員名單/.test(mDup.error || ''), JSON.stringify(mDup));
+  const mHas = env.call({ action: 'addMember', token: tk, ymis: '1234568001', name: '唯一甲' });
+  check('已有登入帳號者 addMember 被拒', mHas.success === false && /登入帳號/.test(mHas.error || ''), JSON.stringify(mHas));
+
+  // (c) getAllUsers 含 status；getMembers 含純名單成員
+  const gu = env.call({ action: 'getAllUsers', token: tk });
+  check('getAllUsers 含新帳號且帶 status=active',
+    gu.success === true && gu.users.some(u => u.ymis === '1234568001' && u.status === 'active'),
+    JSON.stringify((gu.users || []).filter(u => u.ymis === '1234568001')));
+  check('getAllUsers 不含純名單成員', gu.success === true && !gu.users.some(u => u.ymis === '1234568011'));
+  const gm = env.call({ action: 'getMembers', token: tk });
+  check('getMembers 含純名單成員', gm.success === true && gm.members.some(m => m.ymis === '1234568011'), 'count=' + (gm.members || []).length);
+
+  // (d) updateUserProfile／自設密碼
+  const pf = env.call({ action: 'updateUserProfile', token: tk, target_ymis: '1234568001', name: '唯一甲改名', email: 'uniq-a-new@x.com', branch: '新小隊' });
+  check('updateUserProfile 修改成功', pf.success === true, JSON.stringify(pf));
+  const sp = env.call({ action: 'resetPassword', token: tk, target_ymis: '1234568001', new_password: 'SetByLeader!1' });
+  check('resetPassword 自設密碼成功（不回 temp）', sp.success === true && !('temp_password' in sp), JSON.stringify(sp));
+  const lgSet = env.call({ action: 'login', login_id: '1234568001', password: 'SetByLeader!1' });
+  check('自設密碼可登入且須改密', lgSet.success === true && lgSet.force_change_password === true, JSON.stringify(lgSet));
+
+  // (e) forgotPassword：有 Email 者寄出（MailApp mock）、回遮罩、不回密碼
+  const fp = env.call({ action: 'forgotPassword', login_id: 'uniq-a-new@x.com' });
+  check('forgotPassword 成功（免 token）', fp.success === true && (fp.email_hint || '').includes('@'), JSON.stringify(fp));
+  const sent = env.mailOutbox[env.mailOutbox.length - 1];
+  check('MailApp 寄出臨時密碼郵件', !!sent && sent.to === 'uniq-a-new@x.com' && /Rover\d{6}/.test(sent.body), JSON.stringify(sent));
+  const tmpPw = (sent.body.match(/Rover\d{6}/) || [])[0];
+  const lgTmp = env.call({ action: 'login', login_id: '1234568001', password: tmpPw });
+  check('郵件中的臨時密碼可登入', lgTmp.success === true, JSON.stringify(lgTmp));
+  const fpAgain = env.call({ action: 'forgotPassword', login_id: '1234568001' });
+  check('60 秒內重複找回被節流', fpAgain.success === false && /頻密/.test(fpAgain.error || ''), JSON.stringify(fpAgain));
+  // 無 Email 者 → 提示聯絡領袖
+  const noEm = env.call({ action: 'addUser', token: tk, ymis: '1234568003', name: '無郵成員', email: '', role: 'member', password: '1234' });
+  const fpNo = env.call({ action: 'forgotPassword', login_id: '1234568003' });
+  check('無 Email 者找回失敗並提示聯絡領袖', noEm.success === true && fpNo.success === false && /聯絡領袖/.test(fpNo.error || ''), JSON.stringify(fpNo));
+  const fpSu = env.call({ action: 'forgotPassword', login_id: SU_USER });
+  check('超管不可自助找回密碼', fpSu.success === false, JSON.stringify(fpSu));
+
+  // (f) 停用 → 停用中不可重複開戶 → 恢復 → 徹底刪除 → 可重用
+  const de1 = env.call({ action: 'deactivateUser', token: tk, target_ymis: '1234568001' });
+  check('停用成功', de1.success === true, JSON.stringify(de1));
+  const guIn = env.call({ action: 'getAllUsers', token: tk });
+  check('getAllUsers 含已停用帳號（status=inactive）', guIn.users.some(u => u.ymis === '1234568001' && u.status === 'inactive'));
+  const dupIn = env.call({ action: 'addUser', token: tk, ymis: '1234568001', name: '重用甲', email: 'reuse-a@x.com', role: 'member', password: '1234' });
+  check('停用中 YMIS 不可重複開戶', dupIn.success === false && /停用/.test(dupIn.error || ''), JSON.stringify(dupIn));
+  const re1 = env.call({ action: 'reactivateUser', token: tk, target_ymis: '1234568001' });
+  check('恢復帳號成功', re1.success === true, JSON.stringify(re1));
+  const lgRe = env.call({ action: 'login', login_id: '1234568001', password: tmpPw });
+  check('恢復後原密碼可登入', lgRe.success === true, JSON.stringify(lgRe));
+  const delAct = env.call({ action: 'deleteUser', token: tk, target_ymis: '1234568001' });
+  check('啟用中帳號不可徹底刪除', delAct.success === false && /停用/.test(delAct.error || ''), JSON.stringify(delAct));
+  env.call({ action: 'deactivateUser', token: tk, target_ymis: '1234568001' });
+  const delOk = env.call({ action: 'deleteUser', token: tk, target_ymis: '1234568001' });
+  check('已停用帳號徹底刪除成功', delOk.success === true, JSON.stringify(delOk));
+  const guDel = env.call({ action: 'getAllUsers', token: tk });
+  check('徹底刪除後不在用戶名單', !guDel.users.some(u => u.ymis === '1234568001'));
+  const reuse = env.call({ action: 'addUser', token: tk, ymis: '1234568001', name: '重用甲', email: 'uniq-a-new@x.com', role: 'member', password: '1234' });
+  check('徹底刪除後 YMIS／Email 可重用', reuse.success === true, JSON.stringify(reuse));
+
+  // (g) deleteMember：純名單可刪；有帳號者不可
+  const dm1 = env.call({ action: 'deleteMember', token: tk, target_ymis: '1234568011' });
+  check('deleteMember 刪除純名單成員成功', dm1.success === true, JSON.stringify(dm1));
+  const gmDel = env.call({ action: 'getMembers', token: tk });
+  check('刪除後不在成員名單', !gmDel.members.some(m => m.ymis === '1234568011'));
+  const dmHas = env.call({ action: 'deleteMember', token: tk, target_ymis: '1234568001' });
+  check('已有登入帳號者不可 deleteMember', dmHas.success === false && /帳號/.test(dmHas.error || ''), JSON.stringify(dmHas));
+
+  // (h) 權限：成員不可調管理動作
+  const memTk = env.call({ action: 'login', login_id: '1234568001', password: '1234' }).token;
+  const memDel = env.call({ action: 'deleteMember', token: memTk, target_ymis: '1234568011' });
+  check('成員不可調用 deleteMember', memDel.success === false && /權限不足/.test(memDel.error || ''), JSON.stringify(memDel));
+  const memRe = env.call({ action: 'reactivateUser', token: memTk, target_ymis: '1234568001' });
+  check('成員不可調用 reactivateUser', memRe.success === false && /權限不足/.test(memRe.error || ''), JSON.stringify(memRe));
+}
+
 console.log('\n========================================');
 console.log(`Code.gs 實測結果：${passed} 通過, ${failed} 失敗`);
 if (failed > 0) process.exit(1);
