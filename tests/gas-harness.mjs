@@ -112,6 +112,7 @@ export function loadCodeGs({ promptAnswers = [] } = {}) {
 
   const scriptProps = new Map();
   const ui = makeUi(promptAnswers);
+  const mailOutbox = []; // v8.8：MailApp.sendEmail 寄出的郵件（測試觀測用）
 
   const sandbox = {
     console: { log() {}, warn() {}, error() {} },
@@ -145,6 +146,12 @@ export function loadCodeGs({ promptAnswers = [] } = {}) {
         getContent: () => s
       })
     },
+    MailApp: {
+      sendEmail(to, subject, body) {
+        mailOutbox.push({ to: String(to), subject: String(subject), body: String(body) });
+      },
+      getRemainingDailyQuota() { return 100; }
+    },
     ScriptApp: { getService: () => ({ getUrl: () => 'https://script.google.com/macros/s/HARNESS/exec' }) }
   };
   sandbox.globalThis = sandbox;
@@ -168,6 +175,7 @@ export function loadCodeGs({ promptAnswers = [] } = {}) {
     ss,
     ui,
     scriptProps,
+    mailOutbox,
     // 走真實 doPost() 路由（與部署後的 /exec 相同路徑）
     call: (body) => jsonOf(api.doPost({ postData: { contents: JSON.stringify(body) } })),
     get: (parameter) => jsonOf(api.doGet({ parameter }))

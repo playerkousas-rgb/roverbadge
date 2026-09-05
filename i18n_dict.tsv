@@ -861,3 +861,37 @@ YMIS 匯出教學	YMIS export guide
 ⚠️ 雲端資料載入失敗，而家顯示嘅係本機快取	⚠️ Cloud data failed to load; the view below is your local cache
 ⚠️ 雲端載入失敗，顯示緊上次快取（唔係你斷網）	⚠️ Cloud load failed; showing the last cached copy (your connection is not the problem)
 ❌ 雲端載入失敗，本機亦冇快取可顯示	❌ Cloud load failed and there is no local cache to show
+🔑 忘記密碼	🔑 Forgot password
+忘記密碼	Forgot password
+🔑 找回密碼	🔑 Recover password
+YMIS 或登記電郵	YMIS or registered email
+10位 YMIS 或電郵	10-digit YMIS or email
+寄出臨時密碼	Send temporary password
+寄送中...	Sending...
+輸入你的 YMIS 或登記電郵，系統會把一次性臨時密碼寄到你登記的電郵。如無登記電郵，請聯絡領袖重設。	Enter your YMIS or registered email; the system will send a one-time temporary password to your registered email. If you have no registered email, ask a leader to reset it.
+⚠️ 批次內重複 YMIS	⚠️ Duplicate YMIS in batch
+⚠️ 批次內重複電郵	⚠️ Duplicate email in batch
+⚠️ 電郵格式錯誤	⚠️ Invalid email format
+聯絡電郵（留空＝清除）	Contact email (blank = clear)
+🔑 登入帳號	🔑 Login accounts
+📋 無登入帳號的成員	📋 Members without login accounts
+🗄️ 已停用帳號	🗄️ Deactivated accounts
+無登入帳號的成員	Members without login accounts
+開立登入帳號	Create login account
+無登入帳號	No login account
+登入帳號	Login accounts
+已停用帳號	Deactivated accounts
+已停用	Deactivated
+♻️ 恢復帳號	♻️ Reactivate account
+恢復帳號	Reactivate account
+🗑️ 徹底刪除	🗑️ Delete permanently
+徹底刪除	Delete permanently
+🔐 設定密碼	🔐 Set password
+自設此用戶的新密碼	Set a new password for this user
+✏️ 修改	✏️ Edit
+🗑️ 刪除	🗑️ Delete
+權限不足	Insufficient permission
+暫無啟用中的帳號	No active accounts
+暫無（所有名單成員都已有登入帳號）	None (all roster members already have login accounts)
+只在成員名單，未開登入帳號	Roster only, no login account yet
+停用中仍佔用 YMIS／Email，不可重複開戶；可恢復或徹底刪除	Deactivated accounts still occupy their YMIS/email and cannot be re-registered; reactivate or delete them permanently
