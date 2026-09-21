@@ -210,6 +210,9 @@ console.log('\n【3】/api endpoint 都要回 JSON（Vercel 沒建 function 時�
   const h = await req(BASE, 'GET', '/api/health');
   check('GET /api/health → 200 + JSON', h.status === 200 && isJson(h), `${h.status} ${h.type}`);
   check('/api/health 回報 registry 來源為 env', (h.json.registry || {}).source === 'env', JSON.stringify(h.json.registry || {}));
+  check('/api/health super 自測：SUPER_KEY 已設定', (h.json.super || {}).configured === true, JSON.stringify(h.json.super || {}));
+  check('/api/health super 自測通過（簽票→驗票→後端綁定→session）', (h.json.super || {}).selfTest === 'ok', JSON.stringify(h.json.super || {}));
+  check('/api/health super 自測不洩漏票據／session／token', !/rbt1\.|rbs1\.|selftest-token/.test(h.text));
   check('/api/health 不含 GAS 完整 URL / apikey', !/\/exec/.test(h.text) && !/KEY_LAMBDA/.test(h.text));
 
   const t = await req(BASE, 'GET', '/api/troops');
@@ -366,6 +369,7 @@ console.log('\n【10】沒有任何旅團環境變數時（v4.0：沒有檔案�
   const r3h = await fetch(b3 + '/api/health');
   const h3 = await r3h.json();
   check('/api/health → 503 且錯誤訊息指向環境變數', r3h.status === 503 && /環境變數/.test(h3.error || ''), `${r3h.status} ${JSON.stringify(h3).slice(0, 160)}`);
+  check('/api/health super 自測：無 SUPER_KEY 時如實回報 skipped', h3.super && h3.super.configured === false && h3.super.selfTest === 'skipped_not_configured', JSON.stringify(h3.super || {}));
   const r3 = await fetch(b3 + '/api/proxy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ troopId: '0082', action: 'login', data: { login_id: 'x', password: 'y' } }) });
   const j3 = await r3.json().catch(() => null);
   check('未登記旅團 → 404 + JSON（不是 HTML）', r3.status === 404 && j3 && j3.success === false, `${r3.status}`);

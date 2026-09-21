@@ -5091,36 +5091,3 @@ async function reviewApp(id,dec,requestedRole){
 </script>
 </body>
 </html>
-inalRole=d.final_role||'member';
-      let roleLine=tr('開立角色：')+getRoleName(finalRole);
-      if(requestedRole && d.final_role && d.final_role!==requestedRole) roleLine=tr('開立角色：')+getRoleName(finalRole)+'（申請為 '+getRoleName(requestedRole)+'）';
-      const loginLine=((d.ymis||'').charAt(0)==='L')?(tr('請用電郵登入')+'\n'):(d.ymis?(tr('YMIS：')+d.ymis+'\n'):'');
-      alert(tr('✅ 已批准並建立帳戶')+'\n'+roleLine+'\n'+loginLine+tr('預設密碼：')+(d.temp_password||'1234')+'\n'+tr('首次登入須更改密碼'));
-    }
-    loadApplications();
-    if(document.getElementById('tab-requests') && typeof renderRequestsTab==='function') renderRequestsTab();
-  }catch(e){ showToast('錯誤：'+e.message,'error'); }
-}
-</script>
-</body>
-</html>
-ript>
-</body>
-</html>
-requestedRole)+'）';
-      const loginLine=((d.ymis||'').charAt(0)==='L')?(tr('請用電郵登入')+'\n'):(d.ymis?(tr('YMIS：')+d.ymis+'\n'):'');
-      alert(tr('✅ 已批准並建立帳戶')+'\n'+roleLine+'\n'+loginLine+tr('預設密碼：')+(d.temp_password||'1234')+'\n'+tr('首次登入須更改密碼'));
-    }
-    loadApplications();
-    if(document.getElementById('tab-requests') && typeof renderRequestsTab==='function') renderRequestsTab();
-  }catch(e){ showToast('錯誤：'+e.message,'error'); }
-}
-</script>
-</body>
-</html>
- if(document.getElementById('tab-requests') && typeof renderRequestsTab==='function') renderRequestsTab();
-  }catch(e){ showToast('錯誤：'+e.message,'error'); }
-}
-</script>
-</body>
-</html>
