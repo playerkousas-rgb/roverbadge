@@ -398,14 +398,14 @@ a:hover{text-decoration:underline}
         <p style="font-size:11px;margin-top:8px;background:#fff;padding:6px;border-radius:6px"><b>重點：有主系統 ≠ 一定要接上本系統</b>，可自由選擇獨立用或接上，兩條路並存不衝突。藉此告訴用家有更大平台可用。</p>
       </div>
 
-      <div class="info-card" style="background:var(--maroon-light);margin-bottom:12px"><h3>🗺️ 部署地圖 - 兩條路</h3><p style="font-size:11px">共通：下載 Code.gs → 建 Sheet → 執行 initializeSheets → 部署 → 複製 URL+API Key<br><b>軌道A 無主系統/有但想獨立用：</b> 將 URL+Key 交 roverbadge 管理員 → 加入 troops.json → 完成 → 用法：roverbadge.vercel.app 選旅團登入<br><b>軌道B 有主系統並想接上：</b> 同樣交 roverbadge 管理員 + 額外交主系統管理員填入旅團設定→元件設定 backend+apikey → 用法：主系統 Dashboard 點卡片 → 自動帶入 from=portal&embed=1 → 直接用</p></div>
+      <div class="info-card" style="background:var(--maroon-light);margin-bottom:12px"><h3>🗺️ 部署地圖 - 兩條路</h3><p style="font-size:11px">共通：下載 Code.gs → 建 Sheet → 執行 initializeSheets → 部署 → 複製 URL+API Key<br><b>軌道A 無主系統/有但想獨立用：</b> 將 URL+Key 交 roverbadge 管理員 → 管理員在 Vercel 環境變數登記 → 完成 → 用法：roverbadge.vercel.app 選旅團登入<br><b>軌道B 有主系統並想接上：</b> 同樣交 roverbadge 管理員（Vercel 環境變數登記）→ 主系統卡片只需設 u 參數（backend/apikey 不用）→ 用法：主系統 Dashboard 點卡片 → 自動帶入 from=portal&embed=1 → 直接用</p></div>
 
       <div class="tutorial">
         <div class="steps">
           <div class="step"><div class="step-number">1</div><div class="step-content"><h4>共通：下載後端程式碼 (單一檔案版)</h4><p>包含待批、其他獎章、批量、PNG、私隱開關</p><a href="apps-script/Code.gs" download="Code.gs" class="btn btn-primary btn-sm" style="margin-top:6px">⬇️ 下載 Code.gs (最新)</a></div></div>
           <div class="step"><div class="step-number">2</div><div class="step-content"><h4>共通：建立 Google Sheet 並部署</h4><p><b>2.1</b> 建新試算表<br><b>2.2</b> 擴充功能→Apps Script，貼上 Code.gs<br><b>2.3</b> 儲存→執行 initializeSheets，授權，複製 API Key<br><b>2.4</b> 部署為網頁應用程式 (執行身分我，存取權任何人)，複製 URL (/exec)</p></div></div>
-          <div class="step"><div class="step-number">3</div><div class="step-content"><h4>軌道A：無主系統 - 提交給 roverbadge 管理員</h4><p>將旅團編號、名稱、URL、API Key 交 roverbadge 管理員加入 troops.json，Vercel自動部署後獨立可用</p></div></div>
-          <div class="step"><div class="step-number">4</div><div class="step-content"><h4>軌道B：有主系統並想接上 - 額外提交給主系統管理員</h4><p>將同一組 URL+Key 交主系統管理員，填入旅團設定→元件設定 roverbadge 卡片 backend+apikey。之後成員點 Dashboard 卡片自動帶入 ?u=0082&role=&ymis=&from=portal&embed=1，無需密碼</p></div></div>
+          <div class="step"><div class="step-number">3</div><div class="step-content"><h4>軌道A：無主系統 - 提交給 roverbadge 管理員</h4><p>將旅團編號、名稱、URL、API Key 交 roverbadge 管理員，在 Vercel 環境變數登記（TROOP_{編號}_NAME / _BACKEND / _APIKEY），重新部署後獨立可用</p></div></div>
+          <div class="step"><div class="step-number">4</div><div class="step-content"><h4>軌道B：有主系統並想接上 - 額外提交給主系統管理員</h4><p>告知主系統管理員旅團編號：旅團設定→元件設定 roverbadge 卡片只需設 u 參數（backend/apikey 不用；就算 URL 帶入亦會被忽略）。之後成員點 Dashboard 卡片自動帶入 ?u=0082&role=&ymis=&from=portal&embed=1，無需密碼</p></div></div>
           <div class="step"><div class="step-number">5</div><div class="step-content"><h4>私隱選擇</h4><p>有主系統不等於一定要接，可自由選擇獨立用。若旅團重私隱，成員預設只看自己；若想互相鼓勵，團長可在用戶管理→系統設定開啟「允許成員互相查看進度」</p></div></div>
         </div>
       </div>
@@ -842,12 +842,12 @@ const LANG_DICT={
   "擴充功能→Apps Script，貼上 Code.gs": "Extensions → Apps Script, paste Code.gs",
   "儲存→執行 initializeSheets，授權，複製 API Key": "Save → run initializeSheets, authorise, copy the API Key",
   "部署為網頁應用程式 (執行身分我，存取權任何人)，複製 URL (/exec)": "Deploy as a web app (execute as me, access: anyone), copy the URL (/exec)",
-  "將旅團編號、名稱、URL、API Key 交 roverbadge 管理員加入 troops.json，Vercel自動部署後獨立可用": "Give the Group number, name, URL and API Key to the roverbadge admin to add to troops.json; after Vercel auto-deploys, it works standalone",
+  "將旅團編號、名稱、URL、API Key 交 roverbadge 管理員，在 Vercel 環境變數登記（TROOP_{編號}_NAME / _BACKEND / _APIKEY），重新部署後獨立可用": "Give the Group number, name, URL and API Key to the roverbadge admin to register in Vercel environment variables (TROOP_{ID}_NAME / _BACKEND / _APIKEY); after redeploying, it works standalone",
   "獨立用：交 roverbadge 管理員": "Standalone: submit to the roverbadge admin",
   "接入主系統：同時交主系統管理員（填 backend+apikey）": "Connect to main system: also submit to the main system admin (fill in backend + apikey)",
   "兩條路可同時用，領袖從主系統入，成員 bookmark 獨立連結": "Both tracks can be used at the same time: leaders enter via the main system, members bookmark the standalone link",
-  "將 URL+Key 交 roverbadge 管理員 → 加入 troops.json → 完成 → 用法：roverbadge.vercel.app 選旅團登入": "Give URL + Key to the roverbadge admin → added to troops.json → done → how to use: go to roverbadge.vercel.app, select the Group and log in",
-  "將同一組 URL+Key 交主系統管理員，填入旅團設定→元件設定 roverbadge 卡片 backend+apikey。之後成員點 Dashboard 卡片自動帶入 ?u=0082&role=&ymis=&from=portal&embed=1，無需密碼": "Give the same URL + Key to the main system admin, fill them into Group settings → component settings → roverbadge card backend + apikey. Members then click the Dashboard card, which auto-fills ?u=0082&role=&ymis=&from=portal&embed=1 with no password needed",
+  "將 URL+Key 交 roverbadge 管理員 → 管理員在 Vercel 環境變數登記 → 完成 → 用法：roverbadge.vercel.app 選旅團登入": "Give URL + Key to the roverbadge admin → the admin registers them in Vercel environment variables → done → how to use: go to roverbadge.vercel.app, select the Group and log in",
+  "告知主系統管理員旅團編號：旅團設定→元件設定 roverbadge 卡片只需設 u 參數（backend/apikey 不用；就算 URL 帶入亦會被忽略）。之後成員點 Dashboard 卡片自動帶入 ?u=0082&role=&ymis=&from=portal&embed=1，無需密碼": "Tell the main-system admin the Group number: Group settings → component settings → the roverbadge card only needs the u parameter (no backend/apikey; any such URL parameters are ignored). Members then click the Dashboard card, which auto-fills ?u=0082&role=&ymis=&from=portal&embed=1 with no password needed",
   "有主系統不等於一定要接，可自由選擇獨立用。若旅團重私隱，成員預設只看自己；若想互相鼓勵，團長可在用戶管理→系統設定開啟「允許成員互相查看進度」": "Having a main system does not mean you must connect. For privacy-focused Groups, members see only themselves by default; for mutual encouragement, the Group Scout Leader can enable \"Allow members to view each other's progress\" in User Management → System Settings",
   "💡 提示：若您的旅團不在列表，請到「新旅團部署」查看10分鐘自助部署教學。": "💡 Tip: if your Group is not in the list, see the 10-minute self-deployment guide in \"New Group Deployment\".",
   "首頁點擊旅團卡片（例如 0082 第82旅）": "Click the Group card on the home page (e.g. 0082, 82nd Group)",
@@ -1180,12 +1180,11 @@ const LANG_DICT={
   "團長": "Group Scout Leader",
   "管理員 admin": "Admin",
   "管理員": "Admin",
-  "系統管理員 super_admin": "System Admin super_admin",
   "超管": "System Admin",
   "，可勾選及管理。": ", can tick and manage.",
   "USER 總數": "Total USERs",
   "= 成員 + 領袖 全部。": "= all members + leaders.",
-  "🧪 測試工具 (僅系統管理員可見)": "🧪 Test Tools (System Admin only)",
+  "🧪 測試工具 (僅中央管理帳號可見)": "🧪 Test Tools (central admin only)",
   "一鍵載入 10個 MOCK 成員到前端快取，方便測試全團批量剔、會員章一眼睇等。MOCK數據只存瀏覽器快取，不會寫入正式 Google Sheet，除非你按確認寫入。": "Load 10 MOCK members into the front-end cache in one click, useful for testing Group batch ticking and the Membership Badge at-a-glance view. MOCK data is stored only in the browser cache and will NOT be written to the real Google Sheet unless you confirm the write.",
   "🧪 載入10個MOCK成員到全團": "🧪 Load 10 MOCK members into the Group",
   "🗑️ 清除MOCK快取": "🗑️ Clear MOCK cache",
@@ -1417,9 +1416,9 @@ const LANG_DICT={
   "無法連接伺服器": "Cannot reach the server",
   "伺服器回應格式異常 (HTTP": "Unexpected server response format (HTTP ",
   "｜後端 API 未部署，請聯絡管理員重新部署": "| the backend API is not deployed; please ask your section admin to redeploy on Vercel",
-  "｜後端找不到此旅團，請檢查 troops.json 已否同步": "| the backend cannot find this troop; please check that troops.json has been synced",
+  "｜後端未登記任何旅團，請確認管理員已設定 Vercel 環境變數": "| no troop is registered in the backend; please make sure the admin has set the Vercel environment variables",
   "\u26a0\ufe0f 後端 API 未部署（/api/* 無回應），登入一定失敗；請聯絡管理員喺 Vercel 重新部署": "\u26a0\ufe0f Backend API is not deployed (/api/* does not respond), so sign-in will always fail. Please ask your section admin to redeploy on Vercel",
-  "\u26a0\ufe0f 後端未登記此旅團（troops.json 未同步），登入會失敗": "\u26a0\ufe0f This troop is not registered in the backend (troops.json not synced); sign-in will fail",
+  "\u26a0\ufe0f 後端未登記任何旅團（Vercel 環境變數未設定），登入會失敗": "\u26a0\ufe0f No troop is registered in the backend (Vercel environment variables not set); sign-in will fail",
   "伺服器回應異常 (HTTP": "Unexpected server response (HTTP ",
   ")，請稍後重試": "), please try again later",
   "你沒有勾選權限，請使用申請功能": "You have no ticking permission; please use the request feature",
@@ -1429,11 +1428,16 @@ const LANG_DICT={
   "錯誤：": "Error: ",
   "失敗": "failed",
   "：網絡錯誤": ": network error",
-  "⚠️ 正使用後備資料顯示 0082，若 Vercel 上 data/troops.json 未部署，請檢查 GitHub 是否已推送 data/troops.json": "⚠️ Showing fallback data for 0082; if data/troops.json is not deployed on Vercel, check whether data/troops.json has been pushed to GitHub",
-  "載入出錯，已顯示後備 0082：": "Load error; fallback shown for 0082: ",
   "⚠️ Portal 模式：旅團未在 Registry 登記": "⚠️ Portal mode: Group not registered in the Registry",
-  "未在伺服器端 troops.json / env 找到": "not found in the server-side troops.json / env",
-  "請聯絡 roverbadge 管理員將旅團 GAS URL 加入 Registry（主系統卡片只需傳 u 參數，不需再傳 backend/apikey）": "Please ask the roverbadge admin to add the Group's GAS URL to the Registry (the main-system card only needs the u parameter, no backend/apikey needed)",
+  "⚠️ 未有已登記旅團：請管理員在 Vercel 環境變數設定 TROOP_{編號}_BACKEND 等設定並重新部署（詳見 /api/health）": "⚠️ No registered Groups yet: the admin needs to set TROOP_{ID}_BACKEND and related Vercel environment variables and redeploy (see /api/health)",
+  "旅團清單載入失敗：": "Failed to load the Group list: ",
+  "請稍後重試；若持續失敗請聯絡管理員檢查 /api/health": "Please try again later; if it keeps failing, ask the admin to check /api/health",
+  "此旅團未開放 Portal 模式": "Portal mode is not enabled for this Group",
+  "來源不符，Portal 模式已拒絕": "Origin mismatch; Portal mode denied",
+  "角色未被允許使用 Portal 模式": "This role is not allowed to use Portal mode",
+  "，請使用正常登入或聯絡管理員": ". Please sign in normally or contact the admin",
+  "未在伺服器端環境變數 Registry 找到": "not found in the server-side environment-variable Registry",
+  "請聯絡 roverbadge 管理員在 Vercel 環境變數登記旅團（主系統卡片只需傳 u 參數，不需再傳 backend/apikey）": "Please ask the roverbadge admin to register the Group in the Vercel environment variables (the main-system card only needs the u parameter, no backend/apikey needed)",
   "📍": "📍",
   "- Portal預選": "- Portal pre-selected",
   "- 進度追蹤 (Portal)": "- Progress Tracker (Portal)",
@@ -1607,7 +1611,7 @@ const LANG_DICT={
   "只有領袖或成員可以申報活動履歷": "Only leaders or members can declare activity logs",
   "我已送出，待領袖確認": "Submitted; awaiting leader approval",
   "成員申報活動履歷在此審批，批准後寫入活動履歷。": "Member activity log declarations are approved here and written to the Activity Log after approval.",
-  "同樣交 roverbadge 管理員 + 額外交主系統管理員填入旅團設定→元件設定 backend+apikey → 用法：主系統 Dashboard 點卡片 → 自動帶入 from=portal&embed=1 → 直接用": "Also give the same to the roverbadge Admin + additionally ask the main-system admin to fill in the Group settings → Widget settings backend+apikey → Usage: click the card on the main-system Dashboard → identity is auto-carried from=portal&embed=1 → use directly",
+  "同樣交 roverbadge 管理員（Vercel 環境變數登記）→ 主系統卡片只需設 u 參數（backend/apikey 不用）→ 用法：主系統 Dashboard 點卡片 → 自動帶入 from=portal&embed=1 → 直接用": "Also give the same to the roverbadge Admin (registered via Vercel environment variables) → the main-system card only needs the u parameter (no backend/apikey) → Usage: click the card on the main-system Dashboard → identity is auto-carried from=portal&embed=1 → use directly",
   "建新試算表": "Create a new spreadsheet",
   "私隱選擇": "Privacy choice",
   "其他功能": "Other features",
@@ -1744,7 +1748,7 @@ async function apiDiagnose(){
 async function apiFailureSuffix(){
   const d=await apiDiagnose();
   if(!d.deployed) return '｜後端 API 未部署，請聯絡管理員重新部署';
-  if(!d.troopsOk) return '｜後端找不到此旅團，請檢查 troops.json 已否同步';
+  if(!d.troopsOk) return '｜後端未登記任何旅團，請確認管理員已設定 Vercel 環境變數';
   return '';
 }
 async function apiRequest(action, data={}, opts={}){
@@ -1852,6 +1856,11 @@ async function handlePortalParams(){
   console.log('Portal params detected', {u, role, ymis, from});
 
   let troopRegistered = false;
+  // Portal 接入設定（來自 /api/troops：TROOP_{ID}_PORTALORIGIN / _PORTALROLES / _PORTALDISABLED
+  // 及全域 PORTAL_DEFAULT_ORIGIN / PORTAL_DEFAULT_ROLES）。
+  // 注意：來源網址／角色參數檢查只是軟性檢查，不是身份驗證，
+  // 不能當作中央管理帳號登入的替代品；資料讀寫權限仍由旅團後端把關。
+  let portalCfg={}, portalDefaults={};
   if(u){
     currentTroopId=u;
     currentTroopName=troopNameParam;
@@ -1859,24 +1868,38 @@ async function handlePortalParams(){
       const r2=await fetch('/api/troops?_='+Date.now());
       if(r2.ok){
         const d2=await r2.json();
+        portalDefaults=d2.portalDefaults||{};
         const t2=(d2.troops||{})[u];
-        if(t2){ troopRegistered=true; currentTroopName=t2.name||troopNameParam; }
+        if(t2){ troopRegistered=true; currentTroopName=t2.name||troopNameParam; portalCfg=t2.portal||{}; }
       }
     }catch(e){ console.warn('api/troops lookup failed',e); }
-    if(!troopRegistered){
-      try{
-        const r=await fetch('data/troops.json?_='+Date.now());
-        if(r.ok){
-          const d=await r.json();
-          const t=(d.troops||{})[u];
-          if(t && t.name){ troopRegistered=true; currentTroopName=t.name; }
-        }
-      }catch(e){ console.warn('portal troops.json lookup failed',e); }
-    }
   }
 
-  // 若由 Portal 帶入身份，直接免登入進入
+  // 若由 Portal 帶入身份，先做軟性檢查，通過才免登入進入
   if(from==='portal' && ymis && role){
+    const portalBlocked=(function(){
+      if(portalCfg.disabled===true || String(portalCfg.disabled)==='1') return '此旅團未開放 Portal 模式';
+      const allowedOrigin=(portalCfg.origin||portalDefaults.origin||'').replace(/\/+$/,'');
+      if(allowedOrigin && document.referrer){
+        try{
+          const refOrigin=new URL(document.referrer).origin;
+          if(refOrigin!==allowedOrigin) return '來源不符，Portal 模式已拒絕';
+        }catch(e){ /* referrer 無法解析時不阻擋（保持既有進入方式可用） */ }
+      }
+      const allowedRoles=String(portalCfg.roles||portalDefaults.roles||'').split(',').map(s=>s.trim()).filter(Boolean);
+      if(allowedRoles.length && !allowedRoles.includes(role)) return '角色未被允許使用 Portal 模式';
+      return '';
+    })();
+    if(portalBlocked){
+      document.getElementById('homePage').style.display='none';
+      document.getElementById('loginPage').style.display='block';
+      const el=document.getElementById('loginMsg');
+      el.className='login-msg error';
+      el.textContent='⚠️ '+portalBlocked+'，請使用正常登入或聯絡管理員';
+      if(u && troopRegistered){ document.getElementById('loginTroopInfo').textContent=`📍 ${currentTroopName} (ID: ${currentTroopId})`; }
+      checkSavedSession();
+      return;
+    }
     currentUser={
       ymis: ymis,
       name: nameParam,
@@ -1897,7 +1920,7 @@ async function handlePortalParams(){
     if(troopRegistered){
       loadItemsAndProgress();
     }else{
-      document.getElementById('tab-progress').innerHTML=`<div style="padding:20px;text-align:center;color:var(--red)"><p>⚠️ Portal 模式：旅團未在 Registry 登記</p><p style="font-size:11px">u=${u} 未在伺服器端 troops.json / env 找到</p><p style="font-size:11px">請聯絡 roverbadge 管理員將旅團 GAS URL 加入 Registry（主系統卡片只需傳 u 參數，不需再傳 backend/apikey）</p></div>`;
+      document.getElementById('tab-progress').innerHTML=`<div style="padding:20px;text-align:center;color:var(--red)"><p>⚠️ Portal 模式：旅團未在 Registry 登記</p><p style="font-size:11px">u=${u} 未在伺服器端環境變數 Registry 找到</p><p style="font-size:11px">請聯絡 roverbadge 管理員在 Vercel 環境變數登記旅團（主系統卡片只需傳 u 參數，不需再傳 backend/apikey）</p></div>`;
     }
     return;
   }
@@ -1942,31 +1965,27 @@ function backToHome(){
 async function loadTroops(){
   const grid=document.getElementById('troopGrid');
   grid.innerHTML='<p style="grid-column:1/-1;text-align:center;color:var(--text-light);padding:20px">載入中...</p>';
-  const fallbackTroops={
-    "0082": { name:"第 82 旅 (樂行)" }
-  };
+  // 旅團清單唯一來源：同源 /api/troops（Vercel 環境變數 Registry）。
+  // 沒有前端 fallback／寫死旅團：登記與否只由伺服器端環境變數決定。
   try{
-    let troops={};
-    try{ const r2=await fetch('/api/troops?_='+Date.now()); if(r2.ok){ const d2=await r2.json(); if(d2.troops){ for(const [id,t] of Object.entries(d2.troops)) troops[id]={name:t.name||('第'+id+'旅')}; } } }catch(e){ console.warn('api/troops failed',e); }
-    try{ const r=await fetch('data/troops.json?_='+Date.now()); if(r.ok){ const d=await r.json(); if(d.troops){ for(const [id,t] of Object.entries(d.troops)){ if(!troops[id]) troops[id]={name:t.name||('第'+id+'旅')}; } } } }catch(e){ console.warn('data/troops.json failed',e); }
-    const fromSource=Object.keys(troops).length>0;
-    troops={...fallbackTroops, ...troops};
-    grid.innerHTML=Object.entries(troops).map(([id,t])=>`<div class="troop-card" onclick="selectTroop('${id}')"><div class="troop-id">${id}</div><div class="troop-name">${t.name||'第'+id+'旅'}</div></div>`).join('');
-    if(!fromSource){
-      grid.innerHTML+=`<div style="grid-column:1/-1;text-align:center;padding:8px;background:#FFF3CD;border-radius:8px;font-size:11px;margin-top:8px">⚠️ 正使用後備資料顯示 0082，若 Vercel 上 data/troops.json 未部署，請檢查 GitHub 是否已推送 data/troops.json</div>`;
+    const r2=await fetch('/api/troops?_='+Date.now());
+    const d2=await r2.json();
+    const troops=d2.troops||{};
+    const ids=Object.keys(troops);
+    if(ids.length){
+      grid.innerHTML=ids.map(id=>`<div class="troop-card" onclick="selectTroop('${id}')"><div class="troop-id">${id}</div><div class="troop-name">${troops[id].name||'第'+id+'旅'}</div></div>`).join('');
+    }else{
+      grid.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:8px;background:#FFF3CD;border-radius:8px;font-size:11px">⚠️ 未有已登記旅團：請管理員在 Vercel 環境變數設定 TROOP_{編號}_BACKEND 等設定並重新部署（詳見 /api/health）</div>`;
     }
   }catch(e){
     console.error(e);
-    grid.innerHTML=Object.entries(fallbackTroops).map(([id,t])=>`<div class="troop-card" onclick="selectTroop('${id}')"><div class="troop-id">${id}</div><div class="troop-name">${t.name}</div></div>`).join('') + `<p style="grid-column:1/-1;text-align:center;color:var(--red);font-size:11px">載入出錯，已顯示後備 0082：${e.message}</p>`;
+    grid.innerHTML=`<p style="grid-column:1/-1;text-align:center;color:var(--red);font-size:11px">旅團清單載入失敗：${e.message}<br>請稍後重試；若持續失敗請聯絡管理員檢查 /api/health</p>`;
   }
 }
 async function selectTroop(id){
   try{
     let t=null;
     try{ const r2=await fetch('/api/troops'); const d2=await r2.json(); t=(d2.troops||{})[id]; }catch(e){}
-    if(!t){
-      try{ const r=await fetch('data/troops.json'); const d=await r.json(); const f=(d.troops||{})[id]; if(f) t={name:f.name}; }catch(e){}
-    }
     if(!t){ showToast('此旅團未在系統登記，請聯絡管理員','error'); return; }
     currentTroopId=id; currentTroopName=t.name||('第'+id+'旅');
     document.getElementById('loginTroopInfo').textContent=`📍 ${currentTroopName} (ID: ${currentTroopId})`;
@@ -1981,7 +2000,7 @@ async function selectTroop(id){
         const dd=await apiDiagnose(); const el=document.getElementById('loginMsg');
         if(el){
           if(!dd.deployed){ el.className='login-msg error'; el.textContent='⚠️ 後端 API 未部署（/api/* 無回應），登入一定失敗；請聯絡管理員喺 Vercel 重新部署'; }
-          else if(!dd.troopsOk){ el.className='login-msg error'; el.textContent='⚠️ 後端未登記此旅團（troops.json 未同步），登入會失敗'; }
+          else if(!dd.troopsOk){ el.className='login-msg error'; el.textContent='⚠️ 後端未登記任何旅團（Vercel 環境變數未設定），登入會失敗'; }
         }
       }
     }catch(e){ console.warn('api diagnose skipped',e); }
@@ -3859,7 +3878,7 @@ function renderLogsTab(){
     c.innerHTML=`<div class="info-section" style="border-left:4px solid var(--orange);background:#FFFBEB">
       <h3>📅 活動履歷（服務／活動／訓練班紀錄）</h3>
       <p style="font-size:13px;margin-top:6px">⚠️ 此旅團後端尚未升級到 <b>v8.2</b>，暫未能使用活動履歷（成員申報→領袖審批）。進度、審批、用戶管理等現有功能完全不受影響。</p>
-      <p style="font-size:12px;color:var(--text-light);margin-top:8px">升級方法（約 5 分鐘）：Apps Script 貼上最新 Code.gs → 執行 initializeSheets() 補建「活動履歷」及「待批履歷」工作表 → 部署 → 管理部署 → 編輯 → 版本選「新版本」→ 部署。URL 不變。</p>
+      <p style="font-size:12px;color:var(--text-light);margin-top:8px">升級方法（約 5 分鐘）：Apps Script 貼上最新 Code.gs → 管理部署 → 編輯 → 版本選「新版本」→ 部署。URL 不變。<b>後端已在 v8.2 或以上：無需執行 initializeSheets()，Sheet 結構與資料完全不動。</b>只有 v8.2 之前的舊後端才需要執行一次 initializeSheets() 補建「活動履歷」及「待批履歷」工作表（只會補建缺少的工作表，不會更改或清除現有資料）。</p>
       <button class="btn btn-sm btn-secondary" style="margin-top:8px" onclick="refreshLogRecords()">🔄 重新檢查</button>
     </div>`;
     return;
@@ -4545,9 +4564,8 @@ async function loadUsers(){
           • <span class="role-badge role-branch_leader">支部領袖 branch_leader</span> = 領袖<br>
           • <span class="role-badge role-group_leader">團長 group_leader</span> = 領袖<br>
           • <span class="role-badge role-admin">管理員 admin</span> = 領袖<br>
-          ${isSuper?`• <span class="role-badge role-super_admin">系統管理員 super_admin</span> = 系統管理員<br><br>`:''}
           <b>成員</b> = role=member 的人，不包括領袖。<br>
-          <b>領袖</b> = 團長/支部領袖/管委/管理員${isSuper?'/超管':''}，可勾選及管理。<br>
+          <b>領袖</b> = 團長/支部領袖/管委/管理員，可勾選及管理。<br>
           <b>USER 總數</b> = 成員 + 領袖 全部。
         </div>
       </div>`;
@@ -4555,7 +4573,7 @@ async function loadUsers(){
       let mockTool='';
       if(currentUser && currentUser.role==='super_admin'){
         mockTool=`<div class="info-section" style="border-left-color:var(--orange);background:#FFF7ED">
-          <h3>🧪 測試工具 (僅系統管理員可見)</h3>
+          <h3>🧪 測試工具 (僅中央管理帳號可見)</h3>
           <p style="font-size:11px;color:var(--text-light);margin-bottom:8px">一鍵載入 10個 MOCK 成員到前端快取，方便測試全團批量剔、會員章一眼睇等。MOCK數據只存瀏覽器快取，不會寫入正式 Google Sheet，除非你按確認寫入。</p>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-sm btn-warning" onclick="loadMockMembers()">🧪 載入10個MOCK成員到全團</button>

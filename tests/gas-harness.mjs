@@ -100,7 +100,7 @@ function formatDate(d, tz, fmt) {
     .replace('ss', p(dt.getUTCSeconds()));
 }
 
-export function loadCodeGs({ promptAnswers = [] } = {}) {
+export function loadCodeGs({ promptAnswers = [], urlFetchHandler = null } = {}) {
   const code = fs.readFileSync(CODE_GS_PATH, 'utf8');
 
   const ss = {
@@ -152,18 +152,31 @@ export function loadCodeGs({ promptAnswers = [] } = {}) {
       },
       getRemainingDailyQuota() { return 100; }
     },
-    ScriptApp: { getService: () => ({ getUrl: () => 'https://script.google.com/macros/s/HARNESS/exec' }) }
+    ScriptApp: { getService: () => ({ getUrl: () => 'https://script.google.com/macros/s/HARNESS/exec' }) },
+    // v8.9：UrlFetchApp（中央驗票連線）。測試可注入 urlFetchHandler(url, opts) →
+    // { code, content }；未注入時預設連線失敗（等同沙箱無外網）。
+    UrlFetchApp: {
+      fetch(url, opts) {
+        const o = opts || {};
+        sandbox.__urlFetchLog.push({ url: String(url), method: o.method || 'get', payload: o.payload || null });
+        if (!urlFetchHandler) throw new Error('Exception: 模擬環境未設定外部連線（DNS error）');
+        const r = urlFetchHandler(String(url), o);
+        const code = (r && r.code) || 200;
+        const content = String((r && r.content) || '');
+        return { getResponseCode: () => code, getContentText: () => content };
+      }
+    }
   };
+  sandbox.__urlFetchLog = [];
   sandbox.globalThis = sandbox;
 
   const ctx = vm.createContext(sandbox);
   const exported = `
 ;globalThis.__api = {
-  initializeSheets, checkSuperAdmin, removeSuperAdminRows, handleLogin, getUser, getAllUsers,
-  getMembers, getApiKey, doPost, doGet,
-  // 測試內省用：直接讀 Code.gs 內的超管憑證，以便驗證「超管確實存在且可用」，
-  // 同時驗證這份憑證不會經任何 alert / API 回應 / 名單流出
-  getSuperAdminUser, getSuperAdminPass
+  initializeSheets, removeSuperAdminRows, handleLogin, handleSuperTicketLogin, getUser, getAllUsers,
+  getMembers, getApiKey, doPost, doGet, isSuperAdminId, getCentralVerifyUrl, testCentralVerify,
+  // 測試內省用：保留帳號識別字（唯一宣告在 Code.gs），用以驗證名單過濾與防護邏輯
+  SUPER_ADMIN_ID
 };`;
   vm.runInContext(code + exported, ctx, { filename: 'Code.gs' });
 
@@ -176,6 +189,7 @@ export function loadCodeGs({ promptAnswers = [] } = {}) {
     ui,
     scriptProps,
     mailOutbox,
+    urlFetchLog: sandbox.__urlFetchLog,
     // 走真實 doPost() 路由（與部署後的 /exec 相同路徑）
     call: (body) => jsonOf(api.doPost({ postData: { contents: JSON.stringify(body) } })),
     get: (parameter) => jsonOf(api.doGet({ parameter }))

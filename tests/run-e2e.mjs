@@ -8,21 +8,25 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { startMockGas } from './mock-gas.mjs';
+import { startMockGas, SUPER_ADMIN_ID_FOR_TESTS } from './mock-gas.mjs';
 
 // ---- 必須在 import api 模組前設定 env（proxy 於 import 時讀 timeout） ----
 const PORT_A = parseInt(process.env.E2E_PORT_A || '3901', 10);
 const PORT_B = parseInt(process.env.E2E_PORT_B || '3902', 10);
 process.env.ROVERBADGE_PROXY_TEST = '1';            // 允許 localhost mock（只限測試）
 process.env.ROVERBADGE_PROXY_TIMEOUT_MS = '3000';   // 測試用短 timeout
+process.env.TROOP_0082_NAME = '旅團A(0082)';
 process.env.TROOP_0082_BACKEND = `http://127.0.0.1:${PORT_A}/exec`;
 process.env.TROOP_0082_APIKEY = 'KEY_A';
+process.env.TROOP_1001_NAME = '旅團B(1001)';
 process.env.TROOP_1001_BACKEND = `http://127.0.0.1:${PORT_B}/exec`;
+process.env.SUPER_KEY = '9876';                     // 中央管理密碼（4 字元測試值）
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
 const APP_PORT = parseInt(process.env.E2E_PORT_APP || '8899', 10);
 const APP_BASE = `http://127.0.0.1:${APP_PORT}`;
+const VERIFY_URL = `${APP_BASE}/api/verify-super-ticket`;
 
 let passed = 0, failed = 0;
 function check(name, cond, extra = '') {
@@ -44,7 +48,7 @@ async function postProxy(body, rawHeaders = {}) {
 // ================== 1. 起 mock GAS ==================
 console.log('\n【1】起兩個 mock GAS 旅團後端（含 GAS 式 302 redirect）');
 const mockA = await startMockGas({
-  port: PORT_A, name: '旅團A(0082)', apikey: 'KEY_A',
+  port: PORT_A, name: '旅團A(0082)', apikey: 'KEY_A', verifyUrl: VERIFY_URL,
   users: [
     { ymis: '1234567890', name: '陳大文', role: 'group_leader', pass: 'PassA!234567', can_tick: true, email: 'a@example.org' },
     { ymis: '1234560001', name: '成員甲', role: 'member', pass: 'MemberA!234', can_tick: false },
@@ -53,7 +57,7 @@ const mockA = await startMockGas({
   ]
 });
 const mockB = await startMockGas({
-  port: PORT_B, name: '旅團B(1001)',
+  port: PORT_B, name: '旅團B(1001)', verifyUrl: VERIFY_URL,
   users: [
     { ymis: '9876543210', name: '李小明', role: 'group_leader', pass: 'PassB!234567', can_tick: true, email: 'b@example.org' }
   ]
@@ -64,6 +68,7 @@ console.log(`  mock A: ${mockA.url}  mock B: ${mockB.url}`);
 console.log('\n【2】起本機 app server，掛載真實 api/proxy.js + api/troops.js');
 const { default: proxyHandler } = await import('../api/proxy.js');
 const { default: troopsHandler } = await import('../api/troops.js');
+const { default: verifyHandler } = await import('../api/verify-super-ticket.js');
 
 function vercelize(res) {
   res.status = (c) => { res.statusCode = c; return res; };
@@ -74,6 +79,7 @@ const appServer = http.createServer((req, res) => {
   const u = new URL(req.url, 'http://local');
   if (u.pathname === '/api/proxy') return proxyHandler(req, vercelize(res));
   if (u.pathname === '/api/troops') return troopsHandler(req, vercelize(res));
+  if (u.pathname === '/api/verify-super-ticket') return verifyHandler(req, vercelize(res));
   let p = u.pathname === '/' ? '/index.html' : decodeURIComponent(u.pathname);
   const fp = path.join(ROOT, p);
   if (fs.existsSync(fp) && !fs.statSync(fp).isDirectory()) {
@@ -506,24 +512,40 @@ console.log('\n【15】批量開戶 API 路徑（addUser → 預設密碼 1234 �
   check('assets/ymis-parse.js 可由靜態站提供', rParse.status === 200 && parseText.includes('YmisParse'));
 }
 
-// ================== 16. 超管只存在於 Code.gs（v8.6）+ 更改密碼最少 4 位 ==================
-console.log('\n【16】超管帳號：只存在 Code.gs，Sheet／名單／錯誤訊息都不出現 + 更改密碼最少 4 位');
+// ================== 16. 中央管理帳號（v8.9 票據驗票）+ 更改密碼最少 4 位 ==================
+console.log('\n【16】中央管理帳號：Vercel 驗密碼 → 短效票據 → GAS 驗票；session 有加密包裝 + 旅團綁定');
 {
-  // 憑證與 Code.gs 一致（用拼接，避免明文出現在測試檔）
-  const SU_USER = 'sh' + 'eep';
-  const SU_PASS = '07' + '28';
+  // 帳號識別字與 Code.gs 一致（由 mock-gas 提供唯一測試宣告，不在多個檔案寫死）
+  const SU_USER = SUPER_ADMIN_ID_FOR_TESTS;
+  const SU_KEY = process.env.SUPER_KEY; // '9876'（4 字元）
 
-  // (a) 超管實際存在且可用（唔使任何設定）
-  const suOk = await apiRequest('login', { login_id: SU_USER, password: SU_PASS }, { troopId: '0082' });
-  check('超管登入成功且為 super_admin（超管實際存在）',
-    suOk.success === true && suOk.user?.role === 'super_admin' && typeof suOk.token === 'string');
+  // (a) 中央登入：Vercel 驗證密碼後，GAS 只收到票據
+  const before = mockA.state.superTicketLogins.length;
+  const suOk = await apiRequest('login', { login_id: SU_USER, password: SU_KEY }, { troopId: '0082' });
+  check('中央帳號登入成功且為 super_admin',
+    suOk.success === true && suOk.user?.role === 'super_admin' && typeof suOk.token === 'string', JSON.stringify(suOk).slice(0, 160));
+  check('GAS 收到 superTicketLogin（Vercel 驗證後才轉發）', mockA.state.superTicketLogins.length === before + 1);
+  check('瀏覽器拿到的是加密包裝 token（rbs1. 前綴）', suOk.token.startsWith('rbs1.'), suOk.token.slice(0, 24));
+  check('包裝 token 不是 GAS 原始 token', !Object.keys(mockA.state.tokens).includes(suOk.token));
+
   const suBad = await apiRequest('login', { login_id: SU_USER, password: 'wrong' }, { troopId: '0082' });
-  check('超管密碼錯誤被拒', suBad.success === false);
+  check('錯誤密碼被拒', suBad.success === false);
 
-  // (b) Users 表殘留的 super_admin 列一律不出現在任何名單
+  // (b) 舊 GAS 密碼入口已封閉：直接打 mock GAS 的 login（繞過 proxy）也不能用密碼登入
+  const direct = await fetch(mockA.url, {
+    method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'login', login_id: SU_USER, password: '0728' })
+  }).then(r => r.json().catch(() => null)).catch(() => null) ;
+  check('GAS 端 login 不再接受中央帳號密碼（舊密碼入口已移除）', !!direct && direct.success === false, JSON.stringify(direct));
+
+  // (c) 包裝 token 旅團綁定：旅團 A 的 session 不能在旅團 B 使用
+  const crossUse = await postProxy({ troopId: '1001', action: 'getPendingRequests', data: { token: suOk.token } });
+  check('中央 session 跨旅團使用被拒（加密包裝綁定旅團）', crossUse.status === 401 && crossUse.json?.success === false, `${crossUse.status}`);
+
+  // (d) Users 表殘留的 super_admin 列一律不出現在任何名單
   check('模擬環境：Users 表殘留 super_admin 列（舊版資料）', !!mockA.state.users['legacy_sysop']);
   const listSelf = await apiRequest('getAllUsers', { token: suOk.token }, { troopId: '0082' });
-  check('用戶管理名單（超管本人查看）不出現 super_admin',
+  check('用戶管理名單（本人查看）不出現 super_admin',
     listSelf.success === true && !listSelf.users.some(u => u.role === 'super_admin' || String(u.ymis).toLowerCase() === SU_USER));
   const listLeader = await apiRequest('getAllUsers', { token: tokenA }, { troopId: '0082' });
   check('用戶管理名單（領袖查看）不出現 super_admin',
@@ -532,13 +554,13 @@ console.log('\n【16】超管帳號：只存在 Code.gs，Sheet／名單／錯�
   check('成員名單（load）不出現 super_admin',
     loadA.success === true && !loadA.members.some(m => String(m.ymis).toLowerCase() === SU_USER || m.role === 'super_admin'));
 
-  // (c) 錯誤訊息／回應不洩漏憑證
-  const cpSu = await apiRequest('changePassword', { token: suOk.token, old_password: SU_PASS, new_password: 'abcd' }, { troopId: '0082' });
-  check('超管不能自行更改密碼', cpSu.success === false);
-  check('錯誤訊息不洩漏超管密碼（舊版曾回「密碼固定為 0728」）',
-    !JSON.stringify(cpSu).includes(SU_PASS) && !/0728/.test(JSON.stringify(cpSu)));
+  // (e) 錯誤訊息／回應不洩漏憑證
+  const cpSu = await apiRequest('changePassword', { token: suOk.token, old_password: 'x', new_password: 'abcd' }, { troopId: '0082' });
+  check('中央帳號不能經 changePassword 改密碼', cpSu.success === false);
+  check('錯誤訊息為一般用語（不含憑證／SUPER_KEY 字樣）',
+    !JSON.stringify(cpSu).includes(SU_KEY) && !/SUPER_KEY|票據/.test(JSON.stringify(cpSu)), JSON.stringify(cpSu).slice(0, 120));
 
-  // (d) 防護：不能停用／重設密碼／改角色／以此帳號開戶
+  // (f) 防護：不能停用／重設密碼／改角色／以此帳號開戶
   const deactSu = await apiRequest('deactivateUser', { token: suOk.token, target_ymis: SU_USER }, { troopId: '0082' });
   check('防護：不能停用系統管理員帳號', deactSu.success === false && /不能停用系統管理員/.test(deactSu.error || ''));
   const rstSu = await apiRequest('resetPassword', { token: suOk.token, target_ymis: SU_USER }, { troopId: '0082' });
@@ -546,16 +568,22 @@ console.log('\n【16】超管帳號：只存在 Code.gs，Sheet／名單／錯�
   const roleSu = await apiRequest('updateUserRole', { token: suOk.token, target_ymis: SU_USER, new_role: 'member' }, { troopId: '0082' });
   check('防護：不能更改系統管理員帳號的角色', roleSu.success === false && /不能更改系統管理員/.test(roleSu.error || ''));
   const addSuM = await apiRequest('addMember', { token: suOk.token, ymis: SU_USER, name: 'X' }, { troopId: '0082' });
-  check('防護：不能以超管帳號為 YMIS 新增成員', addSuM.success === false);
+  check('防護：不能以中央帳號為 YMIS 新增成員', addSuM.success === false);
   const addSuU = await apiRequest('addUser', { token: suOk.token, ymis: SU_USER, name: 'X' }, { troopId: '0082' });
-  check('防護：不能以超管帳號開新帳號', addSuU.success === false);
+  check('防護：不能以中央帳號開新帳號', addSuU.success === false);
 
-  // (e) 超管不依賴 Users 表：殘留列被刪都照樣可登入
+  // (g) 中央登入不依賴 Users 表：殘留列被刪都照樣可登入
   delete mockA.state.users['legacy_sysop'];
-  const suAgain = await apiRequest('login', { login_id: SU_USER, password: SU_PASS }, { troopId: '0082' });
-  check('刪除 Users 表殘留列後，超管登入照樣有效（唔靠 Sheet）', suAgain.success === true && suAgain.user?.role === 'super_admin');
+  const suAgain = await apiRequest('login', { login_id: SU_USER, password: SU_KEY }, { troopId: '0082' });
+  check('刪除 Users 表殘留列後，中央登入照樣有效（唔靠 Sheet）', suAgain.success === true && suAgain.user?.role === 'super_admin');
 
-  // (f) 更改密碼：最少 4 位（v8.3 由 6 位放寬）
+  // (h) 旅團 B 的中央登入獨立可用（同一 SUPER_KEY，票據各綁各的後端）
+  const suB = await apiRequest('login', { login_id: SU_USER, password: SU_KEY }, { troopId: '1001' });
+  check('旅團 B 中央登入成功', suB.success === true && suB.token.startsWith('rbs1.'), JSON.stringify(suB).slice(0, 120));
+  const suBOnA = await postProxy({ troopId: '0082', action: 'getPendingRequests', data: { token: suB.token } });
+  check('旅團 B 的 session 不能在旅團 A 使用', suBOnA.status === 401, `${suBOnA.status}`);
+
+  // (i) 更改密碼：最少 4 位（v8.3 由 6 位放寬）
   const defLogin = await apiRequest('login', { login_id: '1234560088', password: '1234' }, { troopId: '0082' });
   const cpShort = await apiRequest('changePassword', { token: defLogin.token, old_password: '1234', new_password: 'abc' }, { troopId: '0082' });
   check('更改密碼 3 位被拒（最少 4 位）', cpShort.success === false && /4位|至少4/.test(cpShort.error || ''));

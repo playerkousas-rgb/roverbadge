@@ -6,8 +6,8 @@
 //
 // 部署完成後只要開這個 URL 就能確認三件事：
 //   1) Function 真的存在（回應是 JSON 而非 Vercel 的 HTML 404 頁）
-//   2) 旅團 Registry 解析到有效旅團（registry.source / troops[].backendTrusted）
-//   3) 執行環境（Node 版本、region、includeFiles 是否生效）
+//   2) 旅團 Registry（TROOP_* 環境變數）解析到有效旅團（registry.source / troops[].backendTrusted）
+//   3) 執行環境（Node 版本、region）
 // 本端點刻意不回傳 apikey、GAS 完整 URL、任何帳號資料。
 
 import { getRegistryDiagnostics, listTroopHealth } from './_registry.js';
@@ -33,7 +33,7 @@ export default function handler(req, res) {
   return send(res, configured ? 200 : 503, {
     success: configured,
     service: 'roverbadge-api',
-    api: 'v3.1',
+    api: 'v4.0',
     time: new Date().toISOString(),
     runtime: {
       node: process.version,
@@ -43,15 +43,15 @@ export default function handler(req, res) {
     },
     registry: {
       source: diag.source,
-      includeFilesWorking: /^file:/.test(diag.source),
-      fileTroopsFound: diag.fileTroopsFound,
-      staticTroopsFound: diag.staticTroopsFound,
-      cwd: diag.cwd,
-      envBackendTroops: diag.envBackendTroops
+      troopsFound: diag.troopsFound,
+      cwd: process.cwd(),
+      envBackendTroops: diag.envBackendTroops,
+      portalDefaultOriginSet: diag.portalDefaultOriginSet,
+      portalDefaultRolesSet: diag.portalDefaultRolesSet
     },
     troops: trusted.map(t => ({ id: t.id, name: t.name, backendHost: t.backendHost, apikeyConfigured: t.apikeyConfigured })),
     ...(configured ? {} : {
-      error: '旅團 Registry 解析不到任何有效後端，/api/proxy 將回 404。請檢查 data/troops.json 是否已同步、Vercel 是否重新部署。'
+      error: '旅團 Registry 解析不到任何有效後端，/api/proxy 將回 404。請檢查 Vercel 環境變數 TROOP_{ID}_BACKEND / TROOP_{ID}_APIKEY 是否已設定，並重新部署。'
     })
   });
 }

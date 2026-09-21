@@ -7,10 +7,10 @@
 //           因此可以真的登入、勾選、寫入、審批，全程唔需要外網
 //
 // 帳號（只存在於記憶體，關閉即消失）：
-//   超管        sheep / 0728
 //   旅團管理員  1111111111 / Demo!1234
 //   領袖        leader@example.org / Demo!1234   （1234567890 同密碼）
 //   成員        1234560001 / Demo!1234
+//   中央管理帳號：由本機 SUPER_KEY 環境變數驗證（demo 預設 '9876'），密碼唔會送到假 GAS
 // 旅團請選 0082。
 import http from 'http';
 import fs from 'fs';
@@ -25,14 +25,17 @@ const GAS_PORT = parseInt(process.env.DEMO_GAS_PORT || '3911', 10);
 const USERS = 'Demo!1234';
 
 process.env.ROVERBADGE_PROXY_TEST = '1';                       // 容許 mock GAS 用 http://127.0.0.1
+process.env.TROOP_0082_NAME = process.env.TROOP_0082_NAME || '第 82 旅 (樂行) — Demo';
 process.env.TROOP_0082_BACKEND = `http://127.0.0.1:${GAS_PORT}/exec`;
 process.env.TROOP_0082_APIKEY = 'DEMO_KEY';
-process.env.ROVERBADGE_REGISTRY_TTL_MS = '0';                   // demo 期間改 troops.json 即刻反映
+process.env.SUPER_KEY = process.env.SUPER_KEY || '9876';         // demo 用 4 字元測試密碼（只存在本機）
+process.env.ROVERBADGE_REGISTRY_TTL_MS = '0';                   // demo 期間改 env 即刻反映
 
 const mock = await startMockGas({
   port: GAS_PORT,
   name: '第 82 旅 (樂行) — Demo',
   apikey: 'DEMO_KEY',
+  verifyUrl: `http://127.0.0.1:${APP_PORT}/api/verify-super-ticket`,
   users: [
     { ymis: '1111111111', name: '旅團管理員', role: 'admin', can_tick: true, pass: USERS, email: 'admin@example.org' },
     { ymis: '1234567890', name: '陳大文', role: 'group_leader', can_tick: true, pass: USERS, email: 'leader@example.org' },
@@ -45,6 +48,7 @@ console.log(`  mock GAS（假後端）: ${mock.url}`);
 const { default: proxyHandler } = await import('../api/proxy.js');
 const { default: troopsHandler } = await import('../api/troops.js');
 const { default: healthHandler } = await import('../api/health.js');
+const { default: verifyHandler } = await import('../api/verify-super-ticket.js');
 
 function vercelize(res) {
   res.status = (c) => { res.statusCode = c; return res; };
@@ -58,6 +62,7 @@ const server = http.createServer((req, res) => {
   if (u.pathname === '/api/proxy') return proxyHandler(req, vercelize(res));
   if (u.pathname === '/api/troops') return troopsHandler(req, vercelize(res));
   if (u.pathname === '/api/health') return healthHandler(req, vercelize(res));
+  if (u.pathname === '/api/verify-super-ticket') return verifyHandler(req, vercelize(res));
   let p = u.pathname === '/' ? '/index.html' : decodeURIComponent(u.pathname);
   const fp = path.join(ROOT, p);
   if (!fp.startsWith(ROOT) || !fs.existsSync(fp) || fs.statSync(fp).isDirectory()) {
@@ -71,7 +76,7 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(APP_PORT, '0.0.0.0', () => {
-  console.log(`\n✅ Demo（/api/proxy、/api/troops、/api/health 都已掛上）: http://0.0.0.0:${APP_PORT}`);
-  console.log('   選旅團 0082，用 sheep / 0728（超管）或 1234560001 / ' + USERS + '（成員）登入');
+  console.log(`\n✅ Demo（/api/proxy、/api/troops、/api/health、/api/verify-super-ticket 都已掛上）: http://0.0.0.0:${APP_PORT}`);
+  console.log('   選旅團 0082，用 1234560001 / ' + USERS + '（成員）登入；中央管理密碼見本機 SUPER_KEY 環境變數');
   console.log(`   自檢：curl -s localhost:${APP_PORT}/api/health\n`);
 });

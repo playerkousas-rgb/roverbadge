@@ -1,42 +1,35 @@
-# Vercel 環境變數設定指南 v7.1 FINAL - 按你最終要求定版
+# Vercel 環境變數設定指南 v8.0 - 純環境變數登記（v4.0 定版）
 
 > ## ⚠️ 睺住呢段先部署（2026-08 全站登入失效嘅教訓）
 >
 > 1. **`vercel.json` 永遠唔准用 legacy `builds` / `routes`**（會令 Vercel 唔建立任何 `/api/*` function，
->    靜態站照樣綠燈）。而家嘅寫法係零配置 + `functions.includeFiles`，詳細見
+>    靜態站照樣綠燈）。而家嘅寫法係零配置（`cleanUrls`/`trailingSlash` + `maxDuration`），詳細見
 >    [`docs/VERCEL_API_404_POSTMORTEM.md`](docs/VERCEL_API_404_POSTMORTEM.md)。
-> 2. **Serverless function 入面 `fs` 讀唔到 `data/troops.json`**（除非 `includeFiles` 生效）。
->    所以 Registry 有第三條保底路徑：`api/_troops_static.js`（由 `npm run sync:troops` 產生、必定被 bundle）。
->    **改咗 troops.json 就記得 `npm run sync:troops` 再 commit。**
+> 2. **旅團登記一律靠環境變數**：`TROOP_{ID}_NAME` / `TROOP_{ID}_BACKEND` / `TROOP_{ID}_APIKEY`。
+>    v4.0 起已冇 `troops.json` / `data/troops.json` / `api/_troops_static.js` / `npm run sync:troops` —— 唔會再出現「改咗 JSON 忘記同步」呢類事故。
 > 3. 部署完成嘅定義唔係綠燈，而係呢條 line 有 JSON：
 >    `curl -s https://roverbadge.vercel.app/api/health` → 期望 `"success":true`。
-> 4. 淨係用 env 注入 backend 嘅測試（`TROOP_0082_BACKEND=...`）**唔能**證明 troops.json 讀到；
->    `npm test` 而家會喺「冇 `data/` 目錄嘅模擬 `/var/task`」度跑真正 handler。
-
-> 你的要求原文：
-
-> 1. URL 不用功能變數, API KEY 是防爬虫的, 人類靠登入就可以防 請寫入MD
-> 2. 要加 TROOP_0082_APIKEY 只是每個旅團只需要提交URL 及API KEY 給管理員,而管理員也只要改TROOPS JSON 及加1個功能變數就能完成,管理員是指向同1個APP ADMIN 的對吧
-> 3. GS 有加入自動生成API KEY 對吧
+> 4. **千祈唔好喺 `package.json` 加 `build` script** —— Vercel 會自動將佢當 Build Command 執行；
+>    而家 Registry 純環境變數、冇任何 build 產物，加咗 build script 只會多一個失败點。
 
 ---
 
-## 一句答案：係，你講啱晒
-
-### 1. 管理員 = 同一個 APP ADMIN (單一 Vercel APP 管晒所有旅團)
+## 一句答案：管理員 = 同一個 APP ADMIN (單一 Vercel APP 管晒所有旅團)
 
 - `vsbadge` (深資) 係一個獨立 Vercel APP，管理所有用深資系統嘅旅團
 - `roverbadge` (樂行) 係另一個獨立 APP，藍色 #0D47A1，LOGO 不同
 - `scoutbadge` (童軍) 綠色 #2E7D32，獨立
 - `cubbadge` (幼童軍) 黃色 #FFC107，獨立
-- 每個 APP 各自有一套 `troops.json` + Vercel 環境變數，但**同一個 APP 入面所有旅團都指向同一個 APP ADMIN** (就係維護 vsbadge / roverbadge 果個 Vercel 專案嘅人)
+- 每個 APP 各自一套 Vercel 環境變數，但**同一個 APP 入面所有旅團都指向同一個 APP ADMIN** (就係維護該 Vercel 專案嘅人)
 
 **即係：**
-- 第 82 旅想加入 vsbadge → 將 URL+APIKEY 交 `vsbadge 管理員`
-- 第 15 旅都想加入 vsbadge → 同樣交 `vsbadge 管理員`
-- 管理員只需做 2 步 (見下)，唔使每個旅團開一個 Vercel
+- 第 82 旅想加入 roverbadge → 將 URL+APIKEY 交 `roverbadge 管理員`
+- 第 15 旅都想加入 → 同樣交 `roverbadge 管理員`
+- 管理員只需喺 Vercel 加 3 個環境變數 + Redeploy，唔使每個旅團開一個 Vercel，亦唔使改任何檔案
 
-### 2. 流程 (你講嘅正確流程)
+---
+
+## 流程
 
 **旅團負責人做 (3步)：**
 1. 去 Google Sheet 建新試算表
@@ -47,170 +40,179 @@
 
 **旅團提交俾管理員 (2樣嘢)：**
 ```
-旅團編號：0082
+旅團編號：0082（保留前導 0）
 旅團名稱：第 82 旅
-Backend URL：https://script.google.com/macros/s/AKfycbw81wLR5NZtRk4m1ptSAoFBueoqwIZ5hcM_apHJa2xMmlVfUvZsS8R45nTIKTOIuBB2KQ/exec
+Backend URL：https://script.google.com/macros/s/.../exec
 API KEY：rover_xxxxxxxxxxxxxx (執行 showApiKey 取得)
 ```
 
-**管理員做 (只改2個地方，1分鐘完成)：**
+**管理員做（只喺 Vercel Dashboard 加環境變數，唔使改 repo 任何檔案）：**
 
-**Step A - 改 TROOPS JSON (公開，URL可公開)**
-編輯 `data/troops.json` + `troops.json` (兩個同步)，加一行：
-
-```json
-{
-  "troops": {
-    "0082": {
-      "name": "第 82 旅",
-      "backend": "https://script.google.com/macros/s/AKfycbw81wLR5NZtRk4m1ptSAoFBueoqwIZ5hcM_apHJa2xMmlVfUvZsS8R45nTIKTOIuBB2KQ/exec"
-    },
-    "0015": {
-      "name": "第 15 旅",
-      "backend": "https://script.google.com/macros/s/.../exec"
-    }
-  }
-}
-```
-
-**Step B - 加1個功能變數 (防爬虫，不進 GitHub)**
-Vercel Dashboard → 你的 Project (vsbadge) → Settings → Environment Variables → Add
+Vercel Dashboard → 你的 Project → Settings → Environment Variables → Add
 
 | Name | Value | Env |
 |------|-------|-----|
-| `TROOP_0082_APIKEY` | `rover_xxxx` | Production, Preview, Development 全勾 |
-| `TROOP_0015_APIKEY` | `rover_yyyy` | 同上 |
+| `TROOP_0082_NAME` | `第 82 旅` | Production, Preview, Development 全勾 |
+| `TROOP_0082_BACKEND` | `https://script.google.com/macros/s/.../exec` | 同上 |
+| `TROOP_0082_APIKEY` | `rover_xxxx` | 同上 |
 
 **注意命名：**
-- `TROOP_` + `旅團編號` + `_APIKEY`
-- 編號保留前導0，例如 0082 就係 `TROOP_0082_APIKEY`，唔係 `TROOP_82_APIKEY` (但程式有兼容，寫 0082 最穩陣)
-- 若想兼容舊版 `TROOP_0082_BACKEND` (將 URL 都放環境變數)，程式亦支援向後兼容，但按你要求 URL 唔使放功能變數，放 `troops.json` 公開就得
+- `TROOP_` + `旅團編號` + `_NAME` / `_BACKEND` / `_APIKEY`
+- **編號保留前導 0**：0082 就係 `TROOP_0082_*`，唔係 `TROOP_82_*`（前端顯示、proxy 路由全部用返原本編號字串）
+- 旅團編號只出現喺**變數名**入面；唔需要任何 JSON、ID 欄位或者檔案
 
-**Step C - Build + Redeploy + 驗證**
+**然後 Build + Redeploy + 驗證**
 ```bash
-npm run sync:troops     # 把 data/troops.json 編譯入 api/_troops_static.js（serverless 保底來源）
-npm test          # 包含「模擬 /var/task（冇 data/）」嘅 function 測試
-git add -A && git commit -m "troops: add 0082" && git push
+npm test          # 本機回歸（mock GAS + serverless registry + proxy 登入鏈路）
+git push          # 如 repo 有改動；加環境變數後喺 Vercel 撳 Redeploy 即生效
 ```
-Push 後 Vercel 會自動重新部署（零配置，冇 Build Command）。**千祈唔好喺 `package.json` 加 `build` script** —— Vercel 會自動將佢當 Build Command 執行，而本專案嘅 `api/_troops_static.js` 係「commit 入 Git」嘅產物，build 階段喺 Vercel 寫唔返入來源目錄 → 成次部署 `Error`（2026-08-28 用 6 次部署實測對照出嚟）。所以同步靜態保底要用 `npm run sync:troops`（本機／CI 執行），再用 `npm test` 盯住冇漂移。
 
 **部署完一定要驗證：**
 ```bash
 curl -s https://roverbadge.vercel.app/api/health | head -c 400   # 期望 "success":true
-curl -s https://roverbadge.vercel.app/api/troops  | head -c 200   # 期望 troops 入面有新旅團 id
+curl -s https://roverbadge.vercel.app/api/troops  | head -c 200   # 期望 troops 入面有新旅團 id，而且只有 id+name
 curl -s -o /dev/null -w '%{http_code}\n' https://roverbadge.vercel.app/api/proxy  # 期望 405（404 = function 冇建好）
 ```
-該旅團即刻喺首頁 `troopGrid` 見到。
+該旅團即刻喺首頁 `troopGrid` 見到。前端由頭到尾**淨係攞到 id + name**；backend 同 apikey 只喺 serverless proxy 內使用，唔會落到瀏覽器。
 
 ---
 
-## 為何 URL 不用功能變數？
+## 可選：主系統 Portal 對接（Dashboard 卡片入口）
+
+如旅團由主系統 Dashboard 卡片帶入（`?from=portal&u=0082`），可另設：
+
+| Name | 用途 |
+|------|------|
+| `PORTAL_DEFAULT_ORIGIN` | 主系統來源 URL（例：`https://main.example.org`）；只做**來源參數**軟檢查，唔係驗證 |
+| `PORTAL_DEFAULT_ROLES` | 逗號分隔嘅允許角色參數（例：`group_leader,admin`） |
+| `TROOP_0082_PORTALORIGIN` | 某旅團專用來源 URL（覆蓋預設） |
+| `TROOP_0082_PORTALROLES` | 某旅團專用角色參數 |
+| `TROOP_0082_PORTALDISABLED` | 設 `1`/`true` 可停用該旅團嘅 portal 入口 |
+
+**注意**：origin/role 參數只係「呢個入口想唔想接受 portal 帶入」嘅軟檢查，**唔係身份驗證**——真正驗證仍然係登入（token）。Portal 卡片流程本身唔需要改任何前端碼。
+
+---
+
+## 中央管理帳號（SUPER_KEY）
+
+v8.9 起，系統管理員密碼改由 **Vercel 環境變數 `SUPER_KEY`** 驗證，只喺 Vercel 側比對；**任何密碼／hash 都唔會送到 GAS、Sheet、URL、前端或 log**。
+
+| Name | 用途 |
+|------|------|
+| `SUPER_KEY` | 中央管理密碼（**字串**，最少 4 字元；前導 0 保留，唔會截斷／補位） |
+| `SUPER_SESSION_SECRET` | 可選：session／票據加密鹽（唔設就用 `SUPER_KEY` 派生） |
+| `CENTRAL_VERIFY_URL` | 可選：覆寫 GAS 驗票用嘅中央驗證 URL（預設指向本部署嘅 `/api/verify-super-ticket`，屬受信配置，唔接受由請求帶入） |
+
+**登入鏈路（同 vsbadge 模式一致）：**
+1. 前端 → `/api/proxy`（action=login）
+2. proxy 喺 Vercel 側用 `SUPER_KEY` 完整比對（timing-safe）→ 通過先簽發**短效加密票據**（綁定旅團 + backend，預設 60 秒）
+3. GAS 收到 `superTicketLogin` → 向**固定受信 URL**（`getCentralVerifyUrl()`，唔係請求帶入）驗票 → 先發 token
+4. 瀏覽器攞到嘅係**加密包裝、旅團綁定**嘅 session（`rbs1.` 前綴），跨旅團用唔到
+
+**政策：**
+- `SUPER_KEY` 未設／空／少於 4 字元 → 中央登入整條功能停用（一般旅團登入完全不受影響）；冇預設密碼、冇旁路
+- 4 字元密碼係你明確選擇咗嘅政策：**離線暴力破解風險仍然實際存在**；proxy 有每旅團每 IP 60 秒 10 次嘅登入限速，但限速**只能減慢**線上嘗試，唔可以消除短密碼本身嘅弱點
+- 姊妹 APP（vsbadge/scoutbadge/cubbadge）各自部署時設**同一個** `SUPER_KEY` 即可用同一組憑證登入各 APP；呢個密碼**永遠唔會**寫入 GAS／Sheet，各旅團自己嘅帳號完全不受影響。跨 APP SSO（一次登入通行所有 APP）未實作
+- 本文件刻意不記錄任何憑證
+
+---
+
+## 為何 backend URL 放環境變數都安全？
 
 - Google Apps Script `/exec` URL 本身公開，但**無 KEY 無 Token 取唔到資料**：
-  - `Code.gs` 第一層：`if(reqKey && reqKey!==getApiKey()) return Invalid API Key` → 若前端有送 apikey，會檢查；防爬虫隨機掃
-  - 第二層：人類需登入 → `Tokens` 表檢查，YMIS+密碼 或 Email+密碼，無 token 就 `Token 無效`
-  - 即使爬虫拿到 backend URL + apikey (透過 /api/troops  endpoint)，無有效 token 仍讀唔到 `getAllUsers` / `getProgress` 等
-- 所以 `backend` 放 `troops.json` 公開係安全、簡單、速度快
+  - `Code.gs` 第一層：`if(reqKey && reqKey!==getApiKey()) return Invalid API Key` → 防爬虫隨機掃
+  - 第二層：人類需登入 → `Tokens` 表檢查；無 token 就 `Token 無效`
+- v4.0 起 `/api/troops` **只回 id + name**，backend／apikey 完全唔出瀏覽器（舊版 `/api/troops` 會直接回 backend，已收緊）
 - `apikey` 放 Vercel 環境變數，唔進 GitHub，避免 GitHub 公開掃描
 
 ---
 
-## GS 有無自動生成 API KEY？ 有，3處
+## GS 自動生成 API KEY（3 處）
 
-**Code.gs v4.8 已加入：**
+**Code.gs 已有：**
+- `getApiKey()`：若無就 `rover_` + uuid（存 `PropertiesService`）
+- `showApiKey()`：隨時查看
+- `initializeSheets()`：初始化完彈出 KEY + URL
 
-```javascript
-function getApiKey() {
-  const props = PropertiesService.getScriptProperties();
-  let apiKey = props.getProperty('API_KEY');
-  if (!apiKey) {
-    apiKey = 'vs_' + Utilities.getUuid().replace(/-/g, '').substring(0, 24);
-    props.setProperty('API_KEY', apiKey);
-  }
-  return apiKey;
-}
-function showApiKey() {
-  const apiKey = getApiKey();
-  SpreadsheetApp.getUi().alert('API Key', '你的 API Key：\n\n' + apiKey, ...)
-  Logger.log('API Key: ' + apiKey);
-  return apiKey;
-}
-function initializeSheets() {
-  ...
-  const apiKey = getApiKey();
-  let scriptUrl=''; try{ scriptUrl=ScriptApp.getService().getUrl(); }catch(e){}
-  ui.alert('✅ v4.0 初始化完成！\n\n🔑 API Key:\n'+apiKey+'\n\n🌐 URL:\n'+scriptUrl);
-  return {success:true,apiKey:apiKey,scriptUrl:scriptUrl};
-}
-```
-
-- 第一次執行 `initializeSheets` 自動生成 `rover_` + 24位 uuid，存 `PropertiesService`
+- 第一次執行 `initializeSheets` 自動生成 `rover_` + 24 位 uuid
 - 之後任何地方 `getApiKey()` 都取同一個，除非手動清 `Script Properties`
 - `showApiKey()` 可隨時再睇
 
 ---
 
-## api/_registry.js（/api/troops 背後）v3.1 點運作
+## api/_registry.js（/api/troops 背後）v4.0 點運作
 
-**v2.0 遺留問題：** `fs` 讀 `data/troops.json`。Vercel Node function 跑喺 `/var/task`，
-冇被 bundle 嘅檔案唔存在 → 讀唔到 → registry 變空 `{}` → `/api/proxy` 對任何旅團回
+**v2.0 遺留問題（歷史紀錄）：** `fs` 讀 `data/troops.json`。Vercel Node function 跑喺 `/var/task`，
+冇被 bundle 嘅檔案唔存在 → registry 變空 `{}` → `/api/proxy` 對任何旅團回
 `404 找不到此旅團` → **全站登入失敗**（2026-08 事故嘅真正原因，見 `docs/VERCEL_API_404_POSTMORTEM.md`）。
+v3.1 曾用 `_troops_static.js` 保底；**v4.0 起直接斬斷成條檔案路徑**——Registry 唯一來源係環境變數，唔會再讀到舊 JSON（就算 repo 仲有殘留檔案都會被忽略）。
 
-**v3.1 已修復 — 三條來源，順序由上而下：**
-1. `TROOP_{ID}_BACKEND` / `TROOP_{ID}_APIKEY` 環境變數（最高優先，永远有效）
-2. `data/troops.json` + `troops.json` 磁碟檔案 — 需要 `vercel.json` 嘅
-   `functions["api/*.js"].includeFiles`（已設 `"{data/*.json,troops.json}"`）先會喺 function 內存在；
-   `_registry.js` 會試 `cwd`、`__dirname/..`、`__dirname/../..`、`ROVERBADGE_PROJECT_ROOT`
-3. `api/_troops_static.js`（`npm run sync:troops` 產生、被 `import` → 一定喺 bundle 內）— **保底**，
-   就算 includeFiles 失效都仍然揾到旅團；呢檔唔含 apikey
-
-合併規則不變：backend = env > file > static；apikey = env > file；
-只有 `backend` 通過 `isTrustedExecUrl()`（HTTPS `script.google.com/macros/s/.../exec`）先算有效旅團。
-前端 `loadTroops()` 亦會 fetch `/api/troops` + `data/troops.json` 再合併（雙保險）。
-除錯：`GET /api/health` 會回 `registry.source`（`file:...` 或 `static:...`）同 `includeFilesWorking`。
-
-```javascript
-// 節錄
-const backend = backendEnv || fileEntry.backend || '';
-const apikey = apikeyEnv || fileEntry.apikey || '';
-if (backend) troops[id] = { name, backend, apikey };
-```
-
-所以你而家只設 `TROOP_0082_APIKEY`，backend 用 `troops.json` 公開，完全 Work。
+規則：
+1. 掃描 `TROOP_{ID}_NAME` / `TROOP_{ID}_BACKEND` / `TROOP_{ID}_APIKEY`；`{ID}` 原樣保留（前導 0 唔會變）
+2. backend 必須通過 `isTrustedExecUrl()`（HTTPS `script.google.com/macros/s/.../exec`）先算有效旅團
+3. `/api/troops` 只回 `{id, name}`；backend／apikey 只喺 proxy 內用
+4. 除錯：`GET /api/health` 會回 `registry.source`（`env-only`）同旅團數
 
 ---
 
 ## 檢查清單 (管理員)
 
 - [x] GS Code.gs 有 getApiKey 自動生成 + showApiKey + initializeSheets 回傳
-- [x] 超管（v8.6）：**只存在於 `Code.gs`**（`getSuperAdminUser()` / `getSuperAdminPass()`），裝完即用、唔使任何設定；本文件刻意不記錄憑證
-- [x] Sheet 完全冇蹤跡：Users 表冇這列（`removeSuperAdminRows()` 自動清走舊版殘留列），Tokens 表以中性代號 `__sys__` 儲存超管 session
-- [x] `initializeSheets()` 小視窗只顯示 Sheets 清單 / API Key / URL / 本旅團管理員帳號，唔會出現超管任何資訊
-- [x] 用戶管理／成員名單任何角色（包括超管本人）都睇唔到；任何 API 回應／錯誤訊息都不含超管帳號或密碼（舊版錯誤訊息曾直接寫出密碼，已移除）
-- [x] 防護保留：不能停用／重設密碼／改角色／自行改密碼／以此帳號開戶
-- [x] 驗證：`node tests/code-gs.test.mjs` 會真正載入執行 `apps-script/Code.gs`（GAS API 模擬），掃描全部工作表所有儲存格確認冇超管蹤跡
-- ⚠️ **注意：** `Code.gs` 是部署指南頁嘅公開下載檔（`/apps-script/Code.gs`），能取得該檔嘅人都讀得到憑證；要換就改嗰兩行再逐團重新部署
-- [x] URL https://script.google.com/macros/s/AKfycbw81wLR5NZtRk4m1ptSAoFBueoqwIZ5hcM_apHJa2xMmlVfUvZsS8R45nTIKTOIuBB2KQ/exec 已更新到所有 `troops.json` + `index.html fallbackTroops`
-- [x] 全面排查 vsbadge 內容：scoutbadge 曾有 0082R 已移除，roverbadge/cubbadge/scoutbadge 內 `vsbadge 管理員` 文字已改為各自 app 管理員，session key 已修正 `scoutbadge_session_v1` / `cubbadge_session_v1` / `roverbadge_session_v1` / `vsbadge_session_v4`
-- [x] Vercel 功能變數名稱：`TROOP_0082_APIKEY` (推薦) ，向後兼容 `TROOP_0082_BACKEND` (可選)
+- [x] 旅團登記：純 `TROOP_{ID}_NAME/_BACKEND/_APIKEY` 環境變數（無 JSON、無同步步驟、無 build 產物）
+- [x] 前端只攞 id + name；backend／apikey 唔出瀏覽器
+- [x] 中央管理帳號：`SUPER_KEY`（≥4 字元字串）只喺 Vercel 驗證；GAS 舊密碼入口已移除；密碼／hash 唔落 GAS／Sheet／log
+- [x] Sheet 冇中央帳號蹤跡：Users 表冇這列（舊版殘留列會被忽略），Tokens 表以中性代號 `__sys__` 儲存 session
+- [x] 用戶管理／成員名單任何角色都睇唔到系統管理員；API 回應／錯誤訊息只有一般用語
+- [x] 防護保留：不能停用／重設密碼／改角色／以此帳號開戶
+- [x] 驗證：`node tests/code-gs.test.mjs`（真正載入執行 Code.gs）、`node tests/proxy-login.test.mjs`（SUPER_KEY 政策 + 加密 session）、`node tests/run-e2e.mjs`（雙旅團完整鏈路）
 - [x] 每個支部獨立 APP，同一 APP 內所有旅團指向同一個 APP ADMIN
+
+---
+
+## 倉庫瘦身與圖片原則（部署大小控制）
+
+**原則（v4.0 起生效，`.vercelignore` 按此執行）：**
+
+1. **排除前必須全文搜尋引用**：`grep -rn "<檔名>" index.html docs/ api/`，連**動態引用、下載連結、
+   fallback 路徑**都要查（例：`docs/BULK_ONBOARD.md` 用相對連結指去 `data/members_template.csv`，
+   所以該 CSV 必須隨部署上線，雖然 index.html 本身冇直接 fetch 佢）。
+2. **前端實際連結到的檔案一律保留部署**：`apps-script/Code.gs`（部署指南下載）、`assets/*`
+   （LOGO/解析器/批量開戶腳本）、`data/items*.json`、`data/members_template.csv`、
+   `data/mock_members.json`、五份前端有連結嘅 `docs/*.md`。
+3. **只排除開發產物**：`.git`、`node_modules`、`tests/`、log、tmp、備份、i18n 工具
+   （`i18n_dict.tsv`、`build_i18n.py`）同純管理文件。`tests/vercel-config.test.mjs` 會守住
+   「被引用嘅檔案冇被 `.vercelignore` 排除」呢條底線。
+4. **圖片**：LOGO 用 PNG（128px ≈20KB、256px ≈64KB）+ SVG fallback，唔使再壓。
+   AVIF/WebP 暫不採用：瀏覽器相容性要求 PNG fallback 照樣要隨部署上線，轉換後**總位元組
+   （AVIF + PNG fallback）反而多咗**，而且會引入透明度／畫質回歸風險 —— 冇實際节省就唔做。
+5. **依賴極簡**：`dependencies` 為空；建構／測試工具只入 `devDependencies`（如有）。
+   `vercel.json` 冇 `buildCommand`，`package.json` 冇 `build` script。
+6. **內部模組唔做成 endpoint**：`api/_registry.js`、`api/_super.js` 以下劃線開頭，
+   只被其他 handler `import`，唔會直接回應請求（`tests/serverless-registry.test.mjs` 有守）。
+
+**誠實聲明**：`.vercelignore` 只影響**新部署**上傳嘅檔案。刪除檔案唔會清除 Git 歷史、
+舊部署或 Vercel 已產生嘅歷史 build 用量；舊部署喺 Vercel 保留期間仍然可用、仍然佔佢哋
+當時嘅大小。要慳历史用量只可以喺 Vercel 側手動移除舊 deployment。
 
 ---
 
 ## 常見問答
 
 **Q: 為何要加 TROOP_0082_APIKEY？唔加得唔得？**
-A: 唔加都得，人類靠登入已可防。加咗多一層防爬虫，爬虫無 KEY 直情 `Invalid API Key`。建議加。
+A: proxy 會注入 apikey 做第一層防爬虫。唔加嘅話人類靠登入仍然防到，但建議加。
 
 **Q: 每個旅團都要提交 URL + API KEY？**
-A: 係，URL 係 Sheet 部署出嚟每個旅團唔同，KEY 都係每個 Sheet 獨立生成。管理員收集後做上面 2 步。
+A: 係，URL 係 Sheet 部署出嚟每個旅團唔同，KEY 都係每個 Sheet 獨立生成。管理員收集後加 3 個環境變數就得。
 
 **Q: 管理員指向同一個 APP ADMIN？**
-A: 係。vsbadge 這個 Vercel Project 就是所有深資旅團的 APP ADMIN，roverbadge 同理。各自分開，但各自管自己支部內所有旅團。
+A: 係。roverbadge 這個 Vercel Project 就是所有樂行旅團的 APP ADMIN。各支部分開，但各自管自己支部內所有旅團。
 
 **Q: GS 自動生成 API KEY 會唔會重複？**
 A: `Utilities.getUuid()` 幾乎不會重複，24 hex chars 足夠。
 
+**Q: 換咗 SUPER_KEY 之後？**
+A: Vercel 改環境變數 → Redeploy → 即時生效；已經發出嘅加密 session 會因為 salt 改變而失效（需要重新登入），唔使碰 GAS 或 Sheet。
+
 ---
 
-COPYRIGHT 2026 Scout System - Vercel Env v7.1 FINAL（+ serverless Registry 保底、/api/health 自檢）
+COPYRIGHT 2026 Scout System - Vercel Env v8.0（純環境變數 Registry + SUPER_KEY 中央帳號）

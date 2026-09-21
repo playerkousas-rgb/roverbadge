@@ -83,10 +83,9 @@ console.log('\n【2】functions 區塊');
     const entry = fn[k] || {};
     const bad = Object.keys(entry).filter(x => !FUNC_KEYS.has(x));
     check(`functions["${k}"] 冇未知欄位`, bad.length === 0, '未知：' + bad.join(', '));
-    if (typeof entry.includeFiles === 'string') {
-      check(`functions["${k}"].includeFiles 長度 ≤256 且涵蓋 data/*.json`,
-        entry.includeFiles.length <= 256 && /data\/\*\.json/.test(entry.includeFiles), entry.includeFiles);
-      check(`functions["${k}"].includeFiles 係單一 glob 字串（唔係陣列）`, typeof entry.includeFiles === 'string');
+    if (entry.includeFiles !== undefined) {
+      // v4.0：Registry 純環境變數，function 唔再讀檔案 → includeFiles 應該已移除
+      check(`functions["${k}"] 不再需要 includeFiles（Registry 純 env）`, false, JSON.stringify(entry.includeFiles));
     }
     if ('maxDuration' in entry) {
       const ok = (typeof entry.maxDuration === 'number' && entry.maxDuration >= 1 && entry.maxDuration <= 1800)
@@ -140,25 +139,48 @@ console.log('\n【5】Project Settings 欄位唔准出現喺 vercel.json（會�
   const pk = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
   const buildScript = (pk.scripts || {}).build || '';
   check('vercel.json 唔需要存在都唔會壞事（零配置已可建 function）', true);
-  check('build script（如果有）只係產生 _troops_static.js', buildScript === '' || /sync-troops/.test(buildScript), buildScript);
-  check('build 只依賴 node，唔需要 devDependencies（Vercel 可能唔跑 build）', !/(vite|next|webpack|tsc|eslint|jest)/.test(buildScript), buildScript);
+  check('冇 build script（Vercel 會自動把佢當 Build Command 執行）', buildScript === '', buildScript);
   check('冇 dependencies → npm install 冇副作用、唔會 fail', pk.dependencies === undefined || Object.keys(pk.dependencies).length === 0);
-  // vercel.json 唔再驅動 sync-troops，所以「已 commit 嘅產物」必須同步，否則正式環境只有舊旅團
-  check('api/_troops_static.js 已經喺 Git 入面（Vercel 唔會幫你產生）',
-    fs.existsSync(path.join(ROOT, 'api', '_troops_static.js')));
+  check('建構／測試工具不入 dependencies（保持極簡依賴）',
+    pk.dependencies === undefined || Object.keys(pk.dependencies).length === 0);
 }
 
 console.log('\n========================================');
-console.log('\n【6】package.json 唔准有 build script（實測證明：有佢 = Vercel build 必然失敗）');
+console.log('\n【6】部署瘦身：.vercelignore 排除開發檔，但唔排除前端引用嘅資源');
 {
   const pk = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
   check('冇 scripts.build（Vercel 會自動把佢當 Build Command 執行）', (pk.scripts || {}).build === undefined,
-    '有 build script → Vercel 以「npm run build」做 Build Command；喺 build 環境把 api/_troops_static.js 寫返入來源目錄會失敗 → 成次部署 Error（2026-08-28 實測：加返 build script 即 failure，移除即 success）');
-  check('有 scripts.sync:troops（本機／CI 手動產生靜態保底）', /sync-troops/.test((pk.scripts || {})['sync:troops'] || ''), (pk.scripts || {})['sync:troops'] || '');
-  check('test 鏈包含 sync --check（靠測試盯漂移，而唔係靠 Vercel build）', /sync-troops\.mjs --check/.test((pk.scripts || {}).test || ''));
-  check('api/_troops_static.js 已經喺 Git 裡面（Vercel 唔會幫你產生）', fs.existsSync(path.join(ROOT, 'api', '_troops_static.js')));
-  const gitLs = spawnSync('git', ['ls-files', '--error-unmatch', 'api/_troops_static.js'], { cwd: ROOT, encoding: 'utf8' });
-  check('api/_troops_static.js 有被 Git 追蹤（冇俾 gitignore 吃掉）', gitLs.status === 0, (gitLs.stderr || '').trim());
+    '有 build script → Vercel 以「npm run build」做 Build Command；喺 build 環境寫返入來源目錄會失敗 → 成次部署 Error（2026-08-28 實測）');
+  check('冇 sync:troops script（旅團登記已改純環境變數）', (pk.scripts || {})['sync:troops'] === undefined);
+  check('test 鏈唔再包含 sync --check', !/sync-troops/.test((pk.scripts || {}).test || ''));
+
+  const viPath = path.join(ROOT, '.vercelignore');
+  check('.vercelignore 存在', fs.existsSync(viPath));
+  const vi = fs.existsSync(viPath) ? fs.readFileSync(viPath, 'utf8') : '';
+  for (const want of ['.git', 'node_modules', 'tests/', '*.log']) {
+    check(`.vercelignore 排除 ${want}`, vi.split('\n').some(l => l.trim() === want), vi);
+  }
+  // 前端／已部署文件實際引用嘅檔案絕不能被排除（全文搜尋引用後先可以排除）
+  const refSources = [fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8')];
+  for (const d of fs.readdirSync(path.join(ROOT, 'docs'))) {
+    if (d.endsWith('.md')) refSources.push(fs.readFileSync(path.join(ROOT, 'docs', d), 'utf8'));
+  }
+  const referenced = (f) => refSources.some(src => src.includes(f));
+  const mustDeploy = ['apps-script/Code.gs', 'assets/ymis-parse.js', 'assets/batch-onboard/Code.gs',
+    'assets/bp-award-logo-128.png', 'assets/bp-award-logo-256.png',
+    'data/items.json', 'data/items_en.json', 'data/members_template.csv', 'data/mock_members.json',
+    'docs/BULK_ONBOARD.md', 'docs/EXEC_GUIDE.md', 'docs/LEADER_GUIDE.md', 'docs/MEMBER_GUIDE.md', 'docs/YMIS_EXPORT.md'];
+  const viLines = vi.split('\n').map(l => l.trim()).filter(Boolean);
+  for (const f of mustDeploy) {
+    check(`${f} 有被 index.html／已部署文件引用（唔可以排除）`, referenced(f), f);
+    check(`.vercelignore 冇排除 ${f}`, !viLines.includes(f) && !viLines.some(l => l.endsWith('/') && f.startsWith(l)), vi);
+  }
+  // 已刪除嘅舊旅團登記檔案唔應該返嚟
+  check('troops.json / data/troops.json / api/_troops_static.js / scripts/sync-troops.mjs 已刪除',
+    !fs.existsSync(path.join(ROOT, 'troops.json')) &&
+    !fs.existsSync(path.join(ROOT, 'data', 'troops.json')) &&
+    !fs.existsSync(path.join(ROOT, 'api', '_troops_static.js')) &&
+    !fs.existsSync(path.join(ROOT, 'scripts', 'sync-troops.mjs')));
 }
 
 console.log(`結果：${passed} 通過, ${failed} 失敗`);

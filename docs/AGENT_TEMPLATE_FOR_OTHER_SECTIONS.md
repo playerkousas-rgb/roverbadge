@@ -12,12 +12,11 @@
 前端 (單一 index.html, 150KB 左右, 含所有邏輯)
 ├── PNG LOGO 256px + 128px + SVG fallback (assets/)
 ├── data/items.json (考核項目定義，306項，第11版)
-├── data/troops.json (旅團對照表 { "0082": {name, backend, apikey} })
-├── troops.json (根，同 data/troops.json 備份)
 ├── assets/ (bp-award-logo-256.png, bp-award-logo-128.png — 貝登堡獎章作 Logo)
-├── apps-script/Code.gs (單一檔案版，28600 bytes, 含 系統管理員、細緻權限、私隱開關)
-├── api/ (proxy.js / troops.js / health.js + _registry.js / _troops_static.js 保底)
-├── vercel.json (零配置：functions.includeFiles + headers，見下方「Vercel 部署」，唔准用 builds/routes)
+├── apps-script/Code.gs (單一檔案版，含 系統管理員、細緻權限、私隱開關)
+├── api/ (proxy.js / troops.js / health.js / verify-super-ticket.js + _registry.js / _super.js)
+├── vercel.json (零配置：maxDuration + headers，見下方「Vercel 部署」，唔准用 builds/routes)
+└── 旅團對照表：冇檔案 —— 全部由 Vercel 環境變數 TROOP_{ID}_NAME/_BACKEND/_APIKEY 提供
 ├── docs/ (MEMBER_GUIDE.md, EXEC_GUIDE.md, LEADER_GUIDE.md, MAIN_SYSTEM_INTEGRATION.md)
 ├── data/mock_members.json + mock_import.csv (10 MOCK成員測試)
 └── README.md / DEPLOY_GUIDE_FOR_TROOPS.md (雙軌部署指南)
@@ -44,7 +43,7 @@
 
 ### 防卡死
 - `switchTab` 非同步 + `_switching` 鎖 + 50ms setTimeout + try/catch + ESC緊急退出 + 雙擊Header返回
-- `loadTroops()` 硬編碼後備 0082，即使 data/troops.json 404 都有列表
+- `loadTroops()` 只讀 `/api/troops`（來源＝環境變數）；冇硬編碼旅團、冇 JSON fallback —— 「列表見到但登入死咗」嘅漂移面從此消失
 - 全團總覽限制 30欄/50人，卡片 + 表格 + 批量區
 
 ### LOGO
@@ -113,11 +112,9 @@
   **絕對唔准出現 `builds`、`routes`、`version`**（legacy `builds` 會令 Vercel 忽略專案 build 設定、
   又同 `functions` 互斥 → `api/*` 一個 function 都冇建，靜態站照樣綠燈，
   `/api/proxy` 變 Vercel HTML 404，全站沒人登入得到；2026-08 事故，詳見 `docs/VERCEL_API_404_POSTMORTEM.md`）
-- **Serverless function 內 `fs` 讀唔到 `data/troops.json`**（喺 `/var/task`，冇 bundle 就冇檔）→ Registry
-  必須有第二/第三來源：`vercel.json` 的 `functions["api/*.js"].includeFiles` **加** 一個被 `import` 的
-  保底來源（本 repo 係 `api/_troops_static.js`，由 `npm run sync:troops` 從 `data/troops.json` 產生）。
-  只靠 `fs` + 只靠 `DEFAULT_TROOPS` 硬編碼都係半成品
-- 改咗 `data/troops.json` / `troops.json` 一定要 `npm run sync:troops` 再 commit（並用 `sync-troops.mjs --check` 防漂移）
+- **Registry 唯一來源係環境變數**（`TROOP_{ID}_NAME/_BACKEND/_APIKEY`，編號保留前導 0）：
+  唔好再用 `fs` 讀 JSON、唔好用 `includeFiles`、唔好搞 `_troops_static.js` 保底或 sync script ——
+  2026-08 事故嘅根因就係「檔案喺 `/var/task` 讀唔到」，v4.0 直接斬斷成條檔案路徑
 - 前端 `apiRequest()` 喺回應非 JSON 時查 `/api/health`，將「部署壞咗」同「密碼錯」分開講
 - `loadTroops()` 加時間戳 `?_=` 防快取 + 硬編碼後備（注意：呢個後備會令「旅團列表見到但登入死咗」
   成為部署問題嘅典型外觀，唔好靠佢當後端存在嘅證據）
@@ -129,8 +126,8 @@
 - **`vercel.json` 只准官方欄位**：官方 schema 根節點係 `additionalProperties:false`，多一個欄位就整次
   build `Error`。兩類禁忌：(1) 自訂 key（`_comment`／`_note` — JSON 冇註解，註解放 docs）；
   (2) **Project Settings 欄位**（`buildCommand`／`installCommand`／`devCommand`／`outputDirectory`／
-  `framework` 都唔屬於 vercel.json，要嘛喺 Dashboard 改，要嘛根本唔使 —— 呢個 repo 靠「把
-  `api/_troops_static.js` commit 入 Git + `npm test` 盯漂移」，唔靠 build command）
+  `framework` 都唔屬於 vercel.json，要嘛喺 Dashboard 改，要嘛根本唔使 —— 呢個 repo Registry
+  純環境變數，冇任何 build 產物，更加唔靠 build command）
 - Function 設定（`maxDuration`／`includeFiles`）**只喺 `vercel.json` 寫一次**，
   唔好同時喺 `api/*.js` 用 `export const config`（兩邊會互相覆蓋）
 - **`package.json` 唔准有 `scripts.build`**：Vercel 對「有 build script 嘅專案」會自動拿佢做 Build Command，
@@ -175,7 +172,7 @@
 
 ### E. 其他
 
-- `troops.json` 旅團對照表結構不變
+- 旅團登記方式不變：Vercel 環境變數 `TROOP_{ID}_NAME/_BACKEND/_APIKEY`
 - `Code.gs` 完全不用改，已支援任意支部，只需改 items.json
 - `README.md` / `DEPLOY_GUIDE_FOR_TROOPS.md` / `docs/MAIN_SYSTEM_INTEGRATION.md` 文案中的「樂行」字眼換成該支部名稱
 
@@ -186,7 +183,7 @@
 **共通**：下載 Code.gs (單一) → 建 Sheet → 貼上 → initializeSheets → 部署為網頁應用程式 → 複製 URL+API Key
 
 **軌道A 無主系統/有但想獨立用**：
-- URL+Key 交 roverbadge 管理員 → 加入 troops.json → 完成
+- URL+Key 交 roverbadge 管理員 → 喺 Vercel 加 `TROOP_{ID}_NAME/_BACKEND/_APIKEY` → Redeploy → 完成
 - 用法：roverbadge.vercel.app 選旅團登入
 
 **軌道B 有主系統並想接上**：
@@ -202,7 +199,7 @@
 ## 5. 檢查清單（Agent 完成後自檢）
 
 - [ ] `index.html` JS 語法 `new Function(code)` OK，無 `{{` 多餘括號
-- [ ] `loadTroops()` 有硬編碼後備 0082，即使 data 404 都有列表
+- [ ] `loadTroops()` 淨係讀 `/api/troops`；冇硬編碼旅團、冇 JSON fallback
 - [ ] LOGO 用 PNG 256 + 128 + SVG fallback，不是1.3M
 - [ ] 字體 body 18px，item-name 16px，手機可讀
 - [ ] 其他獎章已併入進度，分頁隱藏
@@ -211,19 +208,21 @@
 - [ ] 權限：高層可設低層可勾什麼，領袖默認全部，管委可按個別成員勾選會員章/活動段章(細項不用)/其他逐個勾
 - [ ] 成員預設只看自己，能否看其他由團長在用戶管理→系統設定開關 `allow_member_view_others`
 - [ ] 教學按角色分開：❓教學 tab 內嵌版，不依賴 fetch，成員不關心其他功能，登入後方便查閱
-- [ ] 系統管理員（super_admin）只存在於 Code.gs：憑證只寫喺 `getSuperAdminUser()` / `getSuperAdminPass()`，唔使設定、裝完即用
-- [ ] Sheet 完全冇蹤跡：Users 表冇這列（`removeSuperAdminRows()` 清殘留列），Tokens 表以中性代號 `__sys__` 儲存超管 session
-- [ ] `initializeSheets()` 完成小視窗唔會出現超管任何資訊（只有 Sheets / API Key / URL / 本旅團管理員）
-- [ ] 用戶管理／成員名單任何角色都看不到 super_admin 行；任何 API 回應／錯誤訊息都不含超管帳號或密碼
-- [ ] 文件刻意不記錄超管憑證
+- [ ] 中央管理帳號（v8.9）：帳號識別字只喺 Code.gs 一行；密碼由 Vercel `SUPER_KEY`（≥4 字元字串）驗證
+- [ ] 登入鏈路：proxy 驗密碼 → 短效加密票據 → GAS 向固定受信 URL（`getCentralVerifyUrl()`）驗票；密碼／hash 唔落 GAS／Sheet／URL／log
+- [ ] GAS 舊密碼入口已移除（直接打 GAS `login` 用中央帳號必被拒）
+- [ ] Sheet 完全冇蹤跡：Users 表冇這列，Tokens 表以中性代號 `__sys__` 儲存 session
+- [ ] `initializeSheets()` 完成小視窗唔會出現中央帳號任何資訊（只有 Sheets / API Key / URL / 本旅團管理員）
+- [ ] 用戶管理／成員名單任何角色都看不到 super_admin 行；任何 API 回應／錯誤訊息只有一般用語
+- [ ] 文件刻意不記錄憑證
 - [ ] 審批中心合併：獎章審批+用戶審批同一分頁，子切換
 - [ ] V4.0更新及已修復問題已移除，保留 `#home-future-framework` 空框
 - [ ] COPYRIGHT 2026 Scout System footer
 - [ ] 單一 Code.gs，扁平ZIP，17-21文件，無舊文件
 - [ ] MOCK 10成員 + CSV，系統管理員 測試工具
-- [ ] `vercel.json` **冇** `builds` / `routes` / `version`，亦**冇任何自訂欄位**（`_comment` 之類）；有 `functions["api/*.js"].includeFiles`
-- [ ] Registry 有 bundle 內保底來源（`_troops_static.js` 之類），並已 `npm run sync:troops` 後 commit
-- [ ] `troops.json` 保留 0082 後備
+- [ ] `vercel.json` **冇** `builds` / `routes` / `version`，亦**冇任何自訂欄位**（`_comment` 之類）；冇 `buildCommand`（package.json 冇 build script）
+- [ ] Registry 純環境變數；repo 入面冇 troops.json / _troops_static.js / sync script
+- [ ] `.vercelignore` 排除 .git / node_modules / tests / 備份 / log，但**唔排除** index.html 引用嘅 docs／data／assets
 - [ ] 有 `tests/serverless-registry.test.mjs` 同等測試：喺**冇 `data/` 目錄**嘅空目錄（模擬 `/var/task`）
       跑真正 handler；淨係用 `TROOP_x_BACKEND` env 注入嘅測試**唔算數**（會遮蔽呢個坑）
 - [ ] 部署後實測：`/api/health` 回 JSON、`/api/troops` 有旅團且**無** `backend`/`apikey` 欄位、`GET /api/proxy` 回 405
