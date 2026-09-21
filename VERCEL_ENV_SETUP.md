@@ -220,6 +220,13 @@ v3.1 曾用 `_troops_static.js` 保底；**v4.0 起直接斬斷成條檔案路�
    「部署 → 管理部署作業 → ✏️ 編輯 → 版本：新版本 → 部署」。
 2. **未做 UrlFetchApp 授權**（v8.9 新增咗對外連線）：喺 Apps Script 編輯器揀 `testCentralVerify`
    函數按「執行」，完成授權（授權頁會要求「連接外部服務」），再重新部署新版本。
+   - v8.9.1 起 `testCentralVerify` 會先 log **實際使用嘅端點 URL**，連線失敗時附埋**真正例外訊息**：
+     - `You do not have permission to call UrlFetchApp` ＝ 授權未完成（做上面嘅授權步驟）
+     - `DNS`／`Invalid URL`／`Address unavailable` 等 ＝ 檢查「專案設定 → 指令碼屬性」嘅
+       `CENTRAL_VERIFY_URL`：冇需要就刪咗佢用返預設；自己填嘅話注意**全形字元（：。／）係 DNS 殺手**，
+       成條 URL 必須全半形。另：log 到 `HTTP 404/500` 唔算連線失敗，代表 URL 指錯地方（path 多咗／少咗）。
+   - 編輯器彈「An unknown error has occurred, please try again later」多數係 Google 側暫時性錯誤／
+     工作階段過期：重新整理編輯器頁面（F5）再跑一次就得，同 Code.gs 內容無關。
 3. **網頁應用程式存取權唔係「任何人」**：變咗「任何 Google 帳戶」嘅話，proxy 收到嘅係
    Google 登入頁 HTML，所有 action（唔只登入）都會失敗。
 4. `TROOP_{ID}_BACKEND` 指向咗舊／已刪除嘅部署 URL → `GET /api/health` 睇 `troops[].backendHost`

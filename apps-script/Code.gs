@@ -27,6 +27,9 @@
 //   - 新增 testCentralVerify()：不讀寫 Sheet 的授權／連線測試
 //   - Google Sheet 完全冇蹤跡：Users 表唔會有這列，Tokens 表以中性代號儲存
 //   - 防護保留：保留帳號不能被停用／重設密碼／更改角色／自行改密碼／以此帳號開戶
+// v8.9.1 修改：診斷強化 —— testCentralVerify／handleSuperTicketLogin 連線失敗時，
+//   Logger 一併記錄實際端點 URL 與真正例外訊息（只寫 Logger，不外傳；對外回應維持一般用語），
+//   用以分辨「授權未完成」vs「CENTRAL_VERIFY_URL 指錯／打錯字（DNS 連不上）」
 // v8.1 新增：活動履歷（服務紀錄／活動紀錄／訓練班紀錄）
 //   - 新工作表「活動履歷」（執行 initializeSheets() 自動補建，不影響既有資料）
 //   - 新 action：getLogRecords / saveLogRecord（支援批量 records[]）/ deleteLogRecord
@@ -113,14 +116,19 @@ function getOwnBackendUrl() {
 // 驗證「允許存取外部服務」授權及中央端點可達（只發一個 GET，不觸碰任何工作表）
 function testCentralVerify() {
   const url = getCentralVerifyUrl();
+  // v8.9.1：先記錄實際使用嘅端點（Script Properties 有冇指錯地方，一眼看出）
+  Logger.log('中央驗證端點：' + url);
   try {
     const r = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
     const code = r.getResponseCode();
     Logger.log('中央驗證端點 HTTP ' + code);
     return { success: code === 200, httpCode: code };
   } catch (e) {
-    Logger.log('中央驗證端點連線失敗（請檢查外部服務授權）');
-    return { success: false, error: 'connection failed' };
+    // v8.9.1：muteHttpExceptions 下 HTTP 4xx/5xx 唔會跌入呢度；跌入呢度＝請求根本發唔出去
+    //（授權未完成／DNS 解唔到／URL 無效）。記低真正例外訊息，唔使靠估。
+    const detail = (e && e.message) ? e.message : String(e);
+    Logger.log('中央驗證端點連線失敗（請檢查外部服務授權）：' + detail);
+    return { success: false, error: 'connection failed', detail: detail };
   }
 }
 
@@ -672,7 +680,8 @@ function handleSuperTicketLogin(ticket){
       result=JSON.parse(resp.getContentText());
     }
   }catch(err){
-    Logger.log('superTicketLogin: 中央驗證端點連線失敗');
+    // v8.9.1：只寫 Logger 俾部署者睇（不含票據內容）；對外回應照舊一般用語
+    Logger.log('superTicketLogin: 中央驗證端點連線失敗：' + ((err && err.message) ? err.message : String(err)));
     return jsonResponse({success:false,error:'登入服務暫時無法使用，請稍後重試'});
   }
   if(!result || result.valid!==true || !isSuperAdminId(result.login_id)){
