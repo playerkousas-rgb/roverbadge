@@ -70,7 +70,7 @@ scoutsystem-2.0 主系統平台	scoutsystem-2.0 main system platform
 接入主系統：同時交主系統管理員（填 backend+apikey）	Connect to main system: also submit to the main system admin (fill in backend + apikey)
 兩條路可同時用，領袖從主系統入，成員 bookmark 獨立連結	Both tracks can be used at the same time: leaders enter via the main system, members bookmark the standalone link
 將 URL+Key 交 roverbadge 管理員 → 管理員在 Vercel 環境變數登記 → 完成 → 用法：roverbadge.vercel.app 選旅團登入	Give URL + Key to the roverbadge admin → the admin registers them in Vercel environment variables → done → how to use: go to roverbadge.vercel.app, select the Group and log in
-告知主系統管理員旅團編號：旅團設定→元件設定 roverbadge 卡片只需設 u 參數（backend/apikey 不用；就算 URL 帶入亦會被忽略）。之後成員點 Dashboard 卡片自動帶入 ?u=0082&role=&ymis=&from=portal&embed=1，無需密碼	Tell the main-system admin the Group number: Group settings → component settings → the roverbadge card only needs the u parameter (no backend/apikey; any such URL parameters are ignored). Members then click the Dashboard card, which auto-fills ?u=0082&role=&ymis=&from=portal&embed=1 with no password needed
+告知主系統管理員旅團編號：旅團設定→元件設定 roverbadge 卡片只需設 u 參數（backend/apikey 不用；就算 URL 帶入亦會被忽略）。之後成員點 Dashboard 卡片自動帶入 ?u=0082&role=&from=portal&src=主系統網址&embed=1（ymis 可省略），經伺服器驗證來源及角色後免密碼進入	Tell the main-system admin the Group number: Group settings → component settings → the roverbadge card only needs the u parameter (no backend/apikey; any such URL parameters are ignored). Members then click the Dashboard card, which auto-fills ?u=0082&role=&from=portal&src=main-platform-origin&embed=1 (ymis is optional); the server verifies the origin and role, then signs them in with no password needed
 有主系統不等於一定要接，可自由選擇獨立用。若旅團重私隱，成員預設只看自己；若想互相鼓勵，團長可在用戶管理→系統設定開啟「允許成員互相查看進度」	Having a main system does not mean you must connect. For privacy-focused Groups, members see only themselves by default; for mutual encouragement, the Group Scout Leader can enable "Allow members to view each other's progress" in User Management → System Settings
 💡 提示：若您的旅團不在列表，請到「新旅團部署」查看10分鐘自助部署教學。	💡 Tip: if your Group is not in the list, see the 10-minute self-deployment guide in "New Group Deployment".
 首頁點擊旅團卡片（例如 0082 第82旅）	Click the Group card on the home page (e.g. 0082, 82nd Group)
@@ -791,7 +791,7 @@ assets/ymis-parse.js 未載入	assets/ymis-parse.js not loaded
 已拒絕申請	Application rejected
 待批履歷	Pending Activity Logs
 成員申報活動履歷在此審批，批准後寫入活動履歷。	Member activity log declarations are approved here and written to the Activity Log after approval.
-同樣交 roverbadge 管理員（Vercel 環境變數登記）→ 主系統卡片只需設 u 參數（backend/apikey 不用）→ 用法：主系統 Dashboard 點卡片 → 自動帶入 from=portal&embed=1 → 直接用	Also give the same to the roverbadge Admin (registered via Vercel environment variables) → the main-system card only needs the u parameter (no backend/apikey) → Usage: click the card on the main-system Dashboard → identity is auto-carried from=portal&embed=1 → use directly
+同樣交 roverbadge 管理員（Vercel 環境變數登記）→ 管理員加設 PORTAL_DEFAULT_ORIGIN（主系統網址）+ PORTAL_DEFAULT_ROLES（可用角色）→ 主系統卡片只需設 u 參數（backend/apikey 不用）→ 用法：Dashboard 點卡片 → 自動帶入 from=portal&src=主系統網址&embed=1 → 伺服器驗證來源及角色後直接用（ymis 可省略）	Also give the same to the roverbadge Admin (registered via Vercel environment variables) → the Admin also sets PORTAL_DEFAULT_ORIGIN (main-platform URL) + PORTAL_DEFAULT_ROLES (allowed roles) → the main-system card only needs the u parameter (no backend/apikey) → Usage: click the card on the Dashboard → identity is auto-carried from=portal&src=main-platform-origin&embed=1 → the server verifies the origin and role, then signs straight in (ymis is optional)
 建新試算表	Create a new spreadsheet
 私隱選擇	Privacy choice
 其他功能	Other features
@@ -899,3 +899,13 @@ YMIS 或登記電郵	YMIS or registered email
 來源不符，Portal 模式已拒絕	Origin mismatch; Portal mode denied
 角色未被允許使用 Portal 模式	This role is not allowed to use Portal mode
 ，請使用正常登入或聯絡管理員	. Please sign in normally or contact the admin
+🚫 未能以主系統身份進入	🚫 Could not sign in with the main-system identity
+為保障旅團資料，Portal 免登入身份必須由伺服器核實來源及角色。以下原因導致未能進入：	To protect Group data, the Portal password-free identity must be verified by the server (origin and role). Sign-in was refused for this reason:
+錯誤代碼：	Error code: 
+此旅團未在伺服器登記	This Group is not registered on the server
+，請聯絡管理員開通旅團	. Please contact the admin to enable the Group
+入口來源網址與登記不符，已被拒絕	The entry source origin does not match the registered one; access denied
+，請由主系統 Dashboard 卡片進入	. Please enter via the main-system Dashboard card
+未能確認入口來源	Could not confirm the entry source
+不支援的請求方式	Unsupported request method
+未能連接驗證服務，請重試或聯絡管理員	Could not reach the verification service. Please retry or contact the admin

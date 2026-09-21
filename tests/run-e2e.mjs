@@ -1,7 +1,7 @@
 // roverbadge 同源 Proxy 架構 e2e 測試
 // 流程：node tests/run-e2e.mjs
 //   1. 起兩個 mock GAS（旅團 0082=A、1001=B），含 302 redirect hop
-//   2. 起本機 app server：靜態檔 + 掛真實 api/proxy.js、api/troops.js（模擬 Vercel 行為）
+//   2. 起本機 app server：靜態檔 + 掛真實 api/proxy.js、api/troops.js、api/portal.js（模擬 Vercel 行為）
 //   3. 從 index.html 抽出真正的 apiRequest() 在 Node 執行，模擬瀏覽器請求
 //   4. 斷言多旅團隔離、錯誤處理、SSRF 防護、靜態安全檢查
 import http from 'http';
@@ -20,6 +20,9 @@ process.env.TROOP_0082_BACKEND = `http://127.0.0.1:${PORT_A}/exec`;
 process.env.TROOP_0082_APIKEY = 'KEY_A';
 process.env.TROOP_1001_NAME = '旅團B(1001)';
 process.env.TROOP_1001_BACKEND = `http://127.0.0.1:${PORT_B}/exec`;
+process.env.TROOP_1001_PORTALDISABLED = '1';        // B 旅團停用 Portal（§18 隔離測試；唔影響正常登入）
+process.env.PORTAL_DEFAULT_ORIGIN = 'https://hub.example.org';
+process.env.PORTAL_DEFAULT_ROLES = 'member,group_leader';
 process.env.SUPER_KEY = '9876';                     // 中央管理密碼（4 字元測試值）
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -65,10 +68,11 @@ const mockB = await startMockGas({
 console.log(`  mock A: ${mockA.url}  mock B: ${mockB.url}`);
 
 // ================== 2. 起本機 app server ==================
-console.log('\n【2】起本機 app server，掛載真實 api/proxy.js + api/troops.js');
+console.log('\n【2】起本機 app server，掛載真實 api/proxy.js + api/troops.js + api/portal.js');
 const { default: proxyHandler } = await import('../api/proxy.js');
 const { default: troopsHandler } = await import('../api/troops.js');
 const { default: verifyHandler } = await import('../api/verify-super-ticket.js');
+const { default: portalHandler } = await import('../api/portal.js');
 
 function vercelize(res) {
   res.status = (c) => { res.statusCode = c; return res; };
@@ -80,6 +84,7 @@ const appServer = http.createServer((req, res) => {
   if (u.pathname === '/api/proxy') return proxyHandler(req, vercelize(res));
   if (u.pathname === '/api/troops') return troopsHandler(req, vercelize(res));
   if (u.pathname === '/api/verify-super-ticket') return verifyHandler(req, vercelize(res));
+  if (u.pathname === '/api/portal') return portalHandler(req, vercelize(res));
   let p = u.pathname === '/' ? '/index.html' : decodeURIComponent(u.pathname);
   const fp = path.join(ROOT, p);
   if (fs.existsSync(fp) && !fs.statSync(fp).isDirectory()) {
@@ -674,6 +679,47 @@ console.log('\n【17】v8.8 用戶管理：唯一性／三區名單／自設密�
   check('無 token 調 reactivateUser → HTTP 401', noTok.status === 401);
   const noTokDel = await postProxy({ troopId: '0082', action: 'deleteUser', data: { target_ymis: '1234560101' } });
   check('無 token 調 deleteUser → HTTP 401', noTokDel.status === 401);
+}
+
+// ================== 18. Portal 伺服器端驗證（真實 /api/portal over HTTP）==================
+console.log('\n【18】Portal 免登入：真實 /api/portal over HTTP（來源＋角色伺服器端驗證）');
+{
+  const HUB = 'https://hub.example.org';
+  async function getPortal(params, headers = {}) {
+    const qs = new URLSearchParams(params);
+    const r = await fetch(`${APP_BASE}/api/portal?${qs}`, { headers });
+    let json = null;
+    try { json = await r.json(); } catch (e) { /* non-json */ }
+    return { status: r.status, json, headers: r.headers };
+  }
+  // (a) src 驗證通過（member 係 Portal 主要使用者）
+  const ok1 = await getPortal({ u: '0082', role: 'member', src: HUB });
+  check('0082 member＋正確 src → 200 ok', ok1.status === 200 && ok1.json.ok === true && ok1.json.troop === '0082');
+  // (b) Referer header 驗證通過（無 src 都得）
+  const ok2 = await getPortal({ u: '0082', role: 'group_leader' }, { Referer: HUB + '/dashboard' });
+  check('Referer 吻合（無 src）→ 200 ok', ok2.status === 200 && ok2.json.ok === true);
+  // (c) 未知旅團
+  const unk = await getPortal({ u: '9999', role: 'member', src: HUB });
+  check('未知旅團 → 404 unknown_troop', unk.status === 404 && unk.json.reason === 'unknown_troop');
+  // (d) 1001 停用 portal（正常登入唔受影響——§11 已用 1001 登入成功）
+  const dis = await getPortal({ u: '1001', role: 'member', src: HUB });
+  check('1001 PORTALDISABLED → 403 troop_not_portal_enabled', dis.status === 403 && dis.json.reason === 'troop_not_portal_enabled');
+  // (e) 來源錯誤
+  const evilSrc = await getPortal({ u: '0082', role: 'member', src: 'https://evil.example/' });
+  check('src 唔啱 → 403 origin_not_allowed', evilSrc.status === 403 && evilSrc.json.reason === 'origin_not_allowed');
+  const evilRef = await getPortal({ u: '0082', role: 'member', src: HUB }, { Referer: 'https://evil.example/' });
+  check('Referer 唔啱 → 403 referer_mismatch', evilRef.status === 403 && evilRef.json.reason === 'referer_mismatch');
+  const noSrc = await getPortal({ u: '0082', role: 'member' });
+  check('無來源（curl／直接打 URL）→ 403 no_origin', noSrc.status === 403 && noSrc.json.reason === 'no_origin');
+  // (f) 角色唔在白名單
+  const badRole = await getPortal({ u: '0082', role: 'admin', src: HUB });
+  check('admin 唔喺全域 roles → 403 role_not_allowed', badRole.status === 403 && badRole.json.reason === 'role_not_allowed');
+  // (g) 方法限制＋不洩漏＋無 CORS
+  const postP = await fetch(`${APP_BASE}/api/portal?u=0082&role=member&src=${encodeURIComponent(HUB)}`, { method: 'POST' });
+  check('POST /api/portal → 405', postP.status === 405);
+  const bodies = [ok1, ok2, unk, dis, evilSrc, evilRef, noSrc, badRole].map(x => JSON.stringify(x.json)).join('\n');
+  check('所有 portal 回應唔含旅團 apikey（KEY_A）', !bodies.includes('KEY_A'));
+  check('portal 回應無 CORS header（只給同源前端用）', ok1.headers.get('access-control-allow-origin') === null);
 }
 
 // ================== 收尾 ==================

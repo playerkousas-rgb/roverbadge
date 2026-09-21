@@ -79,17 +79,24 @@ curl -s -o /dev/null -w '%{http_code}\n' https://roverbadge.vercel.app/api/proxy
 
 ## 可選：主系統 Portal 對接（Dashboard 卡片入口）
 
-如旅團由主系統 Dashboard 卡片帶入（`?from=portal&u=0082`），可另設：
+如旅團由主系統 Dashboard 卡片帶入（`?from=portal&u=0082&src=主系統網址`），**必須**設：
 
 | Name | 用途 |
 |------|------|
-| `PORTAL_DEFAULT_ORIGIN` | 主系統來源 URL（例：`https://main.example.org`）；只做**來源參數**軟檢查，唔係驗證 |
-| `PORTAL_DEFAULT_ROLES` | 逗號分隔嘅允許角色參數（例：`group_leader,admin`） |
-| `TROOP_0082_PORTALORIGIN` | 某旅團專用來源 URL（覆蓋預設） |
-| `TROOP_0082_PORTALROLES` | 某旅團專用角色參數 |
-| `TROOP_0082_PORTALDISABLED` | 設 `1`/`true` 可停用該旅團嘅 portal 入口 |
+| `PORTAL_DEFAULT_ORIGIN` | 主系統來源 origin（例：`https://main.example.org`，填帶 path 嘅 URL 會自動正規化）；**唔設 = 所有旅團都唔開放 portal（fail closed）** |
+| `PORTAL_DEFAULT_ROLES` | 逗號分隔嘅允許角色（例：`member,group_leader`）；唔設就只放行 `exec_committee` |
+| `TROOP_0082_PORTALORIGIN` | 某旅團專用來源 origin（覆寫預設） |
+| `TROOP_0082_PORTALROLES` | 某旅團專用允許角色（覆寫預設） |
+| `TROOP_0082_PORTALDISABLED` | 設 `1`/`true` 可停用該旅團嘅 portal 入口（唔影響正常登入） |
 
-**注意**：origin/role 參數只係「呢個入口想唔想接受 portal 帶入」嘅軟檢查，**唔係身份驗證**——真正驗證仍然係登入（token）。Portal 卡片流程本身唔需要改任何前端碼。
+**驗證流程（伺服器端，同 vsbadge 結構一致）**：前端 `handlePortalParams()` 唔再自己判斷，一律打同源 `GET /api/portal?u=&role=&src=`；伺服器檢查：(1) 旅團已登記＋backend 可信；(2) 旅團有 portalOrigin 且未停用；(3) 瀏覽器 Referer/Origin 同 `src` 參數對得上登記 origin（兩者至少要有一個，curl／直接打 URL 會被擋）；(4) 角色同時喺旅團白名單同系統已知角色內（`member` 亦可經 portal 進入，寫入照樣由旅團 GAS 驗權）。**驗證唔通過一律留喺錯誤頁**（顯示原因＋`reason` 錯誤代碼），唔會 fallback 免登入／普通登入。Portal 設定只留喺伺服器端，`/api/troops` 只回 id+name+en。
+
+本機試 portal 流程可用 `ROVERBADGE_PORTAL_TEST=1` 放寬來源檢查（**Vercel 上必定失效**，雙重保護唔會喺生產環境開洞；角色照驗）。驗證部署：
+
+```bash
+curl -s 'https://roverbadge.vercel.app/api/portal?u=0082&role=member&src=https://main.example.org'  # 期望 {"ok":true,...}
+curl -s 'https://roverbadge.vercel.app/api/portal?u=0082&role=member'  # 期望 no_origin（無來源 fail closed）
+```
 
 ---
 

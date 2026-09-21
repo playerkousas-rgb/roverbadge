@@ -136,6 +136,45 @@ console.log('\n【3】superTicketLogin 中央驗票');
   check('掃描全部工作表所有儲存格：搵唔到帳號識別字', hits.length === 0, hits.join(', '));
 }
 
+// ================== 3b. v8.9.2：票據一次性（防重放）+ testCentralVerify 診斷 ==================
+console.log('\n【3b】票據一次性防重放 + testCentralVerify 連線診斷');
+{
+  // 同一票據只可成功一次（第二次重用 → 一般用語拒絕，不洩漏原因）
+  const replayTicket = issueSuperTicket({ loginId: SU_USER, troopId: '0082', backend: HARNESS_EXEC });
+  const rp1 = env.call({ action: 'superTicketLogin', superTicket: replayTicket });
+  check('同一票據首次可用', rp1.success === true, JSON.stringify(rp1));
+  const rp2 = env.call({ action: 'superTicketLogin', superTicket: replayTicket });
+  check('同一票據重用被拒（一次性防重放，对外只回一般用語）',
+    rp2.success === false && /帳號或密碼錯誤/.test(rp2.error || ''), JSON.stringify(rp2));
+  // 新票據不受影響（每張票據獨立一次性）
+  const fresh = suLogin();
+  check('新票據照常用（不受重放快取影響）', fresh.success === true);
+
+  // testCentralVerify：連線正常（mock 中央端點回 200 JSON）
+  const tcOk = env.api.testCentralVerify();
+  check('testCentralVerify 連線正常時 success:true + httpCode 200',
+    tcOk && tcOk.success === true && tcOk.httpCode === 200, JSON.stringify(tcOk));
+
+  // testCentralVerify：請求發唔出去（未注入 urlFetchHandler，等同授權未完成／DNS 失敗）
+  const envNoConn = loadCodeGs();
+  const tcFail = envNoConn.api.testCentralVerify();
+  check('testCentralVerify 連線失敗時回 connection failed + 真正例外訊息',
+    tcFail && tcFail.success === false && tcFail.error === 'connection failed' && /DNS error/.test(tcFail.detail || ''),
+    JSON.stringify(tcFail));
+
+  // testCentralVerify：HTTP 非 200（端點指錯／function 未部署／部署保護）
+  const env404 = loadCodeGs({ urlFetchHandler: () => ({ code: 404, content: '<html>404: NOT_FOUND</html>' }) });
+  const tc404 = env404.api.testCentralVerify();
+  check('testCentralVerify 非 200 時 success:false + httpCode',
+    tc404 && tc404.success === false && tc404.httpCode === 404, JSON.stringify(tc404));
+
+  // testCentralVerify：200 但回 HTML（部署保護登入頁之類）
+  const envHtml = loadCodeGs({ urlFetchHandler: () => ({ code: 200, content: '<html><body>login wall</body></html>' }) });
+  const tcHtml = envHtml.api.testCentralVerify();
+  check('testCentralVerify 回 HTML 時明確標示 unexpected html',
+    tcHtml && tcHtml.success === false && tcHtml.error === 'unexpected html', JSON.stringify(tcHtml));
+}
+
 // ================== 4. 名單／API 回應都不外洩 ==================
 console.log('\n【4】用戶名單／成員名單／API 回應都不出現保留帳號');
 {
