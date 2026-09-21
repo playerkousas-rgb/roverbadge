@@ -7,6 +7,6 @@
   "scripts": {
     "dev": "node tests/dev-server.mjs 3000",
     "demo": "node tests/demo-server.mjs 3000",
-    "test": "node tests/ymis-parse.test.mjs && node tests/code-gs.test.mjs && node tests/serverless-registry.test.mjs && node tests/vercel-config.test.mjs && node tests/proxy-login.test.mjs && node tests/run-e2e.mjs && node tests/users-dom-test.mjs && node tests/i18n-dom-test.mjs && node tests/bulk-onboard-dom-test.mjs"
+    "test": "node tests/ymis-parse.test.mjs && node tests/code-gs.test.mjs && node tests/serverless-registry.test.mjs && node tests/vercel-config.test.mjs && node tests/html-integrity.test.mjs && node tests/proxy-login.test.mjs && node tests/run-e2e.mjs && node tests/users-dom-test.mjs && node tests/i18n-dom-test.mjs && node tests/bulk-onboard-dom-test.mjs"
   }
 }
