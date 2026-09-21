@@ -398,14 +398,14 @@ a:hover{text-decoration:underline}
         <p style="font-size:11px;margin-top:8px;background:#fff;padding:6px;border-radius:6px"><b>重點：有主系統 ≠ 一定要接上本系統</b>，可自由選擇獨立用或接上，兩條路並存不衝突。藉此告訴用家有更大平台可用。</p>
       </div>
 
-      <div class="info-card" style="background:var(--maroon-light);margin-bottom:12px"><h3>🗺️ 部署地圖 - 兩條路</h3><p style="font-size:11px">共通：下載 Code.gs → 建 Sheet → 執行 initializeSheets → 部署 → 複製 URL+API Key<br><b>軌道A 無主系統/有但想獨立用：</b> 將 URL+Key 交 roverbadge 管理員 → 管理員在 Vercel 環境變數登記 → 完成 → 用法：roverbadge.vercel.app 選旅團登入<br><b>軌道B 有主系統並想接上：</b> 同樣交 roverbadge 管理員（Vercel 環境變數登記）→ 主系統卡片只需設 u 參數（backend/apikey 不用）→ 用法：主系統 Dashboard 點卡片 → 自動帶入 from=portal&embed=1 → 直接用</p></div>
+      <div class="info-card" style="background:var(--maroon-light);margin-bottom:12px"><h3>🗺️ 部署地圖 - 兩條路</h3><p style="font-size:11px">共通：下載 Code.gs → 建 Sheet → 執行 initializeSheets → 部署 → 複製 URL+API Key<br><b>軌道A 無主系統/有但想獨立用：</b> 將 URL+Key 交 roverbadge 管理員 → 管理員在 Vercel 環境變數登記 → 完成 → 用法：roverbadge.vercel.app 選旅團登入<br><b>軌道B 有主系統並想接上：</b> 同樣交 roverbadge 管理員（Vercel 環境變數登記）→ 管理員加設 PORTAL_DEFAULT_ORIGIN（主系統網址）+ PORTAL_DEFAULT_ROLES（可用角色）→ 主系統卡片只需設 u 參數（backend/apikey 不用）→ 用法：Dashboard 點卡片 → 自動帶入 from=portal&src=主系統網址&embed=1 → 伺服器驗證來源及角色後直接用（ymis 可省略）</p></div>
 
       <div class="tutorial">
         <div class="steps">
           <div class="step"><div class="step-number">1</div><div class="step-content"><h4>共通：下載後端程式碼 (單一檔案版)</h4><p>包含待批、其他獎章、批量、PNG、私隱開關</p><a href="apps-script/Code.gs" download="Code.gs" class="btn btn-primary btn-sm" style="margin-top:6px">⬇️ 下載 Code.gs (最新)</a></div></div>
           <div class="step"><div class="step-number">2</div><div class="step-content"><h4>共通：建立 Google Sheet 並部署</h4><p><b>2.1</b> 建新試算表<br><b>2.2</b> 擴充功能→Apps Script，貼上 Code.gs<br><b>2.3</b> 儲存→執行 initializeSheets，授權，複製 API Key<br><b>2.4</b> 部署為網頁應用程式 (執行身分我，存取權任何人)，複製 URL (/exec)</p></div></div>
           <div class="step"><div class="step-number">3</div><div class="step-content"><h4>軌道A：無主系統 - 提交給 roverbadge 管理員</h4><p>將旅團編號、名稱、URL、API Key 交 roverbadge 管理員，在 Vercel 環境變數登記（TROOP_{編號}_NAME / _BACKEND / _APIKEY），重新部署後獨立可用</p></div></div>
-          <div class="step"><div class="step-number">4</div><div class="step-content"><h4>軌道B：有主系統並想接上 - 額外提交給主系統管理員</h4><p>告知主系統管理員旅團編號：旅團設定→元件設定 roverbadge 卡片只需設 u 參數（backend/apikey 不用；就算 URL 帶入亦會被忽略）。之後成員點 Dashboard 卡片自動帶入 ?u=0082&role=&ymis=&from=portal&embed=1，無需密碼</p></div></div>
+          <div class="step"><div class="step-number">4</div><div class="step-content"><h4>軌道B：有主系統並想接上 - 額外提交給主系統管理員</h4><p>告知主系統管理員旅團編號：旅團設定→元件設定 roverbadge 卡片只需設 u 參數（backend/apikey 不用；就算 URL 帶入亦會被忽略）。之後成員點 Dashboard 卡片自動帶入 ?u=0082&role=&from=portal&src=主系統網址&embed=1（ymis 可省略），經伺服器驗證來源及角色後免密碼進入</p></div></div>
           <div class="step"><div class="step-number">5</div><div class="step-content"><h4>私隱選擇</h4><p>有主系統不等於一定要接，可自由選擇獨立用。若旅團重私隱，成員預設只看自己；若想互相鼓勵，團長可在用戶管理→系統設定開啟「允許成員互相查看進度」</p></div></div>
         </div>
       </div>
@@ -847,7 +847,7 @@ const LANG_DICT={
   "接入主系統：同時交主系統管理員（填 backend+apikey）": "Connect to main system: also submit to the main system admin (fill in backend + apikey)",
   "兩條路可同時用，領袖從主系統入，成員 bookmark 獨立連結": "Both tracks can be used at the same time: leaders enter via the main system, members bookmark the standalone link",
   "將 URL+Key 交 roverbadge 管理員 → 管理員在 Vercel 環境變數登記 → 完成 → 用法：roverbadge.vercel.app 選旅團登入": "Give URL + Key to the roverbadge admin → the admin registers them in Vercel environment variables → done → how to use: go to roverbadge.vercel.app, select the Group and log in",
-  "告知主系統管理員旅團編號：旅團設定→元件設定 roverbadge 卡片只需設 u 參數（backend/apikey 不用；就算 URL 帶入亦會被忽略）。之後成員點 Dashboard 卡片自動帶入 ?u=0082&role=&ymis=&from=portal&embed=1，無需密碼": "Tell the main-system admin the Group number: Group settings → component settings → the roverbadge card only needs the u parameter (no backend/apikey; any such URL parameters are ignored). Members then click the Dashboard card, which auto-fills ?u=0082&role=&ymis=&from=portal&embed=1 with no password needed",
+  "告知主系統管理員旅團編號：旅團設定→元件設定 roverbadge 卡片只需設 u 參數（backend/apikey 不用；就算 URL 帶入亦會被忽略）。之後成員點 Dashboard 卡片自動帶入 ?u=0082&role=&from=portal&src=主系統網址&embed=1（ymis 可省略），經伺服器驗證來源及角色後免密碼進入": "Tell the main-system admin the Group number: Group settings → component settings → the roverbadge card only needs the u parameter (no backend/apikey; any such URL parameters are ignored). Members then click the Dashboard card, which auto-fills ?u=0082&role=&from=portal&src=main-platform-origin&embed=1 (ymis is optional); the server verifies the origin and role, then signs them in with no password needed",
   "有主系統不等於一定要接，可自由選擇獨立用。若旅團重私隱，成員預設只看自己；若想互相鼓勵，團長可在用戶管理→系統設定開啟「允許成員互相查看進度」": "Having a main system does not mean you must connect. For privacy-focused Groups, members see only themselves by default; for mutual encouragement, the Group Scout Leader can enable \"Allow members to view each other's progress\" in User Management → System Settings",
   "💡 提示：若您的旅團不在列表，請到「新旅團部署」查看10分鐘自助部署教學。": "💡 Tip: if your Group is not in the list, see the 10-minute self-deployment guide in \"New Group Deployment\".",
   "首頁點擊旅團卡片（例如 0082 第82旅）": "Click the Group card on the home page (e.g. 0082, 82nd Group)",
@@ -1434,6 +1434,16 @@ const LANG_DICT={
   "請稍後重試；若持續失敗請聯絡管理員檢查 /api/health": "Please try again later; if it keeps failing, ask the admin to check /api/health",
   "此旅團未開放 Portal 模式": "Portal mode is not enabled for this Group",
   "來源不符，Portal 模式已拒絕": "Origin mismatch; Portal mode denied",
+  "🚫 未能以主系統身份進入": "🚫 Could not sign in with the main-system identity",
+  "為保障旅團資料，Portal 免登入身份必須由伺服器核實來源及角色。以下原因導致未能進入：": "To protect Group data, the Portal password-free identity must be verified by the server (origin and role). Sign-in was refused for this reason:",
+  "錯誤代碼：": "Error code: ",
+  "此旅團未在伺服器登記": "This Group is not registered on the server",
+  "，請聯絡管理員開通旅團": ". Please contact the admin to enable the Group",
+  "入口來源網址與登記不符，已被拒絕": "The entry source origin does not match the registered one; access denied",
+  "，請由主系統 Dashboard 卡片進入": ". Please enter via the main-system Dashboard card",
+  "未能確認入口來源": "Could not confirm the entry source",
+  "不支援的請求方式": "Unsupported request method",
+  "未能連接驗證服務，請重試或聯絡管理員": "Could not reach the verification service. Please retry or contact the admin",
   "角色未被允許使用 Portal 模式": "This role is not allowed to use Portal mode",
   "，請使用正常登入或聯絡管理員": ". Please sign in normally or contact the admin",
   "未在伺服器端環境變數 Registry 找到": "not found in the server-side environment-variable Registry",
@@ -1611,7 +1621,7 @@ const LANG_DICT={
   "只有領袖或成員可以申報活動履歷": "Only leaders or members can declare activity logs",
   "我已送出，待領袖確認": "Submitted; awaiting leader approval",
   "成員申報活動履歷在此審批，批准後寫入活動履歷。": "Member activity log declarations are approved here and written to the Activity Log after approval.",
-  "同樣交 roverbadge 管理員（Vercel 環境變數登記）→ 主系統卡片只需設 u 參數（backend/apikey 不用）→ 用法：主系統 Dashboard 點卡片 → 自動帶入 from=portal&embed=1 → 直接用": "Also give the same to the roverbadge Admin (registered via Vercel environment variables) → the main-system card only needs the u parameter (no backend/apikey) → Usage: click the card on the main-system Dashboard → identity is auto-carried from=portal&embed=1 → use directly",
+  "同樣交 roverbadge 管理員（Vercel 環境變數登記）→ 管理員加設 PORTAL_DEFAULT_ORIGIN（主系統網址）+ PORTAL_DEFAULT_ROLES（可用角色）→ 主系統卡片只需設 u 參數（backend/apikey 不用）→ 用法：Dashboard 點卡片 → 自動帶入 from=portal&src=主系統網址&embed=1 → 伺服器驗證來源及角色後直接用（ymis 可省略）": "Also give the same to the roverbadge Admin (registered via Vercel environment variables) → the Admin also sets PORTAL_DEFAULT_ORIGIN (main-platform URL) + PORTAL_DEFAULT_ROLES (allowed roles) → the main-system card only needs the u parameter (no backend/apikey) → Usage: click the card on the Dashboard → identity is auto-carried from=portal&src=main-platform-origin&embed=1 → the server verifies the origin and role, then signs straight in (ymis is optional)",
   "建新試算表": "Create a new spreadsheet",
   "私隱選擇": "Privacy choice",
   "其他功能": "Other features",
@@ -1856,11 +1866,8 @@ async function handlePortalParams(){
   console.log('Portal params detected', {u, role, ymis, from});
 
   let troopRegistered = false;
-  // Portal 接入設定（來自 /api/troops：TROOP_{ID}_PORTALORIGIN / _PORTALROLES / _PORTALDISABLED
-  // 及全域 PORTAL_DEFAULT_ORIGIN / PORTAL_DEFAULT_ROLES）。
-  // 注意：來源網址／角色參數檢查只是軟性檢查，不是身份驗證，
-  // 不能當作中央管理帳號登入的替代品；資料讀寫權限仍由旅團後端把關。
-  let portalCfg={}, portalDefaults={};
+  // /api/troops 只回旅團 id＋顯示名稱（英文介面用 en），唔含任何 Portal 設定；
+  // Portal 免登入身份一律經同源 /api/portal 由伺服器驗證（見下），唔再信 URL 參數。
   if(u){
     currentTroopId=u;
     currentTroopName=troopNameParam;
@@ -1868,43 +1875,30 @@ async function handlePortalParams(){
       const r2=await fetch('/api/troops?_='+Date.now());
       if(r2.ok){
         const d2=await r2.json();
-        portalDefaults=d2.portalDefaults||{};
         const t2=(d2.troops||{})[u];
-        if(t2){ troopRegistered=true; currentTroopName=t2.name||troopNameParam; portalCfg=t2.portal||{}; }
+        if(t2){ troopRegistered=true; currentTroopName=(isEn()&&t2.en)?t2.en:(t2.name||troopNameParam); }
       }
     }catch(e){ console.warn('api/troops lookup failed',e); }
   }
 
-  // 若由 Portal 帶入身份，先做軟性檢查，通過才免登入進入
+  // 若由 Portal 帶入身份，必須經同源 /api/portal 由伺服器驗證來源及角色；
+  // 驗證唔通過一律留喺錯誤頁，唔再fallback 免登入／普通登入。
   if(from==='portal' && ymis && role){
-    const portalBlocked=(function(){
-      if(portalCfg.disabled===true || String(portalCfg.disabled)==='1') return '此旅團未開放 Portal 模式';
-      const allowedOrigin=(portalCfg.origin||portalDefaults.origin||'').replace(/\/+$/,'');
-      if(allowedOrigin && document.referrer){
-        try{
-          const refOrigin=new URL(document.referrer).origin;
-          if(refOrigin!==allowedOrigin) return '來源不符，Portal 模式已拒絕';
-        }catch(e){ /* referrer 無法解析時不阻擋（保持既有進入方式可用） */ }
-      }
-      const allowedRoles=String(portalCfg.roles||portalDefaults.roles||'').split(',').map(s=>s.trim()).filter(Boolean);
-      if(allowedRoles.length && !allowedRoles.includes(role)) return '角色未被允許使用 Portal 模式';
-      return '';
-    })();
-    if(portalBlocked){
-      document.getElementById('homePage').style.display='none';
-      document.getElementById('loginPage').style.display='block';
-      const el=document.getElementById('loginMsg');
-      el.className='login-msg error';
-      el.textContent='⚠️ '+portalBlocked+'，請使用正常登入或聯絡管理員';
-      if(u && troopRegistered){ document.getElementById('loginTroopInfo').textContent=`📍 ${currentTroopName} (ID: ${currentTroopId})`; }
-      checkSavedSession();
+    let pv=null;
+    try{
+      const qs=new URLSearchParams({u:u||'',role:role,src:srcParam||''});
+      const r3=await fetch('/api/portal?'+qs.toString());
+      pv=await r3.json();
+    }catch(e){ pv={ok:false,code:'no_response'}; }
+    if(!pv || pv.ok!==true){
+      showPortalError((pv&&(pv.reason||pv.code))||'no_response');
       return;
     }
     currentUser={
       ymis: ymis,
       name: nameParam,
-      role: role,
-      can_tick: ['admin','group_leader','branch_leader','exec_committee','super_admin'].includes(role),
+      role: pv.role||role,
+      can_tick: ['admin','group_leader','branch_leader','exec_committee','super_admin'].includes(pv.role||role),
       allowed_badges: '*',
       email: params.get('email')||'',
       isPortal: true
@@ -1948,6 +1942,51 @@ async function handlePortalParams(){
   checkSavedSession();
 }
 
+// Portal 驗證失敗錯誤頁：分段 tr() 顯示原因＋錯誤代碼，唔回傳敏感資料
+function showPortalError(code){
+  hidePortalError();
+  document.getElementById('homePage').style.display='none';
+  document.getElementById('loginPage').style.display='none';
+  document.getElementById('mainApp').style.display='none';
+  const reason=(function(c){
+    if(c==='unknown_troop') return tr('此旅團未在伺服器登記')+tr('，請聯絡管理員開通旅團')+'(u)';
+    if(c==='troop_not_portal_enabled') return tr('此旅團未開放 Portal 模式');
+    if(c==='referer_mismatch'||c==='origin_not_allowed') return tr('入口來源網址與登記不符，已被拒絕')+tr('，請由主系統 Dashboard 卡片進入');
+    if(c==='no_origin') return tr('未能確認入口來源')+tr('，請由主系統 Dashboard 卡片進入');
+    if(c==='role_not_allowed') return tr('角色未被允許使用 Portal 模式');
+    if(c==='method_not_allowed') return tr('不支援的請求方式');
+    return tr('未能連接驗證服務，請重試或聯絡管理員');
+  })(code);
+  const box=document.createElement('div');
+  box.id='portalErrorPage';
+  box.className='container';
+  box.style.cssText='max-width:560px;margin:40px auto;text-align:center';
+  box.innerHTML=
+    '<div style="font-size:44px">🚫</div>'+
+    '<h2 style="margin:12px 0">'+tr('🚫 未能以主系統身份進入')+'</h2>'+
+    '<p style="font-size:12px;color:var(--muted)">'+tr('為保障旅團資料，Portal 免登入身份必須由伺服器核實來源及角色。以下原因導致未能進入：')+'</p>'+
+    '<p style="font-size:13px;color:var(--red)">'+escapeHtmlText(reason)+'</p>'+
+    '<p style="font-size:11px;color:var(--muted)">'+tr('錯誤代碼：')+'<code>'+escapeHtmlText(String(code||'no_response'))+'</code></p>'+
+    '<p><button class="btn" onclick="goHomeFromPortalError()">'+tr('← 返回首頁')+'</button> '+
+    '<button class="btn btn-secondary" onclick="location.reload()">🔄 '+tr('重試')+'</button></p>';
+  document.body.appendChild(box);
+}
+function hidePortalError(){
+  const old=document.getElementById('portalErrorPage');
+  if(old) old.remove();
+}
+function goHomeFromPortalError(){
+  hidePortalError();
+  try{
+    const clean=location.pathname||'/';
+    history.replaceState(null,'',clean);
+  }catch(e){}
+  document.getElementById('loginPage').style.display='none';
+  document.getElementById('mainApp').style.display='none';
+  document.getElementById('homePage').style.display='block';
+  loadTroops();
+}
+
 /* ================== Welcome ================== */
 function showWelcomeTab(name, btn){
   document.querySelectorAll('.welcome-section').forEach(s=>s.classList.remove('active'));
@@ -1973,7 +2012,7 @@ async function loadTroops(){
     const troops=d2.troops||{};
     const ids=Object.keys(troops);
     if(ids.length){
-      grid.innerHTML=ids.map(id=>`<div class="troop-card" onclick="selectTroop('${id}')"><div class="troop-id">${id}</div><div class="troop-name">${troops[id].name||'第'+id+'旅'}</div></div>`).join('');
+      grid.innerHTML=ids.map(id=>`<div class="troop-card" onclick="selectTroop('${id}')"><div class="troop-id">${id}</div><div class="troop-name">${(isEn()&&troops[id].en)?troops[id].en:(troops[id].name||'第'+id+'旅')}</div></div>`).join('');
     }else{
       grid.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:8px;background:#FFF3CD;border-radius:8px;font-size:11px">⚠️ 未有已登記旅團：請管理員在 Vercel 環境變數設定 TROOP_{編號}_BACKEND 等設定並重新部署（詳見 /api/health）</div>`;
     }
@@ -1987,7 +2026,7 @@ async function selectTroop(id){
     let t=null;
     try{ const r2=await fetch('/api/troops'); const d2=await r2.json(); t=(d2.troops||{})[id]; }catch(e){}
     if(!t){ showToast('此旅團未在系統登記，請聯絡管理員','error'); return; }
-    currentTroopId=id; currentTroopName=t.name||('第'+id+'旅');
+    currentTroopId=id; currentTroopName=(isEn()&&t.en)?t.en:(t.name||('第'+id+'旅'));
     document.getElementById('loginTroopInfo').textContent=`📍 ${currentTroopName} (ID: ${currentTroopId})`;
     document.getElementById('homePage').style.display='none';
     document.getElementById('loginPage').style.display='block';

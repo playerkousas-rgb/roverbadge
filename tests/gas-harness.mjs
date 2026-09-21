@@ -113,6 +113,8 @@ export function loadCodeGs({ promptAnswers = [], urlFetchHandler = null } = {}) 
   const scriptProps = new Map();
   const ui = makeUi(promptAnswers);
   const mailOutbox = []; // v8.8：MailApp.sendEmail 寄出的郵件（測試觀測用）
+  const scriptCache = new Map(); // v8.9.2：CacheService（票據一次性防重放）
+  let scriptLockHeld = false; // v8.9.2：LockService（單執行緒測試環境簡化版）
 
   const sandbox = {
     console: { log() {}, warn() {}, error() {} },
@@ -153,6 +155,20 @@ export function loadCodeGs({ promptAnswers = [], urlFetchHandler = null } = {}) 
       getRemainingDailyQuota() { return 100; }
     },
     ScriptApp: { getService: () => ({ getUrl: () => 'https://script.google.com/macros/s/HARNESS/exec' }) },
+    // v8.9.2：LockService + CacheService（handleSuperTicketLogin 票據一次性保護）
+    LockService: {
+      getScriptLock: () => ({
+        tryLock: () => { if (scriptLockHeld) return false; scriptLockHeld = true; return true; },
+        releaseLock: () => { scriptLockHeld = false; }
+      })
+    },
+    CacheService: {
+      getScriptCache: () => ({
+        get: (k) => (scriptCache.has(String(k)) ? scriptCache.get(String(k)) : null),
+        put: (k, v) => { scriptCache.set(String(k), String(v)); },
+        remove: (k) => { scriptCache.delete(String(k)); }
+      })
+    },
     // v8.9：UrlFetchApp（中央驗票連線）。測試可注入 urlFetchHandler(url, opts) →
     // { code, content }；未注入時預設連線失敗（等同沙箱無外網）。
     UrlFetchApp: {

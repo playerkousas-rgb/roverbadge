@@ -13,6 +13,7 @@ node_modules
 *.tmp
 coverage
 tests/
+scripts/
 i18n_dict.tsv
 build_i18n.py
 VERCEL_ENV_SETUP.md

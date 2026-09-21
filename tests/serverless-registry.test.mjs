@@ -29,17 +29,18 @@ function copyApi(dir) {
 }
 
 const PROBE = `
-const { getRegistry, getTrustedTroop, listPublicTroops, getRegistryDiagnostics, getPortalDefaults } = await import('./api/_registry.js');
+const { getRegistry, getTrustedTroop, listPublicTroops, getRegistryDiagnostics } = await import('./api/_registry.js');
 const diag = getRegistryDiagnostics();
 console.log(JSON.stringify({
   cwd: process.cwd(),
   registryIds: Object.keys(getRegistry()).sort(),
   publicIds: Object.keys(listPublicTroops()).sort(),
   public: listPublicTroops(),
-  trusted0082: (() => { const t = getTrustedTroop('0082'); return t ? { id: t.id, name: t.name, host: (() => { try { return new URL(t.backend).host; } catch (e) { return 'invalid'; } })(), apikey: t.apikey } : null; })(),
+  trusted0082: (() => { const t = getTrustedTroop('0082'); return t ? { id: t.id, name: t.name, en: t.en, host: (() => { try { return new URL(t.backend).host; } catch (e) { return 'invalid'; } })(), apikey: t.apikey, portalOrigin: t.portalOrigin, portalRoles: t.portalRoles, portalEnabled: t.portalEnabled } : null; })(),
+  trusted0083portal: (() => { const t = getTrustedTroop('0083'); return t ? { portalOrigin: t.portalOrigin, portalRoles: t.portalRoles, portalEnabled: t.portalEnabled } : null; })(),
   trusted0082Lower: (() => { const t = getTrustedTroop('0082'); return !!t; })(),
   source: diag.source,
-  portalDefaults: getPortalDefaults()
+  portalDefaultsSet: { origin: diag.portalDefaultOriginSet, roles: diag.portalDefaultRolesSet }
 }));
 `;
 
@@ -62,6 +63,7 @@ console.log('\n【1】模擬 Vercel lambda：只有環境變數，沒有任何 t
   copyApi(dir);
   const out = runProbe(dir, {
     TROOP_0082_NAME: '第 82 旅 (樂行)',
+    TROOP_0082_EN: 'Group 82 (Rover)',
     TROOP_0082_BACKEND: 'https://script.google.com/macros/s/AAAABBBBCCCCDDDD0000/exec',
     TROOP_0082_APIKEY: 'rover_secret_from_env'
   });
@@ -70,6 +72,10 @@ console.log('\n【1】模擬 Vercel lambda：只有環境變數，沒有任何 t
   check('前導零原樣保留（id 是 "0082" 不是 "82"）', out.publicIds.includes('0082') && !out.publicIds.includes('82'));
   check('backend 通過白名單（script.google.com /exec）', out.trusted0082 && out.trusted0082.host === 'script.google.com', JSON.stringify(out.trusted0082));
   check('name 來自 TROOP_0082_NAME', out.trusted0082 && out.trusted0082.name === '第 82 旅 (樂行)');
+  check('en 來自 TROOP_0082_EN（公開清單＋可信旅團一致）', out.public['0082'].en === 'Group 82 (Rover)' && out.trusted0082.en === 'Group 82 (Rover)', JSON.stringify({ pub: out.public['0082'], trusted: out.trusted0082.en }));
+  check('公開清單唔含 portal 設定（portalOrigin/Roles/Enabled 伺服器端專用）',
+    out.public['0082'].portalOrigin === undefined && out.public['0082'].portalRoles === undefined && out.public['0082'].portalEnabled === undefined &&
+    !Object.keys(out.public['0082']).some(k => /portal/i.test(k)), JSON.stringify(out.public['0082']));
   check('apikey 只在伺服器端（getTrustedTroop 有，listPublicTroops 無）',
     out.trusted0082.apikey === 'rover_secret_from_env' && !JSON.stringify(out.public).includes('rover_secret_from_env') &&
     out.public['0082'].backend === undefined && out.public['0082'].apikey === undefined,
@@ -130,21 +136,33 @@ console.log('\n【4】未通過白名單的 backend 視為未登記');
   check('正式 /exec URL 列出', out.publicIds.includes('6003'), JSON.stringify(out.publicIds));
 }
 
-console.log('\n【5】Portal 接入設定（PORTAL_* / TROOP_*_PORTAL*）');
+console.log('\n【5】Portal 接入設定收斂喺伺服器端（個別旅團 env → 全域 PORTAL_DEFAULT_*）');
 {
   const dir = path.join(tmp, 'portal');
   copyApi(dir);
   const out = runProbe(dir, {
     TROOP_0082_BACKEND: 'https://script.google.com/macros/s/PORTALPORTAL0000/exec',
-    PORTAL_DEFAULT_ORIGIN: 'https://main-system.example.org',
+    PORTAL_DEFAULT_ORIGIN: 'https://main-system.example.org/app/?x=1',
     PORTAL_DEFAULT_ROLES: 'member,group_leader',
+    TROOP_0082_PORTALORIGIN: 'https://hub.example.org/dashboard/',
     TROOP_0082_PORTALROLES: 'member,group_leader,admin',
     TROOP_0083_BACKEND: 'https://script.google.com/macros/s/PORTAL2PORTAL2000/exec',
     TROOP_0083_PORTALDISABLED: '1'
   });
-  check('全域 PORTAL_DEFAULT_ORIGIN / ROLES 解析', out.portalDefaults.origin === 'https://main-system.example.org' && out.portalDefaults.roles === 'member,group_leader', JSON.stringify(out.portalDefaults));
-  check('旅團級 PORTALROLES 覆寫', out.public['0082'].portal && out.public['0082'].portal.roles === 'member,group_leader,admin', JSON.stringify(out.public['0082']));
-  check('TROOP_0083_PORTALDISABLED=1 → portal.disabled', out.public['0083'] && out.public['0083'].portal && out.public['0083'].portal.disabled === true, JSON.stringify(out.public['0083']));
+  check('全域 PORTAL_DEFAULT_* 有設定（診斷旗標）', out.portalDefaultsSet.origin === true && out.portalDefaultsSet.roles === true, JSON.stringify(out.portalDefaultsSet));
+  check('旅團級 PORTALORIGIN 覆寫全域＋正規化（path/query 被去掉，只留 origin）',
+    out.trusted0082.portalOrigin === 'https://hub.example.org', JSON.stringify(out.trusted0082.portalOrigin));
+  check('旅團級 PORTALROLES 覆寫全域（解析成陣列）',
+    JSON.stringify(out.trusted0082.portalRoles) === '["member","group_leader","admin"]', JSON.stringify(out.trusted0082.portalRoles));
+  check('無覆寫的旅團沿用全域預設（0083 繼承 origin＋roles）',
+    out.trusted0083portal.portalOrigin === 'https://main-system.example.org' &&
+    JSON.stringify(out.trusted0083portal.portalRoles) === '["member","group_leader"]', JSON.stringify(out.trusted0083portal));
+  check('TROOP_0083_PORTALDISABLED=1 → portalEnabled=false（但公開清單照列：只擋 portal，唔擋正常登入）',
+    out.trusted0083portal.portalEnabled === false && out.publicIds.includes('0083'), JSON.stringify({ portal: out.trusted0083portal, pub: out.public['0083'] }));
+  check('未停用旅團 portalEnabled 預設 true', out.trusted0082.portalEnabled === true);
+  check('公開清單唔含任何 portal 設定（來源／角色／開關都唔出伺服器）',
+    out.public['0082'].portalOrigin === undefined && out.public['0082'].portalRoles === undefined && out.public['0082'].portalEnabled === undefined &&
+    !Object.keys(out.public['0082']).some(k => /portal/i.test(k)), JSON.stringify(out.public['0082']));
   check('portal 設定不含任何機密（無 apikey/backend 欄位）', !JSON.stringify(out.public).includes('apikey'));
 }
 
@@ -169,13 +187,13 @@ console.log('\n【6】vercel.json 部署設定（legacy builds 是 2026-08 404 �
 console.log('\n【7】api/ 目錄結構符合 Vercel 零配置約定');
 {
   const apiFiles = fs.readdirSync(path.join(ROOT, 'api')).sort();
-  for (const f of ['proxy.js', 'troops.js', 'health.js', 'verify-super-ticket.js']) {
+  for (const f of ['proxy.js', 'troops.js', 'health.js', 'verify-super-ticket.js', 'portal.js']) {
     check(`api/${f} 存在且會被建成 function`, apiFiles.includes(f), apiFiles.join(','));
   }
   for (const f of ['_registry.js', '_super.js']) {
     check(`api/${f} 以底線開頭（不會被當成 endpoint）`, apiFiles.includes(f), apiFiles.join(','));
   }
-  for (const f of ['proxy.js', 'troops.js', 'health.js', 'verify-super-ticket.js']) {
+  for (const f of ['proxy.js', 'troops.js', 'health.js', 'verify-super-ticket.js', 'portal.js']) {
     const src = fs.readFileSync(path.join(ROOT, 'api', f), 'utf8');
     check(`api/${f} 有 export default handler`, /export\s+default\s+(async\s+)?function/.test(src));
   }

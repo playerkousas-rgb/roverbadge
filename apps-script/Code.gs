@@ -1,5 +1,5 @@
 // ============================================================
-// 樂行童軍進度追蹤系統 - Apps Script 後端 v8.9 - 全功能版 (樂行童軍支部 Rover Scout)
+// 樂行童軍進度追蹤系統 - Apps Script 後端 v8.9.2 - 全功能版 (樂行童軍支部 Rover Scout)
 // 完全兼容舊版 + 新增待批申請、批量寫入優化、日誌
 // v8.3 新增：
 //   - 批量開戶／申請審批的預設密碼改為 1234（DEFAULT_PASS）
@@ -30,6 +30,12 @@
 // v8.9.1 修改：診斷強化 —— testCentralVerify／handleSuperTicketLogin 連線失敗時，
 //   Logger 一併記錄實際端點 URL 與真正例外訊息（只寫 Logger，不外傳；對外回應維持一般用語），
 //   用以分辨「授權未完成」vs「CENTRAL_VERIFY_URL 指錯／打錯字（DNS 連不上）」
+// v8.9.2 修改（與姊妹系統 vsbadge 同結構）：
+//   - handleSuperTicketLogin 加 LockService＋CacheService 票據一次性保護：同一票據只可驗票成功一次，
+//     防重放／重複提交；取鎖逾時對外只回一般用語
+//   - testCentralVerify 診斷再強化：記錄 HTTP code＋回應首 200 字（分辨 JSON／HTML 登入保護頁），
+//     非 200／回 HTML 時直接指出可能原因；註解寫明首次授權流程與
+//     「An unknown error has occurred, please try again later」（編輯器工作階段問題，F5 重試即可）
 // v8.1 新增：活動履歷（服務紀錄／活動紀錄／訓練班紀錄）
 //   - 新工作表「活動履歷」（執行 initializeSheets() 自動補建，不影響既有資料）
 //   - 新 action：getLogRecords / saveLogRecord（支援批量 records[]）/ deleteLogRecord
@@ -113,23 +119,46 @@ function getOwnBackendUrl() {
   try { return String(ScriptApp.getService().getUrl() || '').trim().replace(/\/+$/, ''); } catch (e) { return ''; }
 }
 // 不讀寫 Sheet 的授權／連線測試：在 Apps Script 編輯器直接執行，
-// 驗證「允許存取外部服務」授權及中央端點可達（只發一個 GET，不觸碰任何工作表）
+// 驗證「允許存取外部服務」授權及中央端點可達（只發一個 GET，不觸碰任何工作表）。
+// 首次執行會彈出授權頁（要求「連接外部服務」）：按指示完成授權後再執行一次即會成功。
+// 若編輯器頂部彈出「An unknown error has occurred, please try again later」，多數是
+// Google 側工作階段過期／暫時性錯誤：重新整理編輯器頁面（F5）再跑一次即可，與本檔內容無關。
 function testCentralVerify() {
   const url = getCentralVerifyUrl();
-  // v8.9.1：先記錄實際使用嘅端點（Script Properties 有冇指錯地方，一眼看出）
+  // 先記錄實際使用嘅端點（Script Properties 有冇指錯地方，一眼看出）
   Logger.log('中央驗證端點：' + url);
+  let r=null;
   try {
-    const r = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
-    const code = r.getResponseCode();
-    Logger.log('中央驗證端點 HTTP ' + code);
-    return { success: code === 200, httpCode: code };
+    r = UrlFetchApp.fetch(url, { muteHttpExceptions: true, followRedirects: true });
   } catch (e) {
-    // v8.9.1：muteHttpExceptions 下 HTTP 4xx/5xx 唔會跌入呢度；跌入呢度＝請求根本發唔出去
-    //（授權未完成／DNS 解唔到／URL 無效）。記低真正例外訊息，唔使靠估。
+    // muteHttpExceptions 下 HTTP 4xx/5xx 唔會跌入呢度；跌入呢度＝請求根本發唔出去。
+    // 常見兩類，對照處理：
+    //   - 'You do not have permission to call UrlFetchApp' → 授權未完成：
+    //     重新執行本函數並喺授權頁允許「連接外部服務」，再重新部署新版本
+    //   - 'DNS'／'Invalid URL'／'Address unavailable' → CENTRAL_VERIFY_URL 指錯／打錯字：
+    //     檢查「專案設定 → 指令碼屬性」嘅 CENTRAL_VERIFY_URL（冇需要就刪咗佢用返預設；
+    //     全形字元（：。／）係 DNS 殺手，成條 URL 必須全半形）
     const detail = (e && e.message) ? e.message : String(e);
     Logger.log('中央驗證端點連線失敗（請檢查外部服務授權）：' + detail);
     return { success: false, error: 'connection failed', detail: detail };
   }
+  const code = r.getResponseCode();
+  let body='';
+  try{ body=String(r.getContentText()||''); }catch(e){ body=''; }
+  Logger.log('中央驗證端點 HTTP ' + code);
+  // 只記首 200 字（判斷係 JSON 定 HTML 登入頁／404 頁），唔會記低任何機密
+  if(body) Logger.log('中央驗證端點回應（首 200 字）：' + body.substring(0,200));
+  if(code!==200){
+    Logger.log('中央驗證端點非 200：URL 可能指錯地方（path 多咗／少咗字）、function 未部署、或開咗 Vercel Deployment Protection 擋住對外連線');
+    return { success: false, httpCode: code };
+  }
+  if(/^\s*</.test(body)){
+    // 200 但回 HTML：多數係 Vercel 登入保護頁／反向代理頁，唔係驗證服務
+    Logger.log('中央驗證端點回咗 HTML 而唔係 JSON：請檢查 Vercel Deployment Protection／網址是否正確');
+    return { success: false, httpCode: code, error: 'unexpected html' };
+  }
+  Logger.log('中央驗證端點連線正常');
+  return { success: true, httpCode: code };
 }
 
 function hashPassword(p) {
@@ -665,29 +694,51 @@ function handleLogin(loginId,password){
 // 流程：中央系統（Vercel）驗證密碼 → 簽發綁定本旅團後端的短效票據 →
 //       本函數向固定中央驗證端點（getCentralVerifyUrl）驗票 → 通過後才建立 session。
 // 本檔永不接收、儲存或比對任何密碼；詳細診斷只寫 Logger，且不含票據內容。
+// v8.9.2：票據一次性（防重放）—— LockService＋CacheService，同姊妹系統 vsbadge 同結構
 function handleSuperTicketLogin(ticket){
   ticket=String(ticket||'');
   if(ticket.length<20 || ticket.length>2000) return jsonResponse({success:false,error:'帳號或密碼錯誤'});
-  let result=null;
-  try{
-    const resp=UrlFetchApp.fetch(getCentralVerifyUrl(),{
-      method:'post',
-      contentType:'application/json',
-      payload:JSON.stringify({ticket:ticket,backend:getOwnBackendUrl()}),
-      muteHttpExceptions:true
-    });
-    if(resp.getResponseCode()===200){
-      result=JSON.parse(resp.getContentText());
-    }
-  }catch(err){
-    // v8.9.1：只寫 Logger 俾部署者睇（不含票據內容）；對外回應照舊一般用語
-    Logger.log('superTicketLogin: 中央驗證端點連線失敗：' + ((err && err.message) ? err.message : String(err)));
+  const lock=LockService.getScriptLock();
+  if(!lock.tryLock(10000)){
+    Logger.log('superTicketLogin: 系統忙碌（取鎖逾時），請稍後重試');
     return jsonResponse({success:false,error:'登入服務暫時無法使用，請稍後重試'});
   }
-  if(!result || result.valid!==true || !isSuperAdminId(result.login_id)){
-    return jsonResponse({success:false,error:'帳號或密碼錯誤'});
+  try{
+    const cache=CacheService.getScriptCache();
+    // 快取鍵只存票據嘅 hash，唔存票據本身
+    const cacheKey='super-ticket:'+hashPassword(ticket);
+    if(cache.get(cacheKey)){
+      Logger.log('superTicketLogin: 票據已被使用（重放或重複提交）');
+      return jsonResponse({success:false,error:'帳號或密碼錯誤'});
+    }
+    let result=null;
+    try{
+      const resp=UrlFetchApp.fetch(getCentralVerifyUrl(),{
+        method:'post',
+        contentType:'application/json',
+        payload:JSON.stringify({ticket:ticket,backend:getOwnBackendUrl()}),
+        muteHttpExceptions:true,
+        followRedirects:true
+      });
+      if(resp.getResponseCode()===200){
+        try{ result=JSON.parse(resp.getContentText()); }catch(e){ result=null; }
+      }else{
+        // 只寫 Logger 俾部署者睇（不含票據內容）；對外回應照舊一般用語
+        Logger.log('superTicketLogin: 中央驗證端點 HTTP '+resp.getResponseCode()+'（端點可能指錯／function 未部署／開咗部署保護）');
+      }
+    }catch(err){
+      // 只寫 Logger 俾部署者睇（不含票據內容）；對外回應照舊一般用語
+      Logger.log('superTicketLogin: 中央驗證端點連線失敗：' + ((err && err.message) ? err.message : String(err)));
+      return jsonResponse({success:false,error:'登入服務暫時無法使用，請稍後重試'});
+    }
+    if(!result || result.valid!==true || !isSuperAdminId(result.login_id)){
+      return jsonResponse({success:false,error:'帳號或密碼錯誤'});
+    }
+    cache.put(cacheKey,'used',120);
+    return jsonResponse({success:true,token:createToken(SUPER_ADMIN_ID),user:{ymis:SUPER_ADMIN_ID,name:SUPER_ADMIN_NAME,role:'super_admin',can_tick:true,email:''},force_change_password:false});
+  }finally{
+    try{ lock.releaseLock(); }catch(e){}
   }
-  return jsonResponse({success:true,token:createToken(SUPER_ADMIN_ID),user:{ymis:SUPER_ADMIN_ID,name:SUPER_ADMIN_NAME,role:'super_admin',can_tick:true,email:''},force_change_password:false});
 }
 function handleChangePassword(ymis,oldP,newP){
   // 錯誤訊息刻意不含任何帳號／密碼資訊
