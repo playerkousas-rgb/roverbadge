@@ -65,12 +65,12 @@ scoutsystem-2.0 主系統平台	scoutsystem-2.0 main system platform
 擴充功能→Apps Script，貼上 Code.gs	Extensions → Apps Script, paste Code.gs
 儲存→執行 initializeSheets，授權，複製 API Key	Save → run initializeSheets, authorise, copy the API Key
 部署為網頁應用程式 (執行身分我，存取權任何人)，複製 URL (/exec)	Deploy as a web app (execute as me, access: anyone), copy the URL (/exec)
-將旅團編號、名稱、URL、API Key 交 roverbadge 管理員加入 troops.json，Vercel自動部署後獨立可用	Give the Group number, name, URL and API Key to the roverbadge admin to add to troops.json; after Vercel auto-deploys, it works standalone
+將旅團編號、名稱、URL、API Key 交 roverbadge 管理員，在 Vercel 環境變數登記（TROOP_{編號}_NAME / _BACKEND / _APIKEY），重新部署後獨立可用	Give the Group number, name, URL and API Key to the roverbadge admin to register in Vercel environment variables (TROOP_{ID}_NAME / _BACKEND / _APIKEY); after redeploying, it works standalone
 獨立用：交 roverbadge 管理員	Standalone: submit to the roverbadge admin
 接入主系統：同時交主系統管理員（填 backend+apikey）	Connect to main system: also submit to the main system admin (fill in backend + apikey)
 兩條路可同時用，領袖從主系統入，成員 bookmark 獨立連結	Both tracks can be used at the same time: leaders enter via the main system, members bookmark the standalone link
-將 URL+Key 交 roverbadge 管理員 → 加入 troops.json → 完成 → 用法：roverbadge.vercel.app 選旅團登入	Give URL + Key to the roverbadge admin → added to troops.json → done → how to use: go to roverbadge.vercel.app, select the Group and log in
-將同一組 URL+Key 交主系統管理員，填入旅團設定→元件設定 roverbadge 卡片 backend+apikey。之後成員點 Dashboard 卡片自動帶入 ?u=0082&role=&ymis=&from=portal&embed=1，無需密碼	Give the same URL + Key to the main system admin, fill them into Group settings → component settings → roverbadge card backend + apikey. Members then click the Dashboard card, which auto-fills ?u=0082&role=&ymis=&from=portal&embed=1 with no password needed
+將 URL+Key 交 roverbadge 管理員 → 管理員在 Vercel 環境變數登記 → 完成 → 用法：roverbadge.vercel.app 選旅團登入	Give URL + Key to the roverbadge admin → the admin registers them in Vercel environment variables → done → how to use: go to roverbadge.vercel.app, select the Group and log in
+告知主系統管理員旅團編號：旅團設定→元件設定 roverbadge 卡片只需設 u 參數（backend/apikey 不用；就算 URL 帶入亦會被忽略）。之後成員點 Dashboard 卡片自動帶入 ?u=0082&role=&ymis=&from=portal&embed=1，無需密碼	Tell the main-system admin the Group number: Group settings → component settings → the roverbadge card only needs the u parameter (no backend/apikey; any such URL parameters are ignored). Members then click the Dashboard card, which auto-fills ?u=0082&role=&ymis=&from=portal&embed=1 with no password needed
 有主系統不等於一定要接，可自由選擇獨立用。若旅團重私隱，成員預設只看自己；若想互相鼓勵，團長可在用戶管理→系統設定開啟「允許成員互相查看進度」	Having a main system does not mean you must connect. For privacy-focused Groups, members see only themselves by default; for mutual encouragement, the Group Scout Leader can enable "Allow members to view each other's progress" in User Management → System Settings
 💡 提示：若您的旅團不在列表，請到「新旅團部署」查看10分鐘自助部署教學。	💡 Tip: if your Group is not in the list, see the 10-minute self-deployment guide in "New Group Deployment".
 首頁點擊旅團卡片（例如 0082 第82旅）	Click the Group card on the home page (e.g. 0082, 82nd Group)
@@ -370,12 +370,11 @@ USER (系統使用者)	USER (system user)
 管理員 admin	Admin
 管理員	Admin
 = 領袖	= leader
-系統管理員 super_admin	System Admin super_admin
 超管	System Admin
 ，可勾選及管理。	, can tick and manage.
 USER 總數	Total USERs
 = 成員 + 領袖 全部。	= all members + leaders.
-🧪 測試工具 (僅系統管理員可見)	🧪 Test Tools (System Admin only)
+🧪 測試工具 (僅中央管理帳號可見)	🧪 Test Tools (central admin only)
 一鍵載入 10個 MOCK 成員到前端快取，方便測試全團批量剔、會員章一眼睇等。MOCK數據只存瀏覽器快取，不會寫入正式 Google Sheet，除非你按確認寫入。	Load 10 MOCK members into the front-end cache in one click, useful for testing Group batch ticking and the Membership Badge at-a-glance view. MOCK data is stored only in the browser cache and will NOT be written to the real Google Sheet unless you confirm the write.
 🧪 載入10個MOCK成員到全團	🧪 Load 10 MOCK members into the Group
 🗑️ 清除MOCK快取	🗑️ Clear MOCK cache
@@ -614,11 +613,9 @@ PT/22 貝登堡獎章	PT/22 Baden-Powell Award
 錯誤：	Error: 
 失敗	failed
 ：網絡錯誤	: network error
-⚠️ 正使用後備資料顯示 0082，若 Vercel 上 data/troops.json 未部署，請檢查 GitHub 是否已推送 data/troops.json	⚠️ Showing fallback data for 0082; if data/troops.json is not deployed on Vercel, check whether data/troops.json has been pushed to GitHub
-載入出錯，已顯示後備 0082：	Load error; fallback shown for 0082: 
 ⚠️ Portal 模式：旅團未在 Registry 登記	⚠️ Portal mode: Group not registered in the Registry
-未在伺服器端 troops.json / env 找到	not found in the server-side troops.json / env
-請聯絡 roverbadge 管理員將旅團 GAS URL 加入 Registry（主系統卡片只需傳 u 參數，不需再傳 backend/apikey）	Please ask the roverbadge admin to add the Group's GAS URL to the Registry (the main-system card only needs the u parameter, no backend/apikey needed)
+未在伺服器端環境變數 Registry 找到	not found in the server-side environment-variable Registry
+請聯絡 roverbadge 管理員在 Vercel 環境變數登記旅團（主系統卡片只需傳 u 參數，不需再傳 backend/apikey）	Please ask the roverbadge admin to register the Group in the Vercel environment variables (the main-system card only needs the u parameter, no backend/apikey needed)
 📍	📍
 - Portal預選	- Portal pre-selected
 - 進度追蹤 (Portal)	- Progress Tracker (Portal)
@@ -794,7 +791,7 @@ assets/ymis-parse.js 未載入	assets/ymis-parse.js not loaded
 已拒絕申請	Application rejected
 待批履歷	Pending Activity Logs
 成員申報活動履歷在此審批，批准後寫入活動履歷。	Member activity log declarations are approved here and written to the Activity Log after approval.
-同樣交 roverbadge 管理員 + 額外交主系統管理員填入旅團設定→元件設定 backend+apikey → 用法：主系統 Dashboard 點卡片 → 自動帶入 from=portal&embed=1 → 直接用	Also give the same to the roverbadge Admin + additionally ask the main-system admin to fill in the Group settings → Widget settings backend+apikey → Usage: click the card on the main-system Dashboard → identity is auto-carried from=portal&embed=1 → use directly
+同樣交 roverbadge 管理員（Vercel 環境變數登記）→ 主系統卡片只需設 u 參數（backend/apikey 不用）→ 用法：主系統 Dashboard 點卡片 → 自動帶入 from=portal&embed=1 → 直接用	Also give the same to the roverbadge Admin (registered via Vercel environment variables) → the main-system card only needs the u parameter (no backend/apikey) → Usage: click the card on the main-system Dashboard → identity is auto-carried from=portal&embed=1 → use directly
 建新試算表	Create a new spreadsheet
 私隱選擇	Privacy choice
 其他功能	Other features
@@ -855,9 +852,9 @@ YMIS 匯出教學	YMIS export guide
 任教	teaching
 必須	Must
 ｜後端 API 未部署，請聯絡管理員重新部署	| the backend API is not deployed; please ask your section admin to redeploy on Vercel
-｜後端找不到此旅團，請檢查 troops.json 已否同步	| the backend cannot find this troop; please check that troops.json has been synced
+｜後端未登記任何旅團，請確認管理員已設定 Vercel 環境變數	| no troop is registered in the backend; please make sure the admin has set the Vercel environment variables
 ⚠️ 後端 API 未部署（/api/* 無回應），登入一定失敗；請聯絡管理員喺 Vercel 重新部署	⚠️ Backend API is not deployed (/api/* does not respond), so sign-in will always fail. Please ask your section admin to redeploy on Vercel
-⚠️ 後端未登記此旅團（troops.json 未同步），登入會失敗	⚠️ This troop is not registered in the backend (troops.json not synced); sign-in will fail
+⚠️ 後端未登記任何旅團（Vercel 環境變數未設定），登入會失敗	⚠️ No troop is registered in the backend (Vercel environment variables not set); sign-in will fail
 ⚠️ 雲端資料載入失敗，而家顯示嘅係本機快取	⚠️ Cloud data failed to load; the view below is your local cache
 ⚠️ 雲端載入失敗，顯示緊上次快取（唔係你斷網）	⚠️ Cloud load failed; showing the last cached copy (your connection is not the problem)
 ❌ 雲端載入失敗，本機亦冇快取可顯示	❌ Cloud load failed and there is no local cache to show
@@ -895,3 +892,10 @@ YMIS 或登記電郵	YMIS or registered email
 暫無（所有名單成員都已有登入帳號）	None (all roster members already have login accounts)
 只在成員名單，未開登入帳號	Roster only, no login account yet
 停用中仍佔用 YMIS／Email，不可重複開戶；可恢復或徹底刪除	Deactivated accounts still occupy their YMIS/email and cannot be re-registered; reactivate or delete them permanently
+⚠️ 未有已登記旅團：請管理員在 Vercel 環境變數設定 TROOP_{編號}_BACKEND 等設定並重新部署（詳見 /api/health）	⚠️ No registered Groups yet: the admin needs to set TROOP_{ID}_BACKEND and related Vercel environment variables and redeploy (see /api/health)
+旅團清單載入失敗：	Failed to load the Group list: 
+請稍後重試；若持續失敗請聯絡管理員檢查 /api/health	Please try again later; if it keeps failing, ask the admin to check /api/health
+此旅團未開放 Portal 模式	Portal mode is not enabled for this Group
+來源不符，Portal 模式已拒絕	Origin mismatch; Portal mode denied
+角色未被允許使用 Portal 模式	This role is not allowed to use Portal mode
+，請使用正常登入或聯絡管理員	. Please sign in normally or contact the admin

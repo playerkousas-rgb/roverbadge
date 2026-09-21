@@ -1,7 +1,9 @@
 // 本機開發/預覽伺服器：模擬 Vercel 行為（靜態檔 + /api/* serverless handlers）
 // 用法：node tests/dev-server.mjs [port]
 // 本機測試多旅團可設：
-//   ROVERBADGE_PROXY_TEST=1 TROOP_0082_BACKEND=http://127.0.0.1:3901/exec node tests/dev-server.mjs
+//   ROVERBADGE_PROXY_TEST=1 TROOP_0082_NAME=測試旅團 TROOP_0082_BACKEND=http://127.0.0.1:3901/exec \
+//   TROOP_0082_APIKEY=KEY node tests/dev-server.mjs
+//   旅團登記一律由 TROOP_{ID}_NAME/_BACKEND/_APIKEY 環境變數提供（與 Vercel 一致）
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
@@ -14,6 +16,7 @@ const PORT = parseInt(process.argv[2] || process.env.PORT || '3000', 10);
 const { default: proxyHandler } = await import('../api/proxy.js');
 const { default: troopsHandler } = await import('../api/troops.js');
 const { default: healthHandler } = await import('../api/health.js');
+const { default: verifyHandler } = await import('../api/verify-super-ticket.js');
 
 function vercelize(res) {
   res.status = (code) => { res.statusCode = code; return res; };
@@ -27,6 +30,7 @@ const server = http.createServer((req, res) => {
   if (u.pathname === '/api/proxy') return proxyHandler(req, vercelize(res));
   if (u.pathname === '/api/troops') return troopsHandler(req, vercelize(res));
   if (u.pathname === '/api/health') return healthHandler(req, vercelize(res));
+  if (u.pathname === '/api/verify-super-ticket') return verifyHandler(req, vercelize(res));
   let p = u.pathname === '/' ? '/index.html' : decodeURIComponent(u.pathname);
   const fp = path.join(ROOT, p);
   if (!fp.startsWith(ROOT) || !fs.existsSync(fp) || fs.statSync(fp).isDirectory()) {
@@ -42,4 +46,6 @@ server.listen(PORT, '0.0.0.0', async () => {
   const d = getRegistryDiagnostics();
   const ids = Object.keys(listPublicTroops());
   console.log(`  /api/health 來源=${d.source} 有效旅團=${ids.length ? ids.join(',') : '⚠️ 無（proxy 會回 404）'}`);
+  const { superConfigured } = await import('../api/_super.js');
+  console.log(`  SUPER_KEY：${superConfigured() ? '已設定（≥4 字元）' : '⚠️ 未設定／少於 4 字元 → 中央登入不可用（一般旅團登入不受影響）'}`);
 });

@@ -1,10 +1,8 @@
-// Serverless 環境下的旅團 Registry 解析測試（防止 2026-08 全站登入失效重演）
+// 旅團 Registry 解析測試（v4.0：唯一來源 = Vercel 環境變數）
 //
 // 這個測試刻意「不像」本機 dev：它把 api/ 複製到一個空的 lambda 目錄，
-// 用那個目錄當作 process.cwd()（等同 Vercel 的 /var/task），
-// 於是 data/troops.json 讀不到 —— 正是正式環境過去的真實狀況。
-// 此時 Registry 必須仍能靠 bundle 內的 api/_troops_static.js 解析出旅團，
-// 否則 /api/proxy 會回 404「找不到此旅團」，全站沒人登入得到（不論用哪個帳號）。
+// 用那個目錄當作 process.cwd()（等同 Vercel 的 /var/task），並在該目錄放一份
+// data/troops.json —— Registry 必須完全忽略檔案，只認環境變數。
 //
 // 另附 vercel.json 規則檢查：legacy builds / routes 一旦回來，function 又會消失。
 import fs from 'fs';
@@ -31,135 +29,165 @@ function copyApi(dir) {
 }
 
 const PROBE = `
-import fs from 'fs';
-import path from 'path';
-const { getRegistry, getTrustedTroop, listPublicTroops, getRegistryDiagnostics } = await import('./api/_registry.js');
+const { getRegistry, getTrustedTroop, listPublicTroops, getRegistryDiagnostics, getPortalDefaults } = await import('./api/_registry.js');
 const diag = getRegistryDiagnostics();
 console.log(JSON.stringify({
   cwd: process.cwd(),
-  dataFileExists: fs.existsSync(path.join(process.cwd(), 'data', 'troops.json')),
   registryIds: Object.keys(getRegistry()).sort(),
   publicIds: Object.keys(listPublicTroops()).sort(),
-  trusted0082: (() => { const t = getTrustedTroop('0082'); return t ? { id: t.id, host: (() => { try { return new URL(t.backend).host; } catch (e) { return 'invalid'; } })(), apikey: t.apikey } : null; })(),
-  source: diag.source
+  public: listPublicTroops(),
+  trusted0082: (() => { const t = getTrustedTroop('0082'); return t ? { id: t.id, name: t.name, host: (() => { try { return new URL(t.backend).host; } catch (e) { return 'invalid'; } })(), apikey: t.apikey } : null; })(),
+  trusted0082Lower: (() => { const t = getTrustedTroop('0082'); return !!t; })(),
+  source: diag.source,
+  portalDefaults: getPortalDefaults()
 }));
 `;
 
 function runProbe(dir, env = {}) {
   fs.writeFileSync(path.join(dir, 'probe.mjs'), PROBE, 'utf8');
-  const cleanEnv = { ...process.env, ...env };
-  // 模擬 Vercel 正式環境：沒有測試用後門、也沒有用 env 注入 backend
+  // 先清走宿主環境的旅團／Portal／測試變數，再套上本 case 指定嘅 env
+  const cleanEnv = { ...process.env };
   delete cleanEnv.ROVERBADGE_PROXY_TEST;
-  for (const k of Object.keys(cleanEnv)) if (/^TROOP_[0-9A-Za-z]+_(BACKEND|APIKEY)$/i.test(k)) delete cleanEnv[k];
+  delete cleanEnv.SUPER_KEY;
+  for (const k of Object.keys(cleanEnv)) if (/^TROOP_[0-9A-Za-z]+_/i.test(k) || /^PORTAL_DEFAULT_/.test(k)) delete cleanEnv[k];
+  Object.assign(cleanEnv, env);
   const r = spawnSync(process.execPath, [path.join(dir, 'probe.mjs')], { cwd: dir, env: cleanEnv, encoding: 'utf8' });
   if (r.status !== 0) throw new Error(`probe 失敗：${r.stderr || r.stdout}`);
   return JSON.parse(r.stdout.trim().split('\n').pop());
 }
 
-console.log('\n【1】模擬 Vercel lambda：api/ 存在但 data/troops.json 不存在');
+console.log('\n【1】模擬 Vercel lambda：只有環境變數，沒有任何 troops JSON');
 {
-  const dir = path.join(tmp, 'no-data');
-  copyApi(dir); // 刻意不放 data/
-  const out = runProbe(dir);
-  check('前提成立：function 內讀不到 data/troops.json', out.dataFileExists === false, JSON.stringify(out));
-  check('Registry 仍解析出旅團 0082（靜態保底生效）', out.registryIds.includes('0082'), JSON.stringify(out));
-  check('/api/troops 會列出 0082', out.publicIds.includes('0082'), JSON.stringify(out));
-  check('/api/proxy 能找到可信 backend（不再回 404）', !!out.trusted0082, JSON.stringify(out));
-  check('backend 為 script.google.com 的正式 /exec', out.trusted0082 && out.trusted0082.host === 'script.google.com', JSON.stringify(out.trusted0082));
-  check('診斷來源為 static bundle', /^static:/.test(out.source || ''), out.source);
-  check('不洩漏 apikey（未設環境變數時為空）', out.trusted0082 && out.trusted0082.apikey === '', JSON.stringify(out.trusted0082));
+  const dir = path.join(tmp, 'env-only');
+  copyApi(dir);
+  const out = runProbe(dir, {
+    TROOP_0082_NAME: '第 82 旅 (樂行)',
+    TROOP_0082_BACKEND: 'https://script.google.com/macros/s/AAAABBBBCCCCDDDD0000/exec',
+    TROOP_0082_APIKEY: 'rover_secret_from_env'
+  });
+  check('Registry 只從環境變數解析出旅團 0082', JSON.stringify(out.registryIds) === '["0082"]', JSON.stringify(out.registryIds));
+  check('/api/troops 會列出 0082', out.publicIds.includes('0082'));
+  check('前導零原樣保留（id 是 "0082" 不是 "82"）', out.publicIds.includes('0082') && !out.publicIds.includes('82'));
+  check('backend 通過白名單（script.google.com /exec）', out.trusted0082 && out.trusted0082.host === 'script.google.com', JSON.stringify(out.trusted0082));
+  check('name 來自 TROOP_0082_NAME', out.trusted0082 && out.trusted0082.name === '第 82 旅 (樂行)');
+  check('apikey 只在伺服器端（getTrustedTroop 有，listPublicTroops 無）',
+    out.trusted0082.apikey === 'rover_secret_from_env' && !JSON.stringify(out.public).includes('rover_secret_from_env') &&
+    out.public['0082'].backend === undefined && out.public['0082'].apikey === undefined,
+    JSON.stringify(out.public));
+  check('診斷來源為 env', out.source === 'env', out.source);
 }
 
-console.log('\n【2】includeFiles 生效時：以磁碟 data/troops.json 為準');
+console.log('\n【2】磁碟上的 troops.json 一律被忽略（v4.0 移除檔案來源）');
 {
-  const dir = path.join(tmp, 'with-data');
+  const dir = path.join(tmp, 'with-stale-json');
   copyApi(dir);
   fs.mkdirSync(path.join(dir, 'data'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'data', 'troops.json'), JSON.stringify({
-    troops: { '0099': { name: '第 99 旅（檔案優先）', backend: 'https://script.google.com/macros/s/AAAABBBBCCCCDDDD0000/exec' } }
-  }, null, 2), 'utf8');
-  const out = runProbe(dir);
-  check('來源為 file:data/troops.json', /^file:/.test(out.source || ''), out.source);
-  check('讀到檔案裡的 0099', out.registryIds.includes('0099'), JSON.stringify(out.registryIds));
-  check('0099 backend 通過白名單並可列出', out.publicIds.includes('0099'), JSON.stringify(out.publicIds));
-}
-
-console.log('\n【3】環境變數永遠優先（TROOP_0082_BACKEND / _APIKEY）');
-{
-  const dir = path.join(tmp, 'env-override');
-  copyApi(dir);
-  fs.mkdirSync(path.join(dir, 'data'), { recursive: true });
-  fs.writeFileSync(path.join(dir, 'data', 'troops.json'), JSON.stringify({
-    troops: { '0082': { name: '第 82 旅', backend: 'https://script.google.com/macros/s/FILEFILEFILE0000/exec' } }
+    troops: { '0099': { name: '舊檔案旅團', backend: 'https://script.google.com/macros/s/STALESTALESTALE0/exec' } }
   }), 'utf8');
-  fs.writeFileSync(path.join(dir, 'probe-env.mjs'), `
-    process.env.TROOP_0082_BACKEND = 'https://script.google.com/macros/s/ENVENVENVENV0000/exec';
-    process.env.TROOP_0082_APIKEY = 'rover_secret_from_env';
-    const { getTrustedTroop } = await import('./api/_registry.js');
-    const t = getTrustedTroop('0082');
-    console.log(JSON.stringify({ host: new URL(t.backend).pathname, apikey: t.apikey, name: t.name }));
-  `, 'utf8');
-  const r = spawnSync(process.execPath, [path.join(dir, 'probe-env.mjs')], { cwd: dir, encoding: 'utf8' });
-  check('env 覆寫成功且仍保留檔案內名稱', r.status === 0, r.stderr);
-  const out = JSON.parse(r.stdout.trim().split('\n').pop());
-  check('使用 env 的 backend', /ENVENVENVENV0000/.test(out.host), out.host);
-  check('使用 env 的 apikey', out.apikey === 'rover_secret_from_env', out.apikey);
-  check('name 仍取自 troops.json', out.name === '第 82 旅', out.name);
+  fs.writeFileSync(path.join(dir, 'troops.json'), JSON.stringify({
+    troops: { '0077': { name: '舊根檔案旅團', backend: 'https://script.google.com/macros/s/STALE2STALE2STA0/exec' } }
+  }), 'utf8');
+  const out = runProbe(dir, {
+    TROOP_0082_BACKEND: 'https://script.google.com/macros/s/ENVONLYENVONLY00/exec'
+  });
+  check('data/troops.json 的 0099 不會出現', !out.registryIds.includes('0099'), JSON.stringify(out.registryIds));
+  check('根 troops.json 的 0077 不會出現', !out.registryIds.includes('0077'), JSON.stringify(out.registryIds));
+  check('只有 env 的 0082 被解析', JSON.stringify(out.registryIds) === '["0082"]', JSON.stringify(out.registryIds));
+  const regSrc = fs.readFileSync(path.join(ROOT, 'api', '_registry.js'), 'utf8');
+  check('_registry.js 不再 import fs（無檔案讀取路徑）', !/^import fs/m.test(regSrc) && !/readFileSync/.test(regSrc));
+  check('api/_troops_static.js（寫死旅團登記）已刪除', !fs.existsSync(path.join(ROOT, 'api', '_troops_static.js')));
+  check('data/troops.json / troops.json 已從 repo 刪除',
+    !fs.existsSync(path.join(ROOT, 'data', 'troops.json')) && !fs.existsSync(path.join(ROOT, 'troops.json')));
 }
 
-console.log('\n【4】vercel.json 部署設定（legacy builds 是這次 404 的元兇之一）');
+console.log('\n【3】0082 與 82 是兩個不同旅團（前導零不混淆）');
+{
+  const dir = path.join(tmp, 'leading-zero');
+  copyApi(dir);
+  const out = runProbe(dir, {
+    TROOP_0082_NAME: '零填充旅團',
+    TROOP_0082_BACKEND: 'https://script.google.com/macros/s/ZEROZEROZERO0000/exec',
+    TROOP_82_NAME: '無零旅團',
+    TROOP_82_BACKEND: 'https://script.google.com/macros/s/NOZERONOZERO0000/exec'
+  });
+  check('兩個旅團同時存在', out.registryIds.includes('0082') && out.registryIds.includes('82'), JSON.stringify(out.registryIds));
+  check('0082 與 82 名稱各自獨立',
+    out.public['0082'].name === '零填充旅團' && out.public['82'].name === '無零旅團', JSON.stringify(out.public));
+}
+
+console.log('\n【4】未通過白名單的 backend 視為未登記');
+{
+  const dir = path.join(tmp, 'untrusted');
+  copyApi(dir);
+  const out = runProbe(dir, {
+    TROOP_6001_BACKEND: 'https://evil.example.com/exec',
+    TROOP_6002_BACKEND: 'https://script.google.com/macros/s/GOODGOODGOOD0000/dev',
+    TROOP_6003_BACKEND: 'https://script.google.com/macros/s/OKOKOKOKOKOK0000/exec'
+  });
+  check('任意外部 URL 不列出', !out.publicIds.includes('6001'), JSON.stringify(out.publicIds));
+  check('GAS /dev URL 不列出', !out.publicIds.includes('6002'), JSON.stringify(out.publicIds));
+  check('正式 /exec URL 列出', out.publicIds.includes('6003'), JSON.stringify(out.publicIds));
+}
+
+console.log('\n【5】Portal 接入設定（PORTAL_* / TROOP_*_PORTAL*）');
+{
+  const dir = path.join(tmp, 'portal');
+  copyApi(dir);
+  const out = runProbe(dir, {
+    TROOP_0082_BACKEND: 'https://script.google.com/macros/s/PORTALPORTAL0000/exec',
+    PORTAL_DEFAULT_ORIGIN: 'https://main-system.example.org',
+    PORTAL_DEFAULT_ROLES: 'member,group_leader',
+    TROOP_0082_PORTALROLES: 'member,group_leader,admin',
+    TROOP_0083_BACKEND: 'https://script.google.com/macros/s/PORTAL2PORTAL2000/exec',
+    TROOP_0083_PORTALDISABLED: '1'
+  });
+  check('全域 PORTAL_DEFAULT_ORIGIN / ROLES 解析', out.portalDefaults.origin === 'https://main-system.example.org' && out.portalDefaults.roles === 'member,group_leader', JSON.stringify(out.portalDefaults));
+  check('旅團級 PORTALROLES 覆寫', out.public['0082'].portal && out.public['0082'].portal.roles === 'member,group_leader,admin', JSON.stringify(out.public['0082']));
+  check('TROOP_0083_PORTALDISABLED=1 → portal.disabled', out.public['0083'] && out.public['0083'].portal && out.public['0083'].portal.disabled === true, JSON.stringify(out.public['0083']));
+  check('portal 設定不含任何機密（無 apikey/backend 欄位）', !JSON.stringify(out.public).includes('apikey'));
+}
+
+console.log('\n【6】vercel.json 部署設定（legacy builds 是 2026-08 404 的元兇之一）');
 {
   const vcPath = path.join(ROOT, 'vercel.json');
   const raw = fs.existsSync(vcPath) ? fs.readFileSync(vcPath, 'utf8') : '{}';
   const cfg = JSON.parse(raw);
   check('vercel.json 可被解析', !!cfg);
-  check('不含 legacy builds', cfg.builds === undefined, 'builds 會令 Vercel 忽略內建 api/ function 偵測');
-  check('不含 legacy routes', cfg.routes === undefined, 'routes 屬 legacy 路由表，與 rewrites/functions 互斥');
+  check('不含 legacy builds', cfg.builds === undefined);
+  check('不含 legacy routes', cfg.routes === undefined);
   check('不含 legacy version 欄位', cfg.version === undefined);
-  // includeFiles 而家係「有就檢查格式」：旅團名單已有 bundle 內保底（api/_troops_static.js），
-  // 冇 includeFiles 都唔會影響登入，所以唔再硬性要求（見 POSTMORTEM 根因 D 嘅部署隔離過程）
-  if (cfg.functions && cfg.functions['api/*.js'] && cfg.functions['api/*.js'].includeFiles) {
-    check('includeFiles 涵蓋 data/*.json', /data\/\*\.json/.test(cfg.functions['api/*.js'].includeFiles), cfg.functions['api/*.js'].includeFiles);
-  } else {
-    console.log('  · functions.includeFiles 未設定（靠 bundle 內靜態保底）');
-  }
+  // v4.0：Registry 不再讀檔案，function 不需要 includeFiles
+  const fn = (cfg.functions && cfg.functions['api/*.js']) || {};
+  check('functions 不再需要 includeFiles（Registry 純 env）', fn.includeFiles === undefined, JSON.stringify(fn));
   if (Array.isArray(cfg.headers) && cfg.headers.length) {
     check('/api/* 有 no-store header', JSON.stringify(cfg.headers).includes('no-store'));
-  } else {
-    console.log('  · 冇 headers 設定（用平台預設）');
   }
   check('没有任何 builds 條目指定 builder（"use"）', !/"use"\s*:/.test(raw));
 }
 
-console.log('\n【5】api/ 目錄結構符合 Vercel 零配置約定');
+console.log('\n【7】api/ 目錄結構符合 Vercel 零配置約定');
 {
   const apiFiles = fs.readdirSync(path.join(ROOT, 'api')).sort();
-  for (const f of ['proxy.js', 'troops.js', 'health.js']) {
+  for (const f of ['proxy.js', 'troops.js', 'health.js', 'verify-super-ticket.js']) {
     check(`api/${f} 存在且會被建成 function`, apiFiles.includes(f), apiFiles.join(','));
   }
-  for (const f of ['_registry.js', '_troops_static.js']) {
+  for (const f of ['_registry.js', '_super.js']) {
     check(`api/${f} 以底線開頭（不會被當成 endpoint）`, apiFiles.includes(f), apiFiles.join(','));
   }
-  for (const f of ['proxy.js', 'troops.js', 'health.js']) {
+  for (const f of ['proxy.js', 'troops.js', 'health.js', 'verify-super-ticket.js']) {
     const src = fs.readFileSync(path.join(ROOT, 'api', f), 'utf8');
     check(`api/${f} 有 export default handler`, /export\s+default\s+(async\s+)?function/.test(src));
   }
   const pk = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
   check('package.json type=module（api/*.js 用 ESM import）', pk.type === 'module');
-  check('package.json 冇 engines（Vercel 會用佢覆寫 Project Settings 嘅 Node 版本；range/被淘汰版本會令 build 失敗）',
-    pk.engines === undefined, JSON.stringify(pk.engines || {}));
-  // Vercel 將 ESM 編譯成 lambda 時，import.meta 有Chance 爆「outside a module」→ build fail
-  for (const f of fs.readdirSync(path.join(ROOT, 'api')).filter(f => f.endsWith('.js'))) {
+  check('package.json 冇 engines（避免 Vercel 覆寫 Node 版本）', pk.engines === undefined, JSON.stringify(pk.engines || {}));
+  // Vercel 將 ESM 編譯成 lambda 時，import.meta 有機會爆「outside a module」→ build fail
+  for (const f of apiFiles.filter(f => f.endsWith('.js'))) {
     const src = fs.readFileSync(path.join(ROOT, 'api', f), 'utf8')
-      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, ''); // 註解提到得唔算
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, ''); // 註解提到嘅唔算
     check(`api/${f} 嘅實際程式碼唔使用 import.meta / __dirname`, !/import\.meta|__dirname/.test(src));
   }
-}
-
-console.log('\n【6】_troops_static.js 與 data/troops.json 不可漂移');
-{
-  const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'sync-troops.mjs'), '--check'], { cwd: ROOT, encoding: 'utf8' });
-  check('npm run sync:troops 產物與 troops.json 同步（--check）', r.status === 0, (r.stdout || '') + (r.stderr || ''));
 }
 
 fs.rmSync(tmp, { recursive: true, force: true });

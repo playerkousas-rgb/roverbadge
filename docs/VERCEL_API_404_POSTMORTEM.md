@@ -1,6 +1,6 @@
 # 事故報告：`/api/*` 全部 404 → 全站無人登入得到（2026-08-28）
 
-> 一句講晒：**唔係帳號問題**。`sheep`、`1111111111`、任何成員帳號都一樣入唔到，
+> 一句講晒：**唔係帳號問題**。系統管理員、`1111111111`、任何成員帳號都一樣入唔到，
 > 因為 Vercel 根本冇建立起任何一個 Serverless Function，前端打到嘅係 Vercel 嘅
 > **HTML** 404 頁，`res.json()` 自然 explode，訊息變成「伺服器回應格式異常 (HTTP 404)」。
 > Vercel 顯示綠燈只代表靜態檔部署成功。
@@ -151,7 +151,7 @@ scoutbadge 嗰邊第二擊：登入成功，但一入主畫面就彈「⚠️ �
 ```bash
 # 1) function 有冇建造成？
 curl -s https://roverbadge.vercel.app/api/health
-#    期望 "success":true，"registry":{"source":"file:data/troops.json"（或 static:...）},"troops":[{"id":"0082"...}]
+#    期望 "success":true，"registry":{"source":"env-only"},"troops":[{"id":"0082"...}]（v4.0 起 Registry 純環境變數）
 
 # 2) 旅團名單
 curl -s https://roverbadge.vercel.app/api/troops
@@ -160,11 +160,11 @@ curl -s https://roverbadge.vercel.app/api/troops
 # 3) proxy 活住（GET 應該係 405 唔係 404）
 curl -s -o /dev/null -w '%{http_code}\n' https://roverbadge.vercel.app/api/proxy   # 期望 405
 
-# 4) 登入（sheep 係 Code.gs 內嘅 super_admin，密碼見 getSuperAdminPass()）
+# 4) 登入（用你手上任何一個有效旅團帳號；v8.9 起系統管理員密碼由 Vercel SUPER_KEY 驗證）
 curl -s -X POST https://roverbadge.vercel.app/api/proxy -H 'Content-Type: application/json' \
-  -d '{"troopId":"0082","action":"login","data":{"login_id":"sheep","password":"0728"}}'
-#    期望 {"success":true,"token":"...","user":{"role":"super_admin"}}
-#    → 呢步入面咗，成員/領袖登入就一定得（同一條鏈路）
+  -d '{"troopId":"0082","action":"login","data":{"login_id":"<旅團帳號>","password":"<密碼>"}}'
+#    期望 {"success":true,"token":"...","user":{...}}
+#    → 呢步入面咗，其他成員/領袖登入就一定得（同一條鏈路）
 
 # 本機重跑全部測試
 npm ci || npm i
@@ -175,11 +175,10 @@ npm test
 
 1. **`vercel.json` 永遠唔准出現 `builds`、`routes`、`version`。** 需要改函式設定就用 `functions`；
    需要路徑覆寫就用 `rewrites`/`redirects`。`tests/serverless-registry.test.mjs` 會 fail 掉違規嘅 PR。
-2. **改咗 `data/troops.json` / `troops.json` 一定要 `npm run sync:troops`** 再 commit（`api/_troops_static.js`；
-   唔好用 `build` 做名 —— Vercel 會自動執行 `build` script 然後炸，見根因 D）
-   要同步；`npm test` 會 check）。或者索性只靠 `TROOP_{ID}_BACKEND` 環境變數（env 優先於檔案）。
-3. **部署完成 = 開 `/api/health`**，唔好睇綠燈。`includeFilesWorking:false` 表示 Vercel 冇把
-   `data/*.json` 放進 lambda（此時會用 bundle 保底，仍然可用）。
+2. **旅團登記一律用環境變數 `TROOP_{ID}_NAME/_BACKEND/_APIKEY`**（v4.0 定版：`troops.json` /
+   `_troops_static.js` / `npm run sync:troops` 已整條移除 —— 「檔案路徑」本身就係本事故嘅根因，
+   斬斷之後唔會再有「漏同步」呢類失敗模式）。
+3. **部署完成 = 開 `/api/health`**，唔好睇綠燈。`registry.source` 應該係 `env-only`。
 4. 新旅團接入後自檢順序：`/api/troops` 有無呢個 id → `/api/health` 個 `source` → 先講帳號密碼問題。
 5. **其餘三個支部 app（`scoutbadge` / `cubbadge` / `vsbadge`）係獨立 repo、獨立 Vercel Project，
    要各自 apply 同一份改動**（本次只改 `roverbadge`）；照上面第 4 節逐個 `curl /api/health` 就知有事冇事。
@@ -253,8 +252,8 @@ npx vercel inspect <dpl_xxx> --logs                                          # �
 - `i18n_dict.tsv`（840 keys）與 `index.html` 內 `LANG_DICT`（846 keys）有 6 條字串唔同步：
   即管唔會壞嘢，但下一次有人跑 `build_i18n.py` 就會覆蓋咗嗰 6 條人工修訂。建議找個時間
   以 `index.html` 為准回寫 TSV。
-- 前端 `selectTroop()` 會喺 `/api/troops` 失敗時 fallback 讀 `data/troops.json`，所以
-  「旅團清單见到、但登入死咗」係呢次事故嘅典型外觀；如果想更嚴，可以將 fallback 只用於
-  顯示、並將登入按鈕 disable 直至 `/api/health` 確認 OK。
+- 前端 `selectTroop()` 曾會喺 `/api/troops` 失敗時 fallback 讀 `data/troops.json`，所以
+  「旅團清單見到、但登入死咗」係呢次事故嘅典型外觀。（v4.0 已解決：fallback 同 JSON 一齊移除，
+  旅團清單淨係嚟自 `/api/troops`；`/api/troops` 壞咗就會直接顯示後端未登記警告。）
 
 COPYRIGHT 2026 Scout System

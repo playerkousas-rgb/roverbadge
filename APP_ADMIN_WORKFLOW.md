@@ -18,7 +18,7 @@
 
 ```
 [旅團 A] --\
-            +--> 提交 URL + APIKEY --> [vsbadge APP ADMIN] --> 改 troops.json + 加 TROOP_XXX_APIKEY --> Redeploy
+            +--> 提交 URL + APIKEY --> [APP ADMIN] --> Vercel 加 TROOP_{ID}_NAME/_BACKEND/_APIKEY --> Redeploy
 [旅團 B] --/
 ```
 
@@ -28,13 +28,13 @@
 - Backend URL (/exec)
 - API KEY (rover_xxxx)
 
-**管理員做：**
-1. 編輯 `data/troops.json` + `troops.json` (公開)
-2. **`npm run sync:troops`**（重新產生 `api/_troops_static.js`；漏咗呢步 = function 讀唔到旅團 = 該旅團登入死，
-   `npm test` 會 fail 住提醒你）
-3. Vercel 加1個環境變數 `TROOP_0082_APIKEY=rover_xxxx` (防爬虫，不進 GitHub)
-4. Redeploy，然後開 `https://<app>.vercel.app/api/health` 確認 `"success":true`
+**管理員做（v4.0 起純環境變數，唔使改 repo 任何檔案）：**
+1. Vercel Dashboard 加 3 個環境變數：`TROOP_0082_NAME=第 82 旅`、
+   `TROOP_0082_BACKEND=https://script.google.com/macros/s/.../exec`、`TROOP_0082_APIKEY=rover_xxxx`
+   （編號保留前導 0；backend/apikey 唔會出瀏覽器）
+2. Redeploy，然後開 `https://<app>.vercel.app/api/health` 確認 `"success":true`
    （**唔好以 Vercel 綠燈為準**；綠燈只代表靜態檔上咗，`/api/*` 可以成整列 404）
+3. 再開 `/api/troops` 確認新旅團 id+name 出現
 
 ## 為何咁設計？
 
@@ -51,30 +51,37 @@
 - `showApiKey()`：隨時查看
 - `initializeSheets()`：初始化完彈出 KEY + URL
 
-## 超管（super_admin）- v8.6：只存在於 Code.gs
+## 中央管理帳號（super_admin）- v8.9：密碼只喺 Vercel 驗證
 
-**規格：超管實際存在、裝完即用；除咗 Code.gs 本身，任何地方都不提佢。**
+**規格：帳號識別字只寫喺 `Code.gs` 一行（`const SUPER_ADMIN_ID = ...`）；密碼由 Vercel 環境變數 `SUPER_KEY` 驗證，GAS／Sheet 永遠收唔到密碼或 hash。**
 
-| 位置 | 會唔會出現超管 |
+| 位置 | 會唔會出現密碼／帳號 |
 | --- | --- |
-| `Code.gs`（`getSuperAdminUser()` / `getSuperAdminPass()`） | ✅ 唯一存在的地方 |
-| Google Sheet（Users 表） | ❌ 冇這列；`initializeSheets()` 會自動清走舊版殘留列 |
-| Google Sheet（Tokens 表） | ❌ 超管 session 以中性代號 `__sys__` 儲存，唔會出現帳號 |
+| `Code.gs` | 只有一行帳號識別字宣告；冇任何密碼 |
+| Vercel `SUPER_KEY` | ✅ 密碼唯一存放處（≥4 字元字串，前導 0 保留） |
+| Google Sheet（Users 表） | ❌ 冇這列；舊版殘留 super_admin 列會被忽略 |
+| Google Sheet（Tokens 表） | ❌ session 以中性代號 `__sys__` 儲存，唔會出現帳號 |
 | `initializeSheets()` 完成小視窗 | ❌ 只顯示 Sheets / API Key / URL / 本旅團管理員 |
-| 用戶管理 / 成員名單 / load | ❌ 任何角色（包括超管本人）都睇唔到 |
-| 任何 API 回應 / 錯誤訊息 | ❌ 不會回傳帳號或密碼（舊版錯誤訊息曾直接寫出密碼，已移除） |
-| 本 repo 文件 | ❌ 刻意不記錄憑證 |
+| 用戶管理 / 成員名單 / load | ❌ 任何角色都睇唔到 |
+| 任何 API 回應 / 錯誤訊息 / log | ❌ 只有一般用語；密碼、token、apikey 一律唔會落 log |
+
+**登入鏈路（v8.9，同 vsbadge 模式一致）：**
+
+1. 前端將帳號+密碼 POST 去 `/api/proxy`（同普通登入一樣）
+2. proxy 喺 Vercel 側用 `SUPER_KEY` 做完整比對（timing-safe）；通過先簽發**短效加密票據**（預設 60 秒，綁定旅團 + backend）
+3. GAS `superTicketLogin` 收到票據 → 向**固定受信 URL**（`getCentralVerifyUrl()`，唔係由請求帶入）驗票 → 先發 token
+4. 瀏覽器攞到嘅係加密包裝、旅團綁定嘅 session（`rbs1.` 前綴），跨旅團無效
 
 **要点：**
 
-- 憑證只寫喺 `Code.gs` 頂部嘅兩個函式，用字串拼接避免明文凭證被搜尋到（**注意：這不是加密** —— `Code.gs` 是部署指南頁嘅公開下載檔，拿到檔案嘅人讀得到）
-- 唔使任何設定：新旅團貼上 `Code.gs` → 執行 `initializeSheets()` → 部署，超管即刻可用
-- `checkSuperAdmin()` 只回 `{enabled:true/false}`，供你核對，永不回傳憑證
-- `removeSuperAdminRows()` 可單獨執行，清走 Users 表殘留嘅 super_admin 列
-- 防護保留：不能停用／重設密碼／更改角色／自行更改密碼／以此帳號開戶
+- `SUPER_KEY` 未設／空／少於 4 字元 → 中央登入停用，一般旅團登入不受影響；冇預設密碼、冇旁路
+- 舊版 GAS 直接密碼入口已移除：就算直接打 GAS `login`，系統管理員帳號都會被拒
+- 4 字元係明確選擇嘅政策：離線暴力破解風險仍然存在；登入限速（每旅團每 IP 60 秒 10 次）只能減慢線上嘗試
+- 姊妹 APP 各自設同一個 `SUPER_KEY` 即可用同一組憑證；跨 APP SSO 未實作
+- 防護保留：不能停用／重設密碼／更改角色／以此帳號開戶
 - 進度紀錄嘅「確認者」欄寫嘅係顯示名稱（`系統管理員`），唔係帳號
 
-**如要換憑證：** 改 `Code.gs` 內 `getSuperAdminUser()` / `getSuperAdminPass()` 兩行，然後逐團重新貼上並重新部署。
+**如要換密碼：** 只改 Vercel `SUPER_KEY` → Redeploy → 完成（唔使碰 GAS／Sheet；舊加密 session 會失效，重新登入即可）。
 
 ## 檢查
 

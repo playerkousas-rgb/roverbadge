@@ -20,7 +20,7 @@
 **共通**：下載 Code.gs → 建 Sheet → 執行 initializeSheets → 部署 → 複製 URL+API Key
 
 **軌道A 無主系統/有但想獨立用**：
-- 將 URL+API Key 交 roverbadge 管理員 → 加入 troops.json → 完成
+- 將 URL+API Key 交 roverbadge 管理員 → 喺 Vercel 加 `TROOP_{ID}_NAME/_BACKEND/_APIKEY` 環境變數 → Redeploy → 完成
 - 用法：roverbadge.vercel.app → 選旅團 → 登入
 - 優點：簡單
 

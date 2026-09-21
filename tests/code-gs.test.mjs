@@ -1,13 +1,18 @@
 // 直接執行 apps-script/Code.gs（真實後端程式碼）的測試
-// 規格（v8.6）：超管「只存在於 Code.gs」
-//   1. 超管實際存在、裝完即用（唔使任何設定）
-//   2. Google Sheet 完全冇蹤跡（Users 表冇這列，Tokens 表都唔會出現帳號）
-//   3. 初始 setup（initializeSheets）嗰個小視窗完全唔提超管
-//   4. 用戶名單／成員名單／任何 API 回應／錯誤訊息都不會出現超管帳號或密碼
+// 規格（v8.9）：系統保留帳號（super_admin 角色）的密碼不在 Code.gs：
+//   1. Code.gs 只保留一行帳號識別字宣告（SUPER_ADMIN_ID），不含任何密碼／密碼比對
+//   2. login 不再接受保留帳號；superTicketLogin 向固定中央驗證端點驗票後才建立 session
+//   3. Google Sheet 完全冇蹤跡（Users 表冇這列，Tokens 表以中性代號儲存）
+//   4. 初始 setup（initializeSheets）小視窗／用戶名單／成員名單／API 回應都不出現帳號
+// 中央驗證端點用「真正的 api/_super.js 驗票邏輯」模擬（等同正式環境的 /api/verify-super-ticket）。
 // 執行：node tests/code-gs.test.mjs
 import fs from 'fs';
 import crypto from 'crypto';
 import { loadCodeGs, CODE_GS_PATH } from './gas-harness.mjs';
+
+// SUPER_KEY 政策測試用（4 字元；必須在 import _super.js 前設定）
+process.env.SUPER_KEY = '9876';
+const { issueSuperTicket, verifySuperTicket } = await import('../api/_super.js');
 
 let passed = 0, failed = 0;
 function check(name, cond, extra = '') {
@@ -16,121 +21,164 @@ function check(name, cond, extra = '') {
 }
 const sha256 = (s) => crypto.createHash('sha256').update(String(s), 'utf8').digest('hex');
 
-const env = loadCodeGs();
-// 憑證由 Code.gs 本身提供（不在測試寫死），用以驗證「超管確實存在」＋「憑證唔會外洩」
-const SU_USER = env.api.getSuperAdminUser();
-const SU_PASS = env.api.getSuperAdminPass();
+// harness 的 ScriptApp URL（getOwnBackendUrl() 會回傳這個；票據必須綁定同一 URL）
+const HARNESS_EXEC = 'https://script.google.com/macros/s/HARNESS/exec';
+const DEFAULT_VERIFY_URL = 'https://roverbadge.vercel.app/api/verify-super-ticket';
 
-// 把整份 Sheet 所有儲存格掃一次，找出超管帳號／密碼的蹤跡
+// 中央驗證端點（mock）：用真正的 verifySuperTicket 驗票（含時效 + 後端綁定）
+const verifyCalls = [];
+const env = loadCodeGs({
+  urlFetchHandler: (url, opts) => {
+    verifyCalls.push({ url, payload: opts && opts.payload });
+    let body = {};
+    try { body = JSON.parse(opts.payload); } catch (e) { /* ignore */ }
+    const p = verifySuperTicket(body.ticket, body.backend);
+    return { code: 200, content: JSON.stringify(p ? { valid: true, login_id: p.id } : { valid: false }) };
+  }
+});
+
+// 保留帳號識別字由 Code.gs 本身提供（測試不另行寫死）
+const SU_USER = env.api.SUPER_ADMIN_ID;
+
+// 中央管理登入（走真實 doPost → handleSuperTicketLogin → mock 中央端點）
+function suLogin(loginId = SU_USER, backend = HARNESS_EXEC) {
+  const ticket = issueSuperTicket({ loginId, troopId: '0082', backend });
+  return env.call({ action: 'superTicketLogin', superTicket: ticket });
+}
+
+// 把整份 Sheet 所有儲存格掃一次，找出保留帳號的蹤跡
 function scanSheets() {
   const hits = [];
   for (const [name, sheet] of env.ss.sheets.entries()) {
     sheet.rows.forEach((row, r) => row.forEach((cell, c) => {
       const v = String(cell === undefined || cell === null ? '' : cell);
-      if (v.toLowerCase().includes(SU_USER) || v.includes(SU_PASS)) hits.push(`${name}!R${r + 1}C${c + 1}=${v}`);
+      if (v.toLowerCase().includes(SU_USER)) hits.push(`${name}!R${r + 1}C${c + 1}=${v}`);
     }));
   }
   return hits;
 }
 
-// ================== 1. 超管只寫在 Code.gs 內 ==================
-console.log('\n【1】超管憑證只存在於 Code.gs');
+// ================== 1. Code.gs 不含任何密碼；帳號只有一行宣告 ==================
+console.log('\n【1】Code.gs 只有帳號識別字一行宣告，沒有任何密碼');
 {
-  check('Code.gs 內有超管帳號（超管確實存在）', typeof SU_USER === 'string' && SU_USER.length > 0);
-  check('Code.gs 內有超管密碼', typeof SU_PASS === 'string' && SU_PASS.length >= 4);
+  check('Code.gs 內有 SUPER_ADMIN_ID 宣告（保留帳號確實存在）', typeof SU_USER === 'string' && SU_USER.length > 0);
   const src = fs.readFileSync(CODE_GS_PATH, 'utf8');
-  check('超管不依賴 Script Properties（無須任何設定）',
-    !/SUPER_ADMIN_USER_PROP|SUPER_ADMIN_PASS_HASH|setSuperAdmin|clearSuperAdmin/.test(src));
-  check('明文凭證不以完整字串出現在原始碼（用拼接避免被搜尋到）',
-    !src.includes(`'${SU_USER}'`) && !src.includes(`'${SU_PASS}'`));
+  check('帳號識別字在原始碼只宣告一次', (src.match(/SUPER_ADMIN_ID\s*=/g) || []).length === 1);
+  check(`帳號字串 '${SU_USER}' 在原始碼只出現一次（該行宣告）`,
+    (src.match(new RegExp(`'${SU_USER}'`, 'g')) || []).length === 1);
+  check('沒有 getSuperAdminPass / SUPER_ADMIN_PASS 等密碼來源', !/getSuperAdminPass|SUPER_ADMIN_PASS/i.test(src));
+  check('沒有舊密碼字樣（0728）', !src.includes('0728'));
+  check('handleLogin 不再比對保留帳號密碼（舊密碼入口已移除）',
+    /isSuperAdminId\(loginId\)\)\{\s*\n\s*return jsonResponse\(\{success:false/.test(src));
+  check('中央驗證端點是 https 常量（可信設定，不由請求指定）',
+    /const SUPER_TICKET_VERIFY_URL = 'https:\/\//.test(src));
 }
 
-// ================== 2. 初始 setup 的小視窗（本次修正重點）==================
-console.log('\n【2】執行真實 initializeSheets()：setup 小視窗完全唔提超管');
+// ================== 2. 初始 setup 的小視窗 ==================
+console.log('\n【2】執行真實 initializeSheets()：setup 小視窗唔提保留帳號');
 {
   const initResult = env.api.initializeSheets();
   check('initializeSheets() 執行成功並回傳 API Key',
     initResult && initResult.success === true && typeof initResult.apiKey === 'string' && initResult.apiKey.length > 10);
   check('初始化只彈出一個小視窗', env.ui.alerts.length === 1, `(實際 ${env.ui.alerts.length})`);
   const alertText = env.ui.alerts.map(a => `${a.title}\n${a.msg}`).join('\n');
-  console.log('  ── 小視窗內容 ──\n' + alertText.split('\n').map(l => '     ' + l).join('\n'));
   check('小視窗仍有 API Key', alertText.includes(initResult.apiKey));
   check('小視窗仍有部署 URL', alertText.includes('script.google.com'));
   check('小視窗仍有本旅團管理員帳號', alertText.includes('1111111111'));
-  check('小視窗完全冇提超管／系統管理帳號', !/超管|super[_ ]?admin|SUPER_ADMIN|系統管理/i.test(alertText));
-  check('小視窗冇出現超管帳號或密碼', !alertText.toLowerCase().includes(SU_USER) && !alertText.includes(SU_PASS));
+  check('小視窗完全冇提保留帳號／系統管理帳號', !/超管|super[_ ]?admin|SUPER_ADMIN|系統管理/i.test(alertText));
+  check('小視窗冇出現帳號識別字', !alertText.toLowerCase().includes(SU_USER));
   check('初始化過程冇任何輸入框（prompt）', env.ui.prompts.length === 0);
-  check('initializeSheets() 回傳值冇超管資訊', !/超管|super_admin/i.test(JSON.stringify(initResult)));
+  check('initializeSheets() 回傳值冇保留帳號資訊', !/超管|super_admin/i.test(JSON.stringify(initResult)));
 }
 
-// ================== 3. Sheet 完全冇蹤跡 ==================
-console.log('\n【3】Google Sheet 完全冇超管蹤跡');
+// ================== 3. 登入：舊密碼入口已封閉；票據驗票先有 session ==================
+console.log('\n【3】superTicketLogin 中央驗票');
 {
-  const users = env.ss.getSheetByName('Users');
-  const ids = users.rows.slice(1).map(r => String(r[0]).toLowerCase());
-  check('Users 表冇超管這列', !ids.includes(SU_USER), JSON.stringify(ids));
-  check('Users 表冇 role=super_admin 的列', !users.rows.slice(1).some(r => String(r[3]) === 'super_admin'));
+  // 舊密碼入口：login 一律拒絕保留帳號（不論密碼）
+  const oldEntry = env.call({ action: 'login', login_id: SU_USER, password: '0728' });
+  check('login 不再接受保留帳號（舊密碼入口已移除）', oldEntry.success === false, JSON.stringify(oldEntry));
+  check('login 拒絕訊息為一般用語', /帳號或密碼錯誤/.test(oldEntry.error || ''), JSON.stringify(oldEntry));
 
-  // 超管登入後，Tokens 表亦唔應該出現超管帳號
-  const login = env.call({ action: 'login', login_id: SU_USER, password: SU_PASS });
-  check('超管登入成功（超管實際可用）', login.success === true && login.user.role === 'super_admin');
+  // 垃圾票據
+  const bad1 = env.call({ action: 'superTicketLogin', superTicket: 'garbage' });
+  check('過短票據被拒', bad1.success === false, JSON.stringify(bad1));
+  const bad2 = env.call({ action: 'superTicketLogin', superTicket: 'x'.repeat(64) });
+  check('無效票據被拒（一般用語，不洩漏原因）', bad2.success === false && /帳號或密碼錯誤/.test(bad2.error || ''), JSON.stringify(bad2));
+
+  // 有效票據 → 成功建立 session
+  const ok = suLogin();
+  check('有效票據 → 登入成功（role=super_admin）', ok.success === true && ok.user.role === 'super_admin' && typeof ok.token === 'string', JSON.stringify(ok));
+  check('驗票請求打到固定中央端點（Code.gs 常量）', verifyCalls.some(c => c.url === DEFAULT_VERIFY_URL), JSON.stringify(verifyCalls.map(c => c.url)));
+  const sentPayload = JSON.parse(verifyCalls[verifyCalls.length - 1].payload);
+  check('驗票請求附帶自身 /exec URL（後端綁定核對用）', sentPayload.backend === HARNESS_EXEC, JSON.stringify(sentPayload));
+  // force_change_password 是合法欄位名；這裡檢查的是「不含密碼『值』／憑證」
+  check('登入回應不含密碼值或 SUPER_KEY',
+    !JSON.stringify(ok).includes(process.env.SUPER_KEY) && !/"(password|pass|apikey|superTicket)"\s*:/.test(JSON.stringify(ok)),
+    JSON.stringify(ok));
+
+  // 票據綁定後端：為「另一旅團後端」簽發的票據不能在本後端使用
+  const wrongBackend = suLogin(SU_USER, 'https://script.google.com/macros/s/OTHERTROOPEXEC00/exec');
+  check('綁定其他後端的票據被拒（票據不可跨旅團）', wrongBackend.success === false, JSON.stringify(wrongBackend));
+
+  // 帳號大小寫不敏感（驗票回傳 login_id 經 isSuperAdminId 比對）
+  const upper = suLogin(SU_USER.toUpperCase());
+  check('驗票 login_id 大小寫不敏感', upper.success === true, JSON.stringify(upper));
+
+  // Tokens 表以中性代號儲存
   const tokens = env.ss.getSheetByName('Tokens');
-  check('Tokens 表以中性代號儲存超管 session（唔出現帳號）',
+  check('Tokens 表以中性代號儲存 session（唔出現帳號）',
     tokens.rows.slice(1).some(r => String(r[1]) === '__sys__') && !tokens.rows.slice(1).some(r => String(r[1]).toLowerCase() === SU_USER),
     JSON.stringify(tokens.rows.slice(1)));
-  // 用該 token 做一次讀取，確認 session 還原正常
-  const viaToken = env.call({ action: 'getAllUsers', token: login.token });
-  check('超管 token 可正常通過驗證（session 還原正常）', viaToken.success === true && Array.isArray(viaToken.users));
+  const viaToken = env.call({ action: 'getAllUsers', token: ok.token });
+  check('session token 可正常通過驗證（還原正常）', viaToken.success === true && Array.isArray(viaToken.users));
 
   const hits = scanSheets();
-  check('掃描全部工作表所有儲存格：搵唔到超管帳號或密碼', hits.length === 0, hits.join(', '));
+  check('掃描全部工作表所有儲存格：搵唔到帳號識別字', hits.length === 0, hits.join(', '));
 }
 
-// ================== 4. 名單／API 回應／錯誤訊息都不外洩 ==================
-console.log('\n【4】用戶名單／成員名單／API 回應都不出現超管');
+// ================== 4. 名單／API 回應都不外洩 ==================
+console.log('\n【4】用戶名單／成員名單／API 回應都不出現保留帳號');
 {
   const users = env.ss.getSheetByName('Users');
-  // 模擬舊版殘留：Users 表入面有一列超管（舊版 ensureSuperAdmin 寫入的）
+  // 模擬舊版殘留：Users 表入面有一列 super_admin
   users.appendRow([SU_USER, '系統管理員', '', 'super_admin', sha256('legacy'), 'b4', true, 'system', '', '', '', 'active', '*']);
   users.appendRow(['legacy_sysop', '舊版殘留', '', 'super_admin', sha256('x'), 'b4', true, 'system', '', '', '', 'active', '*']);
 
   const all = env.api.getAllUsers();
-  check('getAllUsers() 冇 super_admin 列（包括超管本人）', !all.some(u => u.role === 'super_admin' || String(u.ymis).toLowerCase() === SU_USER));
+  check('getAllUsers() 冇 super_admin 列', !all.some(u => u.role === 'super_admin' || String(u.ymis).toLowerCase() === SU_USER));
   const members = env.api.getMembers();
-  check('getMembers() 冇超管／殘留列',
+  check('getMembers() 冇保留帳號／殘留列',
     !members.some(m => String(m.ymis).toLowerCase() === SU_USER || String(m.ymis) === 'legacy_sysop'));
 
-  const login = env.call({ action: 'login', login_id: SU_USER, password: SU_PASS });
+  const login = suLogin();
   const listSelf = env.call({ action: 'getAllUsers', token: login.token });
-  check('doPost getAllUsers（超管本人查看）一樣過濾',
+  check('doPost getAllUsers（本人查看）一樣過濾',
     listSelf.success === true && !listSelf.users.some(u => u.role === 'super_admin' || String(u.ymis).toLowerCase() === SU_USER));
   const loadResp = env.get({ action: 'load' });
-  check('load 回傳的 members 冇超管', loadResp.success === true && !loadResp.members.some(m => String(m.ymis).toLowerCase() === SU_USER));
+  check('load 回傳的 members 冇保留帳號', loadResp.success === true && !loadResp.members.some(m => String(m.ymis).toLowerCase() === SU_USER));
 
-  // 登入回應本身要回傳身分（前端需要 currentUser.ymis），只回給剛通過密碼驗證的超管本人；
-  // 除此之外任何回應／錯誤訊息都不應出現超管帳號
+  // 登入回應本身要回傳身分（前端需要 currentUser.ymis），只回給剛通過驗票的本人；
+  // 除此之外任何回應／錯誤訊息都不應出現帳號
   check('登入成功時只回傳本人身分（前端需要 ymis）',
     login.success === true && login.user.ymis === SU_USER && login.user.name === '系統管理員');
   const others = [listSelf, loadResp,
     env.call({ action: 'login', login_id: SU_USER, password: 'wrong' }),
     env.call({ action: 'login', login_id: '1111111111', password: 'changeme' }),
-    env.call({ action: 'changePassword', token: login.token, old_password: SU_PASS, new_password: 'abcd' }),
+    env.call({ action: 'changePassword', token: login.token, old_password: 'x', new_password: 'abcd' }),
     env.call({ action: 'resetPassword', token: login.token, target_ymis: SU_USER }),
     env.call({ action: 'deactivateUser', token: login.token, target_ymis: SU_USER }),
     env.call({ action: 'updateUserRole', token: login.token, target_ymis: SU_USER, new_role: 'member' }),
     env.api.getAllUsers(), env.api.getMembers(), env.api.getUser(SU_USER) && { hidden: true }
   ].map(o => JSON.stringify(o)).join('\n');
-  check('除登入回應外，任何 API 回應／錯誤訊息都不含超管帳號', !others.toLowerCase().includes(SU_USER), others);
-  const leaky = others + JSON.stringify(login);
-  check('任何 API 回應／錯誤訊息都不含超管密碼', !leaky.includes(SU_PASS));
-  check('所有彈框內容都不含超管帳號或密碼',
+  check('除登入回應外，任何 API 回應／錯誤訊息都不含帳號識別字', !others.toLowerCase().includes(SU_USER), others);
+  check('所有彈框內容都不含帳號識別字',
     !env.ui.alerts.map(a => `${a.title}${a.msg}`).join('\n').toLowerCase().includes(SU_USER));
 }
 
 // ================== 5. 防護：不能停用／重設／改角色／自行改密碼／開戶 ==================
-console.log('\n【5】超管防護');
+console.log('\n【5】保留帳號防護');
 {
-  const login = env.call({ action: 'login', login_id: SU_USER, password: SU_PASS });
+  const login = suLogin();
   const tk = login.token;
   const deact = env.call({ action: 'deactivateUser', token: tk, target_ymis: SU_USER });
   check('不能停用系統管理員帳號', deact.success === false && /不能停用系統管理員/.test(deact.error || ''), JSON.stringify(deact));
@@ -138,26 +186,41 @@ console.log('\n【5】超管防護');
   check('不能重設系統管理員密碼', rst.success === false && /不能重設系統管理員/.test(rst.error || ''));
   const role = env.call({ action: 'updateUserRole', token: tk, target_ymis: SU_USER, new_role: 'member' });
   check('不能更改系統管理員帳號的角色', role.success === false && /不能更改系統管理員/.test(role.error || ''));
-  const cp = env.call({ action: 'changePassword', token: tk, old_password: SU_PASS, new_password: 'abcd' });
-  check('系統管理員不能自行更改密碼', cp.success === false, JSON.stringify(cp));
-  check('錯誤訊息冇洩漏密碼（舊版曾回「密碼固定為 0728」）', !cp.error.includes(SU_PASS) && !/0728/.test(cp.error || ''));
+  const cp = env.call({ action: 'changePassword', token: tk, old_password: 'x', new_password: 'abcd' });
+  check('保留帳號不能經 changePassword 改密碼', cp.success === false, JSON.stringify(cp));
+  check('錯誤訊息為一般用語（不含憑證細節）', !/SUPER_KEY|票據|ticket/i.test(cp.error || ''));
   const addM = env.call({ action: 'addMember', token: tk, ymis: SU_USER, name: 'X' });
-  check('不能以超管帳號為 YMIS 新增成員', addM.success === false);
+  check('不能以保留帳號為 YMIS 新增成員', addM.success === false);
   const addU = env.call({ action: 'addUser', token: tk, ymis: SU_USER, name: 'X' });
-  check('不能以超管帳號開新帳號', addU.success === false);
-  const wrongPw = env.call({ action: 'login', login_id: SU_USER, password: 'nope' });
-  check('超管密碼錯誤被拒', wrongPw.success === false);
-  const caseInsensitive = env.call({ action: 'login', login_id: SU_USER.toUpperCase(), password: SU_PASS });
-  check('超管帳號大小寫不敏感', caseInsensitive.success === true);
+  check('不能以保留帳號開新帳號', addU.success === false);
+  const fp = env.call({ action: 'forgotPassword', login_id: SU_USER });
+  check('保留帳號不可自助找回密碼', fp.success === false, JSON.stringify(fp));
 }
 
-// ================== 6. 回歸：一般帳號／初始化功能正常 ==================
-console.log('\n【6】回歸檢查');
+// ================== 6. 中央端點 URL 設定 + 不讀寫 Sheet 的連線測試 ==================
+console.log('\n【6】中央驗證端點設定與 testCentralVerify()');
+{
+  check('預設使用 Code.gs 常量（https）', env.api.getCentralVerifyUrl() === DEFAULT_VERIFY_URL);
+  env.scriptProps.set('CENTRAL_VERIFY_URL', 'https://custom.example.org/api/verify-super-ticket');
+  check('Script Properties 可覆寫（部署者可信設定）', env.api.getCentralVerifyUrl() === 'https://custom.example.org/api/verify-super-ticket');
+  env.scriptProps.set('CENTRAL_VERIFY_URL', 'http://insecure.example.org/x');
+  check('非 https 的覆寫被忽略（回落常量）', env.api.getCentralVerifyUrl() === DEFAULT_VERIFY_URL);
+  env.scriptProps.delete('CENTRAL_VERIFY_URL');
+
+  const before = JSON.stringify([...env.ss.sheets.keys()]);
+  const t = env.api.testCentralVerify();
+  check('testCentralVerify() 回傳成功（mock 端點 200）', t.success === true, JSON.stringify(t));
+  const after = JSON.stringify([...env.ss.sheets.keys()]);
+  check('testCentralVerify() 不讀寫任何工作表（工作表清單不變）', before === after);
+}
+
+// ================== 7. 回歸：一般帳號／初始化功能正常 ==================
+console.log('\n【7】回歸檢查');
 {
   const admin = env.call({ action: 'login', login_id: '1111111111', password: 'changeme' });
   check('初始化建立的旅團管理員可正常登入', admin.success === true && admin.user.role === 'admin');
   const tokens = env.ss.getSheetByName('Tokens');
-  check('一般帳號的 Tokens 列照舊寫入帳號（只有超管用中性代號）',
+  check('一般帳號的 Tokens 列照舊寫入帳號（只有保留帳號用中性代號）',
     tokens.rows.slice(1).some(r => String(r[1]) === '1111111111'));
   // 再種一列舊版殘留，驗證清理函式（連同【4】留下的殘留列一併計）
   const uSheet = env.ss.getSheetByName('Users');
@@ -167,37 +230,33 @@ console.log('\n【6】回歸檢查');
   const rm = env.api.removeSuperAdminRows();
   check('removeSuperAdminRows() 清走全部殘留的 super_admin 列', rm.removed === residue, `removed=${rm.removed}, 應為 ${residue}`);
   check('清完之後 Users 表再冇 super_admin 列', !env.api.getAllUsers().some(u => u.role === 'super_admin'));
-  const after = env.call({ action: 'login', login_id: SU_USER, password: SU_PASS });
-  check('清走殘留列後超管仍可登入（唔靠 Sheet）', after.success === true && after.user.role === 'super_admin');
-  const status = env.api.checkSuperAdmin();
-  check('checkSuperAdmin() 只回布林，不回傳憑證',
-    status.enabled === true && !JSON.stringify(status).includes(SU_PASS));
-  check('超管仍然有最高權限（可讀全團名單）',
-    env.call({ action: 'getAllUsers', token: after.token }).success === true);
+  const again = suLogin();
+  check('清走殘留列後中央登入照樣有效（唔靠 Sheet）', again.success === true && again.user.role === 'super_admin');
+  check('保留帳號仍然有最高權限（可讀全團名單）',
+    env.call({ action: 'getAllUsers', token: again.token }).success === true);
 }
 
-// ================== 7. 超管實際做行政操作後，Sheet 仍然冇蹤跡 ==================
-console.log('\n【7】超管做行政操作（寫入操作紀錄）後，Sheet 仍然冇超管帳號');
+// ================== 8. 保留帳號做行政操作後，Sheet 仍然冇蹤跡 ==================
+console.log('\n【8】保留帳號做行政操作（寫入操作紀錄）後，Sheet 仍然冇帳號');
 {
-  const login = env.call({ action: 'login', login_id: SU_USER, password: SU_PASS });
+  const login = suLogin();
   const rst = env.call({ action: 'resetPassword', token: login.token, target_ymis: '1111111111' });
-  check('超管可執行行政操作（重設成員密碼）', rst.success === true && typeof rst.temp_password === 'string', JSON.stringify(rst));
+  check('可執行行政操作（重設成員密碼）', rst.success === true && typeof rst.temp_password === 'string', JSON.stringify(rst));
   const audit = env.ss.getSheetByName('操作紀錄');
   check('操作紀錄有寫入這筆操作', !!audit && audit.rows.length >= 2, JSON.stringify(audit && audit.rows));
   check('操作紀錄嘅「操作者」欄寫顯示名稱，唔係帳號',
     audit.rows.slice(1).some(r => String(r[1]) === '系統管理員') && !audit.rows.slice(1).some(r => String(r[1]).toLowerCase() === SU_USER),
     JSON.stringify(audit.rows.slice(1)));
   const hits = scanSheets();
-  check('再掃一次全部工作表所有儲存格：仍然搵唔到超管帳號或密碼', hits.length === 0, hits.join(', '));
+  check('再掃一次全部工作表所有儲存格：仍然搵唔到帳號識別字', hits.length === 0, hits.join(', '));
 }
 
-
-// ================== 8. v8.7 團長唯一／領袖免 YMIS／批核密碼 1234＋強制改密 ==================
-console.log('\n【8】v8.7 團長唯一鎖、領袖免 YMIS、批核預設密碼 1234、首次登入強制改密');
+// ================== 9. v8.7 團長唯一／領袖免 YMIS／批核密碼 1234＋強制改密 ==================
+console.log('\n【9】v8.7 團長唯一鎖、領袖免 YMIS、批核預設密碼 1234、首次登入強制改密');
 {
-  const su = env.call({ action: 'login', login_id: SU_USER, password: SU_PASS });
+  const su = suLogin();
   const tk = su.token;
-  check('超管可登入以執行行政測試', su.success === true);
+  check('中央登入可執行行政測試', su.success === true);
 
   const badRole = env.call({ action: 'apply', ymis: '1234567001', name: '假團長', email: 'fake-gsl@x.com', requested_role: 'group_leader' });
   check('公開申請不接受團長', badRole.success === false && /無效的申請角色/.test(badRole.error || ''), JSON.stringify(badRole));
@@ -245,17 +304,17 @@ console.log('\n【8】v8.7 團長唯一鎖、領袖免 YMIS、批核預設密碼
   check('第二位團長被拒', gsl2.success === false && /團長只能有一位/.test(gsl2.error || ''), JSON.stringify(gsl2));
 
   const bl = env.call({ action: 'addUser', token: tk, ymis: '1234567004', name: '支領丁', email: 'bl-d@x.com', role: 'branch_leader', password: 'PassB!234', can_tick: true });
-  check('超管可開支部領袖（自訂密碼）', bl.success === true);
+  check('可開支部領袖（自訂密碼）', bl.success === true);
   const blLogin = env.call({ action: 'login', login_id: 'bl-d@x.com', password: 'PassB!234' });
   check('自訂密碼開戶不強制改密', blLogin.success === true && blLogin.force_change_password === false, JSON.stringify(blLogin));
   const blAddAdmin = env.call({ action: 'addUser', token: blLogin.token, ymis: '1234567005', name: 'X', email: 'x-admin@x.com', role: 'admin', password: '1234' });
   check('支部領袖不可開管理員', blAddAdmin.success === false && /權限不足/.test(blAddAdmin.error || ''), JSON.stringify(blAddAdmin));
 
   const suAddAdmin = env.call({ action: 'addUser', token: tk, ymis: '1234567006', name: '新管理員', email: 'new-admin@x.com', role: 'admin', password: '1234' });
-  check('超管可開管理員', suAddAdmin.success === true, JSON.stringify(suAddAdmin));
+  check('保留帳號可開管理員', suAddAdmin.success === true, JSON.stringify(suAddAdmin));
 
   const suFmt = env.call({ action: 'addUser', token: tk, ymis: SU_USER, name: 'X' });
-  check('超管以自身帳號開戶被拒（格式／保留帳號）', suFmt.success === false);
+  check('以保留帳號開戶被拒（格式／保留帳號）', suFmt.success === false);
 
   const defMem = env.call({ action: 'addUser', token: tk, ymis: '1234567007', name: '成員戊', email: 'mem-e@x.com', role: 'member', password: '1234' });
   const defLogin = env.call({ action: 'login', login_id: '1234567007', password: '1234' });
@@ -265,11 +324,11 @@ console.log('\n【8】v8.7 團長唯一鎖、領袖免 YMIS、批核預設密碼
   check('已有團長時不能再升另一人為團長', promote.success === false && /團長只能有一位/.test(promote.error || ''), JSON.stringify(promote));
 }
 
-console.log('\n【9】v8.8 唯一性／三區名單／自設密碼／找回密碼／恢復／刪除（真實 Code.gs）');
+console.log('\n【10】v8.8 唯一性／三區名單／自設密碼／找回密碼／恢復／刪除（真實 Code.gs）');
 {
-  const su = env.call({ action: 'login', login_id: SU_USER, password: SU_PASS });
+  const su = suLogin();
   const tk = su.token;
-  check('超管可登入以執行 v8.8 測試', su.success === true);
+  check('中央登入可執行 v8.8 測試', su.success === true);
 
   // (a) YMIS／Email 唯一：重複開戶被拒
   const u1 = env.call({ action: 'addUser', token: tk, ymis: '1234568001', name: '唯一甲', email: 'uniq-a@x.com', role: 'member', password: '1234' });
@@ -318,8 +377,6 @@ console.log('\n【9】v8.8 唯一性／三區名單／自設密碼／找回密�
   const noEm = env.call({ action: 'addUser', token: tk, ymis: '1234568003', name: '無郵成員', email: '', role: 'member', password: '1234' });
   const fpNo = env.call({ action: 'forgotPassword', login_id: '1234568003' });
   check('無 Email 者找回失敗並提示聯絡領袖', noEm.success === true && fpNo.success === false && /聯絡領袖/.test(fpNo.error || ''), JSON.stringify(fpNo));
-  const fpSu = env.call({ action: 'forgotPassword', login_id: SU_USER });
-  check('超管不可自助找回密碼', fpSu.success === false, JSON.stringify(fpSu));
 
   // (f) 停用 → 停用中不可重複開戶 → 恢復 → 徹底刪除 → 可重用
   const de1 = env.call({ action: 'deactivateUser', token: tk, target_ymis: '1234568001' });

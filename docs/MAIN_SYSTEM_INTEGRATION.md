@@ -39,8 +39,8 @@ https://roverbadge.vercel.app/?u=0082
 1. **檢查** `from=portal` + `ymis` + `role`
 2. **若都有**：直接創建 `currentUser` 免登入，顯示主App，跳過 loginPage
 3. **若只有 `u`** (例如 `?u=0082`)：自動預選 0082 旅團，顯示登入框並填入 YMIS
-4. **若有 `backend`+`apikey` 參數**：直接使用，不再查 `troops.json`，適合第3級元件「單位自部署」模式
-5. **若無 `backend`**：嘗試從 `data/troops.json` 或 `/api/troops` 查找該旅團的後端設定（與獨立使用同一套對照表）
+4. **若有 `backend`+`apikey` 參數**：v3.0 起一律**忽略**（console 會有提示）——後端解析已移到伺服器端 Registry，前端唔再接觸 backend/apikey
+5. **旅團後端**：由伺服器端 Registry（Vercel 環境變數 `TROOP_{ID}_BACKEND/_APIKEY`）解析；前端只經 `/api/troops` 攞 id+name、經 `/api/proxy` 讀寫資料
 6. **embed=1**：加上 `embed-mode` class，隱藏首頁大Header及Welcome導航，精簡為嵌入式，適合 iframe 高度 600px
 
 ### 權限對應
@@ -75,7 +75,7 @@ https://roverbadge.vercel.app/?u=0082
 
 ### 若主系統不想存 backend/apikey
 
-也可只傳 `u`，讓前端自動查 `troops.json`：
+也可只傳 `u`，讓伺服器端 Registry 自動解析（推薦做法；backend/apikey 根本唔使再傳）：
 
 ```
 https://roverbadge.vercel.app/?u=0082&role=leader&ymis=1234567890&from=portal&embed=1
@@ -83,7 +83,7 @@ https://roverbadge.vercel.app/?u=0082&role=leader&ymis=1234567890&from=portal&em
 
 前端會自動：
 
-1. `u=0082` → 查 `data/troops.json` → 取得 backend + apikey
+1. `u=0082` → `/api/troops` 確認旅團已登記 → 所有讀寫經 `/api/proxy`，由伺服器注入 backend + apikey
 2. `from=portal` + `ymis` + `role` → 免登入
 
 ---
@@ -95,7 +95,7 @@ https://roverbadge.vercel.app/?u=0082&role=leader&ymis=1234567890&from=portal&em
 | 入口 | roverbadge.vercel.app → 選旅團 | 主系統 Dashboard 卡片 |
 | 旅團選擇 | 手動選 | 自動帶入 `u` |
 | 登入 | 選 member/leader 輸入 YMIS/Email+密碼 | 自動帶入，無需密碼 (Portal 信任模式) |
-| 後端 | 查 troops.json 取得 backend | 查 troops.json 或直接用 URL 參數 backend/apikey |
+| 後端 | 伺服器端 Registry（環境變數）注入 | 同樣由伺服器端 Registry 注入；URL 帶 backend/apikey 會被忽略 |
 | 介面 | 完整 Header + Welcome導航 | `embed=1` 精簡，隱藏大標題，適合 iframe |
 | 權限 | 同樣按 role 控制 | 同樣按 role 控制 |
 | 資料 | 同一 Google Sheet | 同一 Google Sheet |
@@ -114,7 +114,7 @@ A: 成員看到自己申請狀態，領袖看到兩類：🏅獎章審批 + 👤
 A: 可以，`window.print()` 會只列印 `.print-area`，隱藏按鈕，官方 PT/19/PT/20 格式，雙面列印符合總會要求。
 
 **Q: 若主系統未傳 backend/apikey，會怎樣？**
-A: 前端會嘗試從 `data/troops.json` 查找該 `u` 的後端，若找不到會顯示警告「未找到旅團後端設定」，請檢查 troops.json 是否已包含該旅團或主系統卡片是否已設定 backend。
+A: 冇問題——backend/apikey 由伺服器端 Registry（Vercel 環境變數）解析，卡片只需帶 `u`。若該 `u` 未登記，頁面會顯示「旅團未在 Registry 登記」，請 roverbadge 管理員喺 Vercel 加 `TROOP_{ID}_NAME/_BACKEND/_APIKEY` 環境變數再 Redeploy。
 
 ---
 

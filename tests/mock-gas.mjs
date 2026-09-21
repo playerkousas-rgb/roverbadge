@@ -6,7 +6,11 @@
 //   - 獨立 in-memory store，方便驗證多旅團隔離
 import http from 'http';
 
-export function startMockGas({ port, name, users, apikey = '' }) {
+// 測試專用：保留帳號識別字（與 apps-script/Code.gs 的 SUPER_ADMIN_ID 一致）。
+// 只在測試基礎設施保留一處，其他測試檔請 import 這個常量，不要各自寫死。
+export const SUPER_ADMIN_ID_FOR_TESTS = 'sh' + 'eep';
+
+export function startMockGas({ port, name, users, apikey = '', verifyUrl = '' }) {
   const state = {
     name,
     users: {},                    // ymis -> {ymis,name,email,role,pass,can_tick,status}
@@ -32,11 +36,11 @@ export function startMockGas({ port, name, users, apikey = '' }) {
 
   const pendingRedirects = new Map(); // rid -> payload
 
-  // 系統管理帳號 (super_admin)：與真實後端 Code.gs v8.6 一致 —
-  // 憑證只存在於 Code.gs（不存於 Sheet），任何名單／回應都不會出現
-  const superAdminUser = () => 'sh' + 'eep';
-  const superAdminPass = () => '07' + '28';
+  // 系統保留帳號 (super_admin)：與真實後端 Code.gs v8.9 一致 —
+  // 只保留帳號識別字（密碼在中央系統驗證，mock GAS 不含任何密碼），任何名單／回應都不會出現
+  const superAdminUser = () => SUPER_ADMIN_ID_FOR_TESTS;
   const isSuperAdminId = (y) => String(y || '').trim().toLowerCase() === superAdminUser();
+  state.superTicketLogins = [];  // 觀測 superTicketLogin 有否被呼叫（測試用）
   // Users 表殘留列一律不顯示（角色為 super_admin，或 YMIS 與超管帳號相同）
   const isHiddenRow = (u) => u.role === 'super_admin' || isSuperAdminId(u.ymis);
 
@@ -92,18 +96,13 @@ export function startMockGas({ port, name, users, apikey = '' }) {
     return nm.charAt(0) + '***' + nm.charAt(nm.length - 1) + domain;
   };
 
-  function routeAction(action, body) {
+  async function routeAction(action, body) {
     const validKey = state.apikey && body.apikey === state.apikey;
     const tokenYmis = body.token && state.tokens[body.token] ? state.tokens[body.token] : null;
     switch (action) {
       case 'login': {
-        // 系統管理帳號：憑證只存在於 Code.gs（與真實後端一致）
-        if (isSuperAdminId(body.login_id) && String(body.password || '') === superAdminPass()) {
-          const su = superAdminUser();
-          const token = 'tok_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
-          state.tokens[token] = su;
-          return { success: true, token, user: { ymis: su, name: '系統管理員', role: 'super_admin', can_tick: true, email: '' } };
-        }
+        // v8.9：保留帳號不接受密碼登入（改經 superTicketLogin 中央驗票）
+        if (isSuperAdminId(body.login_id)) return { success: false, error: '帳號或密碼錯誤' };
         const loginKey = String(body.login_id || '').trim();
         const u = state.users[loginKey] || Object.values(state.users).find(x => x.email && normEmail(x.email) === normEmail(loginKey));
         if (!u || u.status === 'inactive') return { success: false, error: '找不到此帳號或帳號已停用' };
@@ -111,6 +110,30 @@ export function startMockGas({ port, name, users, apikey = '' }) {
         const token = 'tok_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
         state.tokens[token] = u.ymis;
         return { success: true, token, user: { ymis: u.ymis, name: u.name, role: u.role, can_tick: u.can_tick, allowed_badges: '*' }, force_change_password: !!u.force_change_password };
+      }
+      case 'superTicketLogin': {
+        // 與真實 Code.gs v8.9 一致：向固定中央驗證端點驗票（verifyUrl 是啟動設定，不由請求指定）
+        const selfBackend = `http://127.0.0.1:${port}/exec`;
+        state.superTicketLogins.push({ at: Date.now(), hasTicket: !!body.superTicket, backend: selfBackend });
+        const ticket = String(body.superTicket || '');
+        if (ticket.length < 20 || ticket.length > 2000) return { success: false, error: '帳號或密碼錯誤' };
+        if (!verifyUrl) return { success: false, error: '登入服務暫時無法使用，請稍後重試' };
+        let result = null;
+        try {
+          const resp = await fetch(verifyUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticket, backend: `http://127.0.0.1:${port}/exec` })
+          });
+          if (resp.ok) result = await resp.json();
+        } catch (e) {
+          return { success: false, error: '登入服務暫時無法使用，請稍後重試' };
+        }
+        if (!result || result.valid !== true || !isSuperAdminId(result.login_id)) return { success: false, error: '帳號或密碼錯誤' };
+        const su = superAdminUser();
+        const sToken = 'tok_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+        state.tokens[sToken] = su;
+        return { success: true, token: sToken, user: { ymis: su, name: '系統管理員', role: 'super_admin', can_tick: true, email: '' }, force_change_password: false };
       }
       case 'logout': {
         delete state.tokens[body.token];
@@ -506,7 +529,7 @@ export function startMockGas({ port, name, users, apikey = '' }) {
     }
   }
 
-  const server = http.createServer((req, res) => {
+  const server = http.createServer(async (req, res) => {
     const u = new URL(req.url, 'http://mock.local');
 
     const sendJson = (obj, code = 200) => {
@@ -586,7 +609,7 @@ export function startMockGas({ port, name, users, apikey = '' }) {
         if (wantsGet && payload.method !== 'GET') return sendJson({ success: false, error: 'Unknown action' });
         if (!wantsGet && payload.method === 'GET') return sendJson({ success: false, error: 'Unknown action' });
       }
-      const ans = routeAction(action, payload.body);
+      const ans = await routeAction(action, payload.body);
       return sendJson(ans);
     }
 
