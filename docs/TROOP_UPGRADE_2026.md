@@ -175,7 +175,7 @@ vsbadge 係「零改動前端（選單版）」；roverbadge 已有管理介面�
 | `assets/batch-onboard/Code.gs` | 移除 2 個 `// v8.8` 版本註解（文字保留） |
 | `index.html` | 卡片同步（見第 8 項）；移除 branch 死代碼 |
 | `tests/troop_link.test.mjs` | **新增**：10 項守護（in-memory GAS 雙節點＋假網路＋假 Drive，載入真實 Code.gs） |
-| `scripts/build.mjs` | **新增**：Vercel Build Output API（靜態檔＝.vercelignore 之後＋5 個 function bundle，零依賴） |
+| `scripts/build.mjs` | **新增**：部署產物包裝器（靜態檔＝.vercelignore 之後＋5 個 function bundle，零依賴）。產物寫入本地 `.vercel-build/`（gitignored）做驗證；**Vercel 部署維持傳統模式**（vercel.json + .vercelignore），唔用 Build Output API（原因見 `docs/VERCEL_API_404_POSTMORTEM.md` 第 8 節） |
 | `tests/build.test.mjs` | **新增**：產物底線（機密／開發檔唔上線、5 function 可運行、公開 Code.gs 無版號） |
 | `package.json` | 新增 `test:link`／`build`／`test:build`；`test` 鏈納入兩個新測試 |
 | `.vercelignore` | 新增 `docs/TROOP_UPGRADE_2026.md`（本 MD 係操作機密文檔，唔上線） |

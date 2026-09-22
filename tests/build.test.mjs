@@ -11,7 +11,7 @@ import { execFileSync } from 'node:child_process';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const out = path.join(root, '.vercel', 'output');
+const out = path.join(root, '.vercel-build');
 
 test('Build Output API 只含 .vercelignore 之後的靜態檔＋5 個可運行 function', async t => {
   // 自含式：每次測試都重跑 build（快、零依賴、冪等）

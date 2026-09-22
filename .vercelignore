@@ -7,6 +7,7 @@
 #     docs/MEMBER_GUIDE.md、docs/YMIS_EXPORT.md（index.html 有下載／查看連結）
 .git
 .vercel
+.vercel-build
 .tmp-lambda
 node_modules
 *.log

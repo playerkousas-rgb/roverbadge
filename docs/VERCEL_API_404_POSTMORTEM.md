@@ -260,13 +260,19 @@ npx vercel inspect <dpl_xxx> --logs                                          # �
 
 上面第 5 節「`package.json` 唔准有 `build` script」嘅規則，本意係**build 唔可以喺 build 環境
 寫返入來源目錄**（第 6 輪實驗失败嘅直接原因係 `sync-troops.mjs` 寫 `api/_troops_static.js`
-入來源樹）。對齊 vsbadge 後（vsbadge 同一模式部署正常）恢復咗 `build` script，但換咗安全模式：
+入來源樹）。對齊 vsbadge 後恢復咗 `build` script，但採用對本倉庫最安全嘅形式：
 
-- `npm run build` = `node scripts/build.mjs`（Vercel **Build Output API**：build 嘅產物係
-  `.vercel/output/`——`config.json` version 3 + static + 5 個 function bundle；呢個目錄正正係
-  Vercel 自己放 build 產物嘅位置）
+- `npm run build` = `node scripts/build.mjs`：**本地驗證用**嘅部署產物包裝器。
+  產物（Build Output 結構：config.json version 3 + static + 5 個 function bundle）寫入
+  **本地 `.vercel-build/`（gitignored）**，而**唔係** `.vercel/output` —— 因為產物一旦落喺
+  `.vercel/output`，Vercel 就會轉用 Build Output API、忽略 vercel.json 嘅 `headers` 等設定，
+  部署行為即刻同 2026-09 前所有部署唔同（2026-09-23 實測：PR 預檢 Vercel check 因此由
+  pass 變 fail）。本倉庫 Vercel 部署維持**傳統模式**（vercel.json + .vercelignore），
+  同既往所有部署完全一致。
+- 若日後想轉用 Build Output API 部署：先把 `scripts/build.mjs` 嘅輸出改返 `.vercel/output`，
+  並補返 config.json 嘅 `headers`（/api/* no-store），喺 Preview 分支實測 Vercel 接受先至可以上 main。
 - 底線由 `tests/vercel-config.test.mjs`【5】＋【6】用**功能檢查**守護：真跑一次 build，
-  比對來源樹 sha256 快照——寫入來源目錄即刻紅（`.vercel` 排除喺快照外）
-- 腳本零依賴、零網絡、冪等，喺 Vercel build container 安全可重入
+  比對來源樹 sha256 快照——寫入來源目錄即刻紅（`.vercel`／`.vercel-build` 排除喺快照外）
+- 腳本零依賴、零網絡、冪等，喺 Vercel build container 跑咗都無副作用
 
 COPYRIGHT 2026 Scout System

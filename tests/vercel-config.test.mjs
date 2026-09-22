@@ -165,7 +165,7 @@ console.log('\n【6】部署瘦身：.vercelignore 排除開發檔，但唔排�
       const out = {};
       const walk = (dir, rel) => {
         for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-          if (e.name === '.vercel' || e.name === '.git' || e.name === 'node_modules') continue;
+          if (e.name === '.vercel' || e.name === '.vercel-build' || e.name === '.git' || e.name === 'node_modules') continue;
           const p = path.join(dir, e.name);
           const r = rel ? rel + '/' + e.name : e.name;
           if (e.isDirectory()) walk(p, r);

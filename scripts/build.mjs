@@ -1,12 +1,17 @@
-// Vercel Build Output API：只部署「.vercelignore 之後真正會上 Vercel 的靜態檔」＋ 5 個 serverless function，
-// 零打包依賴（function bundle 只複製 api/*.js 原檔，與 vercel.json 的部署行為一致）。
+// Vercel 部署產物包裝器（本地驗證用）：把「.vercelignore 之後真正會上 Vercel 的靜態檔」＋ 5 個
+// serverless function 原樣組裝成 Build Output 結構，零打包依賴（function bundle 只複製 api/*.js
+// 原檔，與 vercel.json 的部署行為一致）。
+// 注意：產物寫入本地 .vercel-build/（gitignored）而唔係 .vercel/output —— Vercel 部署維持
+// 傳統模式（vercel.json + .vercelignore，同 2026-09 前所有部署一致）；本腳本只係本地驗證
+// 「呢個產物結構係咪正確、function 係咪獨立可運行」。若日後要改用 Build Output API 部署，
+// 把 OUTPUT_DIR 改返 .vercel/output 前先喺 Preview 分支實測 Vercel 接受先。
 // 用法：node scripts/build.mjs（npm run build）
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const output = path.join(root, '.vercel', 'output');
+const output = path.join(root, '.vercel-build');
 
 // ---- .vercelignore 解釋（支援：dir/ 目錄、精確路徑、* glob）----
 function loadIgnoreRules(rootDir) {
