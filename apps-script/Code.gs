@@ -63,62 +63,500 @@ const LOG_TYPES = ['service','activity','training'];
 //  - 成員可申報自己的活動履歷；批准後寫入「活動履歷」；批准後成員仍可申請修改（重新待批）
 const LOG_PENDING_SHEET_NAME = '待批履歷';
 const LOG_PENDING_HEADERS = ['request_id','record_id','type','ymis','name','date','title','role','hours','cert_no','detail','status','requested_at','submitted_by','reviewed_by','reviewed_at','review_note','submission_type'];
-// 支部 SHEET（與進度追蹤成對，每團一張）
-const BRANCH_SHEET_NAME = '支部';
-const BRANCH_HEADERS = ['branch_id','branch_name','leader_ymis','member_count','created_at','updated_at'];
 function safeSheetText(v,maxLen){
   let text=String(v||'').trim().substring(0,maxLen||200);
-  if(/^['=+\-@\t\r]/.test(text)) text="'"+text;
+  if(/^['=+\-@\t\r]/.test(text)) text="'" +text;
   return text;
 }
 
+// ===== 旅系統：上下游接駁（進度系統節點）=====
+// 同一份 Code.gs 部署在每一層節點（旅／支部系統／進度）。接入完全自願：
+//   - 邊個支部系統想用本節點（Rover），就由「嗰個支部系統自己」將本節點的
+//     GAS /exec URL（B）+ SHEET KEY（D）登記入佢自己 Sheet 的 Script Properties：
+//     DOWNSTREAM_<id>_URL / DOWNSTREAM_<id>_KEY（有地域有鎖匙先入到）；
+//     登記後上游可經 sig 讀寫下游（進了上游就等於進了下游）。掛錯（如掛去深資），
+//     對方一測 sig／一睇結構就會發現，會改返。
+//   - 本節點 Script Properties 的 ALLOW_LOCAL_LOGIN 係「直接入口」掣：
+//     未設定＝開啟（現有旅團零影響）；任何唔係 1/true/yes/on/open 的值
+//     （false/0/no/off 或串錯字）＝閂口（fail closed）；閂口後只接受有效 sig。
+//   - 登記資料、sig、nonce 全部只存 Script Properties / CacheService，一律不寫入任何工作表。
+//   - sig 係 GAS→GAS 直連（HMAC-SHA256），唔經 Vercel proxy；下游永不回打上游，不設回調。
+const LINK_FLAG = 'ALLOW_LOCAL_LOGIN';
+const LINK_DOWNSTREAM_PREFIX = 'DOWNSTREAM_';
+const LINK_SIG_PURPOSE = 'roverbadge-troop-sig-v1';
+const LINK_SIG_WINDOW_MS = 5 * 60 * 1000;
+const LINK_SIG_NONCE_TTL = 600;
+const LINK_MAX_SIGNED_BYTES = 900000;
+const LINK_EXEC_URL_RE = /^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]{10,}\/exec\/?$/i;
+const LINK_SIG_HEX_RE = /^[0-9a-f]{64}$/i;
+const LINK_NONCE_RE = /^[0-9A-Za-z_-]{8,64}$/;
+const LINK_HASH_RE = /^[0-9a-f]{64}$/i;
+const LINK_RESERVED_BODY_KEYS = ['sig', 'sig_ts', 'sig_nonce'];
+// 上游以 sig 可以在下游執行的 action。login／apply／logout／changePassword／
+// superTicketLogin／forgotPassword 等本地憑證操作永不接受（即使有 sig）。
+const LINK_SIG_READ_ACTIONS = ['load', 'getLoginMode', 'getLinkState', 'getMembers', 'getConfig', 'getAllUsers', 'getOtherBadges', 'getPendingRequests', 'getApplications', 'getLogRecords', 'getPendingLogRequests'];
+const LINK_SIG_WRITE_ACTIONS = ['save', 'saveOtherBadge', 'requestComplete', 'reviewRequest', 'addMember', 'addUser', 'upsertUser', 'importUsers', 'resetPassword', 'deactivateUser', 'reactivateUser', 'updateUserProfile', 'deleteMember', 'deleteUser', 'updateUserRole', 'updatePermissions', 'saveLogRecord', 'deleteLogRecord', 'reviewLogRequest', 'reviewApplication', 'setLocalLogin'];
+const USER_EXPORT_FORMAT = 'roverbadge-users-export';
 
-// ===== 旅系統上下游接入：ALLOW_LOCAL_LOGIN 旗標 + sig 驗證 =====
-function getAllowLocalLogin(){
-  try{
-    const v = PropertiesService.getScriptProperties().getProperty('ALLOW_LOCAL_LOGIN');
-    if(v===null || v==='') return true;
-    const s=String(v).trim().toLowerCase();
-    return !(s==='false' || s==='0' || s==='off');
-  }catch(e){ return true; }
+function linkProps() { return PropertiesService.getScriptProperties(); }
+function toHex(bytes) { let out = ''; for (let i = 0; i < bytes.length; i++) out += ('0' + (bytes[i] & 0xFF).toString(16)).slice(-2); return out; }
+function sha256Hex(text) { return hashPassword(String(text === undefined || text === null ? '' : text)); }
+function hmacSha256Hex(message, key) { return toHex(Utilities.computeHmacSha256Signature(String(message), String(key))); }
+// sig 密鑰以用途字串分隔方式由「該節點的 SHEET KEY（D）」推導：
+//   驗證入站 → 用本機 API_KEY（上游登記的就是這條）；簽署出站 → 用已登記的下游 SHEET KEY。
+// 推導結果唔另外儲存、唔寫入工作表。
+function linkSigKeyFor(key) { return hmacSha256Hex(LINK_SIG_PURPOSE, String(key || '')); }
+function linkSigKey() { return linkSigKeyFor(getApiKey()); }
+function linkNonce() { return Utilities.getUuid().replace(/-/g, ''); }
+// 常數時間比較：兩邊先各自 SHA-256 再比對，避免逐字元短路洩漏
+function safeEqualText(a, b) { return sha256Hex(String(a || '')) === sha256Hex(String(b || '')); }
+function linkCanonical(action, ts, nonce, digest) { return [String(action || ''), String(ts || ''), String(nonce || ''), String(digest || '')].join('\n'); }
+function maskSecret(v) { v = String(v || ''); return v.length <= 12 ? '****' : v.substring(0, 8) + '…' + v.substring(v.length - 4); }
+// 上游傳來的操作者標籤：只留安全字元，避免經 auth_by／操作紀錄寫入工作表時變成算式
+function linkActorLabel(v) {
+  const cleaned = String(v || '').trim().replace(/[^0-9A-Za-z_.@-]/g, '').substring(0, 40);
+  return cleaned || 'upstream';
 }
-function setAllowLocalLogin(allow){
-  PropertiesService.getScriptProperties().setProperty('ALLOW_LOCAL_LOGIN', allow ? 'true' : 'false');
-  return allow;
+function getLinkNodeId() { try { return safeSheetText(getSheet().getName() || 'node', 80) || 'node'; } catch (e) { return 'node'; } }
+
+// ---- 直接入口掣（寫在本節點 Script Properties）----
+// 未設定＝開啟；1/true/yes/on/open＝開啟；其餘任何值（false/0/no/off 或串錯字）＝閂口（fail closed）
+function localLoginAllowed() {
+  const v = String(linkProps().getProperty(LINK_FLAG) || '').trim().toLowerCase();
+  if (!v) return true;
+  return ['1', 'true', 'yes', 'on', 'open'].indexOf(v) >= 0;
 }
-function isSigValid(sig){
-  if(!sig) return false;
-  const s=String(sig).trim();
-  if(!s) return false;
-  try{
-    const key=getApiKey();
-    if(s===key) return true;
-    if(s===hashPassword(key)) return true;
-  }catch(e){}
-  return false;
+function setLocalLoginAllowed(allow, actor) {
+  linkProps().setProperty(LINK_FLAG, allow ? 'true' : 'false');
+  writeAudit(actor || 'system', allow ? 'link_local_login_on' : 'link_local_login_off', getLinkNodeId(), allow ? '直接入口開啟' : '直接入口已閂，只收上游 sig');
+  return allow ? 'true' : 'false';
 }
-function requireSigOrLocal(sig){
-  if(getAllowLocalLogin()) return true;
-  return isSigValid(sig);
+function linkClosedResponse(action) {
+  return {
+    success: false, local_login: false, upstream_only: true,
+    error: '此後端的直接入口已閂（' + LINK_FLAG + '=false），只接受上游簽名（sig）請求；請由上游（旅／支部系統）入口登入。' + (action ? '（已拒絕：' + action + '）' : '')
+  };
 }
-// 支部 SHEET Helpers
-function getBranchesList(){
-  const sh=getSheet().getSheetByName(BRANCH_SHEET_NAME);
-  const out=[];
-  if(!sh) return out;
-  const data=sh.getDataRange().getValues();
-  for(let i=1;i<data.length;i++){
-    if(!data[i][0]) continue;
+function getLinkState() {
+  return {
+    success: true, node: getLinkNodeId(),
+    allow_local_login: localLoginAllowed(),
+    link_flag_set: String(linkProps().getProperty(LINK_FLAG) || '') === 'false' ? 'false' : (String(linkProps().getProperty(LINK_FLAG) || '') ? 'true' : '（未設定＝開啟）'),
+    downstreams: listDownstreams(),
+    api_key_masked: maskSecret(getApiKey()),
+    export_format: USER_EXPORT_FORMAT
+  };
+}
+
+// ---- sig 產生／驗證（GAS → GAS，不經 Vercel）----
+//   sigKey    = hex( HMAC-SHA256( message = LINK_SIG_PURPOSE, key = D ) )
+//   canonical = action + "\n" + ts(毫秒) + "\n" + nonce + "\n" + hex( SHA-256(rawBody) )
+//   sig       = hex( HMAC-SHA256( canonical, sigKey ) )
+function stripLinkSigFields(body) {
+  const out = {};
+  for (const k in (body || {})) { if (LINK_RESERVED_BODY_KEYS.indexOf(k) >= 0) continue; out[k] = (body || {})[k]; }
+  return out;
+}
+// 兩種傳送方式共用同一套驗證：
+//   query：?sig=&sts=&snonce=          digest = SHA-256(原始 body 字串)
+//   body ：{...,sig,sig_ts,sig_nonce}  digest = SHA-256(JSON.stringify(去掉三個 sig 欄位後的 body))
+// 上游一次送齊兩種，GAS 302 轉址即使遺失其中一種仍可驗證。
+function readLinkSig(e, body, rawBody) {
+  const params = (e && e.parameter) || {};
+  const qSig = String(params.sig || ''), qTs = String(params.sts || ''), qNonce = String(params.snonce || '');
+  if (qSig && qTs && qNonce) return { sig: qSig, ts: qTs, nonce: qNonce, digest: sha256Hex(String(rawBody || '')), transport: 'query' };
+  const bSig = String((body && body.sig) || ''), bTs = String((body && body.sig_ts) || ''), bNonce = String((body && body.sig_nonce) || '');
+  if (bSig && bTs && bNonce) {
+    let canonicalPayload = '';
+    try { canonicalPayload = JSON.stringify(stripLinkSigFields(body)); } catch (err) { return null; }
+    return { sig: bSig, ts: bTs, nonce: bNonce, digest: sha256Hex(canonicalPayload), transport: 'body' };
+  }
+  return null;
+}
+function makeLinkSig(action, rawPayload, key) {
+  const ts = String(Date.now()), nonce = linkNonce();
+  return { sig: hmacSha256Hex(linkCanonical(action, ts, nonce, sha256Hex(String(rawPayload || ''))), linkSigKeyFor(key)), ts: ts, nonce: nonce };
+}
+function verifyLinkSig(e, body, rawBody) {
+  try {
+    const s = readLinkSig(e, body, rawBody);
+    if (!s) return false;
+    if (String(rawBody || '').length > LINK_MAX_SIGNED_BYTES) return false;
+    if (!LINK_SIG_HEX_RE.test(String(s.sig))) return false;
+    if (!LINK_NONCE_RE.test(String(s.nonce))) return false;
+    const ts = parseInt(s.ts, 10);
+    if (!isFinite(ts) || Math.abs(Date.now() - ts) > LINK_SIG_WINDOW_MS) return false;
+    const action = String((body && body.action) || '');
+    if (!safeEqualText(hmacSha256Hex(linkCanonical(action, s.ts, s.nonce, s.digest), linkSigKey()), s.sig)) return false;
+    // 防重放：同一 nonce 只可用一次（CacheService 存 10 分鐘，不入工作表）。
+    // 一次請求可能同時帶 query 及 body 兩組 sig；兩組 nonce 都要消耗，
+    // 否則「第一次只驗到其中一組」時，重放可用另一組 nonce 再入一次。
+    const cache = CacheService.getScriptCache();
+    const nonces = [String(s.nonce)];
+    const queryNonce = String(((e && e.parameter) || {}).snonce || '');
+    const bodyNonce = String((body && body.sig_nonce) || '');
+    [queryNonce, bodyNonce].forEach(function (n) {
+      if (LINK_NONCE_RE.test(n) && nonces.indexOf(n) < 0) nonces.push(n);
+    });
+    const keys = nonces.map(function (n) { return 'link-nonce:' + sha256Hex(n).substring(0, 40); });
+    for (let i = 0; i < keys.length; i++) { if (cache.get(keys[i])) return false; }
+    for (let i = 0; i < keys.length; i++) { cache.put(keys[i], '1', LINK_SIG_NONCE_TTL); }
+    return true;
+  } catch (err) { return false; }
+}
+
+// ---- 上游：登記下游（只存 Script Properties，不寫入 SHEET）----
+function normalizeLinkId(id) { return String(id || '').trim().replace(/[^0-9A-Za-z_-]/g, '').substring(0, 32); }
+function isTrustedDownstreamUrl(url) { return LINK_EXEC_URL_RE.test(String(url || '').trim()); }
+function registerDownstream(id, url, key, name) {
+  id = normalizeLinkId(id);
+  if (!id) return { success: false, error: '下游編號不可留空（只可用英文、數字、底線、連字號）' };
+  if (!isTrustedDownstreamUrl(url)) return { success: false, error: '下游 URL 必須是正式 GAS /exec（https://script.google.com/macros/s/.../exec）' };
+  key = String(key || '').trim();
+  if (key.length < 8) return { success: false, error: '下游 SHEET KEY 太短；請抄下游 Script Properties 的 API_KEY' };
+  const props = linkProps();
+  props.setProperty(LINK_DOWNSTREAM_PREFIX + id + '_URL', String(url).trim().replace(/\/$/, ''));
+  props.setProperty(LINK_DOWNSTREAM_PREFIX + id + '_KEY', key);
+  props.setProperty(LINK_DOWNSTREAM_PREFIX + id + '_NAME', String(name || '').trim().substring(0, 80));
+  props.setProperty(LINK_DOWNSTREAM_PREFIX + id + '_AT', now());
+  writeAudit('system', 'link_register_downstream', id, '已登記下游 URL 及 SHEET KEY（只存 Script Properties）');
+  return { success: true, id: id, message: '已登記下游 ' + id };
+}
+function getDownstream(id) {
+  id = normalizeLinkId(id);
+  if (!id) return null;
+  const props = linkProps();
+  const url = String(props.getProperty(LINK_DOWNSTREAM_PREFIX + id + '_URL') || '').trim();
+  const key = String(props.getProperty(LINK_DOWNSTREAM_PREFIX + id + '_KEY') || '').trim();
+  if (!url || !key) return null;
+  return { id: id, url: url, key: key, name: String(props.getProperty(LINK_DOWNSTREAM_PREFIX + id + '_NAME') || ''), registered_at: String(props.getProperty(LINK_DOWNSTREAM_PREFIX + id + '_AT') || '') };
+}
+function listDownstreams() {
+  const props = linkProps(), ids = {}, all = props.getProperties();
+  for (const k in all) {
+    const m = String(k).match(/^DOWNSTREAM_(.+)_URL$/);
+    if (m) ids[m[1]] = true;
+  }
+  const out = [];
+  for (const id in ids) {
+    const d = getDownstream(id);
+    if (!d) continue;
+    out.push({ id: d.id, name: d.name, registered_at: d.registered_at, url_masked: maskSecret(d.url), has_key: true });
+  }
+  out.sort(function (a, b) { return String(a.id).localeCompare(String(b.id)); });
+  return out;
+}
+function removeDownstream(id) {
+  id = normalizeLinkId(id);
+  if (!id) return { success: false, error: '下游編號不正確' };
+  const props = linkProps();
+  ['_URL', '_KEY', '_NAME', '_AT'].forEach(function (s) { props.deleteProperty(LINK_DOWNSTREAM_PREFIX + id + s); });
+  writeAudit('system', 'link_remove_downstream', id, '已移除下游登記');
+  return { success: true, message: '已移除下游 ' + id };
+}
+// 上游打下游：body 內含 sig（digest 綁 action + 去 sig 欄位後的 body），query 再帶一組 sig（digest 綁完整原始 body）
+function callDownstream(downstreamId, action, payload) {
+  const d = getDownstream(downstreamId);
+  if (!d) return { success: false, error: '未登記下游 ' + downstreamId + '：請先登記下游 URL 及 SHEET KEY' };
+  if (String(action || '') === '') return { success: false, error: '缺少 action' };
+  let rawOutgoing = '';
+  try {
+    const body = stripLinkSigFields(payload || {});
+    body.action = action;
+    const rawPayload = JSON.stringify(body);
+    const inner = makeLinkSig(action, rawPayload, d.key);
+    body.sig = inner.sig; body.sig_ts = inner.ts; body.sig_nonce = inner.nonce;
+    rawOutgoing = JSON.stringify(body);
+    const outer = makeLinkSig(action, rawOutgoing, d.key);
+    const url = d.url + '?sig=' + encodeURIComponent(outer.sig) + '&sts=' + encodeURIComponent(outer.ts) + '&snonce=' + encodeURIComponent(outer.nonce);
+    const response = UrlFetchApp.fetch(url, {
+      method: 'post', contentType: 'application/json', payload: rawOutgoing,
+      muteHttpExceptions: true, followRedirects: true, validateHttpsCertificates: true
+    });
+    const code = response.getResponseCode();
+    const text = response.getContentText();
+    let json = null; try { json = JSON.parse(text); } catch (err) { json = null; }
+    if (!json) return { success: false, error: '下游回應異常（HTTP ' + code + '）：請檢查下游部署版本、存取權（任何人）及登記的 SHEET KEY' };
+    return json;
+  } catch (err) {
+    return { success: false, error: '無法連接下游：' + (err && err.message ? err.message : String(err)) };
+  }
+}
+function pingDownstream(downstreamId) { return callDownstream(downstreamId, 'getLinkState', {}); }
+// 掣在上游：由上游閂／開下游的直接入口
+function setDownstreamLocalLogin(downstreamId, allow) {
+  const r = callDownstream(downstreamId, 'setLocalLogin', { allow: allow ? 'true' : 'false' });
+  if (r && r.success) writeAudit('system', 'link_set_downstream_gate', normalizeLinkId(downstreamId), allow ? '下游直接入口開啟' : '下游直接入口已閂（只收 sig）');
+  return r;
+}
+
+// ---- 開戶：上游揀團開戶，經 sig 落下游寫（兩邊同一 password_hash）----
+function linkManager(body) {
+  const onBehalf = linkActorLabel(body && body.on_behalf);
+  const role = VALID_ROLES.indexOf(String((body && body.on_behalf_role) || '')) >= 0 ? String(body.on_behalf_role) : 'admin';
+  return { ymis: onBehalf, name: '上游同步（' + onBehalf + '）', role: role, can_tick: true, allowed_badges: '*', status: 'active' };
+}
+function createAccountForDownstream(downstreamId, rawUser, manager) {
+  const d = getDownstream(downstreamId);
+  if (!d) return { success: false, error: '未登記下游 ' + downstreamId + '：請先登記下游 URL 及 SHEET KEY' };
+  const mgr = manager && manager.role ? manager : { ymis: 'upstream', name: '上游同步', role: 'admin', can_tick: true };
+  const local = addUser_(rawUser || {}, mgr);
+  if (!local.success) return { success: false, error: '上游開戶失敗：' + String(local.error || '') };
+  const ymis = String(local.ymis || ((rawUser || {}).ymis) || '').trim();
+  const rec = upsertReadBackUser_(ymis);
+  if (!rec) return { success: false, error: '上游已開戶但讀不回帳戶，未能同步下游' };
+  const mirror = {
+    ymis: rec.ymis, name: rec.name, email: rec.email, role: rec.role, branch: rec.branch,
+    can_tick: rec.can_tick, allowed_badges: rec.allowed_badges, status: 'active', force_change_password: true,
+    password_hash: String(rec.password_hash || '')
+  };
+  const pushed = callDownstream(downstreamId, 'upsertUser', { user: mirror, on_behalf: linkActorLabel(mgr.ymis) });
+  if (!pushed || pushed.success !== true) {
+    return { success: false, error: '上游已開戶，但下游寫入失敗：' + String((pushed && pushed.error) || '下游無回應'), ymis: mirror.ymis, downstream: normalizeLinkId(downstreamId) };
+  }
+  writeAudit(linkActorLabel(mgr.ymis), 'link_push_user', safeSheetText(mirror.ymis, 40), '帳戶已同步至下游 ' + normalizeLinkId(downstreamId));
+  return { success: true, ymis: mirror.ymis, name: mirror.name, downstream: normalizeLinkId(downstreamId), message: '上游已開戶並經 sig 同步下游' };
+}
+// 開戶後讀回 Users 行（含 hash），用以鏡像到下游
+function upsertReadBackUser_(ymis) {
+  try {
+    const sheet = getSheet().getSheetByName('Users');
+    if (!sheet) return null;
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0] || '').trim() === ymis) {
+        return {
+          ymis: String(data[i][0] || '').trim(),
+          name: String(data[i][1] || ''),
+          email: String(data[i][2] || ''),
+          role: String(data[i][3] || 'member'),
+          password_hash: String(data[i][4] || ''),
+          branch: String(data[i][5] || ''),
+          can_tick: data[i][6] === true || String(data[i][6]).toUpperCase() === 'TRUE',
+          allowed_badges: data[i].length >= 13 ? String(data[i][12] || '') : '',
+          force_change_password: data[i].length >= FORCE_CHANGE_COL && isForceChangeValue(data[i][FORCE_CHANGE_COL - 1])
+        };
+      }
+    }
+  } catch (e) { }
+  return null;
+}
+
+// ---- 吐 JSON（搬舊數）：匯出含 hash，只寫去 Drive，绝不寫入任何工作表 ----
+function collectUsersForExport() {
+  const sheet = getSheet().getSheetByName('Users');
+  const out = [];
+  if (!sheet) return out;
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    const ymis = String(data[i][0] || '').trim();
+    if (!ymis) continue;
+    const role = String(data[i][3] || 'member') || 'member';
+    if (role === 'super_admin' || isSuperAdminId(ymis)) continue;
     out.push({
-      branch_id:String(data[i][0]),
-      branch_name:String(data[i][1]||''),
-      leader_ymis:String(data[i][2]||''),
-      member_count:String(data[i][3]||''),
-      created_at:data[i][4]?String(data[i][4]):'',
-      updated_at:data[i][5]?String(data[i][5]):''
+      ymis: ymis,
+      name: String(data[i][1] || ''),
+      email: String(data[i][2] || ''),
+      role: role,
+      branch: String(data[i][5] || ''),
+      can_tick: data[i][6] === true || String(data[i][6]).toUpperCase() === 'TRUE',
+      allowed_badges: data[i].length >= 13 ? String(data[i][12] || '') : '',
+      status: String(data[i][11] || 'active') || 'active',
+      force_change_password: data[i].length >= FORCE_CHANGE_COL && isForceChangeValue(data[i][FORCE_CHANGE_COL - 1]),
+      password_hash: String(data[i][4] || ''),
+      auth_by: String(data[i][7] || ''),
+      created_at: data[i][9] ? String(data[i][9]) : '',
+      last_login: data[i][10] ? String(data[i][10]) : ''
     });
   }
   return out;
+}
+function buildUsersExport() {
+  const users = collectUsersForExport();
+  return { format: USER_EXPORT_FORMAT, schema: 1, exported_at: now(), node: getLinkNodeId(), count: users.length, users: users };
+}
+function exportUsersJsonText() { return JSON.stringify(buildUsersExport(), null, 2); }
+// Sheet 選單主通道：寫成 Drive 私人檔（Access.PRIVATE + Permission.NONE），彈窗給連結及檔案 ID；
+// Drive 寫入失敗時，完整 JSON 寫入「檢視 → 執行紀錄（Logger）」作後備。「操作紀錄」只記筆數同檔案 ID。
+function exportUsersJson() {
+  const payload = buildUsersExport();
+  const count = payload.count;
+  const stamp = Utilities.formatDate(new Date(), 'Asia/Hong_Kong', 'yyyyMMdd-HHmmss');
+  let fileId = '', fileUrl = '', driveError = '';
+  try {
+    const ssFile = DriveApp.getFileById(getSheet().getId());
+    const folder = ssFile.getParents().hasNext() ? ssFile.getParents().next() : DriveApp.getRootFolder();
+    const file = folder.createFile('roverbadge-users-' + stamp + '.json', JSON.stringify(payload, null, 2), 'application/json');
+    try { file.setSharingAccess(DriveApp.Access.PRIVATE); file.setSharingPermission(DriveApp.Permission.NONE); } catch (e) { }
+    fileId = file.getId(); fileUrl = file.getUrl();
+  } catch (e) { driveError = (e && e.message) ? e.message : String(e); }
+  writeAudit('system', 'export_users_json', count + ' accounts', fileId ? ('Drive 檔 ' + fileId + '（含 hash，匯入後請刪除）') : ('Drive 寫入失敗：' + driveError + '；JSON 已輸出到執行紀錄'));
+  try { Logger.log(JSON.stringify(payload, null, 2)); } catch (e) { }
+  return { success: true, count: count, file_id: fileId, file_url: fileUrl, drive_error: driveError, payload: payload };
+}
+
+// ---- 匯入：逐個 upsertUser 直插 hash（保留舊密碼）----
+// 新帳戶必須帶 password_hash（64 hex）；明文 password 一律拒。
+// 既有帳戶（同 YMIS，或同 Email 認回同一身份）→ 更新；冇帶 hash → 保留原密碼。冪等。
+function syncMemberRow_(ymis, name, branch, email, status) {
+  try {
+    if (String(status || '') === 'deleted') return;
+    let mSheet = getSheet().getSheetByName('成員名單');
+    if (!mSheet) { mSheet = getSheet().insertSheet('成員名單'); mSheet.appendRow(['YMIS', '姓名', '加入日期', '支部', '聯絡', '備註']); }
+    if (mSheet.getLastColumn() < 6) mSheet.getRange(1, 6).setValue('備註');
+    const mRow = memberNameRowExists_(ymis);
+    if (mRow) mSheet.getRange(mRow.row, 2).setValue(name);
+    else mSheet.appendRow([ymis, name, new Date(), branch || '', email || '', '']);
+  } catch (e) { }
+}
+function upsertUser(raw, actor) {
+  raw = raw || {};
+  actor = linkActorLabel(actor);
+  const ymis = String(raw.ymis || '').trim();
+  const email = String(raw.email || '').trim().substring(0, 160);
+  const hash = String(raw.password_hash || '').trim().toLowerCase();
+  if (!ymis) return { success: false, ymis: '', error: '缺少 YMIS' };
+  if (raw.password !== undefined && raw.password !== null && String(raw.password) !== '') return { success: false, ymis: ymis, error: '匯入不可帶明文 password；請只用 password_hash' };
+  if (hash && !LINK_HASH_RE.test(hash)) return { success: false, ymis: ymis, error: 'password_hash 必須是 64 位 SHA-256 hex' };
+  if (!/^\d{10}$/.test(ymis) && !/^L\d+$/i.test(ymis)) return { success: false, ymis: ymis, error: 'YMIS 須為 10 位數字或 L 編號' };
+  if (email && !isValidEmail_(email)) return { success: false, ymis: ymis, error: 'Email 格式不正確' };
+  const role = VALID_ROLES.indexOf(String(raw.role || '')) >= 0 ? String(raw.role) : 'member';
+  if (isSuperAdminId(ymis) || isSuperAdminId(email)) return { success: false, ymis: ymis, error: '此帳號已被保留，不可操作' };
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(20000)) return { success: false, ymis: ymis, error: '系統正處理另一項寫入，請稍後重試' };
+  try {
+    const sheet = getSheet().getSheetByName('Users');
+    if (!sheet) return { success: false, ymis: ymis, error: 'Users 工作表不存在，請先執行 initializeSheets()' };
+    ensureForceChangeCol(sheet);
+    const data = sheet.getDataRange().getValues();
+    let row = -1;
+    for (let i = 1; i < data.length; i++) { if (String(data[i][0] || '').trim() === ymis) { row = i + 1; break; } }
+    if (row < 0 && email) {
+      const ex = emailTakenAnyStatus_(email, '');
+      if (ex) row = ex.row;
+    }
+    if (row < 0 && !hash) return { success: false, ymis: ymis, error: '新增帳戶必須帶 password_hash（匯入只接受 hash）' };
+    if (row > 0) {
+      const curRole = String(data[row - 1][3] || '').trim();
+      if (curRole === 'super_admin' || isSuperAdminId(String(data[row - 1][0] || ''))) return { success: false, ymis: ymis, error: '不能操作系統管理員帳號' };
+    }
+    const existingName = row > 0 ? String(data[row - 1][1] || '') : '';
+    const name = safeSheetText(raw.name, 100) || existingName;
+    if (!name) return { success: false, ymis: ymis, error: '姓名不可留空' };
+    const branch = safeSheetText(raw.branch, 100);
+    const status = ['active', 'inactive', 'deleted'].indexOf(String(raw.status || '')) >= 0 ? String(raw.status) : 'active';
+    const force = raw.force_change_password === undefined ? false : isForceChangeValue(raw.force_change_password);
+    const allowed = raw.allowed_badges === undefined || raw.allowed_badges === null ? '' : String(raw.allowed_badges);
+    if (row > 0) {
+      // 1-based 欄位：2 name 3 email 4 role 5 password_hash 6 branch 7 can_tick 8 auth_by 9 auth_date 12 status 13 allowed_badges 14 force_change_password
+      function setCol(col, val) { if (col) sheet.getRange(row, col).setValue(val); }
+      setCol(2, name);
+      if (email) setCol(3, email);
+      setCol(4, role);
+      if (hash) setCol(5, hash);
+      if (branch) setCol(6, branch);   // 冇帶 branch 就唔洗改既有小隊
+      if (raw.can_tick !== undefined) setCol(7, raw.can_tick === true || String(raw.can_tick).toUpperCase() === 'TRUE');
+      setCol(8, actor);
+      setCol(9, now());
+      setCol(12, status);
+      if (allowed !== '') setCol(13, allowed);
+      else if (!String(data[row - 1][12] || '') && sheet.getLastColumn() >= 13) setCol(13, role === 'member' ? '' : (role === 'exec_committee' ? 'L1,活動段章,OTHER' : '*'));
+      setCol(FORCE_CHANGE_COL, force);
+      syncMemberRow_(ymis, name, branch, email, status);
+      writeAudit(actor, 'link_upsert_update', ymis, '上游／匯入更新帳戶' + (hash ? '（直插 hash）' : '（保留原密碼）'));
+      return { success: true, ymis: ymis, action: 'updated', password_kept: !hash };
+    }
+    const nowStr = now();
+    const canTickNew = raw.can_tick === true || String(raw.can_tick).toUpperCase() === 'TRUE';
+    const defAllowed = allowed !== '' ? allowed : (role === 'member' ? '' : (role === 'exec_committee' ? 'L1,活動段章,OTHER' : '*'));
+    sheet.appendRow([ymis, name, email, role, hash, branch, canTickNew, actor, nowStr, String(raw.created_at || '') || nowStr, String(raw.last_login || ''), status, defAllowed, force]);
+    syncMemberRow_(ymis, name, branch, email, status);
+    writeAudit(actor, 'link_upsert_create', ymis, '上游／匯入新增帳戶（直插 hash，保留舊密碼）');
+    return { success: true, ymis: ymis, action: 'created', password_kept: false };
+  } finally { lock.releaseLock(); }
+}
+function handleUpsertUser(raw, actor) { return jsonResponse(upsertUser(raw, actor)); }
+function importUsersFromText(text, actor) {
+  actor = linkActorLabel(actor);
+  let parsed = null;
+  try { parsed = JSON.parse(String(text || '')); } catch (e) { return { success: false, error: 'JSON 格式不正確：' + ((e && e.message) || e) }; }
+  const list = Array.isArray(parsed) ? parsed : ((parsed && Array.isArray(parsed.users)) ? parsed.users : null);
+  if (!list) return { success: false, error: '找不到 users 陣列；請使用「匯出 JSON（含 hash）」產生的檔案' };
+  if (!list.length) return { success: true, count: 0, created: 0, updated: 0, failed: 0, results: [], message: '檔案內沒有帳戶' };
+  if (list.length > 2000) return { success: false, error: '一次最多匯入 2000 筆，請分批' };
+  const results = [];
+  let created = 0, updated = 0, failed = 0;
+  for (let i = 0; i < list.length; i++) {
+    const r = upsertUser(list[i], actor);
+    if (r && r.success) { if (r.action === 'created') created++; else updated++; } else failed++;
+    results.push({ ymis: String((list[i] && list[i].ymis) || ''), success: !!(r && r.success), action: (r && r.action) || '', error: (r && r.error) || '' });
+  }
+  writeAudit(actor, 'link_import_users', '新增 ' + created + '／更新 ' + updated, '失敗 ' + failed + '（共 ' + list.length + ' 筆）');
+  return { success: failed === 0, count: list.length, created: created, updated: updated, failed: failed, results: results, message: '匯入完成：新增 ' + created + '、更新 ' + updated + '、失敗 ' + failed };
+}
+function importUsersFromDrive(fileIdOrUrl, actor) {
+  const input = String(fileIdOrUrl || '').trim();
+  if (!input) return { success: false, error: '請貼上 Drive 檔案 ID 或連結' };
+  const matched = input.match(/\/d\/([A-Za-z0-9_-]{10,})/);
+  const fileId = matched ? matched[1] : input.replace(/\?.*$/, '');
+  let text = '';
+  try { text = DriveApp.getFileById(fileId).getBlob().getDataAsString(); }
+  catch (e) { return { success: false, error: '讀不到 Drive 檔案：' + ((e && e.message) || e) }; }
+  return importUsersFromText(text, actor);
+}
+function handleSignedImport(body, actor) {
+  if (Array.isArray(body.users)) return jsonResponse(importUsersFromText(JSON.stringify({ users: body.users }), actor));
+  if (typeof body.json === 'string') return jsonResponse(importUsersFromText(body.json, actor));
+  if (typeof body.drive_file_id === 'string') return jsonResponse(importUsersFromDrive(body.drive_file_id, actor));
+  return jsonResponse({ success: false, error: 'importUsers 需要 users[]、json 字串或 drive_file_id' });
+}
+
+// ---- 下游：簽名請求路由（login／apply／logout／changePassword 等永不接受）----
+function handleSignedRequest(action, body) {
+  if (LINK_SIG_READ_ACTIONS.indexOf(action) < 0 && LINK_SIG_WRITE_ACTIONS.indexOf(action) < 0) {
+    return jsonResponse({ success: false, error: '上游簽名請求不接受此操作：' + action });
+  }
+  const manager = linkManager(body);
+  const actor = manager.ymis;
+  if (LINK_SIG_WRITE_ACTIONS.indexOf(action) >= 0) {
+    writeAudit('upstream', 'link_signed_' + action, actor, safeSheetText(body.on_behalf_name, 80) + '（sig 已驗證）');
+  }
+  if (action === 'getLinkState') return jsonResponse(getLinkState());
+  if (action === 'setLocalLogin') {
+    const allow = ['1', 'true', 'yes', 'on', 'open'].indexOf(String(body.allow || '').trim().toLowerCase()) >= 0;
+    setLocalLoginAllowed(allow, 'upstream:' + actor);
+    return jsonResponse({ success: true, allow_local_login: allow, message: allow ? '直接入口已開啟' : '直接入口已閂，只收上游 sig' });
+  }
+  if (action === 'load') return handleLoad();
+  if (action === 'getLoginMode') return jsonResponse({ success: true, login_mode: 'standalone', local_login: localLoginAllowed(), upstream_only: !localLoginAllowed() });
+  if (action === 'getMembers') return jsonResponse({ success: true, members: getMembers() });
+  if (action === 'getConfig') return handleGetConfig();
+  if (action === 'getAllUsers') return jsonResponse({ success: true, users: getAllUsers() });
+  if (action === 'getOtherBadges') return handleGetOtherBadges(String(body.target_ymis || ''));
+  if (action === 'getPendingRequests') return handleGetPendingRequests();
+  if (action === 'getApplications') return handleGetApplications();
+  if (action === 'getLogRecords') return handleGetLogRecords();
+  if (action === 'getPendingLogRequests') return handleGetPendingLogRequests(manager);
+  if (action === 'save') return handleSave(body.changes || [], String(body.confirmer || actor));
+  if (action === 'saveOtherBadge') return handleSaveOtherBadge(body.records || []);
+  if (action === 'requestComplete') return handleRequestComplete(body, actor);
+  if (action === 'reviewRequest') return handleReviewRequest(body.request_id, body.decision, body.review_note, actor, body.confirmed_date);
+  if (action === 'addMember') return handleAddMember(body.ymis, body.name, body.squad || '', body.squad_role || 'member');
+  if (action === 'addUser') return handleAddUser(body, manager);
+  if (action === 'upsertUser') return handleUpsertUser(body.user || body, actor);
+  if (action === 'importUsers') return handleSignedImport(body, actor);
+  if (action === 'resetPassword') return handleResetPassword(body.target_ymis, actor, body.new_password);
+  if (action === 'deactivateUser') return handleDeactivateUser(body, manager, actor);
+  if (action === 'reactivateUser') return handleReactivateUser(body, manager, actor);
+  if (action === 'updateUserProfile') return handleUpdateUserProfile(body, manager, actor);
+  if (action === 'deleteMember') return handleDeleteMember(body, manager, actor);
+  if (action === 'deleteUser') return handleDeleteUser(body, manager, actor);
+  if (action === 'updateUserRole' || action === 'updatePermissions') return handleUpdateUserRole(body.target_ymis, body.new_role, body.can_tick, actor, body.allowed_badges);
+  if (action === 'saveLogRecord') return handleSaveLogRecord(body.records || (body.record ? [body.record] : []), actor, String(body.recorder_name || ''));
+  if (action === 'deleteLogRecord') return handleDeleteLogRecord(body.record_id, actor);
+  if (action === 'reviewLogRequest') return handleReviewLogRequest(body.request_id, body.decision, actor, body.review_note);
+  if (action === 'reviewApplication') return handleReviewApplication(body.app_id, body.decision, body.review_note, manager);
+  return jsonResponse({ success: false, error: '上游簽名請求不接受此操作：' + action });
 }
 
 // ===== 工具 =====
@@ -419,20 +857,7 @@ function initializeSheets() {
     lpSheet.setFrozenRows(1);
   }
 
-  let bSheet = ss.getSheetByName(BRANCH_SHEET_NAME);
-  if(!bSheet){
-    bSheet = ss.insertSheet(BRANCH_SHEET_NAME);
-    bSheet.appendRow(BRANCH_HEADERS);
-    bSheet.getRange(1,1,1,BRANCH_HEADERS.length).setFontWeight('bold').setBackground('#8B0000').setFontColor('#FFFFFF');
-    bSheet.setFrozenRows(1);
-  }
-  // 預設允許本地直接入口（向後兼容），需閂門時由上游或管理員改為 false
-  try{
-    if(PropertiesService.getScriptProperties().getProperty('ALLOW_LOCAL_LOGIN')===null){
-      PropertiesService.getScriptProperties().setProperty('ALLOW_LOCAL_LOGIN','true');
-    }
-  }catch(e){}
-
+  // 旅系統：不預設寫入 ALLOW_LOCAL_LOGIN（未設定＝開啟，現有旅團零影響）；登記下游／sig／閂口全部經選單「🔗 旅系統」操作，資料只存 Script Properties
   // 確保系統設定有 allow_member_view_others
   let cfgSheet = ss.getSheetByName('SystemConfig');
   if(cfgSheet){
@@ -452,7 +877,7 @@ function initializeSheets() {
     const ui=SpreadsheetApp.getUi();
     if(ui){
       // 提示只顯示本旅團自己的 API Key、URL 與旅團管理員帳號
-      ui.alert('✅ v4.0 初始化完成！\n\nSheets：進度追蹤、成員名單、Users、Applications、Tokens、SystemConfig、待批完成、其他獎章\n\n🔑 API Key:\n'+apiKey+'\n\n👤 旅團管理員 YMIS: '+ADMIN_YMIS+' 初始密碼: '+ADMIN_PASS+'（請立即登入後更改）\n\n🌐 URL:\n'+scriptUrl);
+      ui.alert('✅ 初始化完成！\n\nSheets：進度追蹤、成員名單、Users、Applications、Tokens、SystemConfig、待批完成、其他獎章、活動履歷、待批履歷\n\n🔗 旅系統：選單「🔗 旅系統」→「🔑 顯示 BACKEND／APIKEY（交 ADMIN）」一次過抄 B／D；上下游接駁（登記下游／sig／閂口／搬舊數）全部經該選單操作\n\n🔑 API Key:\n'+apiKey+'\n\n👤 旅團管理員 YMIS: '+ADMIN_YMIS+' 初始密碼: '+ADMIN_PASS+'（請立即登入後更改）\n\n🌐 URL:\n'+scriptUrl);
     }
   }catch(e){}
   return {success:true,apiKey:apiKey,scriptUrl:scriptUrl};
@@ -574,27 +999,37 @@ function destroyToken(token){
 
 // ===== API =====
 function doGet(e){
-  const action=e.parameter.action;
+  const params=(e&&e.parameter)||{};
+  const action=String(params.action||'');
+  // 旅系統：閂口後直接入口一律拒絕（只收上游 sig；簽名請求一律走 doPost）
+  if(!localLoginAllowed()) return jsonResponse(linkClosedResponse(action));
   if(action==='load'){
-    // v4: allow load without apikey for backwards compatibility (troops.json may not have apikey), but if apikey provided, must validate
-    const reqKey=e.parameter.apikey;
+    // 向後兼容：allow load without apikey (troops.json may not have apikey)，但帶咗 apikey 就必須驗證
+    const reqKey=params.apikey;
     if(reqKey && reqKey!==getApiKey()) return jsonResponse({success:false,error:'Invalid API Key'});
     return handleLoad();
   }
-  if(action==='getLoginMode') return jsonResponse({success:true,login_mode:'standalone'});
+  if(action==='getLoginMode') return jsonResponse({success:true,login_mode:'standalone',local_login:localLoginAllowed(),upstream_only:!localLoginAllowed()});
   return jsonResponse({success:false,error:'Unknown action'});
 }
 function doPost(e){
   try{
-    const body=JSON.parse(e.postData.contents);
-    const action=body.action;
-    if(action==='login') return handleLogin(body.login_id,body.password);
+    const rawBody=String(((e&&e.postData)||{}).contents||'{}');
+    const body=JSON.parse(rawBody||'{}');
+    const action=String(body.action||'');
+    // 旅系統：上游簽名（sig）請求優先路由（先驗 sig）；未簽名時先留中央登入，再檢查直接入口掣
+    if(verifyLinkSig(e,body,rawBody)) return handleSignedRequest(action,body);
+    // 中央管理帳號登入（Vercel 側 SUPER_KEY 驗證 → 短效票據）：與旅系統閘門無關，
+    // 直接入口關閉後仍要可用（A SUPER_KEY 與旅系統脫鉤，是次不改動）
     if(action==='superTicketLogin') return handleSuperTicketLogin(body.superTicket);
+    // 旅系統：閂口後本地直接入口全拒（login/apply/GET load/apikey save/token 操作），只收 sig
+    if(!localLoginAllowed()) return jsonResponse(linkClosedResponse(action));
+    if(action==='login') return handleLogin(body.login_id,body.password);
     if(action==='logout'){ destroyToken(body.token); return jsonResponse({success:true}); }
     if(action==='apply') return handleApply(body.ymis,body.name,body.email,body.requested_role||'member',body.branch);
     if(action==='forgotPassword') return handleForgotPassword(body.login_id);
 
-    // save & addMember 需要 apikey (v4 向下兼容：若無 apikey 但有有效 token 也允許)
+    // save & addMember 需要 apikey (向下兼容：若無 apikey 但有有效 token 也允許)
     if(action==='save' || action==='addMember' || action==='addUser' || action==='saveOtherBadge'){
       const reqKey=body.apikey;
       if(reqKey && reqKey!==getApiKey()) return jsonResponse({success:false,error:'Invalid API Key'});
@@ -603,7 +1038,6 @@ function doPost(e){
         const tk=validateToken(body.token);
         if(!tk && action!=='addMember') return jsonResponse({success:false,error:'未授權 - 需 API Key 或有效 Token'});
       }
-      if(!getAllowLocalLogin() && !isSigValid(String(body.sig||''))) return jsonResponse({success:false,error:'本地直接入口已關閉，請經上游 sig 進入'});
       if(action==='save') return handleSave(body.changes, body.confirmer||'');
       if(action==='addMember'){
         const my=body.token?validateToken(body.token):null;
@@ -624,65 +1058,27 @@ function doPost(e){
     // member request - needs token but also allow apikey for member self
     if(action==='requestComplete'){
       // allow token or apikey
-      let ymis=null; if(body.token){ ymis=validateToken(body.token); } 
+      let ymis=null; if(body.token){ ymis=validateToken(body.token); }
       if(!ymis && body.apikey && body.apikey===getApiKey()){ ymis=body.ymis; } // standalone mode
       if(!ymis) return jsonResponse({success:false,error:'未授權'});
       return handleRequestComplete(body, ymis);
     }
 
     // 以下需要 token 驗證及高權限
-    // 上下游接入：下游旗 ALLOW_LOCAL_LOGIN 關閉後，本地直接入口只收 sig
-    const _sig = String(body.sig||'').trim();
-    const _sigValid = isSigValid(_sig);
-    // 若 flag 已關：寫操作僅收 sig；讀操作仍可經 token（保持查看能力）
-    const SIG_ACTIONS = new Set(['addUser','upsertUser','addMember','createUser','exportUsers','getBranches','saveBranch','deleteBranch','getAllowLocalLogin','setAllowLocalLogin']);
-    const WRITE_SIG_ACTIONS = new Set(['addUser','upsertUser','addMember','createUser','saveBranch','deleteBranch','setAllowLocalLogin','save','saveOtherBadge','addMember']);
-    if(!getAllowLocalLogin()){
-      if(SIG_ACTIONS.has(action) && _sigValid){
-        // 以 sig 身份執行：賦予虛擬上游身份（團長級）
-        const virtualUser = {ymis:'__upstream__', role:'group_leader', can_tick:true};
-        if(action==='exportUsers') return handleExportUsers();
-        if(action==='upsertUser') return handleUpsertUser(body.user||body, '__upstream__');
-        if(action==='addUser') return handleAddUser(body, virtualUser);
-        if(action==='addMember') return handleAddMember(body.ymis, body.name, body.squad||'', body.squad_role||'member');
-        if(action==='getBranches') return handleGetBranches();
-        if(action==='saveBranch') return handleSaveBranch(body.branch||body, '__upstream__');
-        if(action==='deleteBranch') return handleDeleteBranch(body.branch_id, '__upstream__');
-        if(action==='getAllowLocalLogin') return handleGetAllowLocalLogin();
-        if(action==='setAllowLocalLogin') return handleSetAllowLocalLogin(body.allow, '__upstream__');
-        return jsonResponse({success:false,error:'本地直接入口已關閉，此操作需經上游 sig 進入'});
-      }
-      // 寫操作且無有效 sig → 拒絕；讀操作放行至 token 驗證
-      if(WRITE_SIG_ACTIONS.has(action) && !_sigValid){
-        return jsonResponse({success:false,error:'本地直接入口已關閉，請經上游 sig 進入'});
-      }
-    }
     const ymis=validateToken(body.token);
     if(!ymis) return jsonResponse({success:false,error:'Token 無效或過期'});
     const user=getUser(ymis);
     if(!user) return jsonResponse({success:false,error:'找不到用戶'});
 
-    // 上下游旗標：讀取只需登入；設置需團長以上（由上游控制下游寫） 
+    // 上下游旗標：讀取只需登入；設置需團長以上（掣同時在上游選單，可經 sig 打下游 setLocalLogin）
     if(action==='getAllowLocalLogin'){
       return handleGetAllowLocalLogin();
     }
     if(action==='setAllowLocalLogin'){
       if(getRoleLevel(user.role)<60) return jsonResponse({success:false,error:'需團長以上權限'});
-      const sigVal = body.sig || '';
-      // 若本地已關閉，仍需 sig 才能再開？但設置本身已需登入，額外 sig 為可選增強
       return handleSetAllowLocalLogin(body.allow, ymis);
     }
-    // 支部 SHEET（與進度追蹤成對）
-    if(action==='getBranches') return handleGetBranches();
-    if(action==='saveBranch'){
-      if(!canUserTick(user.role)) return jsonResponse({success:false,error:'權限不足，需領袖權限'});
-      return handleSaveBranch(body.branch||body, ymis);
-    }
-    if(action==='deleteBranch'){
-      if(getRoleLevel(user.role)<60) return jsonResponse({success:false,error:'需團長以上權限'});
-      return handleDeleteBranch(body.branch_id, ymis);
-    }
-    // 吐 JSON（搬舊數）：匯出／匯入（含 hash）
+    // 吐 JSON（搬舊數）：匯出含 hash（proxy 後備通道；主通道係 Sheet 選單「📤 匯出 JSON（含 hash）」→ Drive 私人檔）
     if(action==='exportUsers'){
       if(getRoleLevel(user.role)<40) return jsonResponse({success:false,error:'權限不足'});
       return handleExportUsers();
@@ -1177,7 +1573,9 @@ function handleForgotPassword(loginId){
   }catch(e){ return jsonResponse({success:false,error:e.toString()}); }
 }
 // 開立可登入帳號
-function handleAddUser(body,mgr){
+// 上游開戶（createAccountForDownstream）直接用純函數 addUser_；前端／doPost 入口經 handleAddUser 包裝
+function handleAddUser(body,mgr){ return jsonResponse(addUser_(body,mgr)); }
+function addUser_(body,mgr){
   try{
     let ymis=(body.ymis||'').toString().trim();
     const name=(body.name||'').toString().trim();
@@ -1186,31 +1584,31 @@ function handleAddUser(body,mgr){
     const password=(body.password||'').toString();
     const squad=(body.squad||'').toString().trim();
     const canTick=body.can_tick===true||body.can_tick==='true'||body.can_tick==='TRUE';
-    if(VALID_ROLES.indexOf(role)<0) return jsonResponse({success:false,error:'無效的角色: '+role});
-    if(!canManageUser(mgr,role)) return jsonResponse({success:false,error:'權限不足，你的等級不可開立此角色'});
+    if(VALID_ROLES.indexOf(role)<0) return {success:false,error:'無效的角色: '+role}
+    if(!canManageUser(mgr,role)) return {success:false,error:'權限不足，你的等級不可開立此角色'}
     // 領袖免 YMIS（用電郵登入）—— 留空且有 Email 即自動編配內部 L 編號
     if(!ymis && role!=='member'){
-      if(!email) return jsonResponse({success:false,error:'領袖開戶必須填寫 Email（用作登入帳號）'});
+      if(!email) return {success:false,error:'領袖開戶必須填寫 Email（用作登入帳號）'}
       ymis=generateLeaderId();
     }
-    if(!/^(\d{10}|L\d+)$/.test(ymis)) return jsonResponse({success:false,error:'YMIS 須為 10 位數字（領袖可留空，會自動編配）'});
-    if(!name) return jsonResponse({success:false,error:'請填寫姓名'});
-    if(email && !isValidEmail_(email)) return jsonResponse({success:false,error:'Email 格式不正確'});
-    if(isSuperAdminId(ymis) || isSuperAdminId(email)) return jsonResponse({success:false,error:'不能新增系統管理員帳號'});
+    if(!/^(\d{10}|L\d+)$/.test(ymis)) return {success:false,error:'YMIS 須為 10 位數字（領袖可留空，會自動編配）'}
+    if(!name) return {success:false,error:'請填寫姓名'}
+    if(email && !isValidEmail_(email)) return {success:false,error:'Email 格式不正確'}
+    if(isSuperAdminId(ymis) || isSuperAdminId(email)) return {success:false,error:'不能新增系統管理員帳號'}
     if(ymisTakenAnyStatus_(ymis)){
       const ex=findUserRowAnyStatus_(ymis);
-      return jsonResponse({success:false,error:(ex && ex.status!=='active')?'此 YMIS 已有帳號紀錄（已停用），請恢復該帳號而非重新開戶':'此 YMIS 已註冊，不可重複開戶'});
+      return {success:false,error:(ex && ex.status!=='active')?'此 YMIS 已有帳號紀錄（已停用），請恢復該帳號而非重新開戶':'此 YMIS 已註冊，不可重複開戶'}
     }
     if(email){
       const em=emailTakenAnyStatus_(email,'');
-      if(em) return jsonResponse({success:false,error:(em.status!=='active')?'此 Email 已有帳號紀錄（已停用：'+em.ymis+'），請恢復該帳號而非重新開戶':'此 Email 已被 '+em.ymis+' 使用，不可重複開戶'});
+      if(em) return {success:false,error:(em.status!=='active')?'此 Email 已有帳號紀錄（已停用：'+em.ymis+'），請恢復該帳號而非重新開戶':'此 Email 已被 '+em.ymis+' 使用，不可重複開戶'}
     }
     if(role==='group_leader'){
       const cur=findActiveGroupLeader('');
-      if(cur) return jsonResponse({success:false,error:'團長只能有一位（現任：'+cur.name+' '+cur.ymis+'），如需更換請先將現任團長轉為其他角色'});
+      if(cur) return {success:false,error:'團長只能有一位（現任：'+cur.name+' '+cur.ymis+'），如需更換請先將現任團長轉為其他角色'}
     }
     const uSheet=getSheet().getSheetByName('Users');
-    if(!uSheet) return jsonResponse({success:false,error:'Users 工作表不存在'});
+    if(!uSheet) return {success:false,error:'Users 工作表不存在'}
     ensureForceChangeCol(uSheet);
     const nowStr=now();
     const usedDefault=!password || password===DEFAULT_PASS;
@@ -1241,8 +1639,8 @@ function handleAddUser(body,mgr){
     if(mRow) mSheet.getRange(mRow.row,2).setValue(name);
     else mSheet.appendRow([ymis, name, new Date(), '', '', squad]);
     writeAudit((mgr&&mgr.ymis)||'','add_user',ymis,'前端開立帳號 role='+role);
-    return jsonResponse({success:true,message:'帳號已建立'+(usedDefault?'（預設密碼：'+DEFAULT_PASS+'，首次登入須更改）':'（已設密碼）'),ymis:ymis});
-  }catch(e){ return jsonResponse({success:false,error:e.toString()}); }
+    return {success:true,message:'帳號已建立'+(usedDefault?'（預設密碼：'+DEFAULT_PASS+'，首次登入須更改）':'（已設密碼）'),ymis:ymis}
+  }catch(e){ return {success:false,error:e.toString()} }
 }
 // 停用帳號 - 設 status=inactive，清除 tokens，保留資料
 function handleDeactivateUser(body,manager,managerYmis){
@@ -1517,167 +1915,23 @@ function handleDeleteLogRecord(recordId, recorderYmis){
   return jsonResponse({success:false,error:'找不到紀錄'});
 }
 
-// ===== 支部 SHEET 操作 =====
-function handleGetBranches(){
-  if(!getSheet().getSheetByName(BRANCH_SHEET_NAME)) return jsonResponse({success:false,error:'「'+BRANCH_SHEET_NAME+'」工作表不存在：請在 Apps Script 執行 initializeSheets() 補建'});
-  return jsonResponse({success:true, branches:getBranchesList()});
-}
-function handleSaveBranch(payload, actorYmis){
-  const sh=getSheet().getSheetByName(BRANCH_SHEET_NAME);
-  if(!sh) return jsonResponse({success:false,error:'「'+BRANCH_SHEET_NAME+'」工作表不存在'});
-  const bid=safeSheetText(payload.branch_id,40);
-  const bname=safeSheetText(payload.branch_name,80);
-  const leader=String(payload.leader_ymis||'').trim().substring(0,20);
-  const count=String(payload.member_count||'').trim().substring(0,10);
-  if(!bid || !bname) return jsonResponse({success:false,error:'branch_id 與 branch_name 必填'});
-  const data=sh.getDataRange().getValues();
-  for(let i=1;i<data.length;i++){
-    if(String(data[i][0])===bid){
-      sh.getRange(i+1,2).setValue(bname);
-      sh.getRange(i+1,3).setValue(leader);
-      sh.getRange(i+1,4).setValue(count);
-      sh.getRange(i+1,6).setValue(now());
-      writeAudit(actorYmis,'update_branch',bid,bname);
-      return jsonResponse({success:true, message:'已更新支部 '+bid});
-    }
-  }
-  sh.appendRow([bid,bname,leader,count,now(),now()]);
-  writeAudit(actorYmis,'add_branch',bid,bname);
-  return jsonResponse({success:true, message:'已新增支部 '+bid});
-}
-function handleDeleteBranch(branchId, actorYmis){
-  const sh=getSheet().getSheetByName(BRANCH_SHEET_NAME);
-  if(!sh) return jsonResponse({success:false,error:'「'+BRANCH_SHEET_NAME+'」工作表不存在'});
-  branchId=String(branchId||'').trim();
-  if(!branchId) return jsonResponse({success:false,error:'缺少 branch_id'});
-  const data=sh.getDataRange().getValues();
-  for(let i=1;i<data.length;i++){
-    if(String(data[i][0])===branchId){
-      sh.deleteRow(i+1);
-      writeAudit(actorYmis,'delete_branch',branchId,'刪除支部');
-      return jsonResponse({success:true, message:'已刪除支部 '+branchId});
-    }
-  }
-  return jsonResponse({success:false,error:'找不到支部'});
-}
-
-// ===== 吐 JSON（搬舊數）：匯出／匯入（含 hash，直插保留舊密碼）=====
+// ===== 吐 JSON（搬舊數）：proxy 後備通道（主通道係 Sheet 選單 → Drive 私人檔）=====
 function handleExportUsers(){
-  const sh=getSheet().getSheetByName('Users');
-  if(!sh) return jsonResponse({success:false,error:'Users 工作表不存在'});
-  const data=sh.getDataRange().getValues();
-  const users=[];
-  for(let i=1;i<data.length;i++){
-    const y=String(data[i][0]||'').trim();
-    if(!y) continue;
-    const role=String(data[i][3]||'').trim()||'member';
-    if(role==='super_admin' || isSuperAdminId(y)) continue;
-    users.push({
-      ymis:y,
-      name:String(data[i][1]||''),
-      email:String(data[i][2]||''),
-      role:role,
-      password_hash:String(data[i][4]||''),
-      branch:String(data[i][5]||''),
-      can_tick:data[i][6]===true || String(data[i][6]).toUpperCase()==='TRUE',
-      auth_by:String(data[i][7]||''),
-      auth_date:data[i][8]?String(data[i][8]):'',
-      created_at:data[i][9]?String(data[i][9]):'',
-      last_login:data[i][10]?String(data[i][10]):'',
-      status:String(data[i][11]||'active'),
-      allowed_badges:data[i][12]?String(data[i][12]):'',
-      force_change_password:data[i].length>=FORCE_CHANGE_COL && isForceChangeValue(data[i][FORCE_CHANGE_COL-1])
-    });
-  }
-  return jsonResponse({success:true, users:users});
-}
-function handleUpsertUser(payload, actorYmis){
-  // 直插 hash，保留舊密碼：payload 必須含 password_hash（64 hex），不做二次 hash
-  let ymis=String(payload.ymis||'').trim();
-  const name=safeSheetText(payload.name,100);
-  const email=String(payload.email||'').trim().substring(0,160);
-  let role=String(payload.role||'member').trim()||'member';
-  const hash=String(payload.password_hash||'').trim();
-  const branch=safeSheetText(payload.branch,100);
-  const canTick=payload.can_tick===true || String(payload.can_tick).toUpperCase()==='TRUE';
-  let status=String(payload.status||'active').trim()||'active';
-  const allowed = payload.allowed_badges!==undefined && payload.allowed_badges!==null ? String(payload.allowed_badges).trim() : undefined;
-  const forceChange = payload.force_change_password===true || String(payload.force_change_password).toUpperCase()==='TRUE';
-  if(!ymis){
-    if(role!=='member'){
-      if(!email) return jsonResponse({success:false, error:'領袖 upsert 必須有 Email'});
-      ymis=generateLeaderId();
-    }else return jsonResponse({success:false, error:'YMIS 必填'});
-  }
-  if(!/^(\d{10}|L\d+)$/.test(ymis)) return jsonResponse({success:false, error:'YMIS 格式錯誤'});
-  if(!name) return jsonResponse({success:false, error:'姓名必填'});
-  if(VALID_ROLES.indexOf(role)<0) return jsonResponse({success:false, error:'無效角色'});
-  if(!/^[a-f0-9]{64}$/i.test(hash)) return jsonResponse({success:false, error:'password_hash 必須為 64位 hex (SHA-256)'});
-  if(email && !isValidEmail_(email)) return jsonResponse({success:false, error:'Email 格式不正確'});
-  if(isSuperAdminId(ymis) || isSuperAdminId(email)) return jsonResponse({success:false, error:'不能操作系統管理員帳號'});
-  const sh=getSheet().getSheetByName('Users');
-  if(!sh) return jsonResponse({success:false,error:'Users 工作表不存在'});
-  ensureForceChangeCol(sh);
-  const data=sh.getDataRange().getValues();
-  let foundRow=-1;
-  for(let i=1;i<data.length;i++){
-    if(String(data[i][0]||'').trim()===ymis){ foundRow=i+1; break; }
-  }
-  if(email){
-    const taken=emailTakenAnyStatus_(email, ymis);
-    if(taken) return jsonResponse({success:false, error:'此 Email 已被 '+taken.ymis+' 使用'});
-  }
-  if(foundRow>0){
-    // 檢查現有數據的角色是否 super_admin
-    const curRole=String(data[foundRow-1][3]||'').trim();
-    if(curRole==='super_admin' || isSuperAdminId(String(data[foundRow-1][0]||''))) return jsonResponse({success:false,error:'不能操作系統管理員帳號'});
-    sh.getRange(foundRow,2).setValue(name);
-    sh.getRange(foundRow,3).setValue(email);
-    sh.getRange(foundRow,4).setValue(role);
-    sh.getRange(foundRow,5).setValue(hash);
-    sh.getRange(foundRow,6).setValue(branch);
-    sh.getRange(foundRow,7).setValue(canTick);
-    sh.getRange(foundRow,8).setValue(actorYmis||'upsert');
-    sh.getRange(foundRow,9).setValue(now());
-    sh.getRange(foundRow,12).setValue(status);
-    if(sh.getLastColumn()>=13){
-      const def = (allowed!==undefined) ? allowed : (role==='member' ? '' : (role==='exec_committee' ? 'L1,活動段章,OTHER' : '*'));
-      sh.getRange(foundRow,13).setValue(def);
-    }
-    sh.getRange(foundRow,FORCE_CHANGE_COL).setValue(forceChange);
-    writeAudit(actorYmis||'upsert','upsert_user',ymis,'更新 hash 匯入');
-    return jsonResponse({success:true, message:'已更新 '+ymis, ymis:ymis});
-  }else{
-    if(role==='group_leader'){
-      const cur=findActiveGroupLeader('');
-      if(cur) return jsonResponse({success:false, error:'團長只能有一位（現任：'+cur.name+' '+cur.ymis+'）'});
-    }
-    const nowStr=now();
-    const defAllowed = (allowed!==undefined) ? allowed : (role==='member' ? '' : (role==='exec_committee' ? 'L1,活動段章,OTHER' : '*'));
-    sh.appendRow([ymis,name,email,role,hash,branch,canTick,actorYmis||'upsert',nowStr,nowStr,'',status,defAllowed,forceChange]);
-    try{
-      let mSheet=getSheet().getSheetByName('成員名單');
-      if(!mSheet){ mSheet=getSheet().insertSheet('成員名單'); mSheet.appendRow(['YMIS','姓名','加入日期','支部','聯絡','備註']); }
-      const mRow=memberNameRowExists_(ymis);
-      if(mRow) mSheet.getRange(mRow.row,2).setValue(name);
-      else mSheet.appendRow([ymis,name,new Date(),'','',branch]);
-    }catch(e){}
-    writeAudit(actorYmis||'upsert','upsert_user',ymis,'新增 hash 匯入');
-    return jsonResponse({success:true, message:'已新增 '+ymis, ymis:ymis});
-  }
+  const payload=buildUsersExport();
+  return jsonResponse({success:true,count:payload.count,users:payload.users});
 }
 
-// ===== 上下游接入：ALLOW_LOCAL_LOGIN 開關與 sig 直通 =====
+// ===== 上下游接入：ALLOW_LOCAL_LOGIN 直接入口開關（本地 token 通道）=====
+// 掣值：1/true/yes/on/open＝開啟；其餘任何值（false/0/no/off 或串錯字）＝閂口（fail closed）
 function handleGetAllowLocalLogin(){
-  return jsonResponse({success:true, allow_local_login:getAllowLocalLogin()});
+  const raw=String(linkProps().getProperty(LINK_FLAG)||'');
+  return jsonResponse({success:true, allow:localLoginAllowed(), allow_local_login:localLoginAllowed(), flag:raw==='false'?'false':(raw?'true':'（未設定＝開啟）')});
 }
 function handleSetAllowLocalLogin(allow, actorYmis){
-  const v = (allow===true || String(allow).toLowerCase()==='true' || String(allow)==='1');
-  setAllowLocalLogin(v);
-  writeAudit(actorYmis, 'set_allow_local_login', v?'true':'false', '切換下游直接入口');
-  return jsonResponse({success:true, allow_local_login:getAllowLocalLogin(), message: v ? '已開啟本地直接入口' : '已關閉本地直接入口，只收 sig'});
+  const v=(allow===true||['true','1','yes','on','open'].indexOf(String(allow).trim().toLowerCase())>=0);
+  setLocalLoginAllowed(v,actorYmis||'local');
+  return jsonResponse({success:true, allow:localLoginAllowed(), allow_local_login:localLoginAllowed(), message:v?'已開啟本地直接入口':'已關閉本地直接入口，只收 sig'});
 }
-
 
 function getPendingLogRequestsList(viewYmis, isLeader){
   const sheet=getSheet().getSheetByName(LOG_PENDING_SHEET_NAME); const list=[];
@@ -1812,4 +2066,170 @@ function handleReviewLogRequest(reqId, decision, reviewer, note){
   sheet.getRange(rowIndex,2).setValue(newRecordId);
   writeAudit(reviewer,'approve_log_request',rec.ymis,rec.type+': '+rec.title+' '+rec.date+' -> '+newRecordId);
   return jsonResponse({success:true,message:'已批准並寫入活動履歷',record_id:newRecordId});
+}
+// ===== 旅系統：Sheet 選單（onOpen）=====
+// 全部接駁操作都經呢度做（sig 係 GAS→GAS，唔經 Vercel proxy，前端／api 唔使改）。
+function onOpen() {
+  try {
+    const ui = SpreadsheetApp.getUi();
+    ui.createMenu('🔗 旅系統')
+      .addItem('📤 匯出 JSON（含 hash）', 'menuExportUsersJson')
+      .addItem('📥 匯入 JSON（upsertUser 直插 hash）', 'menuImportUsersJson')
+      .addSeparator()
+      .addItem('🧭 本機接駁狀態', 'menuShowLinkState')
+      .addItem('🔑 顯示 BACKEND／APIKEY（交 ADMIN）', 'menuShowLinkCredentials')
+      .addSeparator()
+      .addItem('➕ 登記下游（URL + SHEET KEY）', 'menuRegisterDownstream')
+      .addItem('📡 測試下游連線（sig）', 'menuPingDownstream')
+      .addItem('👤 為下游開戶（揀團）', 'menuCreateDownstreamUser')
+      .addSubMenu(ui.createMenu('🚪 下游直接入口')
+        .addItem('🔒 閂口（只收 sig）', 'menuCloseDownstreamGate')
+        .addItem('🔓 開啟（容許本地登入）', 'menuOpenDownstreamGate'))
+      .addItem('🗑️ 移除下游登記', 'menuRemoveDownstream')
+      .addSeparator()
+      .addSubMenu(ui.createMenu('🚪 本機直接入口')
+        .addItem('🔒 閂口（只收 sig）', 'menuLocalLoginOff')
+        .addItem('🔓 開啟（容許本地登入）', 'menuLocalLoginOn'))
+      .addToUi();
+  } catch (e) { }
+}
+function linkUi() { return SpreadsheetApp.getUi(); }
+function linkAlert(title, message) {
+  const text = String(message || '');
+  try { const ui = linkUi(); if (ui) ui.alert(String(title || '旅系統'), text, ui.ButtonSet.OK); } catch (e) { }
+  try { Logger.log(String(title || '旅系統') + ': ' + text); } catch (e) { }
+  return text;
+}
+function linkPrompt(title, message) {
+  const ui = linkUi();
+  if (!ui) return null;
+  const res = ui.prompt(String(title || '旅系統'), String(message || ''), ui.ButtonSet.OK_CANCEL);
+  if (res.getSelectedButton() !== ui.Button.OK) return null;
+  return String(res.getResponseText() || '').trim();
+}
+function linkConfirm(title, message) {
+  const ui = linkUi();
+  if (!ui) return false;
+  return ui.alert(String(title || '旅系統'), String(message || ''), ui.ButtonSet.YES_NO) === ui.Button.YES;
+}
+function linkSummarizeResults(results, limit) {
+  const bad = (results || []).filter(function (r) { return !r.success; });
+  if (!bad.length) return '';
+  return '\n\n首 ' + Math.min(bad.length, limit || 8) + ' 筆失敗：\n' + bad.slice(0, limit || 8).map(function (r) {
+    return '・' + String(r.ymis || '?') + '：' + String(r.error || '');
+  }).join('\n');
+}
+function menuExportUsersJson() {
+  const r = exportUsersJson();
+  if (!r.success) return linkAlert('匯出 JSON', '匯出失敗：' + String(r.error || ''));
+  const lines = ['已匯出 ' + r.count + ' 個帳戶（含 password_hash）。'];
+  if (r.file_url) lines.push('\nDrive 檔（已設為私人，匯入後請刪除）：\n' + r.file_url + '\n\n檔案 ID：' + r.file_id);
+  else lines.push('\nDrive 寫入失敗（' + String(r.drive_error || '') + '）；完整 JSON 已寫入「檢視 → 執行紀錄（Logger）」，可在那裡複製。');
+  lines.push('\n⚠️ 檔案含密碼 hash，只用於搬到上游／新節點，切勿公開分享或留在共用資料夾。');
+  return linkAlert('匯出 JSON（含 hash）', lines.join(''));
+}
+function menuImportUsersJson() {
+  const input = linkPrompt('匯入 JSON（upsertUser）', '貼上「匯出 JSON（含 hash）」檔案的 Drive 連結或檔案 ID：\n\n（匯入會逐個 upsertUser 直插 hash，保留舊密碼；既有帳戶只更新，不會重複開戶）');
+  if (input === null) return '';
+  const r = importUsersFromDrive(input, 'menu-import');
+  if (!r.success) return linkAlert('匯入 JSON', '匯入失敗：' + String(r.error || ''));
+  return linkAlert('匯入 JSON', '匯入完成：共 ' + r.count + ' 筆\n新增 ' + r.created + '、更新 ' + r.updated + '、失敗 ' + r.failed + linkSummarizeResults(r.results) + '\n\n確認無誤後，可閂下游直接入口（只收 sig）。');
+}
+function menuShowLinkState() {
+  const s = getLinkState();
+  const lines = [
+    '節點：' + s.node,
+    '本機直接入口（' + LINK_FLAG + '）：' + (s.allow_local_login ? '開啟（未閂）' : '已閂 — 只收上游 sig'),
+    '設定值：' + s.link_flag_set,
+    '本機 API KEY（遮罩）：' + s.api_key_masked,
+    '已登記下游：' + s.downstreams.length + ' 個'
+  ];
+  s.downstreams.forEach(function (d) { lines.push('・' + d.id + (d.name ? '（' + d.name + '）' : '') + ' ' + d.url_masked + ' 登記於 ' + d.registered_at); });
+  lines.push('\n匯出格式：' + s.export_format);
+  return linkAlert('本機接駁狀態', lines.join('\n'));
+}
+function menuShowLinkCredentials() {
+  let url = '';
+  try { url = ScriptApp.getService().getUrl() || ''; } catch (e) { url = ''; }
+  const lines = [
+    '以下兩項由本節點 GS 產生，經收件匣交 ADMIN 登記；四項一律不寫入工作表。',
+    '',
+    'B　BACKEND（部署後抄此 URL）：',
+    url || '（尚未部署為網頁應用程式：部署 → 新增部署 → 網頁應用程式，再按一次本選單）',
+    '',
+    'D　APIKEY（SHEET KEY）：',
+    getApiKey(),
+    '',
+    'C　NAME：由你自行填寫（交 ADMIN 時一併提供）',
+    'A　隱藏管理鍵：與旅系統無關，不改動、不在此顯示'
+  ];
+  return linkAlert('BACKEND／APIKEY（交 ADMIN）', lines.join('\n'));
+}
+function menuRegisterDownstream() {
+  const id = linkPrompt('登記下游 1/4', '下游編號（例：團／進度節點識別，只可用英文、數字、底線、連字號）：');
+  if (id === null) return '';
+  const url = linkPrompt('登記下游 2/4', '下游 GAS 正式 /exec URL（B）：');
+  if (url === null) return '';
+  const key = linkPrompt('登記下游 3/4', '下游 SHEET KEY（下游 Script Properties 的 API_KEY，即 D）：');
+  if (key === null) return '';
+  const name = linkPrompt('登記下游 4/4', '下游名稱（可留空；按「取消」亦視為留空）：');
+  const r = registerDownstream(id, url, key, name || '');
+  return linkAlert('登記下游', r.success ? ('已登記下游 ' + r.id + '\n\n（URL 及 SHEET KEY 只存 Script Properties，不寫入工作表）\n下一步：按「📡 測試下游連線（sig）」確認可讀可寫。') : ('登記失敗：' + String(r.error || '')));
+}
+function menuRemoveDownstream() {
+  const id = linkPrompt('移除下游登記', '要移除的下游編號：\n\n' + listDownstreams().map(function (d) { return '・' + d.id + (d.name ? '（' + d.name + '）' : ''); }).join('\n'));
+  if (id === null) return '';
+  const r = removeDownstream(id);
+  return linkAlert('移除下游登記', r.success ? String(r.message) : ('移除失敗：' + String(r.error || '')));
+}
+function menuPingDownstream() {
+  const id = linkPrompt('測試下游連線', '下游編號：');
+  if (id === null) return '';
+  const r = pingDownstream(id);
+  if (!r || !r.success) return linkAlert('測試下游連線', '連線失敗：' + String((r && r.error) || '下游無回應'));
+  return linkAlert('測試下游連線', '✅ sig 驗證通過，可讀可寫。\n\n下游節點：' + String(r.node || '') + '\n下游直接入口：' + (r.allow_local_login ? '開啟（未閂）' : '已閂 — 只收上游 sig') + '\n下游已登記的再下一層：' + ((r.downstreams && r.downstreams.length) || 0) + ' 個');
+}
+function menuCreateDownstreamUser() {
+  const list = listDownstreams();
+  if (!list.length) return linkAlert('為下游開戶', '尚未登記任何下游；請先按「➕ 登記下游（URL + SHEET KEY）」。');
+  const id = linkPrompt('為下游開戶 1/6', '揀團（下游編號）：\n\n' + list.map(function (d) { return '・' + d.id + (d.name ? '（' + d.name + '）' : ''); }).join('\n'));
+  if (id === null) return '';
+  const ymis = linkPrompt('為下游開戶 2/6', 'YMIS（10 位數字；領袖可留空自動編 L 號）：');
+  if (ymis === null) return '';
+  const name = linkPrompt('為下游開戶 3/6', '姓名：');
+  if (name === null) return '';
+  const email = linkPrompt('為下游開戶 4/6', 'Email（領袖／執委必填，團員可留空）：');
+  if (email === null) return '';
+  const role = linkPrompt('為下游開戶 5/6', '角色：member / exec_committee / branch_leader / group_leader / admin');
+  if (role === null) return '';
+  const password = linkPrompt('為下游開戶 6/6', '臨時密碼（最少 4 位；預設 ' + DEFAULT_PASS + '）：');
+  const finalPassword = (password === null || !password) ? DEFAULT_PASS : password;
+  const r = createAccountForDownstream(id, {
+    ymis: ymis, name: name, email: email, role: String(role || 'member').trim(),
+    password: finalPassword, can_tick: true, branch: ''
+  }, { ymis: ADMIN_YMIS, name: ADMIN_NAME, role: 'admin', can_tick: true });
+  if (!r.success) return linkAlert('為下游開戶', '開戶失敗：' + String(r.error || ''));
+  return linkAlert('為下游開戶', '✅ 已在上游開戶並經 sig 寫入下游 ' + r.downstream + '\n\nYMIS：' + r.ymis + '\n姓名：' + r.name + '\n臨時密碼：' + finalPassword + '\n（首次登入必須更改）');
+}
+function menuCloseDownstreamGate() {
+  const id = linkPrompt('閂下游直接入口', '下游編號：\n\n' + listDownstreams().map(function (d) { return '・' + d.id + (d.name ? '（' + d.name + '）' : ''); }).join('\n'));
+  if (id === null) return '';
+  if (!linkConfirm('閂下游直接入口', '確定閂口？\n\n下游 ' + id + ' 之後只接受本上游的 sig 請求：\n・下游直接登入／申請帳戶會被拒\n・進度、帳戶、履歷一律由上游讀寫\n\n請先確認已完成匯入（upsertUser）及測試連線。')) return '';
+  const r = setDownstreamLocalLogin(id, false);
+  return linkAlert('閂下游直接入口', (r && r.success) ? ('✅ 下游 ' + id + ' 直接入口已閂，只收 sig。') : ('閂口失敗：' + String((r && r.error) || '下游無回應')));
+}
+function menuOpenDownstreamGate() {
+  const id = linkPrompt('開下游直接入口', '下游編號：');
+  if (id === null) return '';
+  const r = setDownstreamLocalLogin(id, true);
+  return linkAlert('開下游直接入口', (r && r.success) ? ('下游 ' + id + ' 直接入口已重開（本地登入恢復）。') : ('開啟失敗：' + String((r && r.error) || '下游無回應')));
+}
+function menuLocalLoginOff() {
+  if (!linkConfirm('閂本機直接入口', '確定閂口？\n\n本節點之後只接受上游 sig 請求：\n・前端直接登入／申請帳戶會被拒\n・資料只由上游讀寫\n\n請先確認上游已登記本節點的 URL 及 SHEET KEY，並已通過「測試下游連線」。')) return '';
+  setLocalLoginAllowed(false, 'menu');
+  return linkAlert('閂本機直接入口', '✅ ' + LINK_FLAG + '=false：本節點只收上游 sig。如需重開，按「🔓 開啟（容許本地登入）」。');
+}
+function menuLocalLoginOn() {
+  setLocalLoginAllowed(true, 'menu');
+  return linkAlert('開本機直接入口', '✅ ' + LINK_FLAG + '=true：本節點直接入口已重開。');
 }

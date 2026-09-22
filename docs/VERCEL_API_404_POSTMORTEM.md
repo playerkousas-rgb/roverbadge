@@ -256,4 +256,17 @@ npx vercel inspect <dpl_xxx> --logs                                          # �
   「旅團清單見到、但登入死咗」係呢次事故嘅典型外觀。（v4.0 已解決：fallback 同 JSON 一齊移除，
   旅團清單淨係嚟自 `/api/troops`；`/api/troops` 壞咗就會直接顯示後端未登記警告。）
 
+## 8. 2026-09-22 補充（旅系統對齊）
+
+上面第 5 節「`package.json` 唔准有 `build` script」嘅規則，本意係**build 唔可以喺 build 環境
+寫返入來源目錄**（第 6 輪實驗失败嘅直接原因係 `sync-troops.mjs` 寫 `api/_troops_static.js`
+入來源樹）。對齊 vsbadge 後（vsbadge 同一模式部署正常）恢復咗 `build` script，但換咗安全模式：
+
+- `npm run build` = `node scripts/build.mjs`（Vercel **Build Output API**：build 嘅產物係
+  `.vercel/output/`——`config.json` version 3 + static + 5 個 function bundle；呢個目錄正正係
+  Vercel 自己放 build 產物嘅位置）
+- 底線由 `tests/vercel-config.test.mjs`【5】＋【6】用**功能檢查**守護：真跑一次 build，
+  比對來源樹 sha256 快照——寫入來源目錄即刻紅（`.vercel` 排除喺快照外）
+- 腳本零依賴、零網絡、冪等，喺 Vercel build container 安全可重入
+
 COPYRIGHT 2026 Scout System
