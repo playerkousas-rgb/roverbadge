@@ -4624,19 +4624,30 @@ async function loadUsers(){
         </div>`;
       }
 
-      // 系統設定 - 私隱開關 (團長以上可見)
+      // 系統設定 - 私隱開關 (團長以上可見) + 上下游控管 ALLOW_LOCAL_LOGIN
       let systemSettingHtml='';
       if(['group_leader','admin','super_admin'].includes(currentUser.role)){
         const allowOthers = appConfig.allow_member_view_others==='true';
         systemSettingHtml=`<div class="info-section" style="border-left-color:var(--green);background:#F0FFF4">
-          <h3>🔒 私隱設定 (僅團長/管理員可見)</h3>
-          <p style="font-size:11px;color:var(--text-light)">普通成員預設只看自己，能否看其他成員由團長開放。有些旅團重私隱，有些想互相鼓勵，管委要按進度策劃活動。</p>
-          <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+          <h3>🔒 私隱與控管設定 (僅團長/管理員可見)</h3>
+          <p style="font-size:11px;color:var(--text-light)">私隱：普通成員預設只看自己，能否看其他成員由團長開放。控管：旅控團／團控進度開關（下游直寫管制）。</p>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap">
             <label style="font-size:13px;display:flex;align-items:center;gap:6px"><input type="checkbox" id="allowMemberViewOthers" ${allowOthers?'checked':''} onchange="toggleAllowMemberViewOthers(this.checked)"> 允許成員互相查看進度 (鼓勵模式)</label>
             <span style="font-size:11px;color:var(--text-light)">當前：${allowOthers?'已開啟 - 成員可看全團':'已關閉 - 成員只看自己 (私隱)'}</span>
           </div>
-          <div style="font-size:10px;color:var(--text-light);margin-top:6px">說明：關閉時成員「我的進度」不能選其他人，全團總覽隱藏；開啟時成員可看全團但不能編輯。</div>
+          <div style="margin-top:10px;padding:8px;background:#fff;border-radius:8px;border:1px solid var(--border)">
+            <div style="font-size:12px;font-weight:700">🔐 上下游控管：ALLOW_LOCAL_LOGIN（下游直寫開關）</div>
+            <div style="font-size:11px;color:var(--text-light);margin-top:4px">開啟＝允許前端直接開戶／本地登入；關閉後僅接受上游 sig（旅控團、團控進度），前端直寫會被拒。</div>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap">
+              <label style="font-size:13px;display:flex;align-items:center;gap:6px"><input type="checkbox" id="allowLocalLoginChk" onchange="toggleAllowLocalLogin(this.checked)"> 允許本地直接寫入（下游直寫）</label>
+              <span id="allowLocalLoginStatus" style="font-size:11px;color:var(--text-light)">載入中...</span>
+              <button class="btn btn-sm btn-secondary" onclick="refreshAllowLocalLogin()">🔄 刷新</button>
+            </div>
+          </div>
+          <div style="font-size:10px;color:var(--text-light);margin-top:6px">說明：關閉時成員「我的進度」不能選其他人，全團總覽隱藏；開啟時成員可看全團但不能編輯。上游關閉下游直寫後，新帳號須由上游選好經 sig 寫入下游。</div>
         </div>`;
+        // 非同步載入 ALLOW_LOCAL_LOGIN 狀態
+        setTimeout(refreshAllowLocalLogin, 300);
       }
 
       // v8.8：帳號分「啟用中／已停用」；另載入成員名單，差集即無登入帳號的純名單成員
@@ -4652,11 +4663,30 @@ async function loadUsers(){
           rosterOnly=gm.members.filter(m=>m.ymis && !userIds.has(String(m.ymis)));
         }
       }catch(e){ console.warn('getMembers failed, show users only',e); }
-      let h=roleExplain+systemSettingHtml+mockTool+`<div class="info-section" style="font-size:11px;border-left-color:var(--orange);background:#FFF7ED;margin-bottom:8px">${tr('團長全團只可有一位。')}${gslHolder?tr('現任：')+gslHolder.name+'。'+tr('如需更換，請先將現任團長轉為其他角色。'):tr('目前未有團長。')}</div><div class="filter-bar" style="display:flex;gap:6px;flex-wrap:wrap">
+      let h=roleExplain+systemSettingHtml+mockTool+`<div class="info-section" style="font-size:11px;border-left-color:var(--orange);background:#FFF7ED;margin-bottom:8px">${tr('團長全團只可有一位。')}${gslHolder?tr('現任：')+gslHolder.name+'。'+tr('如需更換，請先將現任團長轉為其他角色。'):tr('目前未有團長。')}</div>
+      <div class="info-section" style="border-left-color:var(--maroon);background:#FFF5F5">
+        <h3 style="color:var(--maroon)">🏕️ 支部管理（每團一張支部 SHEET，與進度 SHEET 成對）</h3>
+        <p style="font-size:11px;color:var(--text-light)">支部資料與進度分表儲存，前端可新增／刪除支部，後端 Sheet 名：支部。</p>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+          <button class="btn btn-sm btn-primary" onclick="openBranchModal()">➕ 新增／編輯支部</button>
+          <button class="btn btn-sm btn-secondary" onclick="refreshBranches()">🔄 重新載入支部</button>
+        </div>
+        <div id="branchList" style="margin-top:8px;font-size:12px"></div>
+      </div>
+      <div class="info-section" style="border-left-color:var(--blue);background:var(--blue-light)">
+        <h3 style="color:var(--blue)">🔄 搬舊數（JSON 匯出／匯入，保留密碼 hash）</h3>
+        <p style="font-size:11px;color:var(--text-light)">舊系統有資料、新系統為空時：舊 支部 / 進度 點「匯出 JSON（含 hash）」→ 新 支部 點「匯入」逐個 upsertUser 直插 hash，保留舊密碼，之後可關閉下游直寫。</p>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+          <button class="btn btn-sm btn-success" onclick="exportUsersJson()">⬇️ 匯出 JSON（含 hash，舊系統用）</button>
+          <label class="btn btn-sm btn-warning" style="cursor:pointer">📤 匯入 JSON（新支部用）<input type="file" accept=".json,application/json" onchange="importUsersJson(this.files[0]);this.value=''" style="display:none"></label>
+          <button class="btn btn-sm btn-secondary" onclick="downloadUsersList()">⬇️ 匯出用戶清單（CSV）</button>
+        </div>
+        <div id="migrationStatus" style="font-size:11px;color:var(--text-light);margin-top:6px"></div>
+      </div>
+      <div class="filter-bar" style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="btn btn-sm btn-warning" onclick="openBulkOnboardModal()">📥 批量開戶</button>
         <button class="btn btn-sm btn-primary" onclick="addMemberFromApp()">➕ 新增成員</button>
         <button class="btn btn-sm btn-success" onclick="addUserFromApp()">🆕 開新帳號</button>
-        <button class="btn btn-sm btn-secondary" onclick="downloadUsersList()">⬇️ 匯出用戶清單</button>
         <input type="text" id="userSearch" placeholder="🔍 搜尋姓名/ YMIS/ Email" oninput="filterUsers()" style="flex:1;min-width:120px">
       </div><div id="userList">`;
       const isManage = ['admin','group_leader','branch_leader','super_admin'].includes(currentUser.role);
@@ -5078,7 +5108,124 @@ async function deleteRosterMember(ymis){
     }else throw new Error(d.error||'失敗');
   }catch(e){ showToast('刪除失敗：'+e.message,'error'); }
 }
+
+// ===== 旅系統升級：支部、ALLOW_LOCAL_LOGIN、搬舊數 =====
+async function refreshAllowLocalLogin(){
+  const chk=document.getElementById('allowLocalLoginChk');
+  const st=document.getElementById('allowLocalLoginStatus');
+  if(st) st.textContent='載入中...';
+  try{
+    const d=await apiRequest('getAllowLocalLogin',{token:currentToken});
+    if(d.success){
+      const allow=!!d.allow;
+      if(chk) chk.checked=allow;
+      if(st) st.textContent=allow?'當前：已開啟 - 允許本地直寫':'當前：已關閉 - 僅 sig 可寫（旅控團／團控進度）';
+      if(st) st.style.color=allow?'var(--green)':'var(--red)';
+    }else throw new Error(d.error||'讀取失敗');
+  }catch(e){
+    if(st) st.textContent='讀取失敗：'+e.message;
+    if(st) st.style.color='var(--red)';
+  }
+}
+async function toggleAllowLocalLogin(checked){
+  const st=document.getElementById('allowLocalLoginStatus');
+  if(st) st.textContent='設定中...';
+  try{
+    const d=await apiRequest('setAllowLocalLogin',{token:currentToken,allow:checked});
+    if(d.success){
+      showToast('✅ '+(d.message||'已更新'),'success');
+      refreshAllowLocalLogin();
+    }else throw new Error(d.error||'設定失敗');
+  }catch(e){
+    showToast('設定失敗：'+e.message,'error');
+    refreshAllowLocalLogin();
+  }
+}
+async function refreshBranches(){
+  const el=document.getElementById('branchList');
+  if(!el) return;
+  el.innerHTML='<span style="color:var(--text-light)">載入中...</span>';
+  try{
+    const d=await apiRequest('getBranches',{token:currentToken});
+    if(d.success){
+      const list=d.branches||[];
+      if(!list.length){ el.innerHTML='<span style="color:var(--text-light)">暫無支部，請新增</span>'; return; }
+      el.innerHTML=list.map(b=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px;border:1px solid var(--border);border-radius:6px;margin-bottom:4px;background:#fff"><span><b>${escapeHtmlText(b.name||b.id)}</b> <small style="color:var(--text-light)">(${escapeHtmlText(b.id)}) ${escapeHtmlText(b.note||'')}</small></span><span style="display:flex;gap:4px"><button class="btn btn-sm btn-secondary" onclick="openBranchModal('${escapeAttr(b.id)}','${escapeAttr(b.name||'')}','${escapeAttr(b.note||'')}')">✏️</button><button class="btn btn-sm btn-danger" onclick="deleteBranchFront('${escapeAttr(b.id)}')">🗑️</button></span></div>`).join('');
+    }else throw new Error(d.error||'載入失敗');
+  }catch(e){ el.innerHTML='<span style="color:var(--red)">載入失敗：'+escapeHtmlText(e.message)+'</span>'; }
+}
+function openBranchModal(id, name, note){
+  const nid=prompt('支部 ID（例如 B001，英數 -_）：', id||'');
+  if(nid===null) return;
+  if(!nid.trim()){ showToast('ID 不可留空','error'); return; }
+  const nname=prompt('支部名稱：', name||'')||'';
+  const nnote=prompt('備註：', note||'')||'';
+  saveBranchFront(nid.trim(), nname.trim(), nnote.trim());
+}
+async function saveBranchFront(id, name, note){
+  try{
+    const d=await apiRequest('saveBranch',{token:currentToken,branch:{id,name,note}});
+    if(d.success){ showToast('✅ 支部已儲存','success'); refreshBranches(); }
+    else throw new Error(d.error||'儲存失敗');
+  }catch(e){ showToast('儲存失敗：'+e.message,'error'); }
+}
+async function deleteBranchFront(id){
+  if(!confirm('確定刪除支部 '+id+'？')) return;
+  try{
+    const d=await apiRequest('deleteBranch',{token:currentToken,branch_id:id});
+    if(d.success){ showToast('✅ 已刪除','success'); refreshBranches(); }
+    else throw new Error(d.error||'刪除失敗');
+  }catch(e){ showToast('刪除失敗：'+e.message,'error'); }
+}
+async function exportUsersJson(){
+  const st=document.getElementById('migrationStatus');
+  if(st) st.textContent='匯出中...';
+  try{
+    const d=await apiRequest('exportUsers',{token:currentToken});
+    if(d.success){
+      const blob=new Blob([JSON.stringify(d.users||[],null,2)],{type:'application/json'});
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download=`rover_export_${currentTroopId}_${todayISO()}.json`;
+      a.click();
+      setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+      if(st) st.textContent=`✅ 已匯出 ${d.count||0} 筆（含 hash），請到新支部用「匯入 JSON」`;
+      showToast(`✅ 已匯出 ${d.count||0} 筆`,'success');
+    }else throw new Error(d.error||'匯出失敗');
+  }catch(e){
+    if(st) st.textContent='匯出失敗：'+e.message;
+    showToast('匯出失敗：'+e.message,'error');
+  }
+}
+async function importUsersJson(file){
+  if(!file) return;
+  const st=document.getElementById('migrationStatus');
+  if(st) st.textContent='讀取檔案中...';
+  try{
+    const text=await file.text();
+    const arr=JSON.parse(text);
+    if(!Array.isArray(arr)) throw new Error('JSON 須為陣列');
+    if(!confirm(`確定匯入 ${arr.length} 筆到當前支部 ${currentTroopName}？會逐個 upsertUser 直插 hash（保留舊密碼）`)) return;
+    if(st) st.textContent=`匯入中 0/${arr.length} ...`;
+    let ok=0, fail=0, errors=[];
+    for(let i=0;i<arr.length;i++){
+      const u=arr[i];
+      if(st) st.textContent=`匯入中 ${i+1}/${arr.length} ...`;
+      try{
+        const d=await apiRequest('upsertUser',{token:currentToken,user:u});
+        if(d.success) ok++; else { fail++; errors.push(`${u.ymis||u.email||i}: ${d.error}`); }
+      }catch(e){ fail++; errors.push(`${u.ymis||u.email||i}: ${e.message}`); }
+    }
+    if(st) st.innerHTML=`✅ 匯入完成：成功 ${ok} 筆，失敗 ${fail} 筆${fail?'<br>失敗詳情：<pre style="white-space:pre-wrap;font-size:10px;max-height:120px;overflow:auto">'+escapeHtmlText(errors.slice(0,20).join('\n'))+'</pre>':''}`;
+    showToast(`匯入完成：成功 ${ok} 筆${fail?`，失敗 ${fail} 筆`:''}`, fail?'warning':'success');
+    loadUsers();
+  }catch(e){
+    if(st) st.textContent='匯入失敗：'+e.message;
+    showToast('匯入失敗：'+e.message,'error');
+  }
+}
 function downloadUsersList(){
+
   // v8.8：從每行的 data-* 屬性取資料（不再用 regex 抽頁面文字）
   const items=document.querySelectorAll('#userList .user-item');
   if(!items.length){ showToast('沒有可匯出的用戶','warning'); return; }

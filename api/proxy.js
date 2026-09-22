@@ -53,8 +53,15 @@ const TOKEN_ACTIONS = new Set([
   'resetPassword', 'changePassword', 'deactivateUser',
   'reactivateUser', 'updateUserProfile', 'deleteMember', 'deleteUser',
   'getApplications', 'reviewApplication',
-  'updateUserRole', 'updatePermissions', 'updateConfig'
+  'updateUserRole', 'updatePermissions', 'updateConfig',
+  // 旅系統升級：支部與上下游接入（與進度追蹤成對；上游控下游寫）
+  'getBranches', 'saveBranch', 'deleteBranch',
+  'getAllowLocalLogin', 'setAllowLocalLogin',
+  // 吐 JSON（搬舊數）：含 hash 直插
+  'exportUsers', 'upsertUser'
 ]);
+// 上游 sig 直通可替代 token 的操作（閂口後經 sig 落下游寫）
+const SIG_ACTIONS = new Set(['addUser','upsertUser','addMember','exportUsers','getBranches','saveBranch','deleteBranch','getAllowLocalLogin','setAllowLocalLogin']);
 // Proxy 內部特殊 action（不轉發去旅團 GAS）
 const LOCAL_ACTIONS = new Set(['submitRegistration']);
 // GAS 端以 doGet 處理的 action（其餘一律 POST 去 doPost）
@@ -242,10 +249,14 @@ export default async function handler(req, res) {
     data.token = inner;
   }
 
-  // 需要 token 的 action：字串必須存在（真偽仍由 GAS 驗證）
+  // 需要 token 的 action：字串必須存在（真偽仍由 GAS 驗證）；若帶有 sig 且屬於 SIG_ACTIONS 則可經上游 sig 直通
   if (TOKEN_ACTIONS.has(action)) {
-    if (typeof data.token !== 'string' || data.token.length < 4 || data.token.length > 400) {
-      return sendJson(res, 401, { success: false, error: '未登入或登入已過期，請重新登入' });
+    const hasSig = typeof data.sig === 'string' && data.sig.length >= 8;
+    const canUseSig = hasSig && SIG_ACTIONS.has(action);
+    if (!canUseSig) {
+      if (typeof data.token !== 'string' || data.token.length < 4 || data.token.length > 400) {
+        return sendJson(res, 401, { success: false, error: '未登入或登入已過期，請重新登入' });
+      }
     }
   }
 
