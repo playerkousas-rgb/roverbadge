@@ -107,8 +107,15 @@ function size(dir) {
     sum + (e.isDirectory() ? size(path.join(dir, e.name)) : fs.statSync(path.join(dir, e.name)).size), 0);
 }
 
-// 直接執行（非 import）先 output
+// 直接執行（非 import）先 output。
+// Vercel build 環境（VERCEL=1）即刻離場、零寫入：呢個專案嘅 Vercel 部署係傳統模式
+// （vercel.json + .vercelignore，同 2026-08 事故後所有部署一致）；喺 build container 寫檔
+// 會令部署 Error（見 VERCEL_API_404_POSTMORTEM.md 第 5／8 節）。本地产物淨係本地驗證用。
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  if (process.env.VERCEL === '1') {
+    console.log('Vercel build: skipping（傳統部署模式；產物包裝只作本地驗證）');
+    process.exit(0);
+  }
   const out = build();
   console.log(`Vercel output: ${size(out)} bytes (static files + ${Object.keys(FUNCTIONS).length} functions; no dependencies).`);
 }
