@@ -1,19 +1,5 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "functions": {
-    "api/*.js": {
-      "maxDuration": 60
-    }
-  },
-  "headers": [
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-store, max-age=0"
-        }
-      ]
-    }
-  ]
+  "version": 2,
+  "framework": null,
+  "buildCommand": "npm run build"
 }

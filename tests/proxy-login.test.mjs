@@ -2,16 +2,16 @@
 //
 // 重點：這個測試把 api/ 複製進一個空的 lambda 目錄（等同 /var/task），
 // 用 child process 以該目錄為 cwd 啟動 server，掛載「真正的」api/proxy.js、
-// api/troops.js、api/health.js，上游接 tests/mock-gas.mjs（含 GAS 式 302）。
-// 中央管理帳號登入係零回傳設計：proxy 驗證 SUPER_KEY 密碼後簽發 HMAC 簽名票據
-// （簽名鎖匙＝旅團共享鎖匙 D＝TROOP_{id}_APIKEY），mock GAS 本地驗簽 —— 全程唔會
-// 有任何 GAS→Vercel 回打。它驗證：
+// api/troops.js、api/super.js，上游接 tests/mock-gas.mjs（含 GAS 式 302）。
+// 中央管理帳號登入係 vsbadge 同構：proxy 驗證 SUPER_KEY 密碼後簽發 AES-GCM 加密票據
+// （rbs1.），mock GAS 回打 /api/super 驗票（一次性防重放）先發「帶標記」session。
+// 它驗證：
 //   - 每個 /api endpoint 都必須回 JSON（Vercel 未建 function 時會回 HTML 404）
 //   - 成員／領袖／旅團管理員都要能拿到 token（一般登入不受中央設定影響）
 //   - 中央管理帳號（3A 回歸清單）：
 //       1. SUPER_KEY 未設定／空字串／少於 4 字元 → 拒絕，且不呼叫 GAS
-//       2. 合格 4 字元設定 + 錯誤密碼 → 拒絕
-//       3. 正確 4 字元密碼 → 登入成功 + 加密 session 包裝（rbs1.）+ 票據本地驗簽通過
+//       2. 合格 4 字元設定 + 錯誤密碼 → 拒絕（密碼永不出現在 GAS）
+//       3. 正確 4 字元密碼 → 登入成功 + 加密 session 包裝（rbs1.）+ 回打驗票通過
 //       4. 普通用戶登入不受中央管理密鑰設定不足影響
 import fs from 'fs';
 import os from 'os';
@@ -41,16 +41,16 @@ function freePort() {
 const SU_USER = SUPER_ADMIN_ID_FOR_TESTS;
 const SU_KEY = '9876'; // 4 字元測試密碼（政策：最少 4 字元，字串處理）
 
-// ---- 0. api/_super.js 政策單元測試（SUPER_KEY 長度／字串政策）----
-console.log('\n【0】api/_super.js：SUPER_KEY 政策（≥4 字元、字串、完整比對）');
+// ---- 0. api/_super.js 政策＋加密件單元測試（SUPER_KEY 政策／AES-GCM 票據與 session）----
+console.log('\n【0】api/_super.js：SUPER_KEY 政策（≥4 字元、字串、完整比對）＋ rbs1. 加密封裝');
 {
   const prev = process.env.SUPER_KEY;
-  const { superConfigured, verifySuperPassword, issueSuperTicket, verifySuperTicket, wrapSessionToken, unwrapSessionToken, SESSION_PREFIX } = await import('../api/_super.js');
+  const { superConfigured, checkSuperPassword, sealSuper, openSuper } = await import('../api/_super.js');
 
   delete process.env.SUPER_KEY;
   check('未設定 SUPER_KEY → superConfigured()=false', superConfigured() === false);
-  check('未設定時 verifySuperPassword 一律 false', verifySuperPassword('9876') === false);
-  check('未設定時無法簽發票據', issueSuperTicket({ loginId: SU_USER, apiKey: 'D-key' }) === null);
+  check('未設定時 checkSuperPassword 一律 false', checkSuperPassword('9876', SU_USER) === false);
+  check('未設定時無法簽發票據（sealSuper throw）', (() => { try { sealSuper('login', { t: 1 }, 60); return false; } catch (e) { return true; } })());
 
   process.env.SUPER_KEY = '';
   check('空字串 → superConfigured()=false', superConfigured() === false);
@@ -61,35 +61,37 @@ console.log('\n【0】api/_super.js：SUPER_KEY 政策（≥4 字元、字串、
 
   // 字串政策：開頭的 0 不會丟失（不可轉數字）
   process.env.SUPER_KEY = '0076';
-  check('SUPER_KEY="0076" 時密碼 "0076" 完整比對成功', verifySuperPassword('0076') === true);
-  check('SUPER_KEY="0076" 時密碼 "76"（數字化後）被拒', verifySuperPassword('76') === false);
+  check('SUPER_KEY="0076" 時密碼 "0076" 完整比對成功', checkSuperPassword('0076', SU_USER) === true);
+  check('SUPER_KEY="0076" 時密碼 "76"（數字化後）被拒', checkSuperPassword('76', SU_USER) === false);
   process.env.SUPER_KEY = '0000';
-  check('SUPER_KEY="0000"（全零）可用', verifySuperPassword('0000') === true);
+  check('SUPER_KEY="0000"（全零）可用', checkSuperPassword('0000', SU_USER) === true);
 
   // 完整比對：長度合格 ≠ 登入成功
   process.env.SUPER_KEY = SU_KEY;
-  check('錯誤密碼被拒（長度合格不代表成功）', verifySuperPassword('9877') === false && verifySuperPassword('') === false);
-  check('非字串輸入被拒', verifySuperPassword(undefined) === false && verifySuperPassword(9876) === false);
+  check('錯誤密碼被拒（長度合格不代表成功）', checkSuperPassword('9877', SU_USER) === false && checkSuperPassword('', SU_USER) === false);
+  check('非字串輸入被拒', checkSuperPassword(undefined, SU_USER) === false && checkSuperPassword(9876, SU_USER) === false);
+  check('電郵別名作 login_id 一樣過（完整比對政策）', checkSuperPassword(SU_KEY, SU_USER + '@roverbadge.local') === true);
 
-  // 票據：HMAC by 共享鎖匙 D + 短時效（GAS 本地驗簽，零回傳）
-  const tk = issueSuperTicket({ loginId: SU_USER, apiKey: 'D-key-of-troop-AAAA' });
-  check('票據簽發成功（rbs2. 前綴）', typeof tk === 'string' && tk.startsWith('rbs2.'));
-  const okPayload = verifySuperTicket(tk, 'D-key-of-troop-AAAA');
-  check('同一鎖匙驗票成功', okPayload && okPayload.id === SU_USER);
-  check('不同鎖匙驗票失敗（票據綁定旅團共享鎖匙 D，不可跨旅團）', verifySuperTicket(tk, 'D-key-of-troop-BBBB') === null);
-  check('偽造票據驗票失敗', verifySuperTicket('rbs2.deadbeef', 'D-key-of-troop-AAAA') === null);
-  check('冇鎖匙簽唔出票據', issueSuperTicket({ loginId: SU_USER, apiKey: '' }) === null);
+  // 票據：AES-256-GCM（rbs1.）＋ 旅團綁定 payload ＋ 短時效
+  const tk = sealSuper('login', { troopId: '0082', backend: 'https://gas.example/exec', apikey: 'D-key-of-troop-AAAA' }, 60);
+  check('票據簽發成功（rbs1. 前綴、不含明文 apikey）', typeof tk === 'string' && tk.startsWith('rbs1.') && !tk.includes('D-key-of-troop-AAAA'));
+  const okPayload = openSuper('login', tk);
+  check('同一 SUPER_KEY 開封成功（payload 旅團綁定）', okPayload && okPayload.troopId === '0082' && okPayload.apikey === 'D-key-of-troop-AAAA');
+  process.env.SUPER_KEY = 'other-key-9999';
+  check('不同 SUPER_KEY 開封失敗（AAD＋金鑰綁定）', openSuper('login', tk) === null);
+  process.env.SUPER_KEY = SU_KEY;
+  check('偽造票據開封失敗', openSuper('login', 'rbs1.deadbeef') === null);
   const realNow = Date.now;
   Date.now = () => realNow() + 10 * 60 * 1000; // 快轉 10 分鐘（TTL 60s + 10s 偏差）
-  check('過期票據驗票失敗', verifySuperTicket(tk, 'D-key-of-troop-AAAA') === null);
+  check('過期票據開封失敗', openSuper('login', tk) === null);
   Date.now = realNow;
 
   // session 包裝：加密 + 旅團綁定
-  const wrapped = wrapSessionToken('0082', 'inner-gas-token-abc');
-  check('session 包裝有 rbs1. 前綴且不含明文 inner token', wrapped.startsWith(SESSION_PREFIX) && !wrapped.includes('inner-gas-token-abc'));
-  check('同一旅團解包成功', unwrapSessionToken('0082', wrapped) === 'inner-gas-token-abc');
-  check('另一旅團解包失敗（旅團綁定）', unwrapSessionToken('1001', wrapped) === null);
-  check('竄改包裝解包失敗', unwrapSessionToken('0082', wrapped.slice(0, -4) + 'AAAA') === null);
+  const wrapped = sealSuper('session', { troopId: '0082', token: 'inner-gas-token-abc' }, 30 * 24 * 60 * 60);
+  check('session 包裝有 rbs1. 前綴且不含明文 inner token', wrapped.startsWith('rbs1.') && !wrapped.includes('inner-gas-token-abc'));
+  const s = openSuper('session', wrapped);
+  check('同一旅團解包成功', !!(s && s.troopId === '0082' && s.token === 'inner-gas-token-abc'), JSON.stringify(s));
+  check('竄改包裝解包失敗', openSuper('session', wrapped.slice(0, -4) + 'AAAA') === null);
 
   if (prev === undefined) delete process.env.SUPER_KEY; else process.env.SUPER_KEY = prev;
 }
@@ -104,6 +106,7 @@ const mock = await startMockGas({
   port: MOCK_PORT,
   name: '旅團0082(lambda測試)',
   apikey: 'KEY_LAMBDA',
+  verifyUrl: `http://127.0.0.1:${APP_PORT}/api/super`,
   users: [
     { ymis: '1111111111', name: '旅團管理員', role: 'admin', pass: 'Admin!2345', can_tick: true, email: 'admin@example.org' },
     { ymis: '1234567890', name: '陳大文', role: 'group_leader', pass: 'Leader!123', can_tick: true, email: 'l@example.org' },
@@ -120,27 +123,35 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'rb-e2e-'));
 function makeLambdaDir(name) {
   const dir = path.join(tmp, name);
   fs.mkdirSync(path.join(dir, 'api'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'scripts'), { recursive: true });
   for (const f of fs.readdirSync(path.join(ROOT, 'api'))) {
     fs.copyFileSync(path.join(ROOT, 'api', f), path.join(dir, 'api', f));
   }
+  // api/_super.js 依賴 scripts/runtime-config.mjs（build 時會內嵌；測試照拷）
+  // runtime-config.mjs 啟動時會讀 apps-script/Code.gs 解析保留帳號 → 一併拷貝
+  for (const f of fs.readdirSync(path.join(ROOT, 'scripts'))) {
+    if (f.endsWith('.mjs')) fs.copyFileSync(path.join(ROOT, 'scripts', f), path.join(dir, 'scripts', f));
+  }
+  fs.mkdirSync(path.join(dir, 'apps-script'), { recursive: true });
+  fs.copyFileSync(path.join(ROOT, 'apps-script', 'Code.gs'), path.join(dir, 'apps-script', 'Code.gs'));
   return dir;
 }
 const SERVER_SRC = `
 import http from 'http';
 import { default as proxyHandler } from './api/proxy.js';
 import { default as troopsHandler } from './api/troops.js';
-import { default as healthHandler } from './api/health.js';
+import { default as superHandler } from './api/super.js';
 const PORT = parseInt(process.env.APP_PORT, 10);
 function vercelize(res) {
   res.status = (c) => { res.statusCode = c; return res; };
   res.json = (o) => { if (!res.getHeader('content-type')) res.setHeader('Content-Type', 'application/json; charset=utf-8'); res.end(JSON.stringify(o)); return res; };
   return res;
 }
-http.createServer((req, res) => {
+http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://x');
   if (u.pathname === '/api/proxy') return proxyHandler(req, vercelize(res));
   if (u.pathname === '/api/troops') return troopsHandler(req, vercelize(res));
-  if (u.pathname === '/api/health') return healthHandler(req, vercelize(res));
+  if (u.pathname === '/api/super') return superHandler(req, vercelize(res));
   res.writeHead(404, { 'Content-Type': 'text/html' });
   res.end('<html><body>404: NOT_FOUND</body></html>');
 }).listen(PORT, '127.0.0.1', () => console.log('READY ' + PORT));
@@ -160,8 +171,13 @@ function startServer(dir, port, extraEnv) {
       ROVERBADGE_PROXY_TEST: '1',
       ROVERBADGE_PROXY_TIMEOUT_MS: '3000',
       TROOP_0082_NAME: '第 82 旅 (樂行)',
+      TROOP_0082_EN: 'rover-82',
       TROOP_0082_BACKEND: `http://127.0.0.1:${MOCK_PORT}/exec`,
       TROOP_0082_APIKEY: 'KEY_LAMBDA',
+      TROOP_1001_NAME: '第 101 旅（隔離測試）',
+      TROOP_1001_EN: 'rover-1001',
+      TROOP_1001_BACKEND: `http://127.0.0.1:${MOCK_PORT}/exec`,
+      TROOP_1001_APIKEY: 'KEY_TEN',
       ...extraEnv
     },
     stdio: ['ignore', 'pipe', 'pipe']
@@ -204,27 +220,26 @@ const BASE2 = `http://127.0.0.1:${APP2_PORT}`;
 const proxy = (action, data, troopId = '0082', base = BASE) => req(base, 'POST', '/api/proxy', { troopId, action, data });
 const isJson = (r) => /application\/json/.test(r.type) && r.json !== null;
 
-// ---- 3. endpoint 存在性（與 404 HTML 的分別）----
+// ---- 3. endpoint 存在性（嚴格 4 端點：proxy/troops/portal/super）----
 console.log('\n【3】/api endpoint 都要回 JSON（Vercel 沒建 function 時會回 HTML 404）');
 {
-  const h = await req(BASE, 'GET', '/api/health');
-  check('GET /api/health → 200 + JSON', h.status === 200 && isJson(h), `${h.status} ${h.type}`);
-  check('/api/health 回報 registry 來源為 env', (h.json.registry || {}).source === 'env', JSON.stringify(h.json.registry || {}));
-  check('/api/health super 自測：SUPER_KEY 已設定', (h.json.super || {}).configured === true, JSON.stringify(h.json.super || {}));
-  check('/api/health super 自測通過（簽票→驗票→鎖匙綁定→session）', (h.json.super || {}).selfTest === 'ok', JSON.stringify(h.json.super || {}));
-  check('/api/health super 自測不洩漏票據／session／token', !/rbs2\.|rbs1\.|selftest-token/.test(h.text));
-  check('/api/health 不含 GAS 完整 URL / apikey', !/\/exec/.test(h.text) && !/KEY_LAMBDA/.test(h.text));
-
   const t = await req(BASE, 'GET', '/api/troops');
   check('GET /api/troops → 200 + JSON', t.status === 200 && isJson(t), `${t.status} ${t.type}`);
-  check('/api/troops 列出 0082（來自環境變數）', !!(t.json && t.json.troops && t.json.troops['0082']), JSON.stringify(t.json || {}));
-  check('/api/troops 不洩漏 backend/apikey',
-    !!(t.json && Object.values(t.json.troops).every(v => v.backend === undefined && v.apikey === undefined) &&
+  check('/api/troops 列出 0082（來自環境變數）', !!(t.json && t.json.troops && t.json.troops['0082'] && t.json.troops['0082'].name === '第 82 旅 (樂行)'), JSON.stringify(t.json || {}).slice(0, 160));
+  check('/api/troops 值只出 name/en（冇 apikey/backends）',
+    !!(t.json && Object.values(t.json.troops).every(v => Object.keys(v).join(',') === 'name,en') &&
       !/script\.google\.com|\/exec|KEY_LAMBDA/.test(t.text)),
     t.text.slice(0, 160));
 
-  const v = await req(BASE, 'POST', '/api/verify-super-ticket', { ticket: 'x' });
-  check('回傳端點已刪除：POST /api/verify-super-ticket → 404（不做回傳）', v.status === 404 && !isJson(v), `${v.status} ${v.text.slice(0, 80)}`);
+  // 嚴格 4 端點：health.js 已收口 → /api/health 變 HTML 404（不再是 JSON endpoint）
+  const h = await req(BASE, 'GET', '/api/health');
+  check('GET /api/health → HTML 404（端點已收口，api 面嚴格 4 個）', h.status === 404 && !isJson(h), `${h.status} ${h.type}`);
+
+  // /api/super：只收 POST（GET → 405）；錯票 → 非 200
+  const gs = await req(BASE, 'GET', '/api/super');
+  check('GET /api/super → 405 + JSON（只收 POST）', gs.status === 405 && isJson(gs) && gs.json.ok === false, `${gs.status} ${gs.type}`);
+  const bs = await req(BASE, 'POST', '/api/super', { ticket: 'rbs1.garbage', apikey: 'KEY_LAMBDA', backend: `http://127.0.0.1:${MOCK_PORT}/exec` });
+  check('POST /api/super 垃圾票據 → 非 200 {ok:false}（唔會誤發）', bs.status !== 200 && isJson(bs) && bs.json.ok === false, `${bs.status} ${bs.text.slice(0, 80)}`);
 
   const nf = await req(BASE, 'GET', '/api/nope');
   check('未部署的路徑仍是 HTML 404（測試用的對照組）', nf.status === 404 && !isJson(nf));
@@ -273,8 +288,9 @@ let wrappedToken = '';
     mock.state.superTicketLogins.length === before + 1, JSON.stringify(mock.state.superTicketLogins.slice(before)));
   const lastTicketCall = mock.state.superTicketLogins[mock.state.superTicketLogins.length - 1];
   check('轉發保留 GAS schema：action=login 附 super_ticket', lastTicketCall.hasTicket === true);
-  check('兼容舊版：請求附帶密碼欄位（舊版 GAS GS 硬寫密碼比對用）', lastTicketCall.hasPassword === true);
-  check('轉發附帶共享鎖匙 apikey（GAS 本地驗簽／受信核對用）', lastTicketCall.hasApikey === true);
+  check('密碼永不出現在 GAS（proxy 已剝走 password 欄位）', lastTicketCall.hasPassword === false, JSON.stringify(lastTicketCall));
+  const lastVerify = mock.state.verifyCalls[mock.state.verifyCalls.length - 1];
+  check('GAS 回打 /api/super 驗票（帶 apikey+backend 綁定核對）', !!lastVerify && lastVerify.hasApikey === true && lastVerify.hasBackend === true, JSON.stringify(lastVerify || {}));
 
   wrappedToken = (ok.json || {}).token || '';
   check('回傳瀏覽器的 token 有加密包裝前綴（rbs1.）', wrappedToken.startsWith('rbs1.'), wrappedToken.slice(0, 20));
@@ -289,9 +305,9 @@ let wrappedToken = '';
   const save = await proxy('save', { token: wrappedToken, changes: [{ ymis: '1234560001', itemId: 'L1-CP', date: '2026-09-20' }] });
   check('包裝 token 可寫入（save 成功）', save.json && save.json.success === true, JSON.stringify(save.json || {}).slice(0, 120));
 
-  // 竄改 / 無效包裝 → 401
-  const tampered = await proxy('load', { token: wrappedToken.slice(0, -4) + 'AAAA' });
-  check('竄改的包裝 token → 401', tampered.status === 401 && isJson(tampered), `${tampered.status}`);
+  // 竄改 / 無效包裝 → 401（token 把關 action 驗包裝真偽）
+  const tampered = await proxy('getPendingRequests', { token: wrappedToken.slice(0, -4) + 'AAAA' });
+  check('竄改的包裝 token（token 把關 action）→ 401', tampered.status === 401 && isJson(tampered), `${tampered.status}`);
 
   // 未包裝的 raw inner token 直接打 proxy 仍可用（GAS 真偽把關），但包裝 token 跨旅團會被拒 —— 跨旅團測試在 run-e2e
   const logout = await proxy('logout', { token: wrappedToken });
@@ -314,15 +330,13 @@ console.log('\n【7】一般帳號格式一律行旅團登入（即使密碼與 
   check('錯誤密碼 → success:false（不是 404/HTML）', bad.json && bad.json.success === false && /密碼/.test(bad.json.error || ''), bad.text.slice(0, 160));
 }
 
-// ---- 8. 速率限制（best-effort）----
-console.log('\n【8】中央登入速率限制（線上猜測減速；不消除離線破解風險）');
+// ---- 8. 超管 session 跨旅團隔離（vs 同構：session 綁 troopId）----
+console.log('\n【8】超管 session 跨旅團隔離（rbs1. session 綁 troopId）');
 {
-  let saw429 = false;
-  for (let i = 0; i < 15; i++) {
-    const r = await proxy('login', { login_id: SU_USER, password: SU_KEY });
-    if (r.status === 429) { saw429 = true; break; }
-  }
-  check('連續中央登入嘗試最終被 429 限流', saw429);
+  const cross = await proxy('changePassword', { token: wrappedToken, old_password: 'x', new_password: 'yyyy' }, '1001');
+  check('0082 嘅超管 session 打去 1001 → 401（session 綁旅團）', cross.status === 401 && isJson(cross) && cross.json.success === false, `${cross.status} ${cross.text.slice(0, 120)}`);
+  const same = await proxy('changePassword', { token: wrappedToken, old_password: 'x', new_password: 'yyyy' }, '0082');
+  check('同一旅團下超管 changePassword → 403「聯絡管理員」', same.status === 403 && isJson(same) && /管理員/.test(same.json.error || ''), `${same.status} ${same.text.slice(0, 120)}`);
 }
 
 // ---- 9. 安全邊界照舊 ----
@@ -348,13 +362,17 @@ console.log('\n【9】安全邊界（修復後不應放寬任何驗證）');
   check('verify-super-ticket 已刪（垃圾票據打唔到任何驗證回傳端點）', vBad.status === 404 && !isJson(vBad), vBad.text.slice(0, 120));
 }
 
-// ---- 10. 沒有 TROOP_* 環境變數時：/api/troops 空、health 503、proxy 404 ----
+// ---- 10. 沒有 TROOP_* 環境變數時：/api/troops 空、proxy 404 ----
 console.log('\n【10】沒有任何旅團環境變數時（v4.0：沒有檔案／靜態保底）');
 {
   const p3 = await freePort();
   const dir3 = path.join(tmp, 'var-task-empty');
   fs.mkdirSync(path.join(dir3, 'api'), { recursive: true });
+  fs.mkdirSync(path.join(dir3, 'scripts'), { recursive: true });
   for (const f of fs.readdirSync(path.join(ROOT, 'api'))) fs.copyFileSync(path.join(ROOT, 'api', f), path.join(dir3, 'api', f));
+  for (const f of fs.readdirSync(path.join(ROOT, 'scripts'))) if (f.endsWith('.mjs')) fs.copyFileSync(path.join(ROOT, 'scripts', f), path.join(dir3, 'scripts', f));
+  fs.mkdirSync(path.join(dir3, 'apps-script'), { recursive: true });
+  fs.copyFileSync(path.join(ROOT, 'apps-script', 'Code.gs'), path.join(dir3, 'apps-script', 'Code.gs'));
   fs.writeFileSync(path.join(dir3, 'server.mjs'), SERVER_SRC, 'utf8');
   const env3 = { ...process.env, APP_PORT: String(p3), ROVERBADGE_PROXY_TEST: '1', ROVERBADGE_PROXY_TIMEOUT_MS: '1500' };
   for (const k of Object.keys(env3)) if (/^TROOP_/.test(k)) delete env3[k];
@@ -366,10 +384,6 @@ console.log('\n【10】沒有任何旅團環境變數時（v4.0：沒有檔案�
   const b3 = `http://127.0.0.1:${p3}`;
   const t3 = await (await fetch(b3 + '/api/troops')).json();
   check('沒有環境變數 → /api/troops 回空清單（沒有寫死旅團）', t3.troops && Object.keys(t3.troops).length === 0, JSON.stringify(t3));
-  const r3h = await fetch(b3 + '/api/health');
-  const h3 = await r3h.json();
-  check('/api/health → 503 且錯誤訊息指向環境變數', r3h.status === 503 && /環境變數/.test(h3.error || ''), `${r3h.status} ${JSON.stringify(h3).slice(0, 160)}`);
-  check('/api/health super 自測：無 SUPER_KEY 時如實回報 skipped', h3.super && h3.super.configured === false && h3.super.selfTest === 'skipped_not_configured', JSON.stringify(h3.super || {}));
   const r3 = await fetch(b3 + '/api/proxy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ troopId: '0082', action: 'login', data: { login_id: 'x', password: 'y' } }) });
   const j3 = await r3.json().catch(() => null);
   check('未登記旅團 → 404 + JSON（不是 HTML）', r3.status === 404 && j3 && j3.success === false, `${r3.status}`);

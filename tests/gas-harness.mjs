@@ -203,8 +203,8 @@ export function loadCodeGs({ promptAnswers = [], urlFetchHandler = null } = {}) 
   const ctx = vm.createContext(sandbox);
   const exported = `
 ;globalThis.__api = {
-  initializeSheets, removeSuperAdminRows, handleLogin, handleSuperTicketLogin, getUser, getAllUsers,
-  getMembers, getApiKey, doPost, doGet, isSuperAdminId, verifySuperLoginTicket, testSuperLocalVerify,
+  initializeSheets, removeSuperAdminRows, handleLogin, getUser, getAllUsers,
+  getMembers, getApiKey, doPost, doGet, isSuperAdminId, verifySuperTicket, authorizeConnection, setSuperAdminLastLogin,
   // 測試內省用：保留帳號識別字（唯一宣告在 Code.gs），用以驗證名單過濾與防護邏輯
   SUPER_ADMIN_ID
 };`;

@@ -8,7 +8,7 @@
 > 2. **旅團登記一律靠環境變數**：`TROOP_{ID}_NAME` / `TROOP_{ID}_BACKEND` / `TROOP_{ID}_APIKEY`。
 >    v4.0 起已冇 `troops.json` / `data/troops.json` / `api/_troops_static.js` / `npm run sync:troops` —— 唔會再出現「改咗 JSON 忘記同步」呢類事故。
 > 3. 部署完成嘅定義唔係綠燈，而係呢條 line 有 JSON：
->    `curl -s https://roverbadge.vercel.app/api/health` → 期望 `"success":true`。
+>    `curl -s https://roverbadge.vercel.app/api/troops` → 期望 JSON 有 `troops` 旅團清單。
 > 4. **千祈唔好喺 `package.json` 加 `build` script** —— Vercel 會自動將佢當 Build Command 執行；
 >    而家 Registry 純環境變數、冇任何 build 產物，加咗 build script 只會多一個失败點。
 
@@ -69,7 +69,7 @@ git push          # 如 repo 有改動；加環境變數後喺 Vercel 撳 Redepl
 
 **部署完一定要驗證：**
 ```bash
-curl -s https://roverbadge.vercel.app/api/health | head -c 400   # 期望 "success":true
+curl -s https://roverbadge.vercel.app/api/troops | head -c 400   # 期望 JSON 有 troops
 curl -s https://roverbadge.vercel.app/api/troops  | head -c 200   # 期望 troops 入面有新旅團 id，而且只有 id+name
 curl -s -o /dev/null -w '%{http_code}\n' https://roverbadge.vercel.app/api/proxy  # 期望 405（404 = function 冇建好）
 ```
@@ -107,17 +107,16 @@ v8.9 起，系統管理員密碼改由 **Vercel 環境變數 `SUPER_KEY`** 驗�
 | Name | 用途 |
 |------|------|
 | `SUPER_KEY` | 中央管理密碼（**字串**，最少 4 字元；前導 0 保留，唔會截斷／補位） |
-| `SUPER_SESSION_SECRET` | 可選：瀏覽器 session 包裝加密鹽（唔設就用 `SUPER_KEY` 派生；只影響 `rbs1.` 包裝，與登入票據無關） |
 
-**登入鏈路（零回傳設計：GAS 永不回打 Vercel）：**
+**登入鏈路（vsbadge 同構：GAS 只回打固定受信端點 `/api/super` 驗票）：**
 1. 前端 → `/api/proxy`（action=login）
-2. proxy 喺 Vercel 側用 `SUPER_KEY` 完整比對（timing-safe）→ 通過先簽發**短效簽名票據**
-   （`rbs2.` 前綴，預設 60 秒；HMAC-SHA256 簽名，鎖匙＝該旅團共享鎖匙 `D`＝`TROOP_{ID}_APIKEY`，
-   同 GAS Script Properties 嘅 `API_KEY` 同一個值）
-3. proxy 轉發 `action=login`（附 `super_ticket`；**兼容舊版**：照舊附上密碼，舊版 GAS 用
-   GS 硬寫密碼比對，新舊密碼相同時照通；新版只驗簽名票據，完全唔睇密碼）
-4. GAS **本地驗簽**（用自己嘅 `API_KEY` 重算 HMAC + 核時效）→ 先發 token —— **零回傳，
-   唔會有任何 GAS→Vercel 回打**；改密碼＝只改 Vercel `SUPER_KEY` 一個值 + Redeploy，GAS／Sheet／鎖匙全部唔使掂
+2. proxy 喺 Vercel 側用 `SUPER_KEY` 完整比對（timing-safe）→ 通過先簽發 **60 秒 AES-256-GCM 加密票據**
+   （`rbs1.` 前綴；AAD 綁定用途，payload 綁定旅團 id＋backend＋apikey）
+3. proxy 轉發 `action=login`（附 `super_ticket`，**唔再附密碼**——密碼永遠唔出現在 GAS／Sheet／URL／log）
+4. GAS 回打固定受信端點 `SUPER_VERIFY_URL`（＝`https://roverbadge.vercel.app/api/super`）驗票：
+   受信核對（apikey＋backend 雙重綁定）＋票據一次性（LockService＋CacheService 防重放）→ 先發 token
+   （帶 `rbs-super-v1-` 標記）—— **唯一回打就係呢個固定端點**；
+   改密碼＝只改 Vercel `SUPER_KEY` 一個值 + Redeploy，GAS／Sheet／鎖匙全部唔使掂
 5. 瀏覽器攞到嘅係**加密包裝、旅團綁定**嘅 session（`rbs1.` 前綴），跨旅團用唔到
 
 **政策：**
@@ -162,7 +161,7 @@ v3.1 曾用 `_troops_static.js` 保底；**v4.0 起直接斬斷成條檔案路�
 1. 掃描 `TROOP_{ID}_NAME` / `TROOP_{ID}_BACKEND` / `TROOP_{ID}_APIKEY`；`{ID}` 原樣保留（前導 0 唔會變）
 2. backend 必須通過 `isTrustedExecUrl()`（HTTPS `script.google.com/macros/s/.../exec`）先算有效旅團
 3. `/api/troops` 只回 `{id, name}`；backend／apikey 只喺 proxy 內用
-4. 除錯：`GET /api/health` 會回 `registry.source`（`env-only`）同旅團數
+4. 除錯：`GET /api/troops` 睇旅團清單（`/api/health` 已收口，API 面嚴格 4 個：proxy/troops/portal/super）
 
 ---
 
@@ -176,7 +175,7 @@ v3.1 曾用 `_troops_static.js` 保底；**v4.0 起直接斬斷成條檔案路�
 - [x] 用戶管理／成員名單任何角色都睇唔到系統管理員；API 回應／錯誤訊息只有一般用語
 - [x] 防護保留：不能停用／重設密碼／改角色／以此帳號開戶
 - [x] 驗證：`node tests/code-gs.test.mjs`（真正載入執行 Code.gs）、`node tests/proxy-login.test.mjs`（SUPER_KEY 政策 + 加密 session）、`node tests/run-e2e.mjs`（雙旅團完整鏈路）
-- [x] 中央登入自測：`GET /api/health` 的 `super.selfTest`（簽票→驗票→後端綁定→session 全鏈路自檢；見「疑難排解」一節）
+- [x] 中央登入自測：`npm run test:security`（簽票→驗票→綁定→session 全鏈路自檢）＋喺 Apps Script 編輯器跑 `authorizeConnection()`（見「疑難排解」一節）
 - [x] 每個支部獨立 APP，同一 APP 內所有旅團指向同一個 APP ADMIN
 
 ---
@@ -210,30 +209,27 @@ v3.1 曾用 `_troops_static.js` 保底；**v4.0 起直接斬斷成條檔案路�
 
 ## 疑難排解：中央管理帳號（sheep）登入失敗
 
-密碼只喺 Vercel 比對；登入行嘅係**零回傳鏈路**（Vercel 驗密碼 → 簽名票據 → GAS 本地驗簽 → 發 token），
-GAS 完全唔會回打 Vercel。**任何一環錯，都只會見到下面兩句一般用語**（刻意唔透露邊一環壞，防探測）；
+密碼只喺 Vercel 比對；登入行嘅係 **vsbadge 同構鏈路**（Vercel 驗密碼 → `rbs1.` 加密票據 →
+GAS 回打 `/api/super` 驗票 → 發 token）。**任何一環錯，都只會見到一般用語**（刻意唔透露邊一環壞，防探測）；
 真正原因要靠自己分步排查。
 
-**第一步：開 `https://<你嘅部署網域>/api/health`，睇 `super` 欄。**
+**第一步：本地全鏈自檢。**
+1. `npm run test:security`（簽票→驗票→綁定→session，全鏈模擬通過＝Vercel 側程式正常）
+2. 喺 Apps Script 編輯器跑 `authorizeConnection()`（只授權 UrlFetch，唔讀寫 Sheet）：
+   回「連線正常」＝ GAS 同 `/api/super` 通得到；拋「連線服務未就緒」＝ 未部署／網域寫錯
 
-| `super.selfTest` | 意義 |
-|---|---|
-| `skipped_not_configured` | `SUPER_KEY` 未設／少於 4 字元 → 中央登入整條停用（Vercel 側問題） |
-| `fail:*` | 簽票／驗票／鎖匙綁定／session 自測失敗 → Vercel 側問題（多數係改咗 `SUPER_KEY`／`SUPER_SESSION_SECRET` 未 Redeploy） |
-| `ok` | **Vercel 側全部正常** → 問題一定喺旅團 GAS 側，睇下表 |
-
-**第二步（`selfTest: ok` 仍登入失敗）：對照前端見到嘅字句。**
+**第二步（自檢正常仍登入失敗）：對照前端見到嘅字句。**
 
 **A. 「登入失敗：旅團後端尚未支援此登入方式或暫時無法使用，請聯絡管理員」**
 ＝ GAS 對 `login`（附 `super_ticket`）回咗 HTTP 4xx/5xx 或 HTML（proxy log 會見 `super_login_upstream_bad`）。
 按可能性排：
 1. **Code.gs 已貼新版但冇重新部署**：Apps Script 改 code 唔會自動生效，必須
    「部署 → 管理部署作業 → ✏️ 編輯 → 版本：新版本 → 部署」。新版 Code.gs 嘅 `login`（附 `super_ticket`）
-   會本地驗簽；舊版（冇 `super_ticket` 概念）會跌返 GS 硬寫密碼比對（見 B-3）。
+   會回打 `/api/super` 驗票；舊版（冇 `super_ticket` 概念）會跌返 GS 硬寫密碼比對（見 B-3）。
 2. **網頁應用程式存取權唔係「任何人」**：變咗「任何 Google 帳戶」嘅話，proxy 收到嘅係
    Google 登入頁 HTML，所有 action（唔只登入）都會失敗。
-3. `TROOP_{ID}_BACKEND` 指向咗舊／已刪除嘅部署 URL → `GET /api/health` 睇 `troops[].backendHost`
-   對唔對，錯就改 env + Redeploy。
+3. `TROOP_{ID}_BACKEND` 指向咗舊／已刪除嘅部署 URL → `GET /api/troops` 睇旅團清單／部署設定，
+   錯就改 env + Redeploy。
 4. **旅團未設 `TROOP_{ID}_APIKEY`**：冇共享鎖匙 `D` 簽唔到票據（proxy log 會見 `super_no_apikey`），
    請喺 GAS 執行 `initializeSheets()`（或 `showApiKey()`）攞 `API_KEY`，登記做 env `TROOP_{ID}_APIKEY` + Redeploy。
 
@@ -241,9 +237,9 @@ GAS 完全唔會回打 Vercel。**任何一環錯，都只會見到下面兩句�
 ＝ GAS 收到請求但驗證唔通過（proxy log 會見 `super_login_denied`）：
 1. **兩邊共享鎖匙 `D` 唔一致**：GAS Script Properties 嘅 `API_KEY` 必須同 Vercel env
    `TROOP_{ID}_APIKEY` 完全相同（B/D 由 GS 生成後交 ADMIN 登記嗰個值）；唔同就驗唔到簽名。
-   喺 Apps Script 編輯器跑 `testSuperLocalVerify()`（零網絡、零授權）可確認本部署簽／驗數學正常。
-2. **票據過期／時鐘誤差**：票據只有 60 秒效期（`SUPER_TICKET_TTL_MS` 可調 15–300 秒）；
-   超過先提交就會被拒，重新登入一次即可。
+   喺 Apps Script 編輯器跑 `authorizeConnection()` 可確認 GAS → `/api/super` 連線正常。
+2. **票據過期／時鐘誤差**：票據只有 60 秒效期；超過先提交就會被拒，重新登入一次即可。
+   同一票據只可驗證成功一次（防重放）——重試請重新登入攞新票據。
 3. **舊版 GAS（未升級）**：舊版唔識 `super_ticket`，會用 **GS 硬寫密碼**比對請求附帶嘅密碼——
    只有喺「GS 硬寫密碼值 == 現行 `SUPER_KEY`」時先通。改過 `SUPER_KEY` 而舊版 GS 未同步改嘅話，
    舊版旅團就會見到呢句；升級新版 Code.gs（或同步改 GS 硬寫密碼）即解決。

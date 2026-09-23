@@ -16,15 +16,13 @@
 //     deleteMember（刪純名單成員）／deleteUser（徹底刪除已停用帳號，需團長以上，進度保留）
 //   - 本檔只保留一行保留帳號識別字（SUPER_ADMIN_ID），供權限判斷與名單過濾；
 //     本檔不含、不收、不比對任何登入密碼
-//   - login 不再接受保留帳號；action=login 附帶 super_ticket 時走本地驗簽登入：
-//     用本檔本地 API_KEY（＝與中央系統共享的鎖匙 D）重新計算 HMAC 驗證短效簽名票據，
-//     通過後才建立 session —— 完全不回打中央系統（不做回傳），不需要外部服務授權
-//   - 新增 testSuperLocalVerify()：不讀寫 Sheet 的本地簽／驗數學自測（取代舊 testCentralVerify）
+//   - login 不接受保留帳號密碼；action=login 附帶 super_ticket 時向固定受信端點
+//     （getSuperVerifyUrl()）驗票通過後才建立 session —— 票據由 Vercel 簽發（vs 同構）
+//   - 新增 authorizeConnection()：升級後在編輯器執行一次，只授權 UrlFetch，不讀寫 Sheet
 //   - Google Sheet 完全冇蹤跡：Users 表唔會有這列，Tokens 表以中性代號儲存
 //   - 防護保留：保留帳號不能被停用／重設密碼／更改角色／自行改密碼／以此帳號開戶
-//   - handleSuperTicketLogin 加 LockService＋CacheService 票據一次性保護：同一票據只可驗票成功一次，
+//   - verifySuperTicket 加 LockService＋CacheService 票據一次性保護：同一票據只可驗票成功一次，
 //     防重放／重複提交；取鎖逾時對外只回一般用語
-//   - 零回傳：舊 UrlFetchApp 回打件（getCentralVerifyUrl／getOwnBackendUrl／testCentralVerify）已全數移除
 //   - 新工作表「活動履歷」（執行 initializeSheets() 自動補建，不影響既有資料）
 //   - 新 action：getLogRecords / saveLogRecord（支援批量 records[]）/ deleteLogRecord
 //   - handleLoad 回應新增 logs + logsSupported
@@ -44,11 +42,14 @@ const DEFAULT_PASS = '1234';
 const SUPER_ADMIN_ID = 'sheep';
 // 保留帳號顯示名稱（只用於名單／審計顯示，不是登入憑證）
 const SUPER_ADMIN_NAME = '系統管理員';
+// 保留帳號電郵別名（登入時與識別字等值；沿用 vsbadge 同構格式）
+const SUPER_ADMIN_EMAIL = SUPER_ADMIN_ID + '@roverbadge.local';
 // Tokens 表內代表保留帳號的中性代號（避免帳號出現在 Sheet 任何一欄）
 const SUPER_ADMIN_TOKEN_MARK = '__sys__';
-// 登入票據前綴（零回傳設計）：票據＝'rbs2.' + base64url(JSON{id,exp,n}) + '.' + hex(HMAC-SHA256(payloadB64, D))
-// 簽名鎖匙 D ＝ 本部署 Script Properties 的 API_KEY（與中央系統的 TROOP_{id}_APIKEY 同一個值）。
-const SUPER_TICKET_PREFIX = 'rbs2.';
+// 超管 session token 前綴（proxy 版本核對＋舊版殘留 session 即時失效用）
+const SUPER_TOKEN_PREFIX = 'rbs-super-v1-';
+// 中央票據驗證端點（可信設定：本檔常量；vs 同構，部署網域各自寫各自）
+const SUPER_VERIFY_URL = 'https://roverbadge.vercel.app/api/super';
 
 const LOG_SHEET_NAME = '活動履歷';
 const LOG_HEADERS = ['record_id','type','ymis','name','date','title','role','hours','cert_no','detail','recorder','recorded_at','updated_at'];
@@ -578,53 +579,35 @@ function showApiKey() {
 // 識別字只在上方 SUPER_ADMIN_ID 一行宣告；本檔不含任何登入密碼。
 // 權限判斷、名單過濾與各項防護（不能停用／重設密碼／更改角色／開戶）照舊。
 function isSuperAdminId(id) {
-  return String(id || '').trim().toLowerCase() === SUPER_ADMIN_ID;
+  const v = String(id || '').trim().toLowerCase();
+  return v === String(SUPER_ADMIN_ID).trim().toLowerCase() || v === String(SUPER_ADMIN_EMAIL).trim().toLowerCase();
 }
-// 本地驗票（零回傳）：用本檔本地 API_KEY（＝共享鎖匙 D）重新計算 HMAC 驗證登入票據。
-// 票據格式：'rbs2.' + base64url(UTF-8 JSON{id,exp,n}) + '.' + hex(HMAC-SHA256(payloadB64, D))
-// 驗唔到簽名／格式錯／過期 → null；唔會發出任何網絡請求。
-function verifySuperLoginTicket(ticket){
-  ticket=String(ticket||'');
-  if(ticket.indexOf(SUPER_TICKET_PREFIX)!==0) return null;
-  const rest=ticket.substring(SUPER_TICKET_PREFIX.length);
-  const dot=rest.lastIndexOf('.');
-  if(dot<=0 || dot===rest.length-1) return null;
-  const payloadB64=rest.substring(0,dot);
-  const sig=rest.substring(dot+1);
-  if(!/^[0-9a-f]{64}$/i.test(sig)) return null;
-  const expect=hmacSha256Hex(payloadB64,getApiKey());
-  if(!safeEqualText(sig,expect)) return null;
-  try{
-    // base64url（無 padding）→ 補齊 padding 再解
-    const padded=payloadB64 + '=='.substring(0,(4-(payloadB64.length%4))%4);
-    const json=Utilities.newBlob(Utilities.base64DecodeWebSafe(padded)).getDataAsString('UTF-8');
-    const p=JSON.parse(json);
-    if(!p || typeof p.exp!=='number' || Date.now()>p.exp) return null;
-    return {id:String(p.id||''),exp:p.exp};
-  }catch(e){
-    return null;
-  }
+// 升級後在編輯器執行一次，只授權 UrlFetch，不讀寫 Sheet。
+function authorizeConnection(){
+  const response=UrlFetchApp.fetch(SUPER_VERIFY_URL,{muteHttpExceptions:true});
+  if(response.getResponseCode()!==405) throw new Error('連線服務未就緒，請檢查部署設定');
+  return '連線正常，請更新 Apps Script 既有部署至新版本';
 }
-// 不讀寫 Sheet 的本地簽／驗數學自測：在 Apps Script 編輯器直接執行，零網絡請求、零授權需求。
-// 用假鎖匙自簽一條票據再本地驗返（唔碰真實 API_KEY 數值），成功代表本部署簽／驗數學就緒。
-function testSuperLocalVerify(){
-  const fakeKey='selftest-'+String(Date.now());
-  const payload={id:'selftest',exp:Date.now()+60000,n:'0123456789abcdef'};
-  const payloadB64=Utilities.base64EncodeWebSafe(JSON.stringify(payload)).replace(/=+$/,'');
-  const sig=hmacSha256Hex(payloadB64,fakeKey);
-  const ticket=SUPER_TICKET_PREFIX+payloadB64+'.'+sig;
-  const saved=getApiKey;
-  let ok=false;
+function verifySuperTicket(ticket){
+  if(typeof ticket!=='string' || ticket.length>4096) return false;
+  const lock=LockService.getScriptLock();
+  if(!lock.tryLock(10000)) return false;
   try{
-    // 暫時以假鎖匙驗票（monkey-patch 內部取鎖匙函數），驗完還原
-    getApiKey=function(){ return fakeKey; };
-    const p=verifySuperLoginTicket(ticket);
-    ok=!!(p && p.id==='selftest');
-  }finally{
-    getApiKey=saved;
-  }
-  Logger.log('本地驗簽自測：' + (ok ? 'PASS' : 'FAIL'));
-  return {success:ok};
+    const cache=CacheService.getScriptCache();
+    const cacheKey='super-ticket:'+hashPassword(ticket);
+    if(cache.get(cacheKey)) return false;
+    const response=UrlFetchApp.fetch(SUPER_VERIFY_URL, {
+      method:'post', contentType:'application/json', muteHttpExceptions:true,
+      payload:JSON.stringify({ticket:ticket, apikey:getApiKey(), backend:ScriptApp.getService().getUrl()})
+    });
+    if(response.getResponseCode()!==200 || JSON.parse(response.getContentText()).ok!==true) return false;
+    cache.put(cacheKey,'used',120);
+    return true;
+  }catch(e){ return false; }
+  finally{ try{ lock.releaseLock(); }catch(e){} }
+}
+function setSuperAdminLastLogin(){
+  PropertiesService.getScriptProperties().setProperty('SUPER_ADMIN_LAST_LOGIN', now());
 }
 
 function hashPassword(p) {
@@ -927,6 +910,8 @@ function getUser(ymis){
 }
 function getUserByEmail(email){
   if(!email) return null;
+  // 保留帳號電郵別名（與識別字等值）
+  if(String(email||'').trim().toLowerCase()===String(SUPER_ADMIN_EMAIL).trim().toLowerCase()) return getUser(SUPER_ADMIN_ID);
   const sheet=getSheet().getSheetByName('Users'); if(!sheet) return null;
   const data=sheet.getDataRange().getValues(); const target=String(email||'').trim().toLowerCase();
   if(!target) return null;
@@ -963,6 +948,8 @@ function validateToken(token){
     if(data[i][0]===token){
       if(new Date()>new Date(data[i][3])){ sheet.deleteRow(i+1); return null; }
       const y=data[i][1].toString();
+      // 舊版殘留／保留帳號列：非超管標記 token 一律即時失效（唔使動 Sheet）
+      if((y===SUPER_ADMIN_TOKEN_MARK || isSuperAdminId(y)) && !String(token).startsWith(SUPER_TOKEN_PREFIX)) return null;
       // 保留帳號 token 列在 Sheet 內以中性代號儲存，讀出時還原（Sheet 唔會出現帳號）
       // 向後兼容：舊版直接寫了帳號的列，經 isSuperAdminId() 一樣還原
       return (y===SUPER_ADMIN_TOKEN_MARK || isSuperAdminId(y)) ? SUPER_ADMIN_ID : y;
@@ -972,7 +959,7 @@ function validateToken(token){
 }
 function createToken(ymis){
   const sheet=getSheet().getSheetByName('Tokens'); if(!sheet) return null;
-  const token=generateToken(); const exp=new Date(); exp.setHours(exp.getHours()+24*30);
+  const token=(isSuperAdminId(ymis)?SUPER_TOKEN_PREFIX:'')+generateToken(); const exp=new Date(); exp.setHours(exp.getHours()+24*30);
   // 保留帳號 session 喺 Tokens 表只寫中性代號，令整份 Sheet 都搵唔到帳號
   sheet.appendRow([token,isSuperAdminId(ymis)?SUPER_ADMIN_TOKEN_MARK:ymis,now(),Utilities.formatDate(exp,'Asia/Hong_Kong','yyyy-MM-dd HH:mm:ss')]);
   return token;
@@ -1006,10 +993,10 @@ function doPost(e){
     const action=String(body.action||'');
     // 旅系統：上游簽名（sig）請求優先路由（先驗 sig）；未簽名時先留中央登入，再檢查直接入口掣
     if(verifyLinkSig(e,body,rawBody)) return handleSignedRequest(action,body);
-    // 中央管理帳號登入（Vercel 側 SUPER_KEY 驗證 → 短效票據）：與旅系統閘門無關，
-    // 直接入口關閉後仍要可用（A SUPER_KEY 與旅系統脫鉤，是次不改動）
-    // 中央管理帳號登入（零回傳）：action=login 附帶 super_ticket → 本地驗簽，閂口（ALLOW_LOCAL_LOGIN=false）照通
-    if(action==='login' && body.super_ticket) return handleSuperTicketLogin(body);
+    // 中央管理帳號登入（Vercel 側 SUPER_KEY 驗證 → 短效票據 → 固定端點驗票）：與旅系統閘門無關，
+    // 直接入口關閉後仍要可用（A SUPER_KEY 與旅系統脫鉤，是次不改動）；
+    // 只放行保留帳號＋super_ticket（防：一般帳號帶假票據繞過閂口）
+    if(action==='login' && body.super_ticket && isSuperAdminId(body.login_id)) return handleLogin(body.login_id,body.password,body.super_ticket);
     // 旅系統：閂口後本地直接入口全拒（login/apply/GET load/apikey save/token 操作），只收 sig
     if(!localLoginAllowed()) return jsonResponse(linkClosedResponse(action));
     if(action==='login') return handleLogin(body.login_id,body.password);
@@ -1140,10 +1127,16 @@ function doPost(e){
 }
 
 // ===== 邏輯 =====
-function handleLogin(loginId,password){
-  if(!loginId||!password) return jsonResponse({success:false,error:'請填寫帳號和密碼'});
+// 中央管理帳號（vs 同構）：Vercel 驗證密碼 → 簽發短效加密票據 →
+//       本函數向固定受信端點（SUPER_VERIFY_URL）驗票 → 通過後才建立 session。
+// 本檔永不接收、儲存或比對任何密碼；票據一次性（LockService＋CacheService）防重放。
+function handleLogin(loginId,password,superTicket){
+  if(!loginId||(!password&&!superTicket)) return jsonResponse({success:false,error:'請填寫帳號和密碼'});
   if(isSuperAdminId(loginId)){
-    return jsonResponse({success:false,error:'帳號或密碼錯誤'});
+    if(!verifySuperTicket(superTicket)) return jsonResponse({success:false,error:'帳號或密碼錯誤'});
+    setSuperAdminLastLogin();
+    const token=createToken(SUPER_ADMIN_ID);
+    return jsonResponse({success:true,token:token,user:{ymis:SUPER_ADMIN_ID,name:SUPER_ADMIN_NAME,email:SUPER_ADMIN_EMAIL,role:'super_admin',can_tick:true,branch:'',squad:'',squad_role:'member',allowed_badges:'*',status:'active'},force_change_password:false});
   }
   let user=(/^\d{10}$/.test(loginId)||/^L\d+/.test(loginId))? getUser(loginId): getUserByEmail(loginId);
   if(!user){
@@ -1165,35 +1158,6 @@ function handleLogin(loginId,password){
     }
   }
   return jsonResponse({success:false,error:'密碼錯誤'});
-}
-// 流程（零回傳）：中央系統（Vercel）驗證密碼 → 用共享鎖匙 D（＝本檔本地 API_KEY）簽出
-//       短效簽名票據 → 本函數本地驗簽（verifySuperLoginTicket）→ 通過後才建立 session。
-// 本檔永不接收、儲存或比對任何密碼；完全不回打中央系統（不做回傳）。
-// 驗唔到簽名／過期／帳號唔係保留帳號／冇有效 apikey → 一律「帳號或密碼錯誤」（不洩露原因）。
-function handleSuperTicketLogin(body){
-  const ticket=String((body&&body.super_ticket)||'');
-  const p=verifySuperLoginTicket(ticket);
-  if(!p || !isSuperAdminId(p.id)) return jsonResponse({success:false,error:'帳號或密碼錯誤'});
-  // 額外防護：請求必須帶有效 apikey（＝共享鎖匙 D，只有受信伺服器先會有）
-  if(!body.apikey || String(body.apikey)!==getApiKey()) return jsonResponse({success:false,error:'帳號或密碼錯誤'});
-  const lock=LockService.getScriptLock();
-  if(!lock.tryLock(10000)){
-    Logger.log('handleSuperTicketLogin: 系統忙碌（取鎖逾時），請稍後重試');
-    return jsonResponse({success:false,error:'登入服務暫時無法使用，請稍後重試'});
-  }
-  try{
-    const cache=CacheService.getScriptCache();
-    // 快取鍵只存票據嘅 hash，唔存票據本身
-    const cacheKey='super-ticket:'+hashPassword(ticket);
-    if(cache.get(cacheKey)){
-      Logger.log('handleSuperTicketLogin: 票據已被使用（重放或重複提交）');
-      return jsonResponse({success:false,error:'帳號或密碼錯誤'});
-    }
-    cache.put(cacheKey,'used',120);
-    return jsonResponse({success:true,token:createToken(SUPER_ADMIN_ID),user:{ymis:SUPER_ADMIN_ID,name:SUPER_ADMIN_NAME,role:'super_admin',can_tick:true,email:''},force_change_password:false});
-  }finally{
-    try{ lock.releaseLock(); }catch(e){}
-  }
 }
 function handleChangePassword(ymis,oldP,newP){
   // 錯誤訊息刻意不含任何帳號／密碼資訊

@@ -5,29 +5,22 @@
 //
 // 安全原則：
 //   1. 前端只提交 troopId，永不提交後端 URL（杜絕 SSRF / Open Proxy）
-//   2. GAS URL 全部由伺服器端可信 Registry（TROOP_* 環境變數）解析
+//   2. GAS URL 全部由伺服器端可信 Registry（TROOP_* env）解析
 //   3. 只接受白名單 HTTPS GAS /exec URL（見 api/_registry.js isTrustedExecUrl）
 //   4. 只接受 action 白名單；寫入／讀取類 action 必須附帶 token 字串（真偽由 GAS 驗證）
 //   5. 永不在 log 記錄 token／密碼／apikey／payload 內容
 //
-// 中央管理帳號登入（見 api/_super.js）——零回傳設計：
-//   - 密碼只在 Vercel 驗證（SUPER_KEY），比對成功先簽發 60 秒短效「簽名票據」
-//     （簽名鎖匙＝該旅團共享鎖匙 D＝TROOP_{id}_APIKEY）；密碼錯喺呢一關已經被拒。
-//   - GAS 用自己嘅本地 API_KEY 驗簽後建立 session —— 完全唔會回打 Vercel（不做回傳）。
-//   - 舊版 GAS 兼容：請求照舊用 action=login 並附上密碼，舊版 handleLogin 用
-//     GS 硬寫密碼比對（新舊密碼相同時照通）；新版只認 super_ticket 驗簽，忽略密碼。
-//   - 回傳瀏覽器的 token 有加密包裝並綁定旅團，之後每個請求都由本 proxy 解包核對。
+// 中央管理帳號登入（見 api/_super.js／api/super.js）：
+//   - 密碼只在 Vercel 驗證（SUPER_KEY）；通過先簽發 60 秒加密票據（vs 同構 rbs1.，綁定旅團＋backend＋apikey）
+//   - GAS 向固定受信端點 /api/super 驗票通過後先發 token；密碼永不出現在 GAS／Sheet／URL／log
+//   - 回傳瀏覽器的 session 有加密包裝並綁定旅團（rbs1.），跨旅團用唔到
 //
 // GAS request schema 完全保留（action + 原欄位），一般旅團帳號流程不需修改任何 Code.gs。
 
 import { getTrustedTroop, isTrustedExecUrl } from './_registry.js';
-import {
-  superConfigured, verifySuperPassword, issueSuperTicket,
-  unwrapSessionToken, wrapSessionToken, superLoginRateLimited, SESSION_PREFIX
-} from './_super.js';
+import { accountId, isSuperId, checkSuperPassword, superConfigured, sealSuper, openSuper } from './_super.js';
 
-// maxDuration／includeFiles 等 Function 設定一律由 vercel.json 的 functions["api/*.js"] 管理，
-// 這裡刻意唔再用 `export const config`，免得兩邊衝突（見 docs/VERCEL_API_404_POSTMORTEM.md 第 5 節）。
+export const config = { maxDuration: 60 };
 
 // ---- 可調參數（皆可由 Vercel env 覆寫）----
 const UPSTREAM_TIMEOUT_MS = (() => {
@@ -68,12 +61,6 @@ const SIG_ACTIONS = new Set(['addUser','upsertUser','addMember','exportUsers','g
 const LOCAL_ACTIONS = new Set(['submitRegistration']);
 // GAS 端以 doGet 處理的 action（其餘一律 POST 去 doPost）
 const GET_ACTIONS = new Set(['load', 'getLoginMode']);
-
-// 旅團一般帳號的 login_id 格式（10 位 YMIS / 領袖 L 編號 / Email）。
-// 只用於判斷「應否嘗試中央管理登入」，不包含任何中央帳號名稱。
-function isNormalLoginIdFormat(id) {
-  return /^\d{10}$/.test(id) || /^L\d+$/i.test(id) || id.includes('@');
-}
 
 function sendJson(res, status, obj) {
   res.setHeader('Cache-Control', 'no-store');
@@ -138,13 +125,8 @@ export default async function handler(req, res) {
   }
 
   const action = String(body.action || '');
-  const data = (body.data && typeof body.data === 'object' && !Array.isArray(body.data)) ? body.data : {};
+  const data = (body.data && typeof body.data === 'object' && !Array.isArray(body.data)) ? { ...body.data } : {};
   const troopId = String(body.troopId || '').trim();
-
-  // 不接受用戶自行夾帶驗證票據／驗證標記或覆寫頂層 action（防偽：呢啲只可以由伺服器端產生）
-  delete data.super_ticket;
-  delete data.super_auth;
-  delete data.action;
 
   // 輸入驗證：action 白名單
   if (!PUBLIC_ACTIONS.has(action) && !TOKEN_ACTIONS.has(action) && !LOCAL_ACTIONS.has(action)) {
@@ -197,84 +179,37 @@ export default async function handler(req, res) {
     return sendJson(res, 404, { success: false, error: '找不到此旅團，或旅團後端設定無效，請聯絡管理員' });
   }
 
-  // ===== 中央管理帳號登入：密碼只留在 Vercel 驗證，驗後簽發簽名票據（零回傳）=====
-  // 觸發條件：SUPER_KEY 已設定 + 密碼完整比對相同 + login_id 不是旅團一般帳號格式
-  //（10 位 YMIS／L 編號／Email 一律行原有旅團登入流程，避免密碼撞碼影響一般用戶）。
-  // 票據簽名鎖匙＝該旅團共享鎖匙 D（TROOP_{id}_APIKEY）；GAS 本地驗簽，唔會回打 Vercel。
-  // 舊版 GAS 兼容：照舊 action=login 並附上密碼（舊版 handleLogin 用 GS 硬寫密碼比對）。
-  if (action === 'login' && superConfigured() &&
-      !isNormalLoginIdFormat(String(data.login_id || '')) &&
-      verifySuperPassword(typeof data.password === 'string' ? data.password : '')) {
-    const ip = String((req.headers && (req.headers['x-forwarded-for'] || '').split(',')[0]) || '').trim() || 'local';
-    if (superLoginRateLimited(`${troopId}|${ip}`)) {
-      safeLog({ result: 'super_login_rate_limited', troopId, ms: Date.now() - t0 });
-      return sendJson(res, 429, { success: false, error: '嘗試次數過多，請稍後再試' });
+  // 不接受用戶自行夾帶驗證票據或覆寫頂層 action。
+  delete data.super_ticket;
+  delete data.action;
+  const superLogin = action === 'login' && isSuperId(data.login_id);
+  if (superLogin) {
+    if (!superConfigured()) {
+      safeLog({ result: 'super_auth_misconfig', troopId, ms: Date.now() - t0 });
+      return sendJson(res, 503, { success: false, error: '登入服務暫時無法使用，請聯絡管理員' });
     }
-    const ticket = issueSuperTicket({ loginId: String(data.login_id || ''), apiKey: troop.apikey });
-    if (!ticket) {
-      // 冇共享鎖匙 D（旅團未設 APIKEY）→ 簽唔到票；跌返普通路徑（舊版 GS 硬寫密碼仍可通）
-      safeLog({ result: 'super_no_apikey', troopId, ms: Date.now() - t0 });
-    } else {
-      try {
-        const payload = { action: 'login', login_id: String(data.login_id || ''), super_ticket: ticket };
-        // 舊版 GAS 兼容：附上密碼俾舊版 handleLogin 比對 GS 硬寫密碼（新版驗簽，會忽略密碼）
-        if (typeof data.password === 'string') payload.password = data.password;
-        if (troop.apikey) payload.apikey = troop.apikey;
-        const up = await callUpstream(troop.backend, { method: 'POST', payload });
-        if (up.json && up.json.success === true && typeof up.json.token === 'string' && up.json.token) {
-          const wrapped = wrapSessionToken(troopId, up.json.token);
-          if (!wrapped) {
-            safeLog({ result: 'super_session_wrap_failed', troopId, ms: Date.now() - t0 });
-            return sendJson(res, 503, { success: false, error: '登入服務暫時無法使用，請聯絡管理員' });
-          }
-          safeLog({ result: 'super_login_ok', troopId, ms: Date.now() - t0 });
-          return sendJson(res, 200, {
-            success: true,
-            token: wrapped,
-            user: up.json.user || { role: 'super_admin' },
-            force_change_password: false
-          });
-        }
-        if (up.status >= 400 || !up.json) {
-          // 旅團後端未升級到驗簽版本，或上游故障：對外維持一般用語
-          safeLog({ result: 'super_login_upstream_bad', troopId, status: up.status, ms: Date.now() - t0 });
-          return sendJson(res, 200, { success: false, error: '登入失敗：旅團後端尚未支援此登入方式或暫時無法使用，請聯絡管理員' });
-        }
-        // GAS 驗簽失敗（票據無效／帳號不符／舊版密碼唔同）：對外只回一般登入失敗
-        safeLog({ result: 'super_login_denied', troopId, ms: Date.now() - t0 });
-        return sendJson(res, 200, { success: false, error: '帳號或密碼錯誤' });
-      } catch (e) {
-        const timeout = e && (e.name === 'TimeoutError' || e.name === 'AbortError');
-        safeLog({ result: timeout ? 'super_login_timeout' : 'super_login_fetch_error', troopId, ms: Date.now() - t0 });
-        return sendJson(res, timeout ? 504 : 502, { success: false, error: '無法連接旅團後端，請稍後重試' });
-      }
-    }
+    if (!checkSuperPassword(data.password)) return sendJson(res, 401, { success: false, error: '帳號或密碼錯誤' });
+    data.login_id = accountId;
+    delete data.password;
+    data.super_ticket = sealSuper('login', { troopId, backend: troop.backend, apikey: troop.apikey }, 60);
   }
-
-  // ===== 中央登入 session 解包：rbs1.* 必須解密成功且綁定同一旅團 =====
-  if (typeof data.token === 'string' && data.token.startsWith(SESSION_PREFIX)) {
-    const inner = unwrapSessionToken(troopId, data.token);
-    if (!inner) {
-      safeLog({ result: 'session_unwrap_failed', troopId, action, ms: Date.now() - t0 });
-      return sendJson(res, 401, { success: false, error: '未登入或登入已過期，請重新登入' });
-    }
-    data.token = inner;
-  }
-
-  // 需要 token 的 action：字串必須存在（真偽仍由 GAS 驗證）；若帶有 sig 且屬於 SIG_ACTIONS 則可經上游 sig 直通
   if (TOKEN_ACTIONS.has(action)) {
+    // 若帶有 sig 且屬於 SIG_ACTIONS 則可經上游 sig 直通（真偽由 GAS 驗證）
     const hasSig = typeof data.sig === 'string' && data.sig.length >= 8;
     const canUseSig = hasSig && SIG_ACTIONS.has(action);
     if (!canUseSig) {
-      if (typeof data.token !== 'string' || data.token.length < 4 || data.token.length > 400) {
+      if (typeof data.token !== 'string' || data.token.length < 4 || data.token.length > 4096) {
         return sendJson(res, 401, { success: false, error: '未登入或登入已過期，請重新登入' });
       }
     }
+    if (typeof data.token === 'string' && data.token.startsWith('rbs1.')) {
+      const session = openSuper('session', data.token);
+      if (!session || session.troopId !== troopId) return sendJson(res, 401, { success: false, error: '登入已過期，請重新登入' });
+      if (action === 'changePassword') return sendJson(res, 403, { success: false, error: '此帳號不支援在此更改密碼，請聯絡管理員' });
+      data.token = session.token;
+    }
   }
-
-  // apikey 注入：伺服器端 Registry 有就用伺服器的（覆寫前端值）；
-  // 沒有就讓前端舊值通過（向後兼容 apikey 模式的舊部署）；兩者皆無則不帶。
-  const effectiveApikey = troop.apikey || (typeof data.apikey === 'string' ? data.apikey : '');
+  const effectiveApikey = troop.apikey;
 
   try {
     let up;
@@ -284,12 +219,12 @@ export default async function handler(req, res) {
         params: { action, apikey: effectiveApikey || undefined, token: data.token }
       });
     } else {
-      const payload = { action, ...data };
+      const payload = { ...data, action };
       if (effectiveApikey) payload.apikey = effectiveApikey;
       up = await callUpstream(troop.backend, { method: 'POST', payload });
     }
 
-    if (up.status >= 400 || !up.json) {
+    if (!up.json) {
       // 上游 HTTP 失敗或回應非 JSON（GAS HTML error page）
       safeLog({ result: 'upstream_bad_response', troopId, action, status: up.status, ms: Date.now() - t0 });
       const msg = up.status >= 400
@@ -298,6 +233,12 @@ export default async function handler(req, res) {
       return sendJson(res, 502, { success: false, error: msg });
     }
 
+    if (superLogin && up.json.success) {
+      if (!up.json.token?.startsWith('rbs-super-v1-') || up.json.user?.role !== 'super_admin') {
+        return sendJson(res, 502, { success: false, error: '旅團後端版本需要更新，請聯絡管理員' });
+      }
+      up.json.token = sealSuper('session', { troopId, token: up.json.token }, 30 * 24 * 60 * 60);
+    }
     safeLog({ result: 'ok', troopId, action, status: up.status, ms: Date.now() - t0 });
     // GAS 業務錯誤（success:false）照原樣回傳，前端按語意顯示
     return sendJson(res, 200, up.json);

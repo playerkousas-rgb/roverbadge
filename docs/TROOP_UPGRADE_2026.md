@@ -43,7 +43,7 @@ DOWNSTREAM_<id>_KEY = <下游節點 API_KEY>
 
 | 代號 | 變數名 | 值 | 產生者 | 填寫 | 備註 |
 |---|---|---|---|---|---|
-| **A** | `SUPER_KEY` | 中央管理密碼 | Vercel env `SUPER_KEY` | **隱藏**，與旅系統無關 | 是次不改動、不顯示；中央管理帳號登入（`login` + `super_ticket` 本地驗簽，零回傳）與旅系統閘門脫鉤，直接入口關閉後仍可用 |
+| **A** | `SUPER_KEY` | 中央管理密碼 | Vercel env `SUPER_KEY` | **隱藏**，與旅系統無關 | 是次不改動、不顯示；中央管理帳號登入（`login` + `super_ticket` 回打固定端點 `/api/super` 驗票，vsbadge 同構）與旅系統閘門脫鉤，直接入口關閉後仍可用 |
 | **B** | 本節點 `/exec` URL | `https://script.google.com/macros/s/.../exec` | **GS 產生**（`ScriptApp.getService().getUrl()`，部署後生效） | 選單「🔑 顯示 BACKEND／APIKEY（交 ADMIN）」 | 交上游／ADMIN 登記 |
 | **C** | NAME | 節點顯示名稱 | **自行填寫** | 交 ADMIN 時一併提供 | 例如 `第 82 旅（進度）` |
 | **D** | APIKEY（SHEET KEY） | `rover_` + uuid24 | **GS 產生**（`getApiKey()`，initializeSheets 彈窗） | 選單「🔑 顯示 BACKEND／APIKEY（交 ADMIN）」 | 存本節點 Script Properties `API_KEY` |
@@ -134,7 +134,7 @@ sig       = hex( HMAC-SHA256( canonical, sigKey ) )
 | apikey 直寫（`save` 等） | 照舊（兼容） | **拒**（apikey 唔再等於授權） |
 | 用戶 token 操作 | 照舊 | **拒** |
 | 上游 `sig` 請求 | **接受** | **接受** |
-| `login` + `super_ticket`（A 中央管理帳號，本地驗簽） | **接受** | **接受**（與旅系統閘門脫鉤） |
+| `login` + `super_ticket`（A 中央管理帳號，回打 `/api/super` 驗票） | **接受** | **接受**（與旅系統閘門脫鉤） |
 
 - 掣值只存**本節點** Script Properties `ALLOW_LOCAL_LOGIN`；
   寫入途徑：Sheet 選單「🚪 本機直接入口」、前端卡（`setAllowLocalLogin`，團長以上）、上游 sig（`setLocalLogin`）。
@@ -187,11 +187,12 @@ Sheet 選單 **👤 為下游開戶（揀團）**（或程式 `createAccountForD
 
 - ❌ **不在 SHEET 寫 ABCD**（有 `tests/troop_link.test.mjs` 測試 5 守）
 - ❌ **唔改 A 本身**（`SUPER_KEY` 只在 Vercel：GS 內不含、不收、不比對任何密碼）。
-  ［補充：中央管理登入鏈路已另行升級為**零回傳簽名票據**設計 —— Vercel 驗密碼 →
-  HMAC 簽票（by 共享鎖匙 D）→ GAS 本地驗簽；`api/verify-super-ticket.js` 已移除，
-  GAS 完全唔會回打 Vercel；舊版 GAS（GS 硬寫密碼）兼容路徑保留。］
-- ❌ **唔設回調**（冇 callback endpoint、下游唔會回打上游；**登入都唔做回傳** ——
-  只驗 VERCEL 密碼（super）／SHEET 內密碼（members））
+  ［補充：中央管理登入鏈路已升級為 **vsbadge 同構**設計 —— Vercel 驗密碼 →
+  `rbs1.` AES-GCM 加密票據（60 秒，綁定旅團）→ GAS 回打固定受信端點 `/api/super` 驗票
+  （一次性防重放）→ 發 `rbs-super-v1-` 標記 token；API 面嚴格 4 個（proxy/troops/portal/super，
+  health.js 已移除）；舊版 GAS（GS 硬寫密碼）兼容路徑保留。］
+- ❌ **旅系統唔設回調**（sig 流向冇 callback endpoint、下游唔會回打上游；中央登入另有
+  固定單點回打 `/api/super` 驗票，屬登入鏈、不涉旅系統 —— 只驗 VERCEL 密碼（super）／SHEET 內密碼（members））
 - ❌ **唔改 `api/`**：sig 係 GAS→GAS 直連，唔經 Vercel proxy（proxy 舊 action 白名單原樣；
   `exportUsers`／`getAllowLocalLogin`／`setAllowLocalLogin` 作前端卡片後備通道保留；
   超管路徑只涉票據簽／驗數學，action 白名單不變）
@@ -257,7 +258,7 @@ vsbadge 係「零改動前端（選單版）」；roverbadge 已有管理介面�
 ```bash
 npm run check && npm run lint && npm test && npm run test:link && npm run build && npm run test:build
 # 部署後快檢
-curl -s https://roverbadge.vercel.app/api/health | jq
+curl -s https://roverbadge.vercel.app/api/troops | jq
 curl -s https://roverbadge.vercel.app/api/troops | jq
 ```
 

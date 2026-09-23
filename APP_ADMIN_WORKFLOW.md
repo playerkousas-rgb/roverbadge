@@ -32,7 +32,7 @@
 1. Vercel Dashboard 加 3 個環境變數：`TROOP_0082_NAME=第 82 旅`、
    `TROOP_0082_BACKEND=https://script.google.com/macros/s/.../exec`、`TROOP_0082_APIKEY=rover_xxxx`
    （編號保留前導 0；backend/apikey 唔會出瀏覽器）
-2. Redeploy，然後開 `https://<app>.vercel.app/api/health` 確認 `"success":true`
+2. Redeploy，然後開 `https://<app>.vercel.app/api/troops` 確認 JSON 有 `troops` 旅團清單
    （**唔好以 Vercel 綠燈為準**；綠燈只代表靜態檔上咗，`/api/*` 可以成整列 404）
 3. 再開 `/api/troops` 確認新旅團 id+name 出現
 
@@ -65,14 +65,14 @@
 | 用戶管理 / 成員名單 / load | ❌ 任何角色都睇唔到 |
 | 任何 API 回應 / 錯誤訊息 / log | ❌ 只有一般用語；密碼、token、apikey 一律唔會落 log |
 
-**登入鏈路（零回傳設計：GAS 永不回打 Vercel）：**
+**登入鏈路（vsbadge 同構：GAS 只回打固定受信端點 `/api/super` 驗票）：**
 
 1. 前端將帳號+密碼 POST 去 `/api/proxy`（同普通登入一樣）
-2. proxy 喺 Vercel 側用 `SUPER_KEY` 做完整比對（timing-safe）；通過先簽發**短效簽名票據**
-   （預設 60 秒；HMAC-SHA256 簽名，鎖匙＝該旅團共享鎖匙 `D`＝`TROOP_{ID}_APIKEY`）
-3. proxy 轉發 `action=login`（附 `super_ticket`；**兼容舊版**：照舊附上密碼，舊版 GAS 用
-   GS 硬寫密碼比對；新版本地驗簽，完全唔睇密碼）
-4. GAS **本地驗簽**（用自己嘅 `API_KEY` 重算 HMAC）→ 先發 token —— **零回傳，唔會回打 Vercel**
+2. proxy 喺 Vercel 側用 `SUPER_KEY` 做完整比對（timing-safe）；通過先簽發 **60 秒 AES-256-GCM 加密票據**
+   （`rbs1.` 前綴；payload 綁定旅團 id＋backend＋apikey）
+3. proxy 轉發 `action=login`（附 `super_ticket`，**唔再附密碼**——密碼永遠唔出現在 GAS）
+4. GAS 回打固定受信端點 `SUPER_VERIFY_URL`（`/api/super`）驗票（受信核對＋一次性防重放）→ 先發 token
+   （帶 `rbs-super-v1-` 標記）—— 唯一回打就係呢個固定端點
 5. 瀏覽器攞到嘅係加密包裝、旅團綁定嘅 session（`rbs1.` 前綴），跨旅團無效
 
 **要点：**

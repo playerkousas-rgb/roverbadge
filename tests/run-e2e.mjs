@@ -52,6 +52,7 @@ async function postProxy(body, rawHeaders = {}) {
 console.log('\n【1】起兩個 mock GAS 旅團後端（含 GAS 式 302 redirect）');
 const mockA = await startMockGas({
   port: PORT_A, name: '旅團A(0082)', apikey: 'KEY_A',
+  verifyUrl: `http://127.0.0.1:${APP_PORT}/api/super`,
   users: [
     { ymis: '1234567890', name: '陳大文', role: 'group_leader', pass: 'PassA!234567', can_tick: true, email: 'a@example.org' },
     { ymis: '1234560001', name: '成員甲', role: 'member', pass: 'MemberA!234', can_tick: false },
@@ -61,6 +62,7 @@ const mockA = await startMockGas({
 });
 const mockB = await startMockGas({
   port: PORT_B, name: '旅團B(1001)', apikey: 'KEY_B',
+  verifyUrl: `http://127.0.0.1:${APP_PORT}/api/super`,
   users: [
     { ymis: '9876543210', name: '李小明', role: 'group_leader', pass: 'PassB!234567', can_tick: true, email: 'b@example.org' }
   ]
@@ -68,10 +70,11 @@ const mockB = await startMockGas({
 console.log(`  mock A: ${mockA.url}  mock B: ${mockB.url}`);
 
 // ================== 2. 起本機 app server ==================
-console.log('\n【2】起本機 app server，掛載真實 api/proxy.js + api/troops.js + api/portal.js');
+console.log('\n【2】起本機 app server，掛載真實 api/proxy.js + api/troops.js + api/portal.js + api/super.js');
 const { default: proxyHandler } = await import('../api/proxy.js');
 const { default: troopsHandler } = await import('../api/troops.js');
 const { default: portalHandler } = await import('../api/portal.js');
+const { default: superHandler } = await import('../api/super.js');
 
 function vercelize(res) {
   res.status = (c) => { res.statusCode = c; return res; };
@@ -83,6 +86,7 @@ const appServer = http.createServer((req, res) => {
   if (u.pathname === '/api/proxy') return proxyHandler(req, vercelize(res));
   if (u.pathname === '/api/troops') return troopsHandler(req, vercelize(res));
   if (u.pathname === '/api/portal') return portalHandler(req, vercelize(res));
+  if (u.pathname === '/api/super') return superHandler(req, vercelize(res));
   let p = u.pathname === '/' ? '/index.html' : decodeURIComponent(u.pathname);
   const fp = path.join(ROOT, p);
   if (fs.existsSync(fp) && !fs.statSync(fp).isDirectory()) {
@@ -515,8 +519,8 @@ console.log('\n【15】批量開戶 API 路徑（addUser → 預設密碼 1234 �
   check('assets/ymis-parse.js 可由靜態站提供', rParse.status === 200 && parseText.includes('YmisParse'));
 }
 
-// ================== 16. 中央管理帳號（零回傳：簽名票據＋GAS 本地驗簽）+ 更改密碼最少 4 位 ==================
-console.log('\n【16】中央管理帳號：Vercel 驗密碼 → HMAC 簽名票據（by D）→ GAS 本地驗簽（不做回傳）；session 有加密包裝 + 旅團綁定');
+// ================== 16. 中央管理帳號（vs 同構：Vercel 驗密碼 → AES-GCM 票據 → GAS 回打 /api/super 驗票）+ 更改密碼最少 4 位 ==================
+console.log('\n【16】中央管理帳號：Vercel 驗密碼 → rbs1. 加密票據 → GAS 回打 /api/super 驗票 → 加密包裝 session（vs 同構）');
 {
   // 帳號識別字與 Code.gs 一致（由 mock-gas 提供唯一測試宣告，不在多個檔案寫死）
   const SU_USER = SUPER_ADMIN_ID_FOR_TESTS;

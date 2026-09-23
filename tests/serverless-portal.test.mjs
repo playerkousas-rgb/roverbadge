@@ -25,9 +25,13 @@ Object.assign(process.env, {
   TROOP_0082_APIKEY: 'portal_test_secret_key',
   TROOP_0082_PORTALORIGIN: 'https://hub.example.org/dashboard/?x=1',
   TROOP_0082_PORTALROLES: 'member,group_leader,admin',
+  TROOP_0083_NAME: '第 83 旅（停用測試）',
   TROOP_0083_BACKEND: 'https://script.google.com/macros/s/PORTAL2PORTAL2000/exec',
+  TROOP_0083_APIKEY: 'portal_test_secret_83',
   TROOP_0083_PORTALDISABLED: '1',
+  TROOP_1001_NAME: '第 101 旅',
   TROOP_1001_BACKEND: 'https://script.google.com/macros/s/PORTAL3PORTAL3000/exec',
+  TROOP_1001_APIKEY: 'portal_test_secret_1001',
   PORTAL_DEFAULT_ORIGIN: 'https://hub.example.org',
   PORTAL_DEFAULT_ROLES: 'member,group_leader'
 });
@@ -186,9 +190,13 @@ const BASE_ENV = {
   TROOP_0082_APIKEY: 'portal_test_secret_key',
   TROOP_0082_PORTALORIGIN: 'https://hub.example.org/dashboard/?x=1',
   TROOP_0082_PORTALROLES: 'member,group_leader,admin',
+  TROOP_0083_NAME: '第 83 旅（停用測試）',
   TROOP_0083_BACKEND: 'https://script.google.com/macros/s/PORTAL2PORTAL2000/exec',
+  TROOP_0083_APIKEY: 'portal_test_secret_83',
   TROOP_0083_PORTALDISABLED: '1',
+  TROOP_1001_NAME: '第 101 旅',
   TROOP_1001_BACKEND: 'https://script.google.com/macros/s/PORTAL3PORTAL3000/exec',
+  TROOP_1001_APIKEY: 'portal_test_secret_1001',
   PORTAL_DEFAULT_ORIGIN: 'https://hub.example.org',
   PORTAL_DEFAULT_ROLES: 'member,group_leader'
 };
