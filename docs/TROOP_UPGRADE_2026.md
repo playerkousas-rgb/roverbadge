@@ -190,7 +190,7 @@ Sheet 選單 **👤 為下游開戶（揀團）**（或程式 `createAccountForD
   ［補充：中央管理登入鏈路已升級為 **vsbadge 同構**設計 —— Vercel 驗密碼 →
   `rbs1.` AES-GCM 加密票據（60 秒，綁定旅團）→ GAS 回打固定受信端點 `/api/super` 驗票
   （一次性防重放）→ 發 `rbs-super-v1-` 標記 token；API 面嚴格 4 個（proxy/troops/portal/super，
-  health.js 已移除）；舊版 GAS（GS 硬寫密碼）兼容路徑保留。］
+  health.js 已移除）；系統未流出，唔做舊版兼容——proxy 唔再附密碼，舊版 GAS 一律要升級。］
 - ❌ **旅系統唔設回調**（sig 流向冇 callback endpoint、下游唔會回打上游；中央登入另有
   固定單點回打 `/api/super` 驗票，屬登入鏈、不涉旅系統 —— 只驗 VERCEL 密碼（super）／SHEET 內密碼（members））
 - ❌ **唔改 `api/`**：sig 係 GAS→GAS 直連，唔經 Vercel proxy（proxy 舊 action 白名單原樣；

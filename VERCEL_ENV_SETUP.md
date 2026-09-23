@@ -225,7 +225,7 @@ GAS 回打 `/api/super` 驗票 → 發 token）。**任何一環錯，都只會�
 按可能性排：
 1. **Code.gs 已貼新版但冇重新部署**：Apps Script 改 code 唔會自動生效，必須
    「部署 → 管理部署作業 → ✏️ 編輯 → 版本：新版本 → 部署」。新版 Code.gs 嘅 `login`（附 `super_ticket`）
-   會回打 `/api/super` 驗票；舊版（冇 `super_ticket` 概念）會跌返 GS 硬寫密碼比對（見 B-3）。
+   會回打 `/api/super` 驗票；舊版（冇 `super_ticket` 概念）一律失敗——系統未流出，唔做舊版兼容，升級新版 Code.gs 即解決。
 2. **網頁應用程式存取權唔係「任何人」**：變咗「任何 Google 帳戶」嘅話，proxy 收到嘅係
    Google 登入頁 HTML，所有 action（唔只登入）都會失敗。
 3. `TROOP_{ID}_BACKEND` 指向咗舊／已刪除嘅部署 URL → `GET /api/troops` 睇旅團清單／部署設定，
@@ -240,9 +240,8 @@ GAS 回打 `/api/super` 驗票 → 發 token）。**任何一環錯，都只會�
    喺 Apps Script 編輯器跑 `authorizeConnection()` 可確認 GAS → `/api/super` 連線正常。
 2. **票據過期／時鐘誤差**：票據只有 60 秒效期；超過先提交就會被拒，重新登入一次即可。
    同一票據只可驗證成功一次（防重放）——重試請重新登入攞新票據。
-3. **舊版 GAS（未升級）**：舊版唔識 `super_ticket`，會用 **GS 硬寫密碼**比對請求附帶嘅密碼——
-   只有喺「GS 硬寫密碼值 == 現行 `SUPER_KEY`」時先通。改過 `SUPER_KEY` 而舊版 GS 未同步改嘅話，
-   舊版旅團就會見到呢句；升級新版 Code.gs（或同步改 GS 硬寫密碼）即解決。
+3. **舊版 GAS（未升級）**：舊版唔識 `super_ticket`，而 proxy 唔再附密碼（vsbadge 同構）——
+   舊版一律失敗。系統未流出，唔做舊版兼容；升級新版 Code.gs ＋ 跑 `authorizeConnection()` 即解決。
    ＋新版 GAS 對「裸打密碼」（冇有效 `super_ticket`／apikey）一律回呢句——**唔做回傳＝唔收密碼登入**，
    繞過 proxy 直打 GAS 也進不到。
 4. **密碼真係錯**：SUPER_KEY 比對失敗會跌返入一般旅團登入，保留帳號一律回同一句「帳號或密碼錯誤」
