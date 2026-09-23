@@ -115,6 +115,8 @@ a:hover{text-decoration:underline}
 .nav-tab{flex:0 0 auto;min-width:100px;padding:14px 16px;text-align:center;cursor:pointer;border:none;background:none;font-size:13.5px;font-weight:600;color:var(--text-light);border-bottom:3px solid transparent;transition:.2s;white-space:nowrap}
 .nav-tab:hover{background:var(--bg);color:var(--text)}
 .nav-tab.active{color:var(--maroon);border-bottom-color:var(--maroon);background:var(--maroon-light)}
+.nav-tab.nav-hidden{display:none!important}
+/* v8.9 導覽分層：桌機維持一行（外觀不變）；手機把「常用功能」排上面、「進階功能」(領袖／管委等才有) 排下面，見 @media(max-width:768px) */
 .tab-content{display:none;padding:18px}
 .tab-content.active{display:block;animation:fadeIn .25s ease}
 
@@ -273,8 +275,12 @@ a:hover{text-decoration:underline}
   .main-app-header h1{font-size:14px;line-height:1.35;white-space:normal}
   .user-info{width:100%;justify-content:space-between}
   .user-chip{max-width:calc(100% - 82px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .nav-tabs{top:0;z-index:120}
-  .nav-tab{min-width:92px;min-height:44px;padding:11px 10px;font-size:12px}
+  /* v8.9 手機導覽：不再左右滑，改成格狀一行行排；常用功能在上、進階功能在下 */
+  .nav-tabs{top:0;z-index:120;flex-wrap:wrap;overflow:visible}
+  .nav-tabs.nav-static{position:static}
+  .nav-tab{flex:0 0 33.333%;min-width:0;min-height:44px;padding:8px 5px;font-size:12px;line-height:1.35;white-space:normal;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:2px 4px}
+  .nav-tab.nav-elevated{order:100;flex:1 1 33.333%;background:var(--bg);border-top:1px solid var(--border)}
+  .nav-tab.nav-elevated.active{background:var(--maroon-light)}
   .tab-content{padding:12px}
   .badge-header{padding:12px;align-items:flex-start;gap:8px}
   .badge-header h3{font-size:14px;line-height:1.45;display:block}
@@ -492,6 +498,7 @@ a:hover{text-decoration:underline}
       <button class="btn btn-sm btn-secondary" onclick="doLogout()">登出</button>
     </div>
   </div>
+  <!-- v8.9 導覽：按鈕順序＝桌機一行顯示的順序（不變）；手機則由 nav-elevated 決定哪幾個排到下面一行 -->
   <div class="nav-tabs" id="mainNavTabs">
     <button class="nav-tab active" id="btn-tab-progress" onclick="switchTab('progress', this)">📊 我的進度</button>
     <button class="nav-tab" id="btn-tab-overview" onclick="switchTab('overview', this)">👥 全團總覽</button>
@@ -500,11 +507,11 @@ a:hover{text-decoration:underline}
     <button class="nav-tab" id="btn-tab-forms" onclick="switchTab('forms', this)">🖨️ 表格列印</button>
     <button class="nav-tab" id="btn-tab-help" onclick="switchTab('help', this)">❓ 教學</button>
     <button class="nav-tab" id="btn-tab-info" onclick="switchTab('info', this)">📚 資料庫</button>
-    <button class="nav-tab" id="btn-tab-users" onclick="switchTab('users', this)" style="display:none">👥 用戶管理</button>
+    <button class="nav-tab nav-hidden" id="btn-tab-users" onclick="switchTab('users', this)">👥 用戶管理</button>
     <!-- 已合併：審批申請已併入審批中心，按項目及按項目已併入全團總覽，其他獎章已併入我的進度，版本更新框架保留 -->
-    <button class="nav-tab" id="btn-tab-apps" onclick="switchTab('apps', this)" style="display:none">📋 審批申請(舊-已合併)</button>
-    <button class="nav-tab" id="btn-tab-byitem" onclick="switchTab('byitem', this)" style="display:none">🔍 按項目(舊)</button>
-    <button class="nav-tab" id="btn-tab-other" onclick="switchTab('other', this)" style="display:none">⭐ 其他獎章(舊)</button>
+    <button class="nav-tab nav-hidden" id="btn-tab-apps" onclick="switchTab('apps', this)">📋 審批申請(舊-已合併)</button>
+    <button class="nav-tab nav-hidden" id="btn-tab-byitem" onclick="switchTab('byitem', this)">🔍 按項目(舊)</button>
+    <button class="nav-tab nav-hidden" id="btn-tab-other" onclick="switchTab('other', this)">⭐ 其他獎章(舊)</button>
   </div>
 
   <div id="tab-progress" class="tab-content active"></div>
@@ -2116,12 +2123,14 @@ function setupTabsByRole(){
   const isMember = currentUser.role==='member';
   const canMemberViewOthers = appConfig.allow_member_view_others==='true';
   // 領袖顯示全部，成員預設只看自己，能否看其他成員由團長開放
-  document.getElementById('btn-tab-overview').style.display= (isLeader || (isMember && canMemberViewOthers)) ? 'block' : 'none';
-  document.getElementById('btn-tab-byitem').style.display='none';
-  document.getElementById('btn-tab-other').style.display='none';
-  document.getElementById('btn-tab-users').style.display=isManage?'block':'none';
+  setNavTabVisible('overview', isLeader || (isMember && canMemberViewOthers));
+  setNavTabVisible('byitem', false);
+  setNavTabVisible('other', false);
+  setNavTabVisible('users', isManage);
   // 審批申請已合併到審批中心，不再獨立顯示
-  document.getElementById('btn-tab-apps').style.display='none';
+  setNavTabVisible('apps', false);
+  // v8.9：按「常用 / 進階」重新分層（只影響外觀，不改權限）
+  applyNavLayout();
   // 成員的待批頁顯示自己申請，保留
   // 其他獎章頁合併進進度，但保留獨立頁供領袖編輯，成員只讀自己
   // restore pending from local
@@ -2133,6 +2142,45 @@ function setupTabsByRole(){
     showToast('成員模式：只能查看自己進度，其他獎章及申請','warning');
   }
 }
+/* ================== v8.9 導覽分層：只改 UI，不改權限 ==================
+   手機（≤768px）：按鈕由「左右滑」改成格狀兩段 —— 常用功能排上面，
+   領袖／管委／管理員等「進階功能」排下面（加一條分隔線）。
+   桌機：仍然一行，順序外觀完全不變。
+   判斷原則：凡係「成員都有」嘅按鈕＝常用；要特別權限先有嘅＝進階。
+   所以日後開放全團可用（例如 allow_member_view_others 開啟），
+   該按鈕會自動升返上面，唔需要改 code。 */
+const NAV_TAB_MAIN=['progress','requests','logs','forms','help','info']; // 全體常用（成員都有）
+const NAV_TAB_ELEVATED_COND={ // 有條件的進階按鈕：回傳 true＝排下面
+  overview: cfg=> cfg.allow_member_view_others!=='true',                                    // 開放成員互看後 → 成員都有 → 排上面
+  users:    cfg=> !(cfg.allow_member_users==='true'||cfg.allow_users_all==='true')           // 日後開放全團／管委可用 → 自動排上面
+};
+function navTabId(btn){ return ((btn&&btn.id)||'').replace(/^btn-tab-/,''); }
+function isElevatedNavTab(id){
+  const cfg=(typeof appConfig!=='undefined'&&appConfig)?appConfig:{};
+  if(NAV_TAB_ELEVATED_COND[id]){ try{ return !!NAV_TAB_ELEVATED_COND[id](cfg); }catch(e){ return true; } }
+  return NAV_TAB_MAIN.indexOf(id)<0;
+}
+function setNavTabVisible(id, show){
+  const b=document.getElementById('btn-tab-'+id); if(!b) return;
+  b.classList.toggle('nav-hidden', !show);
+  if(b.style.display) b.style.display=''; // 清走舊 inline display，統一由 .nav-hidden 控制
+}
+function applyNavLayout(){
+  document.querySelectorAll('#mainNavTabs .nav-tab').forEach(b=>{
+    b.classList.toggle('nav-elevated', isElevatedNavTab(navTabId(b)));
+  });
+  updateNavSticky();
+}
+function updateNavSticky(){
+  const nav=document.getElementById('mainNavTabs'); if(!nav) return;
+  nav.classList.remove('nav-static');
+  if(window.innerWidth>768) return; // 桌機照舊貼頂
+  // 手機：如果分層後超過兩行，就唔再貼頂，免得遮住內容
+  const first=nav.querySelector('.nav-tab:not(.nav-hidden)');
+  const rowH=first?first.offsetHeight:0;
+  if(rowH>0 && Math.round(nav.offsetHeight/rowH)>2) nav.classList.add('nav-static');
+}
+if(typeof window!=='undefined') window.addEventListener('resize',()=>{ try{ updateNavSticky(); }catch(e){} });
 function getRoleName(r){ const m={'super_admin':'超管','admin':'管理員','group_leader':'團長','branch_leader':'樂行童軍團長','exec_committee':'管理委員會','member':'樂行童軍成員'}; return m[r]||r; }
 // v8.8 用戶管理：前端按角色顯示可操作的按鈕（後端同樣會再驗證權限）
 const ROLE_LEVEL_FRONT={'super_admin':100,'admin':80,'group_leader':60,'branch_leader':40,'exec_committee':20,'member':0};
