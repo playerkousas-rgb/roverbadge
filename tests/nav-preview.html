@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>導覽列 UI 預覽（v8.9 手機分層）</title>
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC","PingFang HK","Microsoft JhengHei",sans-serif;background:#E9ECEF;color:#212529;margin:0;padding:16px}
+  h1{font-size:16px;margin:0 0 6px}
+  .note{font-size:12px;color:#6C757D;margin:0 0 14px;line-height:1.6}
+  section{background:#fff;border-radius:10px;padding:12px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+  h2{font-size:13px;margin:0 0 10px;color:#0D47A1}
+  .hint{font-size:11px;color:#6C757D;margin:0 0 8px}
+  .row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start}
+  figure{margin:0}
+  figcaption{font-size:11px;color:#6C757D;margin-bottom:4px;text-align:center}
+  iframe{border:1px solid #CED4DA;border-radius:12px;background:#fff;display:block}
+  iframe.desk{width:100%;height:260px;border-radius:8px}
+</style>
+</head>
+<body>
+<h1>v8.9 導覽列 UI 預覽：手機＝常用功能在上、領袖／進階功能在下</h1>
+<p class="note">
+  此頁只是預覽工具（<code>tests/nav-preview.html</code>，不會上線）。下面每個框都是<b>真正的 index.html 同一份 CSS</b>，
+  只是用不同闊度（模擬手機）＋不同角色渲染，方便一眼對比。<br>
+  ・桌機（闊 &gt; 768px）外觀完全不變（仍然一行）　・手機（≤ 768px）不再左右滑，改成 3 格一行；下排＝領袖／管委等進階功能（有分隔線）
+</p>
+
+<section>
+  <h2>① 成員（預設）：上面只有常用功能，沒有下排</h2>
+  <p class="hint">我的進度／審批中心／活動履歷／表格列印／教學／資料庫 = 3 格 × 2 行，全部一眼可見。</p>
+  <div class="row">
+    <figure><figcaption>360px（細機）</figcaption><iframe data-role="member" data-w="360" style="width:360px;height:300px"></iframe></figure>
+    <figure><figcaption>390px（iPhone）</figcaption><iframe data-role="member" data-w="390" style="width:390px;height:300px"></iframe></figure>
+    <figure><figcaption>430px（大機）</figcaption><iframe data-role="member" data-w="430" style="width:430px;height:300px"></iframe></figure>
+  </div>
+</section>
+
+<section>
+  <h2>② 領袖（團長）：常用在上，下排＝全團總覽｜用戶管理（半半）</h2>
+  <p class="hint">下排有分隔線、底色稍深；兩個按鈕平分一行。</p>
+  <div class="row">
+    <figure><figcaption>360px</figcaption><iframe data-role="group_leader" data-w="360" style="width:360px;height:300px"></iframe></figure>
+    <figure><figcaption>390px</figcaption><iframe data-role="group_leader" data-w="390" style="width:390px;height:300px"></iframe></figure>
+    <figure><figcaption>430px</figcaption><iframe data-role="group_leader" data-w="430" style="width:430px;height:300px"></iframe></figure>
+  </div>
+</section>
+
+<section>
+  <h2>③ 管委（exec_committee）：常用在上，下排＝全團總覽</h2>
+  <p class="hint">管委沒有「用戶管理」，所以下排只有一個按鈕。</p>
+  <div class="row">
+    <figure><figcaption>390px</figcaption><iframe data-role="exec_committee" data-w="390" style="width:390px;height:300px"></iframe></figure>
+  </div>
+</section>
+
+<section>
+  <h2>④ 成員＋團長開放「允許成員互相查看進度」：全團總覽自動升返上面</h2>
+  <p class="hint">因為開放後「成員都有」＝屬常用；日後若開放用戶管理給全團／管委，同樣會自動升上第一段，不用改 code。</p>
+  <div class="row">
+    <figure><figcaption>390px（allow_member_view_others=true）</figcaption><iframe data-role="member" data-open="1" data-w="390" style="width:390px;height:300px"></iframe></figure>
+  </div>
+</section>
+
+<section>
+  <h2>⑤ 桌機（闊 &gt; 768px）：一行不變，順序與現時完全相同</h2>
+  <div class="row" style="display:block">
+    <iframe class="desk" data-role="group_leader" data-desk="1"></iframe>
+  </div>
+</section>
+
+<script>
+const ROLE_LABEL = { member:'樂行童軍成員', exec_committee:'管理委員會', branch_leader:'樂行童軍團長', group_leader:'團長', admin:'管理員' };
+const ROLE_NAME  = { member:'成員甲', exec_committee:'管委甲', branch_leader:'領袖甲', group_leader:'團長甲', admin:'管理員甲' };
+
+function label(role){ return ROLE_NAME[role] || role; }
+
+function mount(iframe){
+  const role = iframe.dataset.role;
+  const open = iframe.dataset.open === '1';
+  iframe.addEventListener('load', () => {
+    const w = iframe.contentWindow;
+    const cfg = open ? { allow_member_view_others:'true' } : {};
+    try {
+      w.eval(`try{
+        currentTroopId='0082'; currentTroopName='第 82 旅 (Demo)'; currentToken='preview';
+        currentUser={role:${JSON.stringify(role)},name:${JSON.stringify(label(role))},ymis:'1234560001'};
+        appConfig=${JSON.stringify(cfg)};
+        document.getElementById('homePage').style.display='none';
+        document.getElementById('loginPage').style.display='none';
+        document.getElementById('mainApp').style.display='block';
+        document.getElementById('appTitle').textContent='第 82 旅 (Demo) - 進度追蹤';
+        document.getElementById('userInfo').innerHTML=${JSON.stringify(label(role))}+' <span class="role-badge role-${role}">'+${JSON.stringify(ROLE_LABEL[role]||role)}+'</span> <span style="background:var(--blue);color:#fff;padding:2px 6px;border-radius:999px;font-size:9px">預覽</span>';
+        setupTabsByRole();
+        document.getElementById('tab-progress').innerHTML='<div style="padding:14px;font-size:12px;color:#6C757D">（預覽模式：只顯示導覽列，分頁內容未載入）</div>';
+      }catch(e){ document.documentElement.style.outline='3px solid red'; }`);
+      setTimeout(() => { try { w.document.querySelectorAll('.toast,.toast-container,#toastContainer').forEach(t => t.remove()); } catch (e) {} }, 500);
+    } catch (e) { console.error(e); }
+  });
+  iframe.src = '../index.html';
+}
+
+document.querySelectorAll('iframe[data-role]').forEach(mount);
+</script>
+</body>
+</html>
