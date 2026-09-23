@@ -7,6 +7,7 @@
 #     docs/MEMBER_GUIDE.md、docs/YMIS_EXPORT.md（index.html 有下載／查看連結）
 .git
 .vercel
+.vercel-build
 .tmp-lambda
 node_modules
 *.log
@@ -22,3 +23,4 @@ docs/AGENT_TEMPLATE_FOR_OTHER_SECTIONS.md
 docs/DEPLOY_GUIDE_V5_DUALTRACK.md
 docs/MAIN_SYSTEM_INTEGRATION.md
 docs/VERCEL_API_404_POSTMORTEM.md
+docs/TROOP_UPGRADE_2026.md

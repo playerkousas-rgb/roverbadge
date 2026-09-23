@@ -9,6 +9,8 @@
     "demo": "node tests/demo-server.mjs 3000",
     "check": "node scripts/check.mjs",
     "lint": "node scripts/lint.mjs",
-    "test": "node scripts/check.mjs && node tests/ymis-parse.test.mjs && node tests/code-gs.test.mjs && node tests/serverless-registry.test.mjs && node tests/serverless-portal.test.mjs && node tests/vercel-config.test.mjs && node tests/html-integrity.test.mjs && node tests/proxy-login.test.mjs && node tests/run-e2e.mjs && node tests/users-dom-test.mjs && node tests/i18n-dom-test.mjs && node tests/bulk-onboard-dom-test.mjs"
+    "test": "node scripts/check.mjs && node tests/ymis-parse.test.mjs && node tests/code-gs.test.mjs && node tests/serverless-registry.test.mjs && node tests/serverless-portal.test.mjs && node tests/vercel-config.test.mjs && node tests/html-integrity.test.mjs && node tests/proxy-login.test.mjs && node tests/run-e2e.mjs && node tests/users-dom-test.mjs && node tests/i18n-dom-test.mjs && node tests/bulk-onboard-dom-test.mjs && node --test tests/troop_link.test.mjs && node --test tests/build.test.mjs",
+    "test:link": "node --test tests/troop_link.test.mjs",
+    "test:build": "node --test tests/build.test.mjs"
   }
 }

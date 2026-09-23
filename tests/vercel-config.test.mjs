@@ -9,7 +9,8 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { spawnSync } from 'child_process';
+import { spawnSync, execFileSync } from 'child_process';
+import { createHash } from 'crypto';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -139,7 +140,11 @@ console.log('\n【5】Project Settings 欄位唔准出現喺 vercel.json（會�
   const pk = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
   const buildScript = (pk.scripts || {}).build || '';
   check('vercel.json 唔需要存在都唔會壞事（零配置已可建 function）', true);
-  check('冇 build script（Vercel 會自動把佢當 Build Command 執行）', buildScript === '', buildScript);
+  // 2026-09-22 旅系統對齊：build script 恢復（對齊 vsbadge）—— Vercel 會將佢當 Build Command 執行，
+  // 所以佢必須係 Build Output API 腳本（只寫 .vercel/output、零依賴、零網絡）；
+  // 「唔准寫返入來源目錄」嘅底線改由【6】嘅功能檢查守護（跑真 build，比對來源樹快照）
+  check('build script 必須係 node scripts/build.mjs（Build Output API；Vercel 會自動把佢當 Build Command 執行）',
+    buildScript === 'node scripts/build.mjs', buildScript);
   check('冇 dependencies → npm install 冇副作用、唔會 fail', pk.dependencies === undefined || Object.keys(pk.dependencies).length === 0);
   check('建構／測試工具不入 dependencies（保持極簡依賴）',
     pk.dependencies === undefined || Object.keys(pk.dependencies).length === 0);
@@ -149,8 +154,35 @@ console.log('\n========================================');
 console.log('\n【6】部署瘦身：.vercelignore 排除開發檔，但唔排除前端引用嘅資源');
 {
   const pk = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
-  check('冇 scripts.build（Vercel 會自動把佢當 Build Command 執行）', (pk.scripts || {}).build === undefined,
-    '有 build script → Vercel 以「npm run build」做 Build Command；喺 build 環境寫返入來源目錄會失敗 → 成次部署 Error（2026-08-28 實測）');
+  // 2026-08-28 事故底線（postmortem 第 5 節）：build script 會喺 Vercel build 環境自動執行，
+  // 2026-09-22 旅系統對齊：恢復 build script（對齊 vsbadge 嘅 Build Output API 模式）——
+  // 底線改寫成功能檢查：真跑一次 build，比對來源樹快照，「寫返入來源目錄」即刻紅。
+  check('scripts.build 必須係 node scripts/build.mjs（Build Output API；Vercel 會自動把佢當 Build Command 執行）',
+    (pk.scripts || {}).build === 'node scripts/build.mjs',
+    'build script → Vercel 以「npm run build」做 Build Command；脚本只准寫 .vercel/output（見下方功能檢查）');
+  {
+    const snapshotSourceTree = () => {
+      const out = {};
+      const walk = (dir, rel) => {
+        for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+          if (e.name === '.vercel' || e.name === '.vercel-build' || e.name === '.git' || e.name === 'node_modules') continue;
+          const p = path.join(dir, e.name);
+          const r = rel ? rel + '/' + e.name : e.name;
+          if (e.isDirectory()) walk(p, r);
+          else out[r] = createHash('sha256').update(fs.readFileSync(p)).digest('hex');
+        }
+      };
+      walk(ROOT, '');
+      return out;
+    };
+    const before = snapshotSourceTree();
+    execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'build.mjs')], { cwd: ROOT, stdio: 'pipe' });
+    const after = snapshotSourceTree();
+    const changed = Object.keys(after).filter(f => after[f] !== before[f])
+      .concat(Object.keys(before).filter(f => !(f in after)));
+    check('build 只寫 .vercel/output：來源目錄零改動（2026-08-28 事故底線）',
+      changed.length === 0, changed.slice(0, 5).join(', '));
+  }
   check('冇 sync:troops script（旅團登記已改純環境變數）', (pk.scripts || {})['sync:troops'] === undefined);
   check('test 鏈唔再包含 sync --check', !/sync-troops/.test((pk.scripts || {}).test || ''));
 
