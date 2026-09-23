@@ -2,14 +2,16 @@
 //
 // 重點：這個測試把 api/ 複製進一個空的 lambda 目錄（等同 /var/task），
 // 用 child process 以該目錄為 cwd 啟動 server，掛載「真正的」api/proxy.js、
-// api/troops.js、api/health.js、api/verify-super-ticket.js，上游接 tests/mock-gas.mjs
-// （含 GAS 式 302）。它驗證：
-//   - 四個 /api endpoint 都必須回 JSON（Vercel 未建 function 時會回 HTML 404）
+// api/troops.js、api/health.js，上游接 tests/mock-gas.mjs（含 GAS 式 302）。
+// 中央管理帳號登入係零回傳設計：proxy 驗證 SUPER_KEY 密碼後簽發 HMAC 簽名票據
+// （簽名鎖匙＝旅團共享鎖匙 D＝TROOP_{id}_APIKEY），mock GAS 本地驗簽 —— 全程唔會
+// 有任何 GAS→Vercel 回打。它驗證：
+//   - 每個 /api endpoint 都必須回 JSON（Vercel 未建 function 時會回 HTML 404）
 //   - 成員／領袖／旅團管理員都要能拿到 token（一般登入不受中央設定影響）
 //   - 中央管理帳號（3A 回歸清單）：
 //       1. SUPER_KEY 未設定／空字串／少於 4 字元 → 拒絕，且不呼叫 GAS
 //       2. 合格 4 字元設定 + 錯誤密碼 → 拒絕
-//       3. 正確 4 字元密碼 → 登入成功 + 加密 session 包裝（rbs1.），模擬 GAS 驗票通過
+//       3. 正確 4 字元密碼 → 登入成功 + 加密 session 包裝（rbs1.）+ 票據本地驗簽通過
 //       4. 普通用戶登入不受中央管理密鑰設定不足影響
 import fs from 'fs';
 import os from 'os';
@@ -48,7 +50,7 @@ console.log('\n【0】api/_super.js：SUPER_KEY 政策（≥4 字元、字串、
   delete process.env.SUPER_KEY;
   check('未設定 SUPER_KEY → superConfigured()=false', superConfigured() === false);
   check('未設定時 verifySuperPassword 一律 false', verifySuperPassword('9876') === false);
-  check('未設定時無法簽發票據', issueSuperTicket({ loginId: SU_USER, troopId: '0082', backend: 'https://x/exec' }) === null);
+  check('未設定時無法簽發票據', issueSuperTicket({ loginId: SU_USER, apiKey: 'D-key' }) === null);
 
   process.env.SUPER_KEY = '';
   check('空字串 → superConfigured()=false', superConfigured() === false);
@@ -69,16 +71,17 @@ console.log('\n【0】api/_super.js：SUPER_KEY 政策（≥4 字元、字串、
   check('錯誤密碼被拒（長度合格不代表成功）', verifySuperPassword('9877') === false && verifySuperPassword('') === false);
   check('非字串輸入被拒', verifySuperPassword(undefined) === false && verifySuperPassword(9876) === false);
 
-  // 票據：綁定後端 + 短時效
-  const tk = issueSuperTicket({ loginId: SU_USER, troopId: '0082', backend: 'https://script.google.com/macros/s/AAAA/exec' });
-  check('票據簽發成功（rbt1. 前綴）', typeof tk === 'string' && tk.startsWith('rbt1.'));
-  const okPayload = verifySuperTicket(tk, 'https://script.google.com/macros/s/AAAA/exec');
-  check('同一後端驗票成功', okPayload && okPayload.id === SU_USER);
-  check('不同後端驗票失敗（票據綁定旅團後端，不可跨旅團）', verifySuperTicket(tk, 'https://script.google.com/macros/s/BBBB/exec') === null);
-  check('偽造票據驗票失敗', verifySuperTicket('rbt1.deadbeef', 'https://script.google.com/macros/s/AAAA/exec') === null);
+  // 票據：HMAC by 共享鎖匙 D + 短時效（GAS 本地驗簽，零回傳）
+  const tk = issueSuperTicket({ loginId: SU_USER, apiKey: 'D-key-of-troop-AAAA' });
+  check('票據簽發成功（rbs2. 前綴）', typeof tk === 'string' && tk.startsWith('rbs2.'));
+  const okPayload = verifySuperTicket(tk, 'D-key-of-troop-AAAA');
+  check('同一鎖匙驗票成功', okPayload && okPayload.id === SU_USER);
+  check('不同鎖匙驗票失敗（票據綁定旅團共享鎖匙 D，不可跨旅團）', verifySuperTicket(tk, 'D-key-of-troop-BBBB') === null);
+  check('偽造票據驗票失敗', verifySuperTicket('rbs2.deadbeef', 'D-key-of-troop-AAAA') === null);
+  check('冇鎖匙簽唔出票據', issueSuperTicket({ loginId: SU_USER, apiKey: '' }) === null);
   const realNow = Date.now;
   Date.now = () => realNow() + 10 * 60 * 1000; // 快轉 10 分鐘（TTL 60s + 10s 偏差）
-  check('過期票據驗票失敗', verifySuperTicket(tk, 'https://script.google.com/macros/s/AAAA/exec') === null);
+  check('過期票據驗票失敗', verifySuperTicket(tk, 'D-key-of-troop-AAAA') === null);
   Date.now = realNow;
 
   // session 包裝：加密 + 旅團綁定
@@ -95,13 +98,12 @@ const MOCK_PORT = await freePort();
 const APP_PORT = await freePort();   // 有 SUPER_KEY 的 server
 const APP2_PORT = await freePort();  // 沒有 SUPER_KEY 的 server
 
-// ---- 1. mock GAS（旅團 0082 後端；superTicketLogin 會回打 APP_PORT 的中央驗證端點）----
-console.log('\n【1】起 mock GAS（旅團 0082，含 302 跳板；驗票回打中央端點）');
+// ---- 1. mock GAS（旅團 0082 後端；super_ticket 由 mock 本地驗簽，零回傳）----
+console.log('\n【1】起 mock GAS（旅團 0082，含 302 跳板；super_ticket 本地驗簽）');
 const mock = await startMockGas({
   port: MOCK_PORT,
   name: '旅團0082(lambda測試)',
   apikey: 'KEY_LAMBDA',
-  verifyUrl: `http://127.0.0.1:${APP_PORT}/api/verify-super-ticket`,
   users: [
     { ymis: '1111111111', name: '旅團管理員', role: 'admin', pass: 'Admin!2345', can_tick: true, email: 'admin@example.org' },
     { ymis: '1234567890', name: '陳大文', role: 'group_leader', pass: 'Leader!123', can_tick: true, email: 'l@example.org' },
@@ -128,7 +130,6 @@ import http from 'http';
 import { default as proxyHandler } from './api/proxy.js';
 import { default as troopsHandler } from './api/troops.js';
 import { default as healthHandler } from './api/health.js';
-import { default as verifyHandler } from './api/verify-super-ticket.js';
 const PORT = parseInt(process.env.APP_PORT, 10);
 function vercelize(res) {
   res.status = (c) => { res.statusCode = c; return res; };
@@ -140,7 +141,6 @@ http.createServer((req, res) => {
   if (u.pathname === '/api/proxy') return proxyHandler(req, vercelize(res));
   if (u.pathname === '/api/troops') return troopsHandler(req, vercelize(res));
   if (u.pathname === '/api/health') return healthHandler(req, vercelize(res));
-  if (u.pathname === '/api/verify-super-ticket') return verifyHandler(req, vercelize(res));
   res.writeHead(404, { 'Content-Type': 'text/html' });
   res.end('<html><body>404: NOT_FOUND</body></html>');
 }).listen(PORT, '127.0.0.1', () => console.log('READY ' + PORT));
@@ -211,8 +211,8 @@ console.log('\n【3】/api endpoint 都要回 JSON（Vercel 沒建 function 時�
   check('GET /api/health → 200 + JSON', h.status === 200 && isJson(h), `${h.status} ${h.type}`);
   check('/api/health 回報 registry 來源為 env', (h.json.registry || {}).source === 'env', JSON.stringify(h.json.registry || {}));
   check('/api/health super 自測：SUPER_KEY 已設定', (h.json.super || {}).configured === true, JSON.stringify(h.json.super || {}));
-  check('/api/health super 自測通過（簽票→驗票→後端綁定→session）', (h.json.super || {}).selfTest === 'ok', JSON.stringify(h.json.super || {}));
-  check('/api/health super 自測不洩漏票據／session／token', !/rbt1\.|rbs1\.|selftest-token/.test(h.text));
+  check('/api/health super 自測通過（簽票→驗票→鎖匙綁定→session）', (h.json.super || {}).selfTest === 'ok', JSON.stringify(h.json.super || {}));
+  check('/api/health super 自測不洩漏票據／session／token', !/rbs2\.|rbs1\.|selftest-token/.test(h.text));
   check('/api/health 不含 GAS 完整 URL / apikey', !/\/exec/.test(h.text) && !/KEY_LAMBDA/.test(h.text));
 
   const t = await req(BASE, 'GET', '/api/troops');
@@ -223,8 +223,8 @@ console.log('\n【3】/api endpoint 都要回 JSON（Vercel 沒建 function 時�
       !/script\.google\.com|\/exec|KEY_LAMBDA/.test(t.text)),
     t.text.slice(0, 160));
 
-  const v = await req(BASE, 'GET', '/api/verify-super-ticket');
-  check('GET /api/verify-super-ticket → 200 JSON（GAS 連線測試用，不含機密）', v.status === 200 && isJson(v) && !/SUPER_KEY|9876/.test(v.text), `${v.status} ${v.text.slice(0, 80)}`);
+  const v = await req(BASE, 'POST', '/api/verify-super-ticket', { ticket: 'x' });
+  check('回傳端點已刪除：POST /api/verify-super-ticket → 404（不做回傳）', v.status === 404 && !isJson(v), `${v.status} ${v.text.slice(0, 80)}`);
 
   const nf = await req(BASE, 'GET', '/api/nope');
   check('未部署的路徑仍是 HTML 404（測試用的對照組）', nf.status === 404 && !isJson(nf));
@@ -269,12 +269,12 @@ let wrappedToken = '';
   check('登入成功（success:true, role=super_admin）',
     ok.status === 200 && isJson(ok) && ok.json.success === true && ok.json.user && ok.json.user.role === 'super_admin',
     ok.text.slice(0, 200));
-  check('mock GAS 收到 superTicketLogin（Vercel 驗證後才轉發票據）',
+  check('mock GAS 收到帶 super_ticket 的 login（Vercel 驗證後才簽票轉發）',
     mock.state.superTicketLogins.length === before + 1, JSON.stringify(mock.state.superTicketLogins.slice(before)));
   const lastTicketCall = mock.state.superTicketLogins[mock.state.superTicketLogins.length - 1];
-  check('轉發內容只有票據（沒有密碼欄位）', lastTicketCall.hasTicket === true);
-  check('mock GAS 驗票時回傳自身後端 URL（綁定核對）',
-    lastTicketCall.backend === `http://127.0.0.1:${MOCK_PORT}/exec`, lastTicketCall.backend);
+  check('轉發保留 GAS schema：action=login 附 super_ticket', lastTicketCall.hasTicket === true);
+  check('兼容舊版：請求附帶密碼欄位（舊版 GAS GS 硬寫密碼比對用）', lastTicketCall.hasPassword === true);
+  check('轉發附帶共享鎖匙 apikey（GAS 本地驗簽／受信核對用）', lastTicketCall.hasApikey === true);
 
   wrappedToken = (ok.json || {}).token || '';
   check('回傳瀏覽器的 token 有加密包裝前綴（rbs1.）', wrappedToken.startsWith('rbs1.'), wrappedToken.slice(0, 20));
@@ -343,9 +343,9 @@ console.log('\n【9】安全邊界（修復後不應放寬任何驗證）');
   const bigData = await proxy('save', { token: 'tok_0123456789', blob: 'x'.repeat(2097500) });
   check('過大 payload → 413 + JSON', bigData.status === 413 && isJson(bigData), `${bigData.status} ${bigData.type}`);
 
-  // verify endpoint：垃圾票據一律 valid:false（200 JSON），不洩漏原因
-  const vBad = await req(BASE, 'POST', '/api/verify-super-ticket', { ticket: 'rbt1.garbage', backend: 'https://x/exec' });
-  check('verify endpoint：偽造票據 → valid:false', vBad.status === 200 && vBad.json && vBad.json.valid === false, vBad.text.slice(0, 120));
+  // 回傳端點已刪（不做回傳）：垃圾票據唔會再有專門 endpoint 去驗
+  const vBad = await req(BASE, 'POST', '/api/verify-super-ticket', { ticket: 'rbs2.garbage', backend: 'https://x/exec' });
+  check('verify-super-ticket 已刪（垃圾票據打唔到任何驗證回傳端點）', vBad.status === 404 && !isJson(vBad), vBad.text.slice(0, 120));
 }
 
 // ---- 10. 沒有 TROOP_* 環境變數時：/api/troops 空、health 503、proxy 404 ----
@@ -410,7 +410,8 @@ console.log('\n【12】method 路由必須同 Code.gs 一致：doGet 只認 load
   check('load 從未用 POST 打去 GAS', !recv.some(r => r.action === 'load' && r.method === 'POST'), '');
   check('getLoginMode 用 GET', recv.some(r => r.action === 'getLoginMode' && r.method === 'GET'), '');
   check('login / save 用 POST', recv.some(r => r.action === 'login' && r.method === 'POST') && recv.some(r => r.action === 'save' && r.method === 'POST'), JSON.stringify(recv.slice(-6)));
-  check('superTicketLogin 用 POST', recv.some(r => r.action === 'superTicketLogin' && r.method === 'POST'), '');
+  check('中央登入照用 action=login 轉發（唔另立 action，schema 不變）', recv.some(r => r.action === 'login' && r.method === 'POST'), '');
+  check('GAS 全程冇收到 superTicketLogin action（舊回打件已移除）', !recv.some(r => r.action === 'superTicketLogin'), '');
 
   const badPost = await fetch(mock.url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'load' }) });
   const badJson = await badPost.json().catch(() => null);

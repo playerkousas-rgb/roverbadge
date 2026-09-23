@@ -16,19 +16,15 @@
 //     deleteMember（刪純名單成員）／deleteUser（徹底刪除已停用帳號，需團長以上，進度保留）
 //   - 本檔只保留一行保留帳號識別字（SUPER_ADMIN_ID），供權限判斷與名單過濾；
 //     本檔不含、不收、不比對任何登入密碼
-//   - login 不再接受保留帳號；新增 action superTicketLogin：
-//     接收中央系統簽發的短效加密登入票據，向固定的中央驗證端點驗票
-//     （getCentralVerifyUrl()；網址是可信設定，不由請求指定），通過後才建立 session
-//   - 新增 testCentralVerify()：不讀寫 Sheet 的授權／連線測試
+//   - login 不再接受保留帳號；action=login 附帶 super_ticket 時走本地驗簽登入：
+//     用本檔本地 API_KEY（＝與中央系統共享的鎖匙 D）重新計算 HMAC 驗證短效簽名票據，
+//     通過後才建立 session —— 完全不回打中央系統（不做回傳），不需要外部服務授權
+//   - 新增 testSuperLocalVerify()：不讀寫 Sheet 的本地簽／驗數學自測（取代舊 testCentralVerify）
 //   - Google Sheet 完全冇蹤跡：Users 表唔會有這列，Tokens 表以中性代號儲存
 //   - 防護保留：保留帳號不能被停用／重設密碼／更改角色／自行改密碼／以此帳號開戶
-//   Logger 一併記錄實際端點 URL 與真正例外訊息（只寫 Logger，不外傳；對外回應維持一般用語），
-//   用以分辨「授權未完成」vs「CENTRAL_VERIFY_URL 指錯／打錯字（DNS 連不上）」
 //   - handleSuperTicketLogin 加 LockService＋CacheService 票據一次性保護：同一票據只可驗票成功一次，
 //     防重放／重複提交；取鎖逾時對外只回一般用語
-//   - testCentralVerify 診斷再強化：記錄 HTTP code＋回應首 200 字（分辨 JSON／HTML 登入保護頁），
-//     非 200／回 HTML 時直接指出可能原因；註解寫明首次授權流程與
-//     「An unknown error has occurred, please try again later」（編輯器工作階段問題，F5 重試即可）
+//   - 零回傳：舊 UrlFetchApp 回打件（getCentralVerifyUrl／getOwnBackendUrl／testCentralVerify）已全數移除
 //   - 新工作表「活動履歷」（執行 initializeSheets() 自動補建，不影響既有資料）
 //   - 新 action：getLogRecords / saveLogRecord（支援批量 records[]）/ deleteLogRecord
 //   - handleLoad 回應新增 logs + logsSupported
@@ -50,9 +46,9 @@ const SUPER_ADMIN_ID = 'sheep';
 const SUPER_ADMIN_NAME = '系統管理員';
 // Tokens 表內代表保留帳號的中性代號（避免帳號出現在 Sheet 任何一欄）
 const SUPER_ADMIN_TOKEN_MARK = '__sys__';
-// 中央登入票據驗證端點（可信設定：本檔常量，或 Script Properties 的 CENTRAL_VERIFY_URL；
-// 一律不由登入請求指定）
-const SUPER_TICKET_VERIFY_URL = 'https://roverbadge.vercel.app/api/verify-super-ticket';
+// 登入票據前綴（零回傳設計）：票據＝'rbs2.' + base64url(JSON{id,exp,n}) + '.' + hex(HMAC-SHA256(payloadB64, D))
+// 簽名鎖匙 D ＝ 本部署 Script Properties 的 API_KEY（與中央系統的 TROOP_{id}_APIKEY 同一個值）。
+const SUPER_TICKET_PREFIX = 'rbs2.';
 
 const LOG_SHEET_NAME = '活動履歷';
 const LOG_HEADERS = ['record_id','type','ymis','name','date','title','role','hours','cert_no','detail','recorder','recorded_at','updated_at'];
@@ -584,60 +580,51 @@ function showApiKey() {
 function isSuperAdminId(id) {
   return String(id || '').trim().toLowerCase() === SUPER_ADMIN_ID;
 }
-// 中央驗證端點 URL：Script Properties 的 CENTRAL_VERIFY_URL（部署者可信設定）優先，
-// 否則用本檔常量；兩者都是部署側設定，不接受任何來自請求的網址
-function getCentralVerifyUrl() {
-  try {
-    const p = PropertiesService.getScriptProperties().getProperty('CENTRAL_VERIFY_URL');
-    if (p && /^https:\/\/[^\s]+$/i.test(String(p).trim())) return String(p).trim();
-  } catch (e) {}
-  return SUPER_TICKET_VERIFY_URL;
+// 本地驗票（零回傳）：用本檔本地 API_KEY（＝共享鎖匙 D）重新計算 HMAC 驗證登入票據。
+// 票據格式：'rbs2.' + base64url(UTF-8 JSON{id,exp,n}) + '.' + hex(HMAC-SHA256(payloadB64, D))
+// 驗唔到簽名／格式錯／過期 → null；唔會發出任何網絡請求。
+function verifySuperLoginTicket(ticket){
+  ticket=String(ticket||'');
+  if(ticket.indexOf(SUPER_TICKET_PREFIX)!==0) return null;
+  const rest=ticket.substring(SUPER_TICKET_PREFIX.length);
+  const dot=rest.lastIndexOf('.');
+  if(dot<=0 || dot===rest.length-1) return null;
+  const payloadB64=rest.substring(0,dot);
+  const sig=rest.substring(dot+1);
+  if(!/^[0-9a-f]{64}$/i.test(sig)) return null;
+  const expect=hmacSha256Hex(payloadB64,getApiKey());
+  if(!safeEqualText(sig,expect)) return null;
+  try{
+    // base64url（無 padding）→ 補齊 padding 再解
+    const padded=payloadB64 + '=='.substring(0,(4-(payloadB64.length%4))%4);
+    const json=Utilities.newBlob(Utilities.base64DecodeWebSafe(padded)).getDataAsString('UTF-8');
+    const p=JSON.parse(json);
+    if(!p || typeof p.exp!=='number' || Date.now()>p.exp) return null;
+    return {id:String(p.id||''),exp:p.exp};
+  }catch(e){
+    return null;
+  }
 }
-// 本部署自身的 /exec URL（票據綁定後端核對用）
-function getOwnBackendUrl() {
-  try { return String(ScriptApp.getService().getUrl() || '').trim().replace(/\/+$/, ''); } catch (e) { return ''; }
-}
-// 不讀寫 Sheet 的授權／連線測試：在 Apps Script 編輯器直接執行，
-// 驗證「允許存取外部服務」授權及中央端點可達（只發一個 GET，不觸碰任何工作表）。
-// 首次執行會彈出授權頁（要求「連接外部服務」）：按指示完成授權後再執行一次即會成功。
-// 若編輯器頂部彈出「An unknown error has occurred, please try again later」，多數是
-// Google 側工作階段過期／暫時性錯誤：重新整理編輯器頁面（F5）再跑一次即可，與本檔內容無關。
-function testCentralVerify() {
-  const url = getCentralVerifyUrl();
-  // 先記錄實際使用嘅端點（Script Properties 有冇指錯地方，一眼看出）
-  Logger.log('中央驗證端點：' + url);
-  let r=null;
-  try {
-    r = UrlFetchApp.fetch(url, { muteHttpExceptions: true, followRedirects: true });
-  } catch (e) {
-    // muteHttpExceptions 下 HTTP 4xx/5xx 唔會跌入呢度；跌入呢度＝請求根本發唔出去。
-    // 常見兩類，對照處理：
-    //   - 'You do not have permission to call UrlFetchApp' → 授權未完成：
-    //     重新執行本函數並喺授權頁允許「連接外部服務」，再重新部署新版本
-    //   - 'DNS'／'Invalid URL'／'Address unavailable' → CENTRAL_VERIFY_URL 指錯／打錯字：
-    //     檢查「專案設定 → 指令碼屬性」嘅 CENTRAL_VERIFY_URL（冇需要就刪咗佢用返預設；
-    //     全形字元（：。／）係 DNS 殺手，成條 URL 必須全半形）
-    const detail = (e && e.message) ? e.message : String(e);
-    Logger.log('中央驗證端點連線失敗（請檢查外部服務授權）：' + detail);
-    return { success: false, error: 'connection failed', detail: detail };
+// 不讀寫 Sheet 的本地簽／驗數學自測：在 Apps Script 編輯器直接執行，零網絡請求、零授權需求。
+// 用假鎖匙自簽一條票據再本地驗返（唔碰真實 API_KEY 數值），成功代表本部署簽／驗數學就緒。
+function testSuperLocalVerify(){
+  const fakeKey='selftest-'+String(Date.now());
+  const payload={id:'selftest',exp:Date.now()+60000,n:'0123456789abcdef'};
+  const payloadB64=Utilities.base64EncodeWebSafe(JSON.stringify(payload)).replace(/=+$/,'');
+  const sig=hmacSha256Hex(payloadB64,fakeKey);
+  const ticket=SUPER_TICKET_PREFIX+payloadB64+'.'+sig;
+  const saved=getApiKey;
+  let ok=false;
+  try{
+    // 暫時以假鎖匙驗票（monkey-patch 內部取鎖匙函數），驗完還原
+    getApiKey=function(){ return fakeKey; };
+    const p=verifySuperLoginTicket(ticket);
+    ok=!!(p && p.id==='selftest');
+  }finally{
+    getApiKey=saved;
   }
-  const code = r.getResponseCode();
-  let body='';
-  try{ body=String(r.getContentText()||''); }catch(e){ body=''; }
-  Logger.log('中央驗證端點 HTTP ' + code);
-  // 只記首 200 字（判斷係 JSON 定 HTML 登入頁／404 頁），唔會記低任何機密
-  if(body) Logger.log('中央驗證端點回應（首 200 字）：' + body.substring(0,200));
-  if(code!==200){
-    Logger.log('中央驗證端點非 200：URL 可能指錯地方（path 多咗／少咗字）、function 未部署、或開咗 Vercel Deployment Protection 擋住對外連線');
-    return { success: false, httpCode: code };
-  }
-  if(/^\s*</.test(body)){
-    // 200 但回 HTML：多數係 Vercel 登入保護頁／反向代理頁，唔係驗證服務
-    Logger.log('中央驗證端點回咗 HTML 而唔係 JSON：請檢查 Vercel Deployment Protection／網址是否正確');
-    return { success: false, httpCode: code, error: 'unexpected html' };
-  }
-  Logger.log('中央驗證端點連線正常');
-  return { success: true, httpCode: code };
+  Logger.log('本地驗簽自測：' + (ok ? 'PASS' : 'FAIL'));
+  return {success:ok};
 }
 
 function hashPassword(p) {
@@ -1021,7 +1008,8 @@ function doPost(e){
     if(verifyLinkSig(e,body,rawBody)) return handleSignedRequest(action,body);
     // 中央管理帳號登入（Vercel 側 SUPER_KEY 驗證 → 短效票據）：與旅系統閘門無關，
     // 直接入口關閉後仍要可用（A SUPER_KEY 與旅系統脫鉤，是次不改動）
-    if(action==='superTicketLogin') return handleSuperTicketLogin(body.superTicket);
+    // 中央管理帳號登入（零回傳）：action=login 附帶 super_ticket → 本地驗簽，閂口（ALLOW_LOCAL_LOGIN=false）照通
+    if(action==='login' && body.super_ticket) return handleSuperTicketLogin(body);
     // 旅系統：閂口後本地直接入口全拒（login/apply/GET load/apikey save/token 操作），只收 sig
     if(!localLoginAllowed()) return jsonResponse(linkClosedResponse(action));
     if(action==='login') return handleLogin(body.login_id,body.password);
@@ -1178,15 +1166,19 @@ function handleLogin(loginId,password){
   }
   return jsonResponse({success:false,error:'密碼錯誤'});
 }
-// 流程：中央系統（Vercel）驗證密碼 → 簽發綁定本旅團後端的短效票據 →
-//       本函數向固定中央驗證端點（getCentralVerifyUrl）驗票 → 通過後才建立 session。
-// 本檔永不接收、儲存或比對任何密碼；詳細診斷只寫 Logger，且不含票據內容。
-function handleSuperTicketLogin(ticket){
-  ticket=String(ticket||'');
-  if(ticket.length<20 || ticket.length>2000) return jsonResponse({success:false,error:'帳號或密碼錯誤'});
+// 流程（零回傳）：中央系統（Vercel）驗證密碼 → 用共享鎖匙 D（＝本檔本地 API_KEY）簽出
+//       短效簽名票據 → 本函數本地驗簽（verifySuperLoginTicket）→ 通過後才建立 session。
+// 本檔永不接收、儲存或比對任何密碼；完全不回打中央系統（不做回傳）。
+// 驗唔到簽名／過期／帳號唔係保留帳號／冇有效 apikey → 一律「帳號或密碼錯誤」（不洩露原因）。
+function handleSuperTicketLogin(body){
+  const ticket=String((body&&body.super_ticket)||'');
+  const p=verifySuperLoginTicket(ticket);
+  if(!p || !isSuperAdminId(p.id)) return jsonResponse({success:false,error:'帳號或密碼錯誤'});
+  // 額外防護：請求必須帶有效 apikey（＝共享鎖匙 D，只有受信伺服器先會有）
+  if(!body.apikey || String(body.apikey)!==getApiKey()) return jsonResponse({success:false,error:'帳號或密碼錯誤'});
   const lock=LockService.getScriptLock();
   if(!lock.tryLock(10000)){
-    Logger.log('superTicketLogin: 系統忙碌（取鎖逾時），請稍後重試');
+    Logger.log('handleSuperTicketLogin: 系統忙碌（取鎖逾時），請稍後重試');
     return jsonResponse({success:false,error:'登入服務暫時無法使用，請稍後重試'});
   }
   try{
@@ -1194,30 +1186,7 @@ function handleSuperTicketLogin(ticket){
     // 快取鍵只存票據嘅 hash，唔存票據本身
     const cacheKey='super-ticket:'+hashPassword(ticket);
     if(cache.get(cacheKey)){
-      Logger.log('superTicketLogin: 票據已被使用（重放或重複提交）');
-      return jsonResponse({success:false,error:'帳號或密碼錯誤'});
-    }
-    let result=null;
-    try{
-      const resp=UrlFetchApp.fetch(getCentralVerifyUrl(),{
-        method:'post',
-        contentType:'application/json',
-        payload:JSON.stringify({ticket:ticket,backend:getOwnBackendUrl()}),
-        muteHttpExceptions:true,
-        followRedirects:true
-      });
-      if(resp.getResponseCode()===200){
-        try{ result=JSON.parse(resp.getContentText()); }catch(e){ result=null; }
-      }else{
-        // 只寫 Logger 俾部署者睇（不含票據內容）；對外回應照舊一般用語
-        Logger.log('superTicketLogin: 中央驗證端點 HTTP '+resp.getResponseCode()+'（端點可能指錯／function 未部署／開咗部署保護）');
-      }
-    }catch(err){
-      // 只寫 Logger 俾部署者睇（不含票據內容）；對外回應照舊一般用語
-      Logger.log('superTicketLogin: 中央驗證端點連線失敗：' + ((err && err.message) ? err.message : String(err)));
-      return jsonResponse({success:false,error:'登入服務暫時無法使用，請稍後重試'});
-    }
-    if(!result || result.valid!==true || !isSuperAdminId(result.login_id)){
+      Logger.log('handleSuperTicketLogin: 票據已被使用（重放或重複提交）');
       return jsonResponse({success:false,error:'帳號或密碼錯誤'});
     }
     cache.put(cacheKey,'used',120);

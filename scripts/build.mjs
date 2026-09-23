@@ -42,13 +42,12 @@ function isExcluded(rel, rules) {
   return false;
 }
 
-// 5 個公開 endpoint（底線開頭的 _registry／_super 係內部模組，唔會建成 endpoint）
+// 4 個公開 endpoint（底線開頭的 _registry／_super 係內部模組，唔會建成 endpoint）
 const FUNCTIONS = {
   health: ['_registry', '_super'],
   troops: ['_registry'],
   portal: ['_registry'],
-  proxy: ['_registry', '_super'],
-  'verify-super-ticket': ['_super']
+  proxy: ['_registry', '_super']
 };
 
 export function build() {
@@ -94,7 +93,7 @@ export default function (req, res) {
   fs.writeFileSync(path.join(output, 'config.json'), JSON.stringify({
     version: 3,
     routes: [
-      { src: '^/api/(proxy|troops|portal|health|verify-super-ticket)(?:\\.js)?/?$', dest: '/api/$1' },
+      { src: '^/api/(proxy|troops|portal|health)(?:\\.js)?/?$', dest: '/api/$1' },
       { src: '^/$', dest: '/index.html' },
       { handle: 'filesystem' }
     ]

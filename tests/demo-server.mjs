@@ -35,7 +35,6 @@ const mock = await startMockGas({
   port: GAS_PORT,
   name: '第 82 旅 (樂行) — Demo',
   apikey: 'DEMO_KEY',
-  verifyUrl: `http://127.0.0.1:${APP_PORT}/api/verify-super-ticket`,
   users: [
     { ymis: '1111111111', name: '旅團管理員', role: 'admin', can_tick: true, pass: USERS, email: 'admin@example.org' },
     { ymis: '1234567890', name: '陳大文', role: 'group_leader', can_tick: true, pass: USERS, email: 'leader@example.org' },
@@ -48,7 +47,6 @@ console.log(`  mock GAS（假後端）: ${mock.url}`);
 const { default: proxyHandler } = await import('../api/proxy.js');
 const { default: troopsHandler } = await import('../api/troops.js');
 const { default: healthHandler } = await import('../api/health.js');
-const { default: verifyHandler } = await import('../api/verify-super-ticket.js');
 
 function vercelize(res) {
   res.status = (c) => { res.statusCode = c; return res; };
@@ -62,7 +60,6 @@ const server = http.createServer((req, res) => {
   if (u.pathname === '/api/proxy') return proxyHandler(req, vercelize(res));
   if (u.pathname === '/api/troops') return troopsHandler(req, vercelize(res));
   if (u.pathname === '/api/health') return healthHandler(req, vercelize(res));
-  if (u.pathname === '/api/verify-super-ticket') return verifyHandler(req, vercelize(res));
   let p = u.pathname === '/' ? '/index.html' : decodeURIComponent(u.pathname);
   const fp = path.join(ROOT, p);
   if (!fp.startsWith(ROOT) || !fs.existsSync(fp) || fs.statSync(fp).isDirectory()) {
@@ -76,7 +73,7 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(APP_PORT, '0.0.0.0', () => {
-  console.log(`\n✅ Demo（/api/proxy、/api/troops、/api/health、/api/verify-super-ticket 都已掛上）: http://0.0.0.0:${APP_PORT}`);
+  console.log(`\n✅ Demo（/api/proxy、/api/troops、/api/health 都已掛上）: http://0.0.0.0:${APP_PORT}`);
   console.log('   選旅團 0082，用 1234560001 / ' + USERS + '（成員）登入；中央管理密碼見本機 SUPER_KEY 環境變數');
   console.log(`   自檢：curl -s localhost:${APP_PORT}/api/health\n`);
 });

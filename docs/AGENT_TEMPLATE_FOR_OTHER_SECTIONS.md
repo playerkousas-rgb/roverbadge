@@ -14,7 +14,7 @@
 ├── data/items.json (考核項目定義，306項，第11版)
 ├── assets/ (bp-award-logo-256.png, bp-award-logo-128.png — 貝登堡獎章作 Logo)
 ├── apps-script/Code.gs (單一檔案版，含 系統管理員、細緻權限、私隱開關)
-├── api/ (proxy.js / troops.js / health.js / verify-super-ticket.js + _registry.js / _super.js)
+├── api/ (proxy.js / troops.js / health.js / portal.js + _registry.js / _super.js)
 ├── vercel.json (零配置：maxDuration + headers，見下方「Vercel 部署」，唔准用 builds/routes)
 └── 旅團對照表：冇檔案 —— 全部由 Vercel 環境變數 TROOP_{ID}_NAME/_BACKEND/_APIKEY 提供
 ├── docs/ (MEMBER_GUIDE.md, EXEC_GUIDE.md, LEADER_GUIDE.md, MAIN_SYSTEM_INTEGRATION.md)
@@ -209,7 +209,7 @@
 - [ ] 成員預設只看自己，能否看其他由團長在用戶管理→系統設定開關 `allow_member_view_others`
 - [ ] 教學按角色分開：❓教學 tab 內嵌版，不依賴 fetch，成員不關心其他功能，登入後方便查閱
 - [ ] 中央管理帳號（v8.9）：帳號識別字只喺 Code.gs 一行；密碼由 Vercel `SUPER_KEY`（≥4 字元字串）驗證
-- [ ] 登入鏈路：proxy 驗密碼 → 短效加密票據 → GAS 向固定受信 URL（`getCentralVerifyUrl()`）驗票；密碼／hash 唔落 GAS／Sheet／URL／log
+- [ ] 登入鏈路：proxy 驗密碼 → 短效簽名票據（HMAC by 共享鎖匙 D）→ GAS 本地驗簽（零回傳，唔會回打 Vercel）；密碼／hash 唔落 GAS／Sheet／URL／log
 - [ ] GAS 舊密碼入口已移除（直接打 GAS `login` 用中央帳號必被拒）
 - [ ] Sheet 完全冇蹤跡：Users 表冇這列，Tokens 表以中性代號 `__sys__` 儲存 session
 - [ ] `initializeSheets()` 完成小視窗唔會出現中央帳號任何資訊（只有 Sheets / API Key / URL / 本旅團管理員）

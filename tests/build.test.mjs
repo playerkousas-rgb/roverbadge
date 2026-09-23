@@ -53,15 +53,14 @@ test('Build Output API 只含 .vercelignore 之後的靜態檔＋5 個可運行 
   const gsText = fs.readFileSync(path.join(out, 'static/apps-script/Code.gs'), 'utf8');
   assert.equal(/\bv\d+\.\d+(\.\d+)?\b/.test(gsText), false);
 
-  assert.equal(files.filter(f => f.endsWith('.vc-config.json')).length, 5);
+  assert.equal(files.filter(f => f.endsWith('.vc-config.json')).length, 4);
 
   // health：未設 TROOP_* env 時診斷端點回 503（部署診斷用），設定後 200 —— 兩者都係正確行為
   const expected = {
     health: { method: 'GET', status: [200, 503] },
     troops: { method: 'GET', status: 200 },
     portal: { method: 'POST', status: 405 },
-    proxy: { method: 'GET', status: 405 },
-    'verify-super-ticket': { method: 'GET', status: 200 }
+    proxy: { method: 'GET', status: 405 }
   };
   for (const [name, spec] of Object.entries(expected)) {
     const dir = path.join(out, 'functions', 'api', name + '.func');

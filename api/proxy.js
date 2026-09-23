@@ -10,11 +10,13 @@
 //   4. 只接受 action 白名單；寫入／讀取類 action 必須附帶 token 字串（真偽由 GAS 驗證）
 //   5. 永不在 log 記錄 token／密碼／apikey／payload 內容
 //
-// 中央管理帳號登入（見 api/_super.js）：
-//   - 密碼只在 Vercel 驗證（SUPER_KEY），比對成功才向旅團 GAS 送短效加密登入票據；
-//     密碼本身永不傳給 GAS。
-//   - GAS 向固定中央驗證端點 /api/verify-super-ticket 驗票通過後才建立 session；
-//     回傳瀏覽器的 token 有加密包裝並綁定旅團，之後每個請求都由本 proxy 解包核對。
+// 中央管理帳號登入（見 api/_super.js）——零回傳設計：
+//   - 密碼只在 Vercel 驗證（SUPER_KEY），比對成功先簽發 60 秒短效「簽名票據」
+//     （簽名鎖匙＝該旅團共享鎖匙 D＝TROOP_{id}_APIKEY）；密碼錯喺呢一關已經被拒。
+//   - GAS 用自己嘅本地 API_KEY 驗簽後建立 session —— 完全唔會回打 Vercel（不做回傳）。
+//   - 舊版 GAS 兼容：請求照舊用 action=login 並附上密碼，舊版 handleLogin 用
+//     GS 硬寫密碼比對（新舊密碼相同時照通）；新版只認 super_ticket 驗簽，忽略密碼。
+//   - 回傳瀏覽器的 token 有加密包裝並綁定旅團，之後每個請求都由本 proxy 解包核對。
 //
 // GAS request schema 完全保留（action + 原欄位），一般旅團帳號流程不需修改任何 Code.gs。
 
@@ -139,6 +141,11 @@ export default async function handler(req, res) {
   const data = (body.data && typeof body.data === 'object' && !Array.isArray(body.data)) ? body.data : {};
   const troopId = String(body.troopId || '').trim();
 
+  // 不接受用戶自行夾帶驗證票據／驗證標記或覆寫頂層 action（防偽：呢啲只可以由伺服器端產生）
+  delete data.super_ticket;
+  delete data.super_auth;
+  delete data.action;
+
   // 輸入驗證：action 白名單
   if (!PUBLIC_ACTIONS.has(action) && !TOKEN_ACTIONS.has(action) && !LOCAL_ACTIONS.has(action)) {
     safeLog({ result: 'bad_action', action: action.slice(0, 40), ms: Date.now() - t0 });
@@ -190,9 +197,11 @@ export default async function handler(req, res) {
     return sendJson(res, 404, { success: false, error: '找不到此旅團，或旅團後端設定無效，請聯絡管理員' });
   }
 
-  // ===== 中央管理帳號登入：密碼只留在 Vercel 驗證，GAS 只收到短效加密票據 =====
+  // ===== 中央管理帳號登入：密碼只留在 Vercel 驗證，驗後簽發簽名票據（零回傳）=====
   // 觸發條件：SUPER_KEY 已設定 + 密碼完整比對相同 + login_id 不是旅團一般帳號格式
   //（10 位 YMIS／L 編號／Email 一律行原有旅團登入流程，避免密碼撞碼影響一般用戶）。
+  // 票據簽名鎖匙＝該旅團共享鎖匙 D（TROOP_{id}_APIKEY）；GAS 本地驗簽，唔會回打 Vercel。
+  // 舊版 GAS 兼容：照舊 action=login 並附上密碼（舊版 handleLogin 用 GS 硬寫密碼比對）。
   if (action === 'login' && superConfigured() &&
       !isNormalLoginIdFormat(String(data.login_id || '')) &&
       verifySuperPassword(typeof data.password === 'string' ? data.password : '')) {
@@ -201,41 +210,44 @@ export default async function handler(req, res) {
       safeLog({ result: 'super_login_rate_limited', troopId, ms: Date.now() - t0 });
       return sendJson(res, 429, { success: false, error: '嘗試次數過多，請稍後再試' });
     }
-    const ticket = issueSuperTicket({ loginId: String(data.login_id || ''), troopId, backend: troop.backend });
+    const ticket = issueSuperTicket({ loginId: String(data.login_id || ''), apiKey: troop.apikey });
     if (!ticket) {
-      safeLog({ result: 'super_ticket_issue_failed', troopId, ms: Date.now() - t0 });
-      return sendJson(res, 503, { success: false, error: '登入服務暫時無法使用，請聯絡管理員' });
-    }
-    try {
-      const payload = { action: 'superTicketLogin', superTicket: ticket };
-      if (troop.apikey) payload.apikey = troop.apikey;
-      const up = await callUpstream(troop.backend, { method: 'POST', payload });
-      if (up.json && up.json.success === true && typeof up.json.token === 'string' && up.json.token) {
-        const wrapped = wrapSessionToken(troopId, up.json.token);
-        if (!wrapped) {
-          safeLog({ result: 'super_session_wrap_failed', troopId, ms: Date.now() - t0 });
-          return sendJson(res, 503, { success: false, error: '登入服務暫時無法使用，請聯絡管理員' });
+      // 冇共享鎖匙 D（旅團未設 APIKEY）→ 簽唔到票；跌返普通路徑（舊版 GS 硬寫密碼仍可通）
+      safeLog({ result: 'super_no_apikey', troopId, ms: Date.now() - t0 });
+    } else {
+      try {
+        const payload = { action: 'login', login_id: String(data.login_id || ''), super_ticket: ticket };
+        // 舊版 GAS 兼容：附上密碼俾舊版 handleLogin 比對 GS 硬寫密碼（新版驗簽，會忽略密碼）
+        if (typeof data.password === 'string') payload.password = data.password;
+        if (troop.apikey) payload.apikey = troop.apikey;
+        const up = await callUpstream(troop.backend, { method: 'POST', payload });
+        if (up.json && up.json.success === true && typeof up.json.token === 'string' && up.json.token) {
+          const wrapped = wrapSessionToken(troopId, up.json.token);
+          if (!wrapped) {
+            safeLog({ result: 'super_session_wrap_failed', troopId, ms: Date.now() - t0 });
+            return sendJson(res, 503, { success: false, error: '登入服務暫時無法使用，請聯絡管理員' });
+          }
+          safeLog({ result: 'super_login_ok', troopId, ms: Date.now() - t0 });
+          return sendJson(res, 200, {
+            success: true,
+            token: wrapped,
+            user: up.json.user || { role: 'super_admin' },
+            force_change_password: false
+          });
         }
-        safeLog({ result: 'super_login_ok', troopId, ms: Date.now() - t0 });
-        return sendJson(res, 200, {
-          success: true,
-          token: wrapped,
-          user: up.json.user || { role: 'super_admin' },
-          force_change_password: false
-        });
+        if (up.status >= 400 || !up.json) {
+          // 旅團後端未升級到驗簽版本，或上游故障：對外維持一般用語
+          safeLog({ result: 'super_login_upstream_bad', troopId, status: up.status, ms: Date.now() - t0 });
+          return sendJson(res, 200, { success: false, error: '登入失敗：旅團後端尚未支援此登入方式或暫時無法使用，請聯絡管理員' });
+        }
+        // GAS 驗簽失敗（票據無效／帳號不符／舊版密碼唔同）：對外只回一般登入失敗
+        safeLog({ result: 'super_login_denied', troopId, ms: Date.now() - t0 });
+        return sendJson(res, 200, { success: false, error: '帳號或密碼錯誤' });
+      } catch (e) {
+        const timeout = e && (e.name === 'TimeoutError' || e.name === 'AbortError');
+        safeLog({ result: timeout ? 'super_login_timeout' : 'super_login_fetch_error', troopId, ms: Date.now() - t0 });
+        return sendJson(res, timeout ? 504 : 502, { success: false, error: '無法連接旅團後端，請稍後重試' });
       }
-      if (up.status >= 400 || !up.json) {
-        // 旅團後端未升級到支援中央驗票的版本，或上游故障：對外維持一般用語
-        safeLog({ result: 'super_login_upstream_bad', troopId, status: up.status, ms: Date.now() - t0 });
-        return sendJson(res, 200, { success: false, error: '登入失敗：旅團後端尚未支援此登入方式或暫時無法使用，請聯絡管理員' });
-      }
-      // GAS 驗票失敗（票據無效／帳號不符）：对外只回一般登入失敗
-      safeLog({ result: 'super_login_denied', troopId, ms: Date.now() - t0 });
-      return sendJson(res, 200, { success: false, error: '帳號或密碼錯誤' });
-    } catch (e) {
-      const timeout = e && (e.name === 'TimeoutError' || e.name === 'AbortError');
-      safeLog({ result: timeout ? 'super_login_timeout' : 'super_login_fetch_error', troopId, ms: Date.now() - t0 });
-      return sendJson(res, timeout ? 504 : 502, { success: false, error: '無法連接旅團後端，請稍後重試' });
     }
   }
 

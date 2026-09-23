@@ -187,13 +187,14 @@ console.log('\n【6】vercel.json 部署設定（legacy builds 是 2026-08 404 �
 console.log('\n【7】api/ 目錄結構符合 Vercel 零配置約定');
 {
   const apiFiles = fs.readdirSync(path.join(ROOT, 'api')).sort();
-  for (const f of ['proxy.js', 'troops.js', 'health.js', 'verify-super-ticket.js', 'portal.js']) {
+  for (const f of ['proxy.js', 'troops.js', 'health.js', 'portal.js']) {
     check(`api/${f} 存在且會被建成 function`, apiFiles.includes(f), apiFiles.join(','));
   }
+  check('api/verify-super-ticket.js 已刪除（登入不做回傳）', !apiFiles.includes('verify-super-ticket.js'), apiFiles.join(','));
   for (const f of ['_registry.js', '_super.js']) {
     check(`api/${f} 以底線開頭（不會被當成 endpoint）`, apiFiles.includes(f), apiFiles.join(','));
   }
-  for (const f of ['proxy.js', 'troops.js', 'health.js', 'verify-super-ticket.js', 'portal.js']) {
+  for (const f of ['proxy.js', 'troops.js', 'health.js', 'portal.js']) {
     const src = fs.readFileSync(path.join(ROOT, 'api', f), 'utf8');
     check(`api/${f} 有 export default handler`, /export\s+default\s+(async\s+)?function/.test(src));
   }

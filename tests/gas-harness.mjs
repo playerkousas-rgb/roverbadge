@@ -138,6 +138,20 @@ export function loadCodeGs({ promptAnswers = [], urlFetchHandler = null } = {}) 
       computeDigest(algo, str) {
         return Array.from(crypto.createHash('sha256').update(String(str), 'utf8').digest());
       },
+      // v8.9.3：登入票據 HMAC 簽／驗 + base64url + newBlob（零回傳本地驗簽用）
+      computeHmacSha256Signature(value, key) {
+        return Array.from(crypto.createHmac('sha256', String(key)).update(String(value), 'utf8').digest());
+      },
+      base64EncodeWebSafe(str) {
+        return Buffer.from(String(str), 'utf8').toString('base64url');
+      },
+      base64DecodeWebSafe(str) {
+        return Array.from(Buffer.from(String(str).replace(/=+$/, ''), 'base64url'));
+      },
+      newBlob(bytes) {
+        const arr = Array.isArray(bytes) ? Uint8Array.from(bytes.map(b => b & 0xFF)) : bytes;
+        return { getDataAsString: () => Buffer.from(arr).toString('utf8') };
+      },
       getUuid: () => crypto.randomUUID(),
       formatDate
     },
@@ -190,7 +204,7 @@ export function loadCodeGs({ promptAnswers = [], urlFetchHandler = null } = {}) 
   const exported = `
 ;globalThis.__api = {
   initializeSheets, removeSuperAdminRows, handleLogin, handleSuperTicketLogin, getUser, getAllUsers,
-  getMembers, getApiKey, doPost, doGet, isSuperAdminId, getCentralVerifyUrl, testCentralVerify,
+  getMembers, getApiKey, doPost, doGet, isSuperAdminId, verifySuperLoginTicket, testSuperLocalVerify,
   // 測試內省用：保留帳號識別字（唯一宣告在 Code.gs），用以驗證名單過濾與防護邏輯
   SUPER_ADMIN_ID
 };`;

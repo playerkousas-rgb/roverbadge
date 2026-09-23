@@ -27,28 +27,25 @@ function send(res, status, obj) {
 }
 
 // ---- 中央登入（SUPER_KEY）鏈路自測 ----
-// 只測 Vercel 側一半：簽票 → 驗票（正／錯 backend）→ session 包裝／解包。
-// 不接觸任何 GAS、Sheet、真實帳號；回應只含 ok/fail 步驟名，永不含密碼／票據／key。
+// 只測 Vercel 側一半：簽票（HMAC by D）→ 驗票（正／錯鎖匙／篡改）→ session 包裝／解包／綁定旅團。
+// 用假鎖匙跑數學，不接觸任何 GAS、Sheet、真實帳號／鎖匙；回應只含 ok/fail 步驟名，永不含密碼／票據／key。
 // 目的：登入失敗時可以先分清「Vercel 側壞咗」定「旅團 GAS 側壞咗」。
 function superChainSelfTest() {
   if (!superConfigured()) return { configured: false, selfTest: 'skipped_not_configured' };
-  const reg = getRegistry();
-  const troop = Object.entries(reg).find(([, t]) => t.backend && t.backendTrusted);
-  if (!troop) return { configured: true, selfTest: 'skipped_no_trusted_troop' };
-  const [id, t] = troop;
-  const ticket = issueSuperTicket({ loginId: 'selftest', troopId: id, backend: t.backend });
-  if (!ticket) return { configured: true, selfTest: 'fail:issue', checkedTroop: id };
-  const ok = verifySuperTicket(ticket, t.backend);
-  if (!ok || ok.id !== 'selftest') return { configured: true, selfTest: 'fail:verify', checkedTroop: id };
-  const crossed = verifySuperTicket(ticket, 'https://script.google.com/macros/s/SOMEOTHERTROOP/exec');
-  if (crossed) return { configured: true, selfTest: 'fail:backend_binding', checkedTroop: id };
-  const forged = verifySuperTicket(ticket.slice(0, -2) + 'xx', t.backend);
-  if (forged) return { configured: true, selfTest: 'fail:tamper_check', checkedTroop: id };
-  const wrapped = wrapSessionToken(id, 'selftest-token');
-  if (!wrapped || !wrapped.startsWith(SESSION_PREFIX)) return { configured: true, selfTest: 'fail:wrap', checkedTroop: id };
-  if (unwrapSessionToken('other', wrapped) !== null) return { configured: true, selfTest: 'fail:session_binding', checkedTroop: id };
-  if (unwrapSessionToken(id, wrapped) !== 'selftest-token') return { configured: true, selfTest: 'fail:unwrap', checkedTroop: id };
-  return { configured: true, selfTest: 'ok', checkedTroop: id };
+  const fakeKey = 'selftest-key';
+  const ticket = issueSuperTicket({ loginId: 'selftest', apiKey: fakeKey });
+  if (!ticket) return { configured: true, selfTest: 'fail:issue' };
+  const ok = verifySuperTicket(ticket, fakeKey);
+  if (!ok || ok.id !== 'selftest') return { configured: true, selfTest: 'fail:verify' };
+  const crossed = verifySuperTicket(ticket, 'other-troop-key');
+  if (crossed) return { configured: true, selfTest: 'fail:key_binding' };
+  const forged = verifySuperTicket(ticket.slice(0, -2) + 'xx', fakeKey);
+  if (forged) return { configured: true, selfTest: 'fail:tamper_check' };
+  const wrapped = wrapSessionToken('0082', 'selftest-token');
+  if (!wrapped || !wrapped.startsWith(SESSION_PREFIX)) return { configured: true, selfTest: 'fail:wrap' };
+  if (unwrapSessionToken('other', wrapped) !== null) return { configured: true, selfTest: 'fail:session_binding' };
+  if (unwrapSessionToken('0082', wrapped) !== 'selftest-token') return { configured: true, selfTest: 'fail:unwrap' };
+  return { configured: true, selfTest: 'ok' };
 }
 
 export default function handler(req, res) {

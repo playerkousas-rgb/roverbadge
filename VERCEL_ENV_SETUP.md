@@ -107,14 +107,18 @@ v8.9 起，系統管理員密碼改由 **Vercel 環境變數 `SUPER_KEY`** 驗�
 | Name | 用途 |
 |------|------|
 | `SUPER_KEY` | 中央管理密碼（**字串**，最少 4 字元；前導 0 保留，唔會截斷／補位） |
-| `SUPER_SESSION_SECRET` | 可選：session／票據加密鹽（唔設就用 `SUPER_KEY` 派生） |
-| `CENTRAL_VERIFY_URL` | 可選：覆寫 GAS 驗票用嘅中央驗證 URL（預設指向本部署嘅 `/api/verify-super-ticket`，屬受信配置，唔接受由請求帶入） |
+| `SUPER_SESSION_SECRET` | 可選：瀏覽器 session 包裝加密鹽（唔設就用 `SUPER_KEY` 派生；只影響 `rbs1.` 包裝，與登入票據無關） |
 
-**登入鏈路（同 vsbadge 模式一致）：**
+**登入鏈路（零回傳設計：GAS 永不回打 Vercel）：**
 1. 前端 → `/api/proxy`（action=login）
-2. proxy 喺 Vercel 側用 `SUPER_KEY` 完整比對（timing-safe）→ 通過先簽發**短效加密票據**（綁定旅團 + backend，預設 60 秒）
-3. GAS 收到 `superTicketLogin` → 向**固定受信 URL**（`getCentralVerifyUrl()`，唔係請求帶入）驗票 → 先發 token
-4. 瀏覽器攞到嘅係**加密包裝、旅團綁定**嘅 session（`rbs1.` 前綴），跨旅團用唔到
+2. proxy 喺 Vercel 側用 `SUPER_KEY` 完整比對（timing-safe）→ 通過先簽發**短效簽名票據**
+   （`rbs2.` 前綴，預設 60 秒；HMAC-SHA256 簽名，鎖匙＝該旅團共享鎖匙 `D`＝`TROOP_{ID}_APIKEY`，
+   同 GAS Script Properties 嘅 `API_KEY` 同一個值）
+3. proxy 轉發 `action=login`（附 `super_ticket`；**兼容舊版**：照舊附上密碼，舊版 GAS 用
+   GS 硬寫密碼比對，新舊密碼相同時照通；新版只驗簽名票據，完全唔睇密碼）
+4. GAS **本地驗簽**（用自己嘅 `API_KEY` 重算 HMAC + 核時效）→ 先發 token —— **零回傳，
+   唔會有任何 GAS→Vercel 回打**；改密碼＝只改 Vercel `SUPER_KEY` 一個值 + Redeploy，GAS／Sheet／鎖匙全部唔使掂
+5. 瀏覽器攞到嘅係**加密包裝、旅團綁定**嘅 session（`rbs1.` 前綴），跨旅團用唔到
 
 **政策：**
 - `SUPER_KEY` 未設／空／少於 4 字元 → 中央登入整條功能停用（一般旅團登入完全不受影響）；冇預設密碼、冇旁路
@@ -206,49 +210,45 @@ v3.1 曾用 `_troops_static.js` 保底；**v4.0 起直接斬斷成條檔案路�
 
 ## 疑難排解：中央管理帳號（sheep）登入失敗
 
-密碼只喺 Vercel 比對，登入要行完整條鏈路（Vercel 簽票 → GAS 回打中央端點驗票 → GAS 發 token）。
-**任何一環錯，都只會見到下面兩句一般用語**（刻意唔透露邊一環壞，防探測）；真正原因要靠自己分步排查。
+密碼只喺 Vercel 比對；登入行嘅係**零回傳鏈路**（Vercel 驗密碼 → 簽名票據 → GAS 本地驗簽 → 發 token），
+GAS 完全唔會回打 Vercel。**任何一環錯，都只會見到下面兩句一般用語**（刻意唔透露邊一環壞，防探測）；
+真正原因要靠自己分步排查。
 
 **第一步：開 `https://<你嘅部署網域>/api/health`，睇 `super` 欄。**
 
 | `super.selfTest` | 意義 |
 |---|---|
 | `skipped_not_configured` | `SUPER_KEY` 未設／少於 4 字元 → 中央登入整條停用（Vercel 側問題） |
-| `skipped_no_trusted_troop` | 冇任何有效 `TROOP_{ID}_BACKEND`（Vercel 側問題） |
-| `fail:*` | 簽票／驗票／綁定／session 自測失敗 → Vercel 側問題（多數係改咗 `SUPER_KEY`／`SUPER_SESSION_SECRET` 未 Redeploy） |
+| `fail:*` | 簽票／驗票／鎖匙綁定／session 自測失敗 → Vercel 側問題（多數係改咗 `SUPER_KEY`／`SUPER_SESSION_SECRET` 未 Redeploy） |
 | `ok` | **Vercel 側全部正常** → 問題一定喺旅團 GAS 側，睇下表 |
 
 **第二步（`selfTest: ok` 仍登入失敗）：對照前端見到嘅字句。**
 
 **A. 「登入失敗：旅團後端尚未支援此登入方式或暫時無法使用，請聯絡管理員」**
-＝ GAS 對 `superTicketLogin` 回咗 HTTP 4xx/5xx 或 HTML（proxy log 會見 `super_login_upstream_bad`）。
+＝ GAS 對 `login`（附 `super_ticket`）回咗 HTTP 4xx/5xx 或 HTML（proxy log 會見 `super_login_upstream_bad`）。
 按可能性排：
 1. **Code.gs 已貼新版但冇重新部署**：Apps Script 改 code 唔會自動生效，必須
-   「部署 → 管理部署作業 → ✏️ 編輯 → 版本：新版本 → 部署」。
-2. **未做 UrlFetchApp 授權**（v8.9 新增咗對外連線）：喺 Apps Script 編輯器揀 `testCentralVerify`
-   函數按「執行」，完成授權（授權頁會要求「連接外部服務」），再重新部署新版本。
-   - v8.9.1 起 `testCentralVerify` 會先 log **實際使用嘅端點 URL**，連線失敗時附埋**真正例外訊息**：
-     - `You do not have permission to call UrlFetchApp` ＝ 授權未完成（做上面嘅授權步驟）
-     - `DNS`／`Invalid URL`／`Address unavailable` 等 ＝ 檢查「專案設定 → 指令碼屬性」嘅
-       `CENTRAL_VERIFY_URL`：冇需要就刪咗佢用返預設；自己填嘅話注意**全形字元（：。／）係 DNS 殺手**，
-       成條 URL 必須全半形。另：log 到 `HTTP 404/500` 唔算連線失敗，代表 URL 指錯地方（path 多咗／少咗）。
-   - 編輯器彈「An unknown error has occurred, please try again later」多數係 Google 側暫時性錯誤／
-     工作階段過期：重新整理編輯器頁面（F5）再跑一次就得，同 Code.gs 內容無關。
-3. **網頁應用程式存取權唔係「任何人」**：變咗「任何 Google 帳戶」嘅話，proxy 收到嘅係
+   「部署 → 管理部署作業 → ✏️ 編輯 → 版本：新版本 → 部署」。新版 Code.gs 嘅 `login`（附 `super_ticket`）
+   會本地驗簽；舊版（冇 `super_ticket` 概念）會跌返 GS 硬寫密碼比對（見 B-3）。
+2. **網頁應用程式存取權唔係「任何人」**：變咗「任何 Google 帳戶」嘅話，proxy 收到嘅係
    Google 登入頁 HTML，所有 action（唔只登入）都會失敗。
-4. `TROOP_{ID}_BACKEND` 指向咗舊／已刪除嘅部署 URL → `GET /api/health` 睇 `troops[].backendHost`
+3. `TROOP_{ID}_BACKEND` 指向咗舊／已刪除嘅部署 URL → `GET /api/health` 睇 `troops[].backendHost`
    對唔對，錯就改 env + Redeploy。
+4. **旅團未設 `TROOP_{ID}_APIKEY`**：冇共享鎖匙 `D` 簽唔到票據（proxy log 會見 `super_no_apikey`），
+   請喺 GAS 執行 `initializeSheets()`（或 `showApiKey()`）攞 `API_KEY`，登記做 env `TROOP_{ID}_APIKEY` + Redeploy。
 
 **B. 「帳號或密碼錯誤」（用系統管理員帳號登入時）**
-＝ GAS 收到 `superTicketLogin` 並回咗 JSON，但驗票唔通過（proxy log 會見 `super_login_denied`）：
-1. **GAS 驗票端點指錯地方**：`Code.gs` 內置預設係 `https://roverbadge.vercel.app/api/verify-super-ticket`；
-   **如果你嘅 Vercel 部署唔係呢個網域**（例如自己 fork 出去嘅 project），必須喺該旅團 Apps Script
-   「專案設定 → 指令碼屬性」加 `CENTRAL_VERIFY_URL = https://<你嘅部署網域>/api/verify-super-ticket`。
-2. **票據後端綁定不符**：票據綁定咗 `TROOP_{ID}_BACKEND` 嘅 URL，GAS 自報
-   `ScriptApp.getService().getUrl()` 必須完全一致。如果 GAS 重新部署時揀咗「新建部署」
-   （新 /exec URL），要同步更新 env 變數並 Redeploy。
-3. **兩邊 `SUPER_KEY`（或 `SUPER_SESSION_SECRET`）唔一致**：每個 Vercel project（roverbadge /
-   vsbadge / scoutbadge…）用同一組密碼就要設同一個值。
+＝ GAS 收到請求但驗證唔通過（proxy log 會見 `super_login_denied`）：
+1. **兩邊共享鎖匙 `D` 唔一致**：GAS Script Properties 嘅 `API_KEY` 必須同 Vercel env
+   `TROOP_{ID}_APIKEY` 完全相同（B/D 由 GS 生成後交 ADMIN 登記嗰個值）；唔同就驗唔到簽名。
+   喺 Apps Script 編輯器跑 `testSuperLocalVerify()`（零網絡、零授權）可確認本部署簽／驗數學正常。
+2. **票據過期／時鐘誤差**：票據只有 60 秒效期（`SUPER_TICKET_TTL_MS` 可調 15–300 秒）；
+   超過先提交就會被拒，重新登入一次即可。
+3. **舊版 GAS（未升級）**：舊版唔識 `super_ticket`，會用 **GS 硬寫密碼**比對請求附帶嘅密碼——
+   只有喺「GS 硬寫密碼值 == 現行 `SUPER_KEY`」時先通。改過 `SUPER_KEY` 而舊版 GS 未同步改嘅話，
+   舊版旅團就會見到呢句；升級新版 Code.gs（或同步改 GS 硬寫密碼）即解決。
+   ＋新版 GAS 對「裸打密碼」（冇有效 `super_ticket`／apikey）一律回呢句——**唔做回傳＝唔收密碼登入**，
+   繞過 proxy 直打 GAS 也進不到。
 4. **密碼真係錯**：SUPER_KEY 比對失敗會跌返入一般旅團登入，保留帳號一律回同一句「帳號或密碼錯誤」
    （刻意設計，唔透露帳號存在）——確認 Caps Lock／前導零／複製貼上無多了空白。
 

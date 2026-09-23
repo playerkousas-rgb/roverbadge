@@ -65,17 +65,22 @@
 | 用戶管理 / 成員名單 / load | ❌ 任何角色都睇唔到 |
 | 任何 API 回應 / 錯誤訊息 / log | ❌ 只有一般用語；密碼、token、apikey 一律唔會落 log |
 
-**登入鏈路（v8.9，同 vsbadge 模式一致）：**
+**登入鏈路（零回傳設計：GAS 永不回打 Vercel）：**
 
 1. 前端將帳號+密碼 POST 去 `/api/proxy`（同普通登入一樣）
-2. proxy 喺 Vercel 側用 `SUPER_KEY` 做完整比對（timing-safe）；通過先簽發**短效加密票據**（預設 60 秒，綁定旅團 + backend）
-3. GAS `superTicketLogin` 收到票據 → 向**固定受信 URL**（`getCentralVerifyUrl()`，唔係由請求帶入）驗票 → 先發 token
-4. 瀏覽器攞到嘅係加密包裝、旅團綁定嘅 session（`rbs1.` 前綴），跨旅團無效
+2. proxy 喺 Vercel 側用 `SUPER_KEY` 做完整比對（timing-safe）；通過先簽發**短效簽名票據**
+   （預設 60 秒；HMAC-SHA256 簽名，鎖匙＝該旅團共享鎖匙 `D`＝`TROOP_{ID}_APIKEY`）
+3. proxy 轉發 `action=login`（附 `super_ticket`；**兼容舊版**：照舊附上密碼，舊版 GAS 用
+   GS 硬寫密碼比對；新版本地驗簽，完全唔睇密碼）
+4. GAS **本地驗簽**（用自己嘅 `API_KEY` 重算 HMAC）→ 先發 token —— **零回傳，唔會回打 Vercel**
+5. 瀏覽器攞到嘅係加密包裝、旅團綁定嘅 session（`rbs1.` 前綴），跨旅團無效
 
 **要点：**
 
 - `SUPER_KEY` 未設／空／少於 4 字元 → 中央登入停用，一般旅團登入不受影響；冇預設密碼、冇旁路
-- 舊版 GAS 直接密碼入口已移除：就算直接打 GAS `login`，系統管理員帳號都會被拒
+- 舊版 GAS 直接密碼入口已移除（新版）：就算直接打 GAS `login`，系統管理員帳號都會被拒；
+  有效 `super_ticket`＋apikey 先會過（唔做回傳＝唔收密碼登入）
+- 舊版 GAS（未升級）兼容：proxy 照舊附上密碼，舊版用 GS 硬寫密碼比對（值 == 現行 `SUPER_KEY` 時照通）
 - 4 字元係明確選擇嘅政策：離線暴力破解風險仍然存在；登入限速（每旅團每 IP 60 秒 10 次）只能減慢線上嘗試
 - 姊妹 APP 各自設同一個 `SUPER_KEY` 即可用同一組憑證；跨 APP SSO 未實作
 - 防護保留：不能停用／重設密碼／更改角色／以此帳號開戶
