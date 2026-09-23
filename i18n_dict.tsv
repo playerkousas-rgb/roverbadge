@@ -892,9 +892,9 @@ YMIS 或登記電郵	YMIS or registered email
 暫無（所有名單成員都已有登入帳號）	None (all roster members already have login accounts)
 只在成員名單，未開登入帳號	Roster only, no login account yet
 停用中仍佔用 YMIS／Email，不可重複開戶；可恢復或徹底刪除	Deactivated accounts still occupy their YMIS/email and cannot be re-registered; reactivate or delete them permanently
-⚠️ 未有已登記旅團：請管理員在 Vercel 環境變數設定 TROOP_{編號}_BACKEND 等設定並重新部署（詳見 /api/health）	⚠️ No registered Groups yet: the admin needs to set TROOP_{ID}_BACKEND and related Vercel environment variables and redeploy (see /api/health)
+⚠️ 未有已登記旅團：請管理員在 Vercel 環境變數設定 TROOP_{編號}_BACKEND 等設定並重新部署（詳見 /api/troops）	⚠️ No registered Groups yet: the admin needs to set TROOP_{ID}_BACKEND and related Vercel environment variables and redeploy (see /api/troops)
 旅團清單載入失敗：	Failed to load the Group list: 
-請稍後重試；若持續失敗請聯絡管理員檢查 /api/health	Please try again later; if it keeps failing, ask the admin to check /api/health
+請稍後重試；若持續失敗請聯絡管理員檢查 /api/troops	Please try again later; if it keeps failing, ask the admin to check /api/troops
 此旅團未開放 Portal 模式	Portal mode is not enabled for this Group
 來源不符，Portal 模式已拒絕	Origin mismatch; Portal mode denied
 角色未被允許使用 Portal 模式	This role is not allowed to use Portal mode

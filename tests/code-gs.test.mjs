@@ -1,10 +1,10 @@
 // 直接執行 apps-script/Code.gs（真實後端程式碼）的測試
-// 規格（v8.9）：系統保留帳號（super_admin 角色）的密碼不在 Code.gs：
+// 規格（vsbadge 同構登入設計）：系統保留帳號（super_admin 角色）的密碼不在 Code.gs：
 //   1. Code.gs 只保留一行帳號識別字宣告（SUPER_ADMIN_ID），不含任何密碼／密碼比對
-//   2. login 不再接受保留帳號；superTicketLogin 向固定中央驗證端點驗票後才建立 session
+//   2. login 不接受保留帳號裸打密碼；action=login 附帶 super_ticket 時向固定受信端點
+//      （SUPER_VERIFY_URL）驗票（UrlFetchApp 回打 /api/super，一次性防重放）後才建立 session
 //   3. Google Sheet 完全冇蹤跡（Users 表冇這列，Tokens 表以中性代號儲存）
 //   4. 初始 setup（initializeSheets）小視窗／用戶名單／成員名單／API 回應都不出現帳號
-// 中央驗證端點用「真正的 api/_super.js 驗票邏輯」模擬（等同正式環境的 /api/verify-super-ticket）。
 // 執行：node tests/code-gs.test.mjs
 import fs from 'fs';
 import crypto from 'crypto';
@@ -12,7 +12,8 @@ import { loadCodeGs, CODE_GS_PATH } from './gas-harness.mjs';
 
 // SUPER_KEY 政策測試用（4 字元；必須在 import _super.js 前設定）
 process.env.SUPER_KEY = '9876';
-const { issueSuperTicket, verifySuperTicket } = await import('../api/_super.js');
+const { sealSuper, openSuper } = await import('../api/_super.js');
+const VERIFY_URL = 'https://roverbadge.vercel.app/api/super';
 
 let passed = 0, failed = 0;
 function check(name, cond, extra = '') {
@@ -21,29 +22,35 @@ function check(name, cond, extra = '') {
 }
 const sha256 = (s) => crypto.createHash('sha256').update(String(s), 'utf8').digest('hex');
 
-// harness 的 ScriptApp URL（getOwnBackendUrl() 會回傳這個；票據必須綁定同一 URL）
-const HARNESS_EXEC = 'https://script.google.com/macros/s/HARNESS/exec';
-const DEFAULT_VERIFY_URL = 'https://roverbadge.vercel.app/api/verify-super-ticket';
-
-// 中央驗證端點（mock）：用真正的 verifySuperTicket 驗票（含時效 + 後端綁定）
-const verifyCalls = [];
-const env = loadCodeGs({
-  urlFetchHandler: (url, opts) => {
-    verifyCalls.push({ url, payload: opts && opts.payload });
+// 模擬 /api/super（真實 api/super.js 語義）：AES-GCM 開票 + 受信綁定（apikey+backend）
+let env;
+env = loadCodeGs({
+  urlFetchHandler(url, opts) {
+    const u = String(url);
+    const method = String((opts && opts.method) || 'get').toLowerCase();
+    if (u !== VERIFY_URL) throw new Error('unexpected fetch: ' + u);
+    if (method !== 'post') return { code: 405, content: JSON.stringify({ ok: false }) };
     let body = {};
-    try { body = JSON.parse(opts.payload); } catch (e) { /* ignore */ }
-    const p = verifySuperTicket(body.ticket, body.backend);
-    return { code: 200, content: JSON.stringify(p ? { valid: true, login_id: p.id } : { valid: false }) };
+    try { body = JSON.parse(String((opts && opts.payload) || '{}')); } catch (e) { }
+    let ok = false;
+    try {
+      const t = openSuper('login', String(body.ticket || ''));
+      ok = !!(t && typeof body.apikey === 'string' && body.apikey === env.api.getApiKey() && typeof body.backend === 'string' && /\/exec$/.test(body.backend));
+    } catch (e) { ok = false; }
+    return ok ? { code: 200, content: JSON.stringify({ ok: true }) } : { code: 401, content: JSON.stringify({ ok: false }) };
   }
 });
 
 // 保留帳號識別字由 Code.gs 本身提供（測試不另行寫死）
 const SU_USER = env.api.SUPER_ADMIN_ID;
 
-// 中央管理登入（走真實 doPost → handleSuperTicketLogin → mock 中央端點）
-function suLogin(loginId = SU_USER, backend = HARNESS_EXEC) {
-  const ticket = issueSuperTicket({ loginId, troopId: '0082', backend });
-  return env.call({ action: 'superTicketLogin', superTicket: ticket });
+// 中央管理登入（vs 同構）：用真 api/_super.js 簽票（AES-GCM rbs1.），
+// 走真實 doPost → handleLogin → verifySuperTicket 回打驗票。
+// password 預設唔填 —— 新版 GAS 唔收密碼。
+function suLogin(loginId = SU_USER, { apiKey, ticket } = {}) {
+  const D = apiKey !== undefined ? apiKey : env.api.getApiKey();
+  const t = ticket !== undefined ? ticket : sealSuper('login', { troopId: '0082', backend: 'https://script.google.com/macros/s/HARNESS/exec', apikey: D }, 60);
+  return env.call({ action: 'login', login_id: loginId, super_ticket: t });
 }
 
 // 把整份 Sheet 所有儲存格掃一次，找出保留帳號的蹤跡
@@ -69,9 +76,18 @@ console.log('\n【1】Code.gs 只有帳號識別字一行宣告，沒有任何�
   check('沒有 getSuperAdminPass / SUPER_ADMIN_PASS 等密碼來源', !/getSuperAdminPass|SUPER_ADMIN_PASS/i.test(src));
   check('沒有舊密碼字樣（0728）', !src.includes('0728'));
   check('handleLogin 不再比對保留帳號密碼（舊密碼入口已移除）',
-    /isSuperAdminId\(loginId\)\)\{\s*\n\s*return jsonResponse\(\{success:false/.test(src));
-  check('中央驗證端點是 https 常量（可信設定，不由請求指定）',
-    /const SUPER_TICKET_VERIFY_URL = 'https:\/\//.test(src));
+    /isSuperAdminId\(loginId\)\)\{\s*\n\s*if\(!verifySuperTicket\(superTicket\)\) return jsonResponse\(\{success:false/.test(src));
+  check('回打驗票端點存在（vs 同構 SUPER_VERIFY_URL，指向本系統 /api/super）',
+    /const SUPER_VERIFY_URL = 'https:\/\/roverbadge\.vercel\.app\/api\/super';/.test(src) &&
+    !/CENTRAL_VERIFY_URL|getCentralVerifyUrl|getOwnBackendUrl|testCentralVerify|verify-super-ticket/.test(src.replace(/^\s*\/\/.*$/gm, '')));
+  const codeOnly = src.replace(/^\s*\/\/.*$/gm, '');
+  check('verifySuperTicket 以 UrlFetchApp 回打驗票（帶 ticket+apikey+backend）',
+    /function verifySuperTicket\(ticket\)/.test(codeOnly) && /UrlFetchApp\.fetch\(SUPER_VERIFY_URL/.test(codeOnly) &&
+    /ticket:ticket, apikey:getApiKey\(\), backend:ScriptApp\.getService\(\)\.getUrl\(\)/.test(codeOnly));
+  check('票據一次性防重放（LockService＋CacheService）喺 verifySuperTicket',
+    /LockService\.getScriptLock/.test(codeOnly) && /CacheService\.getScriptCache/.test(codeOnly) && /super-ticket:'/.test(codeOnly));
+  check('authorizeConnection() 存在（升級後一次性 UrlFetch 授權）',
+    /function authorizeConnection\(\)/.test(codeOnly));
 }
 
 // ================== 2. 初始 setup 的小視窗 ==================
@@ -91,88 +107,115 @@ console.log('\n【2】執行真實 initializeSheets()：setup 小視窗唔提保
   check('initializeSheets() 回傳值冇保留帳號資訊', !/超管|super_admin/i.test(JSON.stringify(initResult)));
 }
 
-// ================== 3. 登入：舊密碼入口已封閉；票據驗票先有 session ==================
-console.log('\n【3】superTicketLogin 中央驗票');
+// ================== 3. 登入：舊密碼入口已封閉；回打驗票先有 session（vs 同構） ==================
+console.log('\n【3】super_ticket 回打驗票（vs 同構）');
 {
-  // 舊密碼入口：login 一律拒絕保留帳號（不論密碼）
+  // 舊密碼入口：login 一律拒絕裸打保留帳號（不論密碼）
   const oldEntry = env.call({ action: 'login', login_id: SU_USER, password: '0728' });
   check('login 不再接受保留帳號（舊密碼入口已移除）', oldEntry.success === false, JSON.stringify(oldEntry));
   check('login 拒絕訊息為一般用語', /帳號或密碼錯誤/.test(oldEntry.error || ''), JSON.stringify(oldEntry));
+  const bareSuper = env.call({ action: 'login', login_id: SU_USER, password: process.env.SUPER_KEY });
+  check('裸打密碼（即使係 SUPER_KEY 值）一樣被拒（GAS 唔收密碼登入）',
+    bareSuper.success === false && /帳號或密碼錯誤/.test(bareSuper.error || ''), JSON.stringify(bareSuper));
 
   // 垃圾票據
-  const bad1 = env.call({ action: 'superTicketLogin', superTicket: 'garbage' });
+  const bad1 = suLogin(SU_USER, { ticket: 'garbage' });
   check('過短票據被拒', bad1.success === false, JSON.stringify(bad1));
-  const bad2 = env.call({ action: 'superTicketLogin', superTicket: 'x'.repeat(64) });
+  const bad2 = suLogin(SU_USER, { ticket: 'x'.repeat(64) });
   check('無效票據被拒（一般用語，不洩漏原因）', bad2.success === false && /帳號或密碼錯誤/.test(bad2.error || ''), JSON.stringify(bad2));
+  const noTicket = env.call({ action: 'login', login_id: SU_USER, password: 'x' });
+  check('冇 super_ticket 的 login 落返一般路徑（保留帳號被拒）', noTicket.success === false, JSON.stringify(noTicket));
 
   // 有效票據 → 成功建立 session
+  env.urlFetchLog.length = 0;
   const ok = suLogin();
   check('有效票據 → 登入成功（role=super_admin）', ok.success === true && ok.user.role === 'super_admin' && typeof ok.token === 'string', JSON.stringify(ok));
-  check('驗票請求打到固定中央端點（Code.gs 常量）', verifyCalls.some(c => c.url === DEFAULT_VERIFY_URL), JSON.stringify(verifyCalls.map(c => c.url)));
-  const sentPayload = JSON.parse(verifyCalls[verifyCalls.length - 1].payload);
-  check('驗票請求附帶自身 /exec URL（後端綁定核對用）', sentPayload.backend === HARNESS_EXEC, JSON.stringify(sentPayload));
+  check('驗票只回打一次受信端點（POST SUPER_VERIFY_URL）',
+    env.urlFetchLog.length === 1 && env.urlFetchLog[0].url === VERIFY_URL && env.urlFetchLog[0].method === 'post', JSON.stringify(env.urlFetchLog));
+  const sent = JSON.parse(String(env.urlFetchLog[0].payload || '{}'));
+  check('回打體帶 ticket+apikey+backend（受信綁定核對）',
+    typeof sent.ticket === 'string' && sent.apikey === env.api.getApiKey() && sent.backend === 'https://script.google.com/macros/s/HARNESS/exec', JSON.stringify(sent).slice(0, 120));
+  check('唔收密碼：唔帶 password 一樣登入成功（GAS 唔睇密碼）', ok.success === true, JSON.stringify(ok));
   // force_change_password 是合法欄位名；這裡檢查的是「不含密碼『值』／憑證」
   check('登入回應不含密碼值或 SUPER_KEY',
-    !JSON.stringify(ok).includes(process.env.SUPER_KEY) && !/"(password|pass|apikey|superTicket)"\s*:/.test(JSON.stringify(ok)),
+    !JSON.stringify(ok).includes(process.env.SUPER_KEY) && !/"(password|pass|apikey|superTicket|super_ticket)"\s*:/.test(JSON.stringify(ok)),
     JSON.stringify(ok));
 
-  // 票據綁定後端：為「另一旅團後端」簽發的票據不能在本後端使用
-  const wrongBackend = suLogin(SU_USER, 'https://script.google.com/macros/s/OTHERTROOPEXEC00/exec');
-  check('綁定其他後端的票據被拒（票據不可跨旅團）', wrongBackend.success === false, JSON.stringify(wrongBackend));
+  // 票據綁定 SUPER_KEY：另一把 SUPER_KEY 簽的票據（＝另一中央部署）不能用
+  const foreignTicket = (() => {
+    const saved = process.env.SUPER_KEY;
+    process.env.SUPER_KEY = 'foreign-key-9999';
+    const t = sealSuper('login', { troopId: '0082', backend: 'https://script.google.com/macros/s/HARNESS/exec', apikey: env.api.getApiKey() }, 60);
+    process.env.SUPER_KEY = saved;
+    return t;
+  })();
+  const wrongKey = suLogin(SU_USER, { ticket: foreignTicket });
+  check('另一 SUPER_KEY 簽的票據被拒（AES-GCM 金鑰綁定）', wrongKey.success === false, JSON.stringify(wrongKey));
 
-  // 帳號大小寫不敏感（驗票回傳 login_id 經 isSuperAdminId 比對）
+  // 帳號大小寫不敏感（isSuperAdminId 比對）
   const upper = suLogin(SU_USER.toUpperCase());
-  check('驗票 login_id 大小寫不敏感', upper.success === true, JSON.stringify(upper));
+  check('驗簽 login_id 大小寫不敏感', upper.success === true, JSON.stringify(upper));
+  // 電郵別名等值
+  const alias = suLogin(SU_USER + '@roverbadge.local');
+  check('電郵別名登入等值', alias.success === true, JSON.stringify(alias));
 
   // Tokens 表以中性代號儲存
   const tokens = env.ss.getSheetByName('Tokens');
   check('Tokens 表以中性代號儲存 session（唔出現帳號）',
     tokens.rows.slice(1).some(r => String(r[1]) === '__sys__') && !tokens.rows.slice(1).some(r => String(r[1]).toLowerCase() === SU_USER),
     JSON.stringify(tokens.rows.slice(1)));
+  check('超管 session token 帶 rbs-super-v1- 標記（proxy 版本核對＋舊 session 失效）',
+    tokens.rows.slice(1).some(r => String(r[0]).startsWith('rbs-super-v1-')), JSON.stringify(tokens.rows.slice(1)));
   const viaToken = env.call({ action: 'getAllUsers', token: ok.token });
   check('session token 可正常通過驗證（還原正常）', viaToken.success === true && Array.isArray(viaToken.users));
+
+  // 舊版殘留 session：Tokens 列是保留帳號但 token 冇標記 → 即時失效
+  const legacySheet = env.ss.getSheetByName('Tokens');
+  legacySheet.rows.push(['plain-legacy-token-0001', '__sys__', '2026-01-01 00:00:00', '2099-01-01 00:00:00']);
+  const legacy = env.call({ action: 'getAllUsers', token: 'plain-legacy-token-0001' });
+  check('舊版殘留超管 session（冇 rbs-super-v1- 標記）→ 即時失效', legacy.success === false, JSON.stringify(legacy));
+
+  // 閂口（ALLOW_LOCAL_LOGIN=false）後：獨立超管登入照通（支部系統開關唔影響中央登入）
+  env.scriptProps.set('ALLOW_LOCAL_LOGIN', 'false');
+  const gateOff = suLogin();
+  check('閂口（ALLOW_LOCAL_LOGIN=false）後超管票據登入照通（gate-exempt）', gateOff.success === true, JSON.stringify(gateOff));
+  const gateOffNormal = env.call({ action: 'login', login_id: '1111111111', password: 'changeme' });
+  check('閂口後一般旅團登入被拒（支部系統開關如常生效）', gateOffNormal.success === false && /直接入口已閂|上游簽名/.test(gateOffNormal.error || ''), JSON.stringify(gateOffNormal));
+  // 防閂口繞過：一般帳號帶假票據 → 一樣被閂
+  const bypass = env.call({ action: 'login', login_id: '1111111111', password: 'changeme', super_ticket: 'rbs1.forged' });
+  check('一般帳號＋假票據繞唔過閂口（pre-gate 只放行保留帳號）', bypass.success === false && /直接入口已閂|上游簽名/.test(bypass.error || ''), JSON.stringify(bypass));
+  env.scriptProps.delete('ALLOW_LOCAL_LOGIN');
 
   const hits = scanSheets();
   check('掃描全部工作表所有儲存格：搵唔到帳號識別字', hits.length === 0, hits.join(', '));
 }
 
-// ================== 3b. v8.9.2：票據一次性（防重放）+ testCentralVerify 診斷 ==================
-console.log('\n【3b】票據一次性防重放 + testCentralVerify 連線診斷');
+// ================== 3b. 票據一次性（防重放）+ authorizeConnection 連線自檢 ==================
+console.log('\n【3b】票據一次性防重放 + authorizeConnection（UrlFetch 授權自檢）');
 {
   // 同一票據只可成功一次（第二次重用 → 一般用語拒絕，不洩漏原因）
-  const replayTicket = issueSuperTicket({ loginId: SU_USER, troopId: '0082', backend: HARNESS_EXEC });
-  const rp1 = env.call({ action: 'superTicketLogin', superTicket: replayTicket });
+  const replayTicket = sealSuper('login', { troopId: '0082', backend: 'https://script.google.com/macros/s/HARNESS/exec', apikey: env.api.getApiKey() }, 60);
+  const rp1 = suLogin(SU_USER, { ticket: replayTicket });
   check('同一票據首次可用', rp1.success === true, JSON.stringify(rp1));
-  const rp2 = env.call({ action: 'superTicketLogin', superTicket: replayTicket });
+  const rp2 = suLogin(SU_USER, { ticket: replayTicket });
   check('同一票據重用被拒（一次性防重放，对外只回一般用語）',
     rp2.success === false && /帳號或密碼錯誤/.test(rp2.error || ''), JSON.stringify(rp2));
   // 新票據不受影響（每張票據獨立一次性）
   const fresh = suLogin();
   check('新票據照常用（不受重放快取影響）', fresh.success === true);
 
-  // testCentralVerify：連線正常（mock 中央端點回 200 JSON）
-  const tcOk = env.api.testCentralVerify();
-  check('testCentralVerify 連線正常時 success:true + httpCode 200',
-    tcOk && tcOk.success === true && tcOk.httpCode === 200, JSON.stringify(tcOk));
+  // authorizeConnection：GET 預期 405（只收 POST 的受信端點）→ 連線正常
+  const before = JSON.stringify([...env.ss.sheets.keys()]);
+  env.urlFetchLog.length = 0;
+  const ac = env.api.authorizeConnection();
+  check('authorizeConnection() 回傳連線正常字串', typeof ac === 'string' && /連線正常/.test(ac), String(ac));
+  check('authorizeConnection() 不讀寫任何工作表（工作表清單不變）', before === JSON.stringify([...env.ss.sheets.keys()]));
+  check('authorizeConnection() 只發一次 GET 驗線', env.urlFetchLog.length === 1 && env.urlFetchLog[0].method === 'get', JSON.stringify(env.urlFetchLog));
 
-  // testCentralVerify：請求發唔出去（未注入 urlFetchHandler，等同授權未完成／DNS 失敗）
-  const envNoConn = loadCodeGs();
-  const tcFail = envNoConn.api.testCentralVerify();
-  check('testCentralVerify 連線失敗時回 connection failed + 真正例外訊息',
-    tcFail && tcFail.success === false && tcFail.error === 'connection failed' && /DNS error/.test(tcFail.detail || ''),
-    JSON.stringify(tcFail));
-
-  // testCentralVerify：HTTP 非 200（端點指錯／function 未部署／部署保護）
-  const env404 = loadCodeGs({ urlFetchHandler: () => ({ code: 404, content: '<html>404: NOT_FOUND</html>' }) });
-  const tc404 = env404.api.testCentralVerify();
-  check('testCentralVerify 非 200 時 success:false + httpCode',
-    tc404 && tc404.success === false && tc404.httpCode === 404, JSON.stringify(tc404));
-
-  // testCentralVerify：200 但回 HTML（部署保護登入頁之類）
-  const envHtml = loadCodeGs({ urlFetchHandler: () => ({ code: 200, content: '<html><body>login wall</body></html>' }) });
-  const tcHtml = envHtml.api.testCentralVerify();
-  check('testCentralVerify 回 HTML 時明確標示 unexpected html',
-    tcHtml && tcHtml.success === false && tcHtml.error === 'unexpected html', JSON.stringify(tcHtml));
+  // setSuperAdminLastLogin：只寫 Script Properties（唔落 Sheet）
+  env.api.setSuperAdminLastLogin();
+  check('setSuperAdminLastLogin 寫入 Script Properties', !!env.scriptProps.get('SUPER_ADMIN_LAST_LOGIN'));
+  check('setSuperAdminLastLogin 唔落 Sheet', before === JSON.stringify([...env.ss.sheets.keys()]));
 }
 
 // ================== 4. 名單／API 回應都不外洩 ==================
@@ -236,21 +279,29 @@ console.log('\n【5】保留帳號防護');
   check('保留帳號不可自助找回密碼', fp.success === false, JSON.stringify(fp));
 }
 
-// ================== 6. 中央端點 URL 設定 + 不讀寫 Sheet 的連線測試 ==================
-console.log('\n【6】中央驗證端點設定與 testCentralVerify()');
+// ================== 6. verifySuperTicket 回打驗票細節 ==================
+console.log('\n【6】verifySuperTicket：回打驗票／格式／逾時');
 {
-  check('預設使用 Code.gs 常量（https）', env.api.getCentralVerifyUrl() === DEFAULT_VERIFY_URL);
-  env.scriptProps.set('CENTRAL_VERIFY_URL', 'https://custom.example.org/api/verify-super-ticket');
-  check('Script Properties 可覆寫（部署者可信設定）', env.api.getCentralVerifyUrl() === 'https://custom.example.org/api/verify-super-ticket');
-  env.scriptProps.set('CENTRAL_VERIFY_URL', 'http://insecure.example.org/x');
-  check('非 https 的覆寫被忽略（回落常量）', env.api.getCentralVerifyUrl() === DEFAULT_VERIFY_URL);
-  env.scriptProps.delete('CENTRAL_VERIFY_URL');
+  // 票據長度上限 4096（唔會發 fetch）
+  env.urlFetchLog.length = 0;
+  const overlong = env.api.verifySuperTicket('x'.repeat(5000));
+  check('過長票據（>4096）→ false 且零網絡', overlong === false && env.urlFetchLog.length === 0, JSON.stringify(env.urlFetchLog));
+  check('null／非字串 → false', env.api.verifySuperTicket(null) === false && env.api.verifySuperTicket(123) === false);
 
-  const before = JSON.stringify([...env.ss.sheets.keys()]);
-  const t = env.api.testCentralVerify();
-  check('testCentralVerify() 回傳成功（mock 端點 200）', t.success === true, JSON.stringify(t));
-  const after = JSON.stringify([...env.ss.sheets.keys()]);
-  check('testCentralVerify() 不讀寫任何工作表（工作表清單不變）', before === after);
+  // 受信端點拒絕（401/ok:false）→ false
+  const reject = env.api.verifySuperTicket('rbs1.not-a-real-ticket');
+  check('受信端點唔收（401 {ok:false}）→ false', reject === false, JSON.stringify(reject));
+  check('拒絕時都有照做回打契約（POST＋ticket+apikey+backend）',
+    env.urlFetchLog.length >= 1 && env.urlFetchLog[env.urlFetchLog.length - 1].method === 'post', JSON.stringify(env.urlFetchLog.slice(-2)));
+
+  // 有效票據 → true；同一票據第二次 → false（cache 一次性）
+  const t1 = sealSuper('login', { troopId: '0082', backend: 'https://script.google.com/macros/s/HARNESS/exec', apikey: env.api.getApiKey() }, 60);
+  check('有效票據驗票成功', env.api.verifySuperTicket(t1) === true);
+  check('同一票據第二次驗票失敗（CacheService 一次性）', env.api.verifySuperTicket(t1) === false);
+
+  // 受信端點唔係 200/ok:true（例：500）→ false —— 由 handler 行為保證；呢度驗空回應體
+  const t2 = sealSuper('login', { troopId: '0082', backend: 'https://script.google.com/macros/s/HARNESS/exec', apikey: env.api.getApiKey() }, 60);
+  check('（契約）驗票成功只會喺 200＋ok:true 時發生', env.api.verifySuperTicket(t2) === true);
 }
 
 // ================== 7. 回歸：一般帳號／初始化功能正常 ==================

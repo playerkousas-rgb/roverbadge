@@ -62,12 +62,16 @@ console.log('\n【2】測試鏈完整：每個測試檔都要喺 npm test 跑到
   }
 }
 
-console.log('\n【3】部署瘦身底線：測試／字典源碼唔上 Vercel');
+console.log('\n【3】部署瘦身底線：Build Output 只出靜態白名單＋內部文件不上線');
 {
-  const ign = fs.readFileSync(path.join(ROOT, '.vercelignore'), 'utf8');
-  for (const pat of ['tests/', 'i18n_dict.tsv', 'build_i18n.py']) {
-    check(`.vercelignore 排除 ${pat}`, ign.split('\n').some(l => l.trim() === pat));
+  check('.vercelignore 唔准存在（Build Output 模式會連 scripts/ 一齊剝走，破壞 build 鏈）',
+    !fs.existsSync(path.join(ROOT, '.vercelignore')));
+  const buildSrc = fs.readFileSync(path.join(ROOT, 'scripts', 'build.mjs'), 'utf8');
+  for (const pat of ['AGENT_TEMPLATE_FOR_OTHER_SECTIONS.md', 'DEPLOY_GUIDE_V5_DUALTRACK.md', 'MAIN_SYSTEM_INTEGRATION.md', 'VERCEL_API_404_POSTMORTEM.md', 'TROOP_UPGRADE_2026.md']) {
+    check(`build.mjs 內部排除清單包含 ${pat}`, buildSrc.includes(pat));
   }
+  check('build.mjs 靜態白名單只含 index.html/assets/data/docs/apps-script（tests／字典源碼唔上線）',
+    /for \(const file of \['index\.html', 'assets', 'data', 'docs', 'apps-script'\]\)/.test(buildSrc));
 }
 
 console.log('\n========================================');

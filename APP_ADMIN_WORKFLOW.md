@@ -32,7 +32,7 @@
 1. Vercel Dashboard 加 3 個環境變數：`TROOP_0082_NAME=第 82 旅`、
    `TROOP_0082_BACKEND=https://script.google.com/macros/s/.../exec`、`TROOP_0082_APIKEY=rover_xxxx`
    （編號保留前導 0；backend/apikey 唔會出瀏覽器）
-2. Redeploy，然後開 `https://<app>.vercel.app/api/health` 確認 `"success":true`
+2. Redeploy，然後開 `https://<app>.vercel.app/api/troops` 確認 JSON 有 `troops` 旅團清單
    （**唔好以 Vercel 綠燈為準**；綠燈只代表靜態檔上咗，`/api/*` 可以成整列 404）
 3. 再開 `/api/troops` 確認新旅團 id+name 出現
 
@@ -65,17 +65,22 @@
 | 用戶管理 / 成員名單 / load | ❌ 任何角色都睇唔到 |
 | 任何 API 回應 / 錯誤訊息 / log | ❌ 只有一般用語；密碼、token、apikey 一律唔會落 log |
 
-**登入鏈路（v8.9，同 vsbadge 模式一致）：**
+**登入鏈路（vsbadge 同構：GAS 只回打固定受信端點 `/api/super` 驗票）：**
 
 1. 前端將帳號+密碼 POST 去 `/api/proxy`（同普通登入一樣）
-2. proxy 喺 Vercel 側用 `SUPER_KEY` 做完整比對（timing-safe）；通過先簽發**短效加密票據**（預設 60 秒，綁定旅團 + backend）
-3. GAS `superTicketLogin` 收到票據 → 向**固定受信 URL**（`getCentralVerifyUrl()`，唔係由請求帶入）驗票 → 先發 token
-4. 瀏覽器攞到嘅係加密包裝、旅團綁定嘅 session（`rbs1.` 前綴），跨旅團無效
+2. proxy 喺 Vercel 側用 `SUPER_KEY` 做完整比對（timing-safe）；通過先簽發 **60 秒 AES-256-GCM 加密票據**
+   （`rbs1.` 前綴；payload 綁定旅團 id＋backend＋apikey）
+3. proxy 轉發 `action=login`（附 `super_ticket`，**唔再附密碼**——密碼永遠唔出現在 GAS）
+4. GAS 回打固定受信端點 `SUPER_VERIFY_URL`（`/api/super`）驗票（受信核對＋一次性防重放）→ 先發 token
+   （帶 `rbs-super-v1-` 標記）—— 唯一回打就係呢個固定端點
+5. 瀏覽器攞到嘅係加密包裝、旅團綁定嘅 session（`rbs1.` 前綴），跨旅團無效
 
 **要点：**
 
 - `SUPER_KEY` 未設／空／少於 4 字元 → 中央登入停用，一般旅團登入不受影響；冇預設密碼、冇旁路
-- 舊版 GAS 直接密碼入口已移除：就算直接打 GAS `login`，系統管理員帳號都會被拒
+- 舊版 GAS 直接密碼入口已移除（新版）：就算直接打 GAS `login`，系統管理員帳號都會被拒；
+  有效 `super_ticket`＋apikey 先會過（唔做回傳＝唔收密碼登入）
+- 舊版 GAS（未升級）一律唔通：proxy 唔再附密碼（vsbadge 同構；系統未流出，唔做舊版兼容），升級新版 Code.gs 即可
 - 4 字元係明確選擇嘅政策：離線暴力破解風險仍然存在；登入限速（每旅團每 IP 60 秒 10 次）只能減慢線上嘗試
 - 姊妹 APP 各自設同一個 `SUPER_KEY` 即可用同一組憑證；跨 APP SSO 未實作
 - 防護保留：不能停用／重設密碼／更改角色／以此帳號開戶

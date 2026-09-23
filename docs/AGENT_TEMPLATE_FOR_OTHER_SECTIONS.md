@@ -14,7 +14,7 @@
 ├── data/items.json (考核項目定義，306項，第11版)
 ├── assets/ (bp-award-logo-256.png, bp-award-logo-128.png — 貝登堡獎章作 Logo)
 ├── apps-script/Code.gs (單一檔案版，含 系統管理員、細緻權限、私隱開關)
-├── api/ (proxy.js / troops.js / health.js / verify-super-ticket.js + _registry.js / _super.js)
+├── api/ (proxy.js / troops.js / portal.js / super.js + _registry.js / _super.js)
 ├── vercel.json (零配置：maxDuration + headers，見下方「Vercel 部署」，唔准用 builds/routes)
 └── 旅團對照表：冇檔案 —— 全部由 Vercel 環境變數 TROOP_{ID}_NAME/_BACKEND/_APIKEY 提供
 ├── docs/ (MEMBER_GUIDE.md, EXEC_GUIDE.md, LEADER_GUIDE.md, MAIN_SYSTEM_INTEGRATION.md)
@@ -115,14 +115,14 @@
 - **Registry 唯一來源係環境變數**（`TROOP_{ID}_NAME/_BACKEND/_APIKEY`，編號保留前導 0）：
   唔好再用 `fs` 讀 JSON、唔好用 `includeFiles`、唔好搞 `_troops_static.js` 保底或 sync script ——
   2026-08 事故嘅根因就係「檔案喺 `/var/task` 讀唔到」，v4.0 直接斬斷成條檔案路徑
-- 前端 `apiRequest()` 喺回應非 JSON 時查 `/api/health`，將「部署壞咗」同「密碼錯」分開講
+- 前端 `apiRequest()` 喺回應非 JSON 時查 `/api/troops`，將「部署壞咗」同「密碼錯」分開講
 - `loadTroops()` 加時間戳 `?_=` 防快取 + 硬編碼後備（注意：呢個後備會令「旅團列表見到但登入死咗」
   成為部署問題嘅典型外觀，唔好靠佢當後端存在嘅證據）
 - **`/api/*` 一律唔准洩漏機密**：`/api/troops` 只回 `{id:{name}}`（**唔好回 `backend`**，GAS `/exec` URL
-  加 apikey 一旦公開就等于交出後端入口）；`/api/health` 只回布林值／host／來源，
+  加 apikey 一旦公開就等于交出後端入口）；`/api/troops` 值只出 `name`／`en`，
   **唔准回 `fullBackend`、`spreadsheetId`、`docs.google.com/spreadsheets/.../edit` 連結、
   唔准喺健康檢查入面實打 GAS 上游並把回應原樣 echo 出嚟**（會變成免認證嘅後端鏡像＋個資外洩）
-- 部署完成嘅定義：`curl /api/health` 有 JSON + `GET /api/proxy` 回 **405**（回 404 即 function 冇建好）
+- 部署完成嘅定義：`curl /api/troops` 有 JSON + `GET /api/proxy` 回 **405**（回 404 即 function 冇建好）；API 面嚴格 4 個：proxy/troops/portal/super
 - **`vercel.json` 只准官方欄位**：官方 schema 根節點係 `additionalProperties:false`，多一個欄位就整次
   build `Error`。兩類禁忌：(1) 自訂 key（`_comment`／`_note` — JSON 冇註解，註解放 docs）；
   (2) **Project Settings 欄位**（`buildCommand`／`installCommand`／`devCommand`／`outputDirectory`／
@@ -209,7 +209,7 @@
 - [ ] 成員預設只看自己，能否看其他由團長在用戶管理→系統設定開關 `allow_member_view_others`
 - [ ] 教學按角色分開：❓教學 tab 內嵌版，不依賴 fetch，成員不關心其他功能，登入後方便查閱
 - [ ] 中央管理帳號（v8.9）：帳號識別字只喺 Code.gs 一行；密碼由 Vercel `SUPER_KEY`（≥4 字元字串）驗證
-- [ ] 登入鏈路：proxy 驗密碼 → 短效加密票據 → GAS 向固定受信 URL（`getCentralVerifyUrl()`）驗票；密碼／hash 唔落 GAS／Sheet／URL／log
+- [ ] 登入鏈路（vsbadge 同構）：proxy 驗密碼 → `rbs1.` 加密票據（60 秒）→ GAS 回打固定端點 `/api/super` 驗票（一次性防重放）；密碼／hash 唔落 GAS／Sheet／URL／log
 - [ ] GAS 舊密碼入口已移除（直接打 GAS `login` 用中央帳號必被拒）
 - [ ] Sheet 完全冇蹤跡：Users 表冇這列，Tokens 表以中性代號 `__sys__` 儲存 session
 - [ ] `initializeSheets()` 完成小視窗唔會出現中央帳號任何資訊（只有 Sheets / API Key / URL / 本旅團管理員）
@@ -225,7 +225,7 @@
 - [ ] `.vercelignore` 排除 .git / node_modules / tests / 備份 / log，但**唔排除** index.html 引用嘅 docs／data／assets
 - [ ] 有 `tests/serverless-registry.test.mjs` 同等測試：喺**冇 `data/` 目錄**嘅空目錄（模擬 `/var/task`）
       跑真正 handler；淨係用 `TROOP_x_BACKEND` env 注入嘅測試**唔算數**（會遮蔽呢個坑）
-- [ ] 部署後實測：`/api/health` 回 JSON、`/api/troops` 有旅團且**無** `backend`/`apikey` 欄位、`GET /api/proxy` 回 405
+- [ ] 部署後實測：`/api/troops` 有旅團且值只出 `name`/`en`、`GET /api/proxy` 回 405、`GET /api/super` 回 405（只收 POST）
 
 ---
 

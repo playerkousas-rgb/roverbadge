@@ -5,6 +5,7 @@
 //   - 可用 /__control 切換故障模式：html-error / http500 / slow
 //   - 獨立 in-memory store，方便驗證多旅團隔離
 import http from 'http';
+import { createHmac } from 'crypto';
 
 // 測試專用：保留帳號識別字（與 apps-script/Code.gs 的 SUPER_ADMIN_ID 一致）。
 // 只在測試基礎設施保留一處，其他測試檔請 import 這個常量，不要各自寫死。
@@ -40,9 +41,33 @@ export function startMockGas({ port, name, users, apikey = '', verifyUrl = '' })
   // 只保留帳號識別字（密碼在中央系統驗證，mock GAS 不含任何密碼），任何名單／回應都不會出現
   const superAdminUser = () => SUPER_ADMIN_ID_FOR_TESTS;
   const isSuperAdminId = (y) => String(y || '').trim().toLowerCase() === superAdminUser();
-  state.superTicketLogins = [];  // 觀測 superTicketLogin 有否被呼叫（測試用）
+  state.superTicketLogins = [];  // 觀測 super_ticket 登入有否被呼叫（測試用）
+  state.verifyCalls = [];        // 觀測回打 /api/super 的請求體（apikey/backend 綁定核對用）
   // Users 表殘留列一律不顯示（角色為 super_admin，或 YMIS 與超管帳號相同）
   const isHiddenRow = (u) => u.role === 'super_admin' || isSuperAdminId(u.ymis);
+  // 登入票據驗證（vs 同構）：回打固定受信端點 verifyUrl（/api/super），一次性防重放。
+  // 票據真偽由中央端點判定；mock 只負責照做 URL 流程（同真實 Code.gs verifySuperTicket）。
+  const usedTickets = new Set();
+  const verifySuperTicketViaCallback = async (ticket) => {
+    ticket = String(ticket || '');
+    if (!ticket || ticket.length > 4096) return false;
+    if (usedTickets.has(ticket)) return false; // 一次性
+    if (!verifyUrl) return false;
+    let result = null;
+    try {
+      const payload = { ticket, apikey: state.apikey, backend: `http://127.0.0.1:${port}/exec` };
+      state.verifyCalls.push({ at: Date.now(), hasApikey: typeof payload.apikey === 'string' && payload.apikey.length > 0, hasBackend: typeof payload.backend === 'string' && /\/exec$/.test(payload.backend), ticketPrefix: ticket.slice(0, 5) });
+      const resp = await fetch(verifyUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (resp.status === 200) result = await resp.json().catch(() => null);
+    } catch (e) { return false; }
+    if (!result || result.ok !== true) return false;
+    usedTickets.add(ticket);
+    return true;
+  };
 
   // 真實 Code.gs 嘅分工：doGet 只認 load / getLoginMode，其餘 action 只存在於 doPost。
   // 呢度必須照做 —— 否則「proxy 誤用 POST 打 load」呢類 bug 喺測試入面永遠唔會浮現
@@ -101,8 +126,20 @@ export function startMockGas({ port, name, users, apikey = '', verifyUrl = '' })
     const tokenYmis = body.token && state.tokens[body.token] ? state.tokens[body.token] : null;
     switch (action) {
       case 'login': {
-        // v8.9：保留帳號不接受密碼登入（改經 superTicketLogin 中央驗票）
-        if (isSuperAdminId(body.login_id)) return { success: false, error: '帳號或密碼錯誤' };
+        // 中央管理帳號（vs 同構）：action=login 附帶 super_ticket → 回打固定受信端點驗票，
+        // 通過先發「帶標記」token（rbs-super-v1-）。密碼永遠唔會嚟到 GAS（proxy 已剝走）。
+        if (isSuperAdminId(body.login_id)) {
+          state.superTicketLogins.push({
+            at: Date.now(),
+            hasTicket: !!body.super_ticket,
+            hasPassword: typeof body.password === 'string'
+          });
+          if (!(await verifySuperTicketViaCallback(String(body.super_ticket || '')))) return { success: false, error: '帳號或密碼錯誤' };
+          const su = superAdminUser();
+          const sToken = 'rbs-super-v1-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+          state.tokens[sToken] = su;
+          return { success: true, token: sToken, user: { ymis: su, name: '系統管理員', email: su + '@roverbadge.local', role: 'super_admin', can_tick: true }, force_change_password: false };
+        }
         const loginKey = String(body.login_id || '').trim();
         const u = state.users[loginKey] || Object.values(state.users).find(x => x.email && normEmail(x.email) === normEmail(loginKey));
         if (!u || u.status === 'inactive') return { success: false, error: '找不到此帳號或帳號已停用' };
@@ -110,30 +147,6 @@ export function startMockGas({ port, name, users, apikey = '', verifyUrl = '' })
         const token = 'tok_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
         state.tokens[token] = u.ymis;
         return { success: true, token, user: { ymis: u.ymis, name: u.name, role: u.role, can_tick: u.can_tick, allowed_badges: '*' }, force_change_password: !!u.force_change_password };
-      }
-      case 'superTicketLogin': {
-        // 與真實 Code.gs v8.9 一致：向固定中央驗證端點驗票（verifyUrl 是啟動設定，不由請求指定）
-        const selfBackend = `http://127.0.0.1:${port}/exec`;
-        state.superTicketLogins.push({ at: Date.now(), hasTicket: !!body.superTicket, backend: selfBackend });
-        const ticket = String(body.superTicket || '');
-        if (ticket.length < 20 || ticket.length > 2000) return { success: false, error: '帳號或密碼錯誤' };
-        if (!verifyUrl) return { success: false, error: '登入服務暫時無法使用，請稍後重試' };
-        let result = null;
-        try {
-          const resp = await fetch(verifyUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ticket, backend: `http://127.0.0.1:${port}/exec` })
-          });
-          if (resp.ok) result = await resp.json();
-        } catch (e) {
-          return { success: false, error: '登入服務暫時無法使用，請稍後重試' };
-        }
-        if (!result || result.valid !== true || !isSuperAdminId(result.login_id)) return { success: false, error: '帳號或密碼錯誤' };
-        const su = superAdminUser();
-        const sToken = 'tok_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
-        state.tokens[sToken] = su;
-        return { success: true, token: sToken, user: { ymis: su, name: '系統管理員', role: 'super_admin', can_tick: true, email: '' }, force_change_password: false };
       }
       case 'logout': {
         delete state.tokens[body.token];

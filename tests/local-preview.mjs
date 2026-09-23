@@ -11,7 +11,6 @@ const mock = await startMockGas({
   port: MOCK_PORT,
   name: '示範旅團0082',
   apikey: 'KEY_DEMO',
-  verifyUrl: `http://127.0.0.1:${APP_PORT}/api/verify-super-ticket`,
   users: [
     { ymis: '1234567890', name: '陳大文', role: 'group_leader', pass: 'Leader!123', can_tick: true, email: 'l@example.org' },
     { ymis: '1234560001', name: '成員甲', role: 'member', pass: 'Member!123', can_tick: false }
