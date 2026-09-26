@@ -94,4 +94,26 @@
 - vsbadge 文字殘留：roverbadge/cubbadge/scoutbadge 之前寫 vsbadge 管理員，已改為各自 app 管理員
 - fallback URL 已更新為最新 https://script.google.com/macros/s/AKfycbw81wLR5NZtRk4m1ptSAoFBueoqwIZ5hcM_apHJa2xMmlVfUvZsS8R45nTIKTOIuBB2KQ/exec
 
+## 🐛💬 回報 · 意見按鈕（v5.1 起，對接 scout-admin 統一回報）
+
+用戶遇到問題／想給意見，唔使再搵領袖轉達：APP 內建「🐛💬 回報 · 意見」按鈕，數據直達
+[scout-admin](https://github.com/playerkousas-rgb/scout-admin) 後台（統一回報格式 v1，見對方 repo 的 `SCOUT_ADMIN.md`）。
+
+**按鈕位置（3 個入口，同一個 modal）：**
+
+1. **登入旅團前**：首頁頂部 welcome-nav（🏠 進入系統｜📋 新旅團部署｜📖 使用教學｜🐛💬 回報 · 意見）
+2. **登入頁**：底部連結列第一個（申請帳戶／旅團接入／忘記密碼嗰行）
+3. **登入後**：頂部 header 常駐（用戶膠囊旁邊，同 🌐 語言、登出一齊）
+
+**技術安排：**
+
+- `index.html` 引入一行 widget：`<script src="https://scout-admin-blue.vercel.app/widget.js" data-app="進度追蹤"></script>`
+  —— 來源系統名稱＝「進度追蹤」，後台 TICK 看板會自動分流到這個系統的膠囊
+- widget 自帶嘅右下浮動按鈕（#scoutw-fab）已用 CSS 隱藏：避免同底部「確認寫入」save-bar 疊住，全部入口統一用上方按鈕
+- 按鈕經 `openScoutReport()` 開啟 widget 嘅 modal；已揀旅團會自動預填旅團號（選填，可改可清空）
+- widget 載入失敗（離線／被擋）時自動 fallback 開獨立回報頁 `report.html?app=進度追蹤`，一樣交得到
+- 提交唔使登入、唔使 API KEY，可匿名（呢個係 scout-admin 嘅設計：確保用戶一定交得到）
+
+**維護：** 接收端、工作表、欄位全部由 scout-admin 管（Google Sheet 四張表）；本 APP 只負責送 `sourceApp=進度追蹤`，之後 scout-admin 加新功能唔使改本 APP。
+
 COPYRIGHT 2026 Scout System

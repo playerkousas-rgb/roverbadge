@@ -1,11 +1,11 @@
 樂行童軍進度追蹤系統	Rover Scout Progress Tracker
 樂行童軍進度追蹤	Rover Scout Progress Tracker
-樂行童軍進度追蹤系統 v5.0 - 手機友善・批量開戶・全前端控制	Rover Scout Progress Tracker v5.0 - Mobile friendly · Bulk onboarding · Full front-end control
-樂行童軍進度追蹤 v4.2	Rover Scout Progress Tracker v4.2
-Rover Scout Progress Tracker v4.2 • 貝登堡獎章 Logo + 2026年第5版綱要	Rover Scout Progress Tracker v4.2 • Baden-Powell Award logo + 2026 5th Edition Scheme
+樂行童軍進度追蹤系統 v5.1 - 手機友善・批量開戶・全前端控制	Rover Scout Progress Tracker v5.1 - Mobile friendly · Bulk onboarding · Full front-end control
+樂行童軍進度追蹤 v5.1	Rover Scout Progress Tracker v5.1
+Rover Scout Progress Tracker v5.1 • 貝登堡獎章 Logo + 2026年第5版綱要	Rover Scout Progress Tracker v5.1 • Baden-Powell Award logo + 2026 5th Edition Scheme
 基於 2026年第5版《樂行童軍訓練綱要》 | 支援離線暫存 • 批量寫入 • 批量開戶 • 全前端控制 • 保護兒童 Safe from Harm	Based on the 5th Edition of the Rover Scout Training Scheme (2026) | Offline staging • Batch writing • Bulk onboarding • Full front-end control • Safe from Harm
 基於 2026年第5版《樂行童軍訓練綱要》• 支援離線暫存•批量寫入•成員申請確認•表格自動填寫	Based on the 5th Edition of the Rover Scout Training Scheme (2026) • Offline staging • batch writing • member request confirmation • form auto-fill
-COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 v5.0	COPYRIGHT 2026 Scout System • Rover Scout Progress Tracker v5.0
+COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 v5.1	COPYRIGHT 2026 Scout System • Rover Scout Progress Tracker v5.1
 香港童軍總會	Scout Association of Hong Kong
 🏠 進入系統	🏠 Enter System
 📋 新旅團部署	📋 New Group Deployment
@@ -909,3 +909,9 @@ YMIS 或登記電郵	YMIS or registered email
 未能確認入口來源	Could not confirm the entry source
 不支援的請求方式	Unsupported request method
 未能連接驗證服務，請重試或聯絡管理員	Could not reach the verification service. Please retry or contact the admin
+
+最新：v5.1	Latest: v5.1
+YMIS PDF 批量開戶、🐛💬 回報 · 意見按鈕（Scout Admin 統一回報）、非官方聲明、手機頂部按鈕排列整齊化、全 APP 版號統一 v5.1	YMIS PDF bulk onboarding, 🐛💬 Report · Feedback buttons (Scout Admin unified reporting), unofficial notice, tidier mobile top buttons, app-wide version aligned to v5.1
+🐛💬 回報 · 意見	🐛💬 Report · Feedback
+問題回報 / 意見回饋（經 Scout Admin 統一回收，可匿名）	Report an issue / send feedback (via Scout Admin, anonymous welcome)
+⚠️ 非官方聲明：本系統為獨立開發的非官方工具，並非香港童軍總會官方產品，與總會並無隸屬或贊助關係。	⚠️ Unofficial notice: this system is an independently developed unofficial tool. It is NOT an official product of the Scout Association of Hong Kong and has no affiliation with or sponsorship from the Association.

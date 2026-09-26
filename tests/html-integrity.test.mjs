@@ -57,5 +57,48 @@ blocks.forEach((b, i) => {
   }
 });
 
+console.log('\n【4】版號對齊：UI 各處版本必須一致，且等於 package.json 版本');
+{
+  const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+  const m = /^(\d+)\.(\d+)\./.exec(pkg.version);
+  check(`package.json version 可解析（${pkg.version}）`, !!m);
+  const pkgVer = m ? `v${m[1]}.${m[2]}` : '';
+
+  const spots = [
+    ['<title> 標題', /<title>樂行童軍進度追蹤系統 (v\d+\.\d+) - /.exec(html)],
+    ['首頁 header 副標題', /<p>Rover Scout Progress Tracker (v\d+\.\d+) • /.exec(html)],
+    ['登入頁 h1', />樂行童軍進度追蹤 (v\d+\.\d+)<\/h1>/.exec(html)],
+    ['頁尾 COPYRIGHT', />COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 (v\d+\.\d+)<\/div>/.exec(html)],
+    ['版本更新紀錄「最新」', />最新：(v\d+(?:\.\d+)?)</.exec(html)],
+  ];
+  const seen = new Set();
+  for (const [name, mm] of spots) {
+    check(`${name} 有版號`, !!mm, '未找到版號字串');
+    if (mm) seen.add(mm[1]);
+  }
+  check(`UI 版號全部一致（${[...seen].join(' vs ')}）`, seen.size === 1);
+  check(`UI 版號＝package.json 版號（${[...seen][0] || '?'} vs ${pkgVer}）`, seen.size === 1 && [...seen][0] === pkgVer);
+  check('無舊版號殘留（v4.0／v4.2 UI 字串）', !/進度追蹤(系統)? v4\.\d/.test(html) && !/Tracker v4\.\d/.test(html));
+  check('版號鍵有對應 i18n 英文翻譯（TSV 與 LANG_DICT 同步）', (() => {
+    const tsv = fs.readFileSync(path.join(ROOT, 'i18n_dict.tsv'), 'utf8');
+    const need = [`樂行童軍進度追蹤系統 ${pkgVer} - `, `樂行童軍進度追蹤 ${pkgVer}\t`, `COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 ${pkgVer}`];
+    return need.every(s => tsv.includes(s)) && html.includes(`"COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 ${pkgVer}"`);
+  })());
+}
+
+console.log('\n【5】Scout Admin 回報 · 意見按鈕 ＋ 非官方聲明');
+{
+  check('引入 scout-admin widget.js（統一回報格式 v1）',
+    html.includes('<script src="https://scout-admin-blue.vercel.app/widget.js" data-app="進度追蹤"></script>'));
+  check('openScoutReport() 已定義（開 widget modal，fallback report.html）',
+    /function openScoutReport\(\)/.test(html) && html.includes("report.html?app='+encodeURIComponent('進度追蹤')"));
+  check('widget 預設 FAB 已隱藏（改用本 APP 上方按鈕）', html.includes('#scoutw-fab{display:none!important}'));
+  check('登入前（首頁 welcome-nav）有回報 · 意見按鈕', /<button class="welcome-feedback" onclick="openScoutReport\(\)"/.test(html));
+  check('登入頁有回報 · 意見連結', /onclick="openScoutReport\(\);return false"/.test(html));
+  check('登入後 header 常駐回報 · 意見按鈕', /class="lang-toggle btn-feedback-top" onclick="openScoutReport\(\)"/.test(html));
+  check('頁尾有非官方聲明（並非香港童軍總會官方產品）', html.includes('⚠️ 非官方聲明：本系統為獨立開發的非官方工具，並非香港童軍總會官方產品'));
+  check('頁尾已移除 All rights reserved／總會連結', !/All rights reserved/.test(html) && !/href="https:\/\/www\.scout\.org\.hk" target="_blank">香港童軍總會<\/a>/.test(html));
+}
+
 console.log(`\n結果：${passed} 通過, ${failed} 失敗`);
 if (failed > 0) process.exit(1);

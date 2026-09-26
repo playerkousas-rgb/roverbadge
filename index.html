@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>樂行童軍進度追蹤系統 v5.0 - 手機友善・批量開戶・全前端控制</title>
+<title>樂行童軍進度追蹤系統 v5.1 - 手機友善・批量開戶・全前端控制</title>
 <link rel="icon" type="image/png" href="assets/bp-award-logo-128.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <style>
@@ -99,6 +99,15 @@ a:hover{text-decoration:underline}
 .lang-toggle{position:absolute;top:10px;right:10px;padding:5px 12px;border:1.5px solid rgba(255,255,255,0.6);border-radius:999px;background:rgba(255,255,255,0.12);color:#fff;font-size:11px;font-weight:700;cursor:pointer;transition:.2s;z-index:5}
 .lang-toggle:hover{background:rgba(255,255,255,0.25);transform:translateY(-1px)}
 .main-app-header .lang-toggle{position:static;border-color:rgba(255,255,255,0.5);background:rgba(255,255,255,0.12);color:#fff}
+/* ===== Scout Admin 統一回報（問題回報／意見回饋）===== */
+/* widget.js 會自生右下浮動按鈕；本 APP 改用上方常駐「回報 · 意見」按鈕開啟同一個 modal，故隱藏 FAB 免重複 */
+#scoutw-fab{display:none!important}
+/* 首頁 welcome-nav 內的回報按鈕：金色外框，與三個分頁按鈕區分 */
+.welcome-nav button.welcome-feedback{border-color:var(--gold-dark);background:#FFF8E1;color:#7A5A00}
+.welcome-nav button.welcome-feedback:hover{background:#FFECB3}
+/* 登入後 main-app-header 內的常駐回報按鈕（配 lang-toggle 藥丸樣式，金色搶眼） */
+.main-app-header .btn-feedback-top{border-color:rgba(255,215,0,0.85);background:rgba(255,215,0,0.22);white-space:nowrap}
+.main-app-header .btn-feedback-top:hover{background:rgba(255,215,0,0.38)}
 
 /* Main App Header */
 .main-app-header{background:var(--maroon);color:#fff;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid var(--gold);flex-wrap:wrap;gap:8px;position:sticky;top:0;z-index:100}
@@ -273,12 +282,13 @@ a:hover{text-decoration:underline}
   .main-app-header{position:static;padding:9px 12px;flex-wrap:wrap}
   .main-app-header .left{min-width:0;flex:1}
   .main-app-header h1{font-size:14px;line-height:1.35;white-space:normal}
-  .user-info{width:100%;justify-content:space-between}
-  .user-chip{max-width:calc(100% - 82px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* 手機頂部按鈕整齊：用戶膠囊獨佔一行置中，語言／回報·意見／登出按鈕在其下自然寬度置中排一行 */
+  .user-info{width:100%;justify-content:center}
+  .user-chip{flex:1 1 100%;max-width:100%;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   /* v8.9 手機導覽：不再左右滑，改成格狀一行行排；常用功能在上、進階功能在下 */
   .nav-tabs{top:0;z-index:120;flex-wrap:wrap;overflow:visible}
   .nav-tabs.nav-static{position:static}
-  .nav-tab{flex:0 0 33.333%;min-width:0;min-height:44px;padding:8px 5px;font-size:12px;line-height:1.35;white-space:normal;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:2px 4px}
+  .nav-tab{flex:1 1 33.333%;min-width:0;min-height:44px;padding:8px 5px;font-size:12px;line-height:1.35;white-space:normal;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:2px 4px}
   .nav-tab.nav-elevated{order:100;flex:1 1 33.333%;background:var(--bg);border-top:1px solid var(--border)}
   .nav-tab.nav-elevated.active{background:var(--maroon-light)}
   .tab-content{padding:12px}
@@ -321,7 +331,8 @@ a:hover{text-decoration:underline}
 }
 @media(max-width:420px){
   .troop-grid{grid-template-columns:1fr}
-  .welcome-nav button{flex-basis:100%}
+  /* 極窄屏幕：welcome-nav 維持 2×2（不再 flex-basis:100% 一行一顆）；lang-toggle 縮小免疊標題 */
+  .lang-toggle{top:8px;right:8px;padding:4px 8px;font-size:10px}
   .level-box{padding:10px 6px}
   .level-box .level-num{font-size:18px}
   .tab-content{padding:10px}
@@ -340,7 +351,7 @@ a:hover{text-decoration:underline}
       </div>
       <div style="text-align:left">
         <h1>樂行童軍進度追蹤系統</h1>
-        <p>Rover Scout Progress Tracker v4.2 • 貝登堡獎章 Logo + 2026年第5版綱要</p>
+        <p>Rover Scout Progress Tracker v5.1 • 貝登堡獎章 Logo + 2026年第5版綱要</p>
       </div>
     </div>
     <div class="header-subtitle">基於 2026年第5版《樂行童軍訓練綱要》• 支援離線暫存•批量寫入•成員申請確認•表格自動填寫</div>
@@ -348,6 +359,7 @@ a:hover{text-decoration:underline}
       <button class="active" data-tab="enter" onclick="showWelcomeTab('enter', this)">🏠 進入系統</button>
       <button data-tab="setup" onclick="showWelcomeTab('setup', this)">📋 新旅團部署</button>
       <button data-tab="guide" onclick="showWelcomeTab('guide', this)">📖 使用教學</button>
+      <button class="welcome-feedback" onclick="openScoutReport()" title="問題回報 / 意見回饋（經 Scout Admin 統一回收，可匿名）">🐛💬 回報 · 意見</button>
       <!-- changelog hidden for production -->
     </div>
     <button class="lang-toggle" onclick="setUILang(UI_LANG==='en'?'zh':'en')">🌐 English</button>
@@ -444,12 +456,12 @@ a:hover{text-decoration:underline}
       <h2 style="font-size:18px;color:var(--maroon);margin-bottom:12px">📦 版本更新紀錄（未來用於新版本後端GS及功能改動）</h2>
       <div class="info-card" style="border-left-color:var(--blue);background:var(--blue-light)">
         <h3 style="color:var(--blue)">框架保留，內容已精簡（依你要求移除舊修復資訊）</h3>
-        <p style="font-size:12px">此區未來用於：<br>• 新版本後端 Code.gs 下載（記得保有舊資料 - initializeSheets 不會清舊資料）<br>• 新版本新增功能和改動說明<br>• 目前 v5.0 FINAL 已穩定，測試完成</p>
+        <p style="font-size:12px">此區未來用於：<br>• 新版本後端 Code.gs 下載（記得保有舊資料 - initializeSheets 不會清舊資料）<br>• 新版本新增功能和改動說明</p>
         <div style="margin-top:8px;font-size:11px;color:var(--text-light)">COPYRIGHT 2026 Scout System</div>
       </div>
       <div class="info-section" style="margin-top:12px">
-        <h3>最新：v5.0 FINAL</h3>
-        <p style="font-size:12px">PNG LOGO 256px、防卡死、批量、官方表格、細緻權限、MOCK測試、成員私隱開關、教學按角色分開</p>
+        <h3>最新：v5.1</h3>
+        <p style="font-size:12px">YMIS PDF 批量開戶、🐛💬 回報 · 意見按鈕（Scout Admin 統一回報）、非官方聲明、手機頂部按鈕排列整齊化、全 APP 版號統一 v5.1</p>
       </div>
     </div>
   </div>
@@ -460,7 +472,7 @@ a:hover{text-decoration:underline}
   <div class="app-header-common" style="padding:14px">
     <div class="logo-row" style="margin-bottom:0">
       <div class="logo-svg-wrap"><img src="assets/bp-award-logo-256.png" alt="貝登堡獎章" onerror="this.style.display='none'"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:32px;height:32px"><path d="M30 85 L50 38 L70 85" fill="none" stroke="#FFD700" stroke-width="3" stroke-linecap="round"/><rect x="47" y="42" width="6" height="34" fill="#8B0000" rx="2"/><ellipse cx="50" cy="42" rx="9" ry="2.5" fill="none" stroke="#FFD700" stroke-width="1.2"/><path d="M45 46 Q42 36 48 28 Q50 24 50 20 Q50 16 52 13 Q55 18 54 24 Q53 28 55 32 Q58 38 55 46" fill="#FFA000"/></svg></div>
-      <div><h1 style="font-size:18px">樂行童軍進度追蹤 v4.2</h1></div>
+      <div><h1 style="font-size:18px">樂行童軍進度追蹤 v5.1</h1></div>
     </div>
   </div>
   <div class="container">
@@ -476,6 +488,7 @@ a:hover{text-decoration:underline}
       <div class="form-group"><label>密碼</label><input type="password" id="loginPassword" placeholder="請輸入密碼"></div>
       <button class="btn btn-primary" onclick="doLogin()" style="width:100%" id="btnLogin">登入</button>
       <div style="text-align:center;margin-top:12px;display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
+        <a href="#" onclick="openScoutReport();return false" style="font-size:11px">🐛💬 回報 · 意見</a>
         <a href="#" onclick="showAccountApplyModal();return false" style="font-size:11px">🆕 申請成員/領袖帳戶</a>
         <a href="#" onclick="showContactModal();return false" style="font-size:11px">🆕 旅團接入</a>
         <a href="#" onclick="showForgotPasswordModal();return false" style="font-size:11px">🔑 忘記密碼</a>
@@ -495,6 +508,7 @@ a:hover{text-decoration:underline}
     <div class="user-info">
       <span class="user-chip" id="userInfo">—</span>
       <button class="lang-toggle" onclick="setUILang(UI_LANG==='en'?'zh':'en')">🌐 English</button>
+      <button class="lang-toggle btn-feedback-top" onclick="openScoutReport()" title="問題回報 / 意見回饋（經 Scout Admin 統一回收，可匿名）">🐛💬 回報 · 意見</button>
       <button class="btn btn-sm btn-secondary" onclick="doLogout()">登出</button>
     </div>
   </div>
@@ -772,30 +786,40 @@ a:hover{text-decoration:underline}
 <div id="toast" class="toast"></div>
 
 <footer style="text-align:center;padding:20px 16px;margin-top:20px;border-top:2px solid var(--border);font-size:12px;color:var(--text-light);background:var(--card)">
-  <div>COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 v5.0</div>
+  <div>COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 v5.1</div>
   <div style="margin-top:4px;font-size:11px">基於 2026年第5版《樂行童軍訓練綱要》 | 支援離線暫存 • 批量寫入 • 批量開戶 • 全前端控制 • 保護兒童 Safe from Harm</div>
-  <div style="margin-top:4px;font-size:10px">Developed for 82 Troop • All rights reserved • <a href="https://www.scout.org.hk" target="_blank">香港童軍總會</a></div>
+  <div style="margin-top:4px;font-size:10px">Developed for 82 Troop</div>
+  <div style="margin-top:4px;font-size:10px">⚠️ 非官方聲明：本系統為獨立開發的非官方工具，並非香港童軍總會官方產品，與總會並無隸屬或贊助關係。</div>
 </footer>
 
 <script src="assets/ymis-parse.js"></script>
+<!-- Scout Admin 統一回報 widget（統一回報格式 v1，見 SCOUT_ADMIN.md）：問題回報／意見回饋直達 scout-admin 後台。
+     data-app="進度追蹤"＝來源系統正式名稱；本 APP 的「🐛💬 回報 · 意見」按鈕（登入前 welcome-nav／登入頁連結／登入後 header 常駐）
+     一律經 openScoutReport() 開啟這個 widget 的 modal；widget 載入失敗時 fallback 到獨立回報頁 report.html -->
+<script src="https://scout-admin-blue.vercel.app/widget.js" data-app="進度追蹤"></script>
 <script>
 /* ================== i18n (English mode) ================== */
 const UI_LANG=(function(){ try{ return localStorage.getItem('roverbadge_lang')||'zh'; }catch(e){ return 'zh'; } })();
 const LANG_DICT={
   "樂行童軍進度追蹤系統": "Rover Scout Progress Tracker",
   "樂行童軍進度追蹤": "Rover Scout Progress Tracker",
-  "樂行童軍進度追蹤系統 v5.0 - 手機友善・批量開戶・全前端控制": "Rover Scout Progress Tracker v5.0 - Mobile friendly · Bulk onboarding · Full front-end control",
-  "樂行童軍進度追蹤 v4.2": "Rover Scout Progress Tracker v4.2",
-  "Rover Scout Progress Tracker v4.2 • 貝登堡獎章 Logo + 2026年第5版綱要": "Rover Scout Progress Tracker v4.2 • Baden-Powell Award logo + 2026 5th Edition Scheme",
+  "樂行童軍進度追蹤系統 v5.1 - 手機友善・批量開戶・全前端控制": "Rover Scout Progress Tracker v5.1 - Mobile friendly · Bulk onboarding · Full front-end control",
+  "樂行童軍進度追蹤 v5.1": "Rover Scout Progress Tracker v5.1",
+  "Rover Scout Progress Tracker v5.1 • 貝登堡獎章 Logo + 2026年第5版綱要": "Rover Scout Progress Tracker v5.1 • Baden-Powell Award logo + 2026 5th Edition Scheme",
   "基於 2026年第5版《樂行童軍訓練綱要》 | 支援離線暫存 • 批量寫入 • 批量開戶 • 全前端控制 • 保護兒童 Safe from Harm": "Based on the 5th Edition of the Rover Scout Training Scheme (2026) | Offline staging • Batch writing • Bulk onboarding • Full front-end control • Safe from Harm",
   "基於 2026年第5版《樂行童軍訓練綱要》• 支援離線暫存•批量寫入•成員申請確認•表格自動填寫": "Based on the 5th Edition of the Rover Scout Training Scheme (2026) • Offline staging • batch writing • member request confirmation • form auto-fill",
-  "COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 v5.0": "COPYRIGHT 2026 Scout System • Rover Scout Progress Tracker v5.0",
+  "COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 v5.1": "COPYRIGHT 2026 Scout System • Rover Scout Progress Tracker v5.1",
   "香港童軍總會": "Scout Association of Hong Kong",
   "🏠 進入系統": "🏠 Enter System",
   "📋 新旅團部署": "📋 New Group Deployment",
   "📖 使用教學": "📖 User Guide",
   "📦 版本更新紀錄（未來用於新版本後端GS及功能改動）": "📦 Version History (for future backend GS versions and feature changes)",
   "最新：v5.0 FINAL": "Latest: v5.0 FINAL",
+  "最新：v5.1": "Latest: v5.1",
+  "YMIS PDF 批量開戶、🐛💬 回報 · 意見按鈕（Scout Admin 統一回報）、非官方聲明、手機頂部按鈕排列整齊化、全 APP 版號統一 v5.1": "YMIS PDF bulk onboarding, 🐛💬 Report · Feedback buttons (Scout Admin unified reporting), unofficial notice, tidier mobile top buttons, app-wide version aligned to v5.1",
+  "🐛💬 回報 · 意見": "🐛💬 Report · Feedback",
+  "問題回報 / 意見回饋（經 Scout Admin 統一回收，可匿名）": "Report an issue / send feedback (via Scout Admin, anonymous welcome)",
+  "⚠️ 非官方聲明：本系統為獨立開發的非官方工具，並非香港童軍總會官方產品，與總會並無隸屬或贊助關係。": "⚠️ Unofficial notice: this system is an independently developed unofficial tool. It is NOT an official product of the Scout Association of Hong Kong and has no affiliation with or sponsorship from the Association.",
   "• 目前 v5.0 FINAL 已穩定，測試完成": "• v5.0 FINAL is stable and fully tested",
   "• 新版本新增功能和改動說明": "• New features and changes in this version",
   "• 新版本後端 Code.gs 下載（記得保有舊資料 - initializeSheets 不會清舊資料）": "• New backend Code.gs download (your old data is kept - initializeSheets does not clear old data)",
@@ -1735,6 +1759,29 @@ function startI18nObserver(){ if(typeof MutationObserver==='undefined') return; 
 /* ================== 全局狀態 ================== */
 let currentTroopId='',currentTroopName='';
 const API_ENDPOINT='/api/proxy';
+
+/* ================== Scout Admin 統一回報（問題回報／意見回饋） ==================
+   對接 scout-admin「統一回報格式 v1」（SCOUT_ADMIN.md）：widget.js（data-app="進度追蹤"）
+   負責 modal 與送出，來源系統、欄位、接收端全部統一；本 APP 各頁的「🐛💬 回報 · 意見」
+   按鈕（登入前 welcome-nav、登入頁連結、登入後 header 常駐）都開啟同一個 modal。
+   widget 未載入（離線／被擋）時 fallback 到獨立回報頁 report.html。 */
+function openScoutReport(){
+  try{
+    const ov=document.getElementById('scoutw-overlay');
+    if(ov){
+      // 已選旅團 → 預填旅團號（選填欄，提交前仍可改）
+      if(typeof currentTroopId==='string' && currentTroopId){
+        ['scoutw_i_troop','scoutw_f_troop'].forEach(function(id){
+          const el=document.getElementById(id);
+          if(el && !el.value.trim()) el.value=currentTroopId;
+        });
+      }
+      ov.classList.add('open');
+      return;
+    }
+  }catch(e){}
+  window.open('https://scout-admin-blue.vercel.app/report.html?app='+encodeURIComponent('進度追蹤'), '_blank', 'noopener');
+}
 
 /* ================== 統一後端請求封裝（唯一出口：同源 /api/proxy） ==================
    - 所有 GAS 通訊必須經過這裡，禁止各自直接 fetch GAS URL

@@ -1,6 +1,6 @@
 {
   "name": "roverbadge",
-  "version": "4.0.0",
+  "version": "5.1.0",
   "private": true,
   "type": "module",
   "description": "樂行童軍進度及行政平台（多旅團，同源 Proxy 架構；旅團登記只用 Vercel 環境變數）",

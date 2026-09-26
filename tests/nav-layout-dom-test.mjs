@@ -100,7 +100,7 @@ console.log('\n【6】CSS：手機換行分層、桌機不受影響');
   const mobileCss = html.slice(mqStart, mqEnd > 0 ? mqEnd : html.length);
   check('手機 .nav-tabs 用 flex-wrap 換行（唔再左右滑）',
     mobileCss.includes('.nav-tabs{top:0;z-index:120;flex-wrap:wrap;overflow:visible}'));
-  check('手機 .nav-tab 三等分格狀（平分）', mobileCss.includes('.nav-tab{flex:0 0 33.333%'));
+  check('手機 .nav-tab 三等分格狀（平分，孤兒行按鈕會自動填滿一行）', mobileCss.includes('.nav-tab{flex:1 1 33.333%'));
   check('手機進階按鈕 order:100（排到最後一行）', mobileCss.includes('.nav-tab.nav-elevated{order:100'));
   check('手機進階按鈕有分隔線 border-top', mobileCss.includes('border-top:1px solid var(--border)}'));
   check('桌機 .nav-tab 一行寫法未改', html.includes('.nav-tab{flex:0 0 auto;min-width:100px;padding:14px 16px;'));
