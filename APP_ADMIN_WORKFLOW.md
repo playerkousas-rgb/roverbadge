@@ -85,6 +85,11 @@
 - 姊妹 APP 各自設同一個 `SUPER_KEY` 即可用同一組憑證；跨 APP SSO 未實作
 - 防護保留：不能停用／重設密碼／更改角色／以此帳號開戶
 - 進度紀錄嘅「確認者」欄寫嘅係顯示名稱（`系統管理員`），唔係帳號
+- **閂口救援通道（2026-09-26 起）**：超管帳號唔係經旅團登記 Sheet（Users 表）開嘅戶，
+  所以旅團後端嘅直接入口掣（`ALLOW_LOCAL_LOGIN=false`，只收上游 sig）管唔到佢——
+  super_ticket 登入**同登入後嘅 token 操作**（讀名單／重設密碼／`setAllowLocalLogin` 重開掣）
+  閂口後照放行。旅團被誤閂鎖死時：上游重開，或超管直接登入該旅團救援（`tests/troop_link.test.mjs` 第 3 項守護）。
+  一般用戶 token 則照舊被拒（閂口係為咗逼一般用戶經上游 sig 入）。
 
 **如要換密碼：** 只改 Vercel `SUPER_KEY` → Redeploy → 完成（唔使碰 GAS／Sheet；舊加密 session 會失效，重新登入即可）。
 

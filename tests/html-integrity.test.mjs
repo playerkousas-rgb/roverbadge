@@ -100,5 +100,17 @@ console.log('\n【5】Scout Admin 回報 · 意見按鈕 ＋ 非官方聲明');
   check('頁尾已移除 All rights reserved／總會連結', !/All rights reserved/.test(html) && !/href="https:\/\/www\.scout\.org\.hk" target="_blank">香港童軍總會<\/a>/.test(html));
 }
 
+console.log('\n【6】下游 UI 已移除 ALLOW_LOCAL_LOGIN 直接入口掣（掣只由上游選單／sig／GAS 操作）');
+{
+  check('無 allowLocalLoginChk 開關', !html.includes('allowLocalLoginChk'));
+  check('無 toggleAllowLocalLogin／refreshAllowLocalLogin 前端函數',
+    !/function (toggleAllowLocalLogin|refreshAllowLocalLogin)/.test(html) && !html.includes('setTimeout(refreshAllowLocalLogin'));
+  check('無「🔐 上下游控管：ALLOW_LOCAL_LOGIN」卡片', !html.includes('上下游控管：ALLOW_LOCAL_LOGIN'));
+  check('前端不再呼叫 getAllowLocalLogin／setAllowLocalLogin',
+    !html.includes("apiRequest('getAllowLocalLogin'") && !html.includes("apiRequest('setAllowLocalLogin'"));
+  check('私隱設定卡片保留（allowMemberViewOthers 開關仍在）', html.includes('allowMemberViewOthers') && html.includes('🔒 私隱設定'));
+  check('旅系統接駁資訊卡保留（講明掣由上游操作）', html.includes('直接入口開關（ALLOW_LOCAL_LOGIN）只由上游'));
+}
+
 console.log(`\n結果：${passed} 通過, ${failed} 失敗`);
 if (failed > 0) process.exit(1);

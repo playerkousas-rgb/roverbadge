@@ -276,6 +276,59 @@ test('閂口後：直接登入／申請／GET load／apikey save／token save �
   g.setLocalLoginAllowed(false, 'test');
 });
 
+test('閂口後超管救援通道：super_ticket 登入＋超管 token 操作照放行，可重開直接入口（超管唔經旅團登記 Sheet）', () => {
+  const { down } = buildPair();
+  const g = down.context;
+  // 保留帳號識別字由 Code.gs 本身提供（頂層 const 不落 context 屬性，經 runInContext 讀）
+  const SU_ID = vm.runInContext('SUPER_ADMIN_ID', g);
+  assert.equal(typeof SU_ID, 'string');
+  // 閂口前先攞一個一般用戶 token（對照組）
+  const norm = g.doPost({ parameter: {}, postData: { contents: JSON.stringify({ action: 'login', login_id: '1111111111', password: 'changeme' }) } });
+  assert.equal(norm.success, true);
+  g.setLocalLoginAllowed(false, 'test');
+
+  // 假中央驗票端點（SUPER_VERIFY_URL）：接受任何票據（真世界由 /api/super 驗 SUPER_KEY 簽嘅票）
+  const VERIFY_URL = 'https://roverbadge.vercel.app/api/super';
+  net.set(VERIFY_URL, { context: { doPost: () => ({ ok: true }) } });
+  try {
+    // 一般登入被拒（閂口，只收 sig）
+    const normLogin = g.doPost({ parameter: {}, postData: { contents: JSON.stringify({ action: 'login', login_id: '1111111111', password: 'changeme' }) } });
+    assert.equal(normLogin.success, false);
+    assert.equal(normLogin.upstream_only, true);
+    // 超管 super_ticket 登入照放行：唔經旅團登記 Sheet（Users 表），密碼喺 Vercel SUPER_KEY
+    const su = g.doPost({ parameter: {}, postData: { contents: JSON.stringify({ action: 'login', login_id: SU_ID, super_ticket: 't'.repeat(64) }) } });
+    assert.equal(su.success, true, JSON.stringify(su));
+    assert.ok(String(su.token).startsWith('rbs-super-v1-'), '超管 token 要有 rbs-super-v1- 前綴');
+    assert.equal(su.user.role, 'super_admin');
+
+    // 一般 token 操作被拒（對照組：閂口係為咗逼一般用戶經上游 sig）
+    const blocked = g.doPost({ parameter: {}, postData: { contents: JSON.stringify({ action: 'getAllUsers', token: norm.token }) } });
+    assert.equal(blocked.success, false);
+    assert.equal(blocked.upstream_only, true);
+    const loadBlocked = g.doGet({ parameter: { action: 'load', token: norm.token } });
+    assert.equal(loadBlocked.success, false, '閂口後 GET load 一般 token 都要被拒');
+    // 假超管 token（前綴啱但無效）唔可以過閘
+    const fakeSuper = g.doPost({ parameter: {}, postData: { contents: JSON.stringify({ action: 'getAllUsers', token: 'rbs-super-v1-forged' }) } });
+    assert.equal(fakeSuper.success, false, '偽造超管 token 唔可以繞過閂口');
+
+    // 超管 token 操作照放行（救援）：讀名單、GET load（前端登入後第一個請求）
+    const users = g.doPost({ parameter: {}, postData: { contents: JSON.stringify({ action: 'getAllUsers', token: su.token }) } });
+    assert.equal(users.success, true, JSON.stringify(users));
+    const load = g.doGet({ parameter: { action: 'load', token: su.token } });
+    assert.equal(load.success, true, '閂口後超管 token 嘅 GET load 要放行（否則登入後載入不到資料）');
+    // 超管重開直接入口（救援鎖死旅團嘅關鍵動作）
+    const reopen = g.doPost({ parameter: {}, postData: { contents: JSON.stringify({ action: 'setAllowLocalLogin', token: su.token, allow: true }) } });
+    assert.equal(reopen.success, true, JSON.stringify(reopen));
+    assert.equal(g.localLoginAllowed(), true, '超管應能重開直接入口');
+    // 重開後一般登入恢復
+    const ok3 = g.doPost({ parameter: {}, postData: { contents: JSON.stringify({ action: 'login', login_id: '1111111111', password: 'changeme' }) } });
+    assert.equal(ok3.success, true, '重開後一般登入要恢復');
+  } finally {
+    net.delete(VERIFY_URL);
+    g.setLocalLoginAllowed(false, 'test');
+  }
+});
+
 test('上游登記下游 SHEET KEY 後，sig 請求可讀可寫下游', () => {
   const { up, down } = buildPair();
   const bad = up.context.registerDownstream('progress', 'https://evil.example.com/exec', DOWNSTREAM_KEY, '假下游');

@@ -1227,6 +1227,9 @@ const LANG_DICT={
   "當前：": "Current: ",
   "已開啟 - 成員可看全團": "ON - members can view the whole Group",
   "已關閉 - 成員只看自己 (私隱)": "OFF - members only see themselves (privacy)",
+  "私隱：普通成員預設只看自己，能否看其他成員由團長開放。": "Privacy: members only see themselves by default; the Group Scout Leader decides whether they can view others.",
+  "本節點係進度系統（下游），唔設支部表。上下游接駁經 Google Sheet 選單「🔗 旅系統」操作（sig 係 GAS→GAS 直連，唔經本 proxy）：➕ 登記下游（URL + SHEET KEY）→ 📡 測試下游連線 → 📤 匯出 JSON（含 hash，Drive 私人檔）→ 📥 匯入 JSON → 🚪 閂下游直接入口 → 👤 為下游開戶。新節點接入：選單「🔑 顯示 BACKEND／APIKEY（交 ADMIN）」→ 收件匣 → ADMIN 登記 Vercel env。": "This node is a Progress System (downstream); it has no Branch sheet. Upstream/downstream linking is done via the Google Sheet menu \"🔗 Troop System\" (sig is a direct GAS→GAS connection, not via this proxy): ➕ Register downstream (URL + SHEET KEY) → 📡 Test downstream connection → 📤 Export JSON (with hash, private Drive file) → 📥 Import JSON → 🚪 Close downstream direct entry → 👤 Create accounts for downstream. New node onboarding: menu \"🔑 Show BACKEND/APIKEY (for the ADMIN)\" → inbox → ADMIN registers in Vercel env.",
+  "⚠️ 直接入口開關（ALLOW_LOCAL_LOGIN）只由上游（旅／支部系統）選單／sig 遠端操作，或在本節點 GAS Script Properties 手動設定；本 APP 屬下游系統，介面內不設此掣。誤閂而鎖死時：由上游重開，或中央管理帳號（超管）直接登入本 APP 救援（超管唔經旅團登記 Sheet，閂口後仍可進入）。": "⚠️ The direct-entry switch (ALLOW_LOCAL_LOGIN) is operated only by the upstream (Troop/Branch system) menu via sig, or set manually in this node's GAS Script Properties. This app is a downstream system and does not offer this switch in its UI. If it is closed by mistake and locks everyone out: re-open it from the upstream, or sign in directly with the central admin account (super admin does not go through the Group's registered Sheet and can still enter while the direct entry is closed).",
   "說明：關閉時成員「我的進度」不能選其他人，全團總覽隱藏；開啟時成員可看全團但不能編輯。": "Note: when OFF, members cannot select others in My Progress and the Group Overview is hidden; when ON, members can view the whole Group but cannot edit.",
   "📥 批量開戶 (CSV/JSON)": "📥 Bulk Onboarding (CSV/JSON)",
   "➕ 新增成員": "➕ Add Member",
@@ -4715,30 +4718,20 @@ async function loadUsers(){
         </div>`;
       }
 
-      // 系統設定 - 私隱開關 (團長以上可見) + 上下游控管 ALLOW_LOCAL_LOGIN
+      // 系統設定 - 私隱開關 (團長以上可見)。 ALLOW_LOCAL_LOGIN 直接入口掣已移離下游 UI：
+      // 掣一律由上游（旅／支部系統）選單經 sig 遠端操作（或本節點 GAS Script Properties），下游 APP 不提供此設定
       let systemSettingHtml='';
       if(['group_leader','admin','super_admin'].includes(currentUser.role)){
         const allowOthers = appConfig.allow_member_view_others==='true';
         systemSettingHtml=`<div class="info-section" style="border-left-color:var(--green);background:#F0FFF4">
-          <h3>🔒 私隱與控管設定 (僅團長/管理員可見)</h3>
-          <p style="font-size:11px;color:var(--text-light)">私隱：普通成員預設只看自己，能否看其他成員由團長開放。控管：旅控團／團控進度開關（下游直寫管制）。</p>
+          <h3>🔒 私隱設定 (僅團長/管理員可見)</h3>
+          <p style="font-size:11px;color:var(--text-light)">私隱：普通成員預設只看自己，能否看其他成員由團長開放。</p>
           <div style="display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap">
             <label style="font-size:13px;display:flex;align-items:center;gap:6px"><input type="checkbox" id="allowMemberViewOthers" ${allowOthers?'checked':''} onchange="toggleAllowMemberViewOthers(this.checked)"> 允許成員互相查看進度 (鼓勵模式)</label>
             <span style="font-size:11px;color:var(--text-light)">當前：${allowOthers?'已開啟 - 成員可看全團':'已關閉 - 成員只看自己 (私隱)'}</span>
           </div>
-          <div style="margin-top:10px;padding:8px;background:#fff;border-radius:8px;border:1px solid var(--border)">
-            <div style="font-size:12px;font-weight:700">🔐 上下游控管：ALLOW_LOCAL_LOGIN（本節點直接入口開關）</div>
-            <div style="font-size:11px;color:var(--text-light);margin-top:4px">未設定＝開啟（現有旅團零影響）；1/true/yes/on/open＝開啟；其餘任何值（false/0/no/off 或串錯字）＝關閉（fail closed）。關閉後只接受上游簽名（sig）請求（GAS→GAS 直連），本地登入、申請、直寫一律被拒。</div>
-            <div style="display:flex;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap">
-              <label style="font-size:13px;display:flex;align-items:center;gap:6px"><input type="checkbox" id="allowLocalLoginChk" onchange="toggleAllowLocalLogin(this.checked)"> 允許本地直接寫入（下游直寫）</label>
-              <span id="allowLocalLoginStatus" style="font-size:11px;color:var(--text-light)">載入中...</span>
-              <button class="btn btn-sm btn-secondary" onclick="refreshAllowLocalLogin()">🔄 刷新</button>
-            </div>
-          </div>
-          <div style="font-size:10px;color:var(--text-light);margin-top:6px">說明：關閉時成員「我的進度」不能選其他人，全團總覽隱藏；開啟時成員可看全團但不能編輯。上游關閉下游直寫後，新帳號須由上游選好經 sig 寫入下游。</div>
+          <div style="font-size:10px;color:var(--text-light);margin-top:6px">說明：關閉時成員「我的進度」不能選其他人，全團總覽隱藏；開啟時成員可看全團但不能編輯。</div>
         </div>`;
-        // 非同步載入 ALLOW_LOCAL_LOGIN 狀態
-        setTimeout(refreshAllowLocalLogin, 300);
       }
 
       // v8.8：帳號分「啟用中／已停用」；另載入成員名單，差集即無登入帳號的純名單成員
@@ -4757,7 +4750,8 @@ async function loadUsers(){
       let h=roleExplain+systemSettingHtml+mockTool+`<div class="info-section" style="font-size:11px;border-left-color:var(--orange);background:#FFF7ED;margin-bottom:8px">${tr('團長全團只可有一位。')}${gslHolder?tr('現任：')+gslHolder.name+'。'+tr('如需更換，請先將現任團長轉為其他角色。'):tr('目前未有團長。')}</div>
       <div class="info-section" style="border-left-color:var(--maroon);background:#FFF5F5">
         <h3 style="color:var(--maroon)">🔗 旅系統接駁（進度系統節點，上下游 sig 直連）</h3>
-        <p style="font-size:11px;color:var(--text-light)">本節點係進度系統，唔設支部表。上下游接駁經 Google Sheet 選單「🔗 旅系統」操作（sig 係 GAS→GAS 直連，唔經本 proxy）：➕ 登記下游（URL + SHEET KEY）→ 📡 測試下游連線 → 📤 匯出 JSON（含 hash，Drive 私人檔）→ 📥 匯入 JSON → 🚪 閂下游直接入口 → 👤 為下游開戶。新節點接入：選單「🔑 顯示 BACKEND／APIKEY（交 ADMIN）」→ 收件匣 → ADMIN 登記 Vercel env。</p>
+        <p style="font-size:11px;color:var(--text-light)">本節點係進度系統（下游），唔設支部表。上下游接駁經 Google Sheet 選單「🔗 旅系統」操作（sig 係 GAS→GAS 直連，唔經本 proxy）：➕ 登記下游（URL + SHEET KEY）→ 📡 測試下游連線 → 📤 匯出 JSON（含 hash，Drive 私人檔）→ 📥 匯入 JSON → 🚪 閂下游直接入口 → 👤 為下游開戶。新節點接入：選單「🔑 顯示 BACKEND／APIKEY（交 ADMIN）」→ 收件匣 → ADMIN 登記 Vercel env。</p>
+        <p style="font-size:11px;color:var(--text-light);margin-top:6px">⚠️ 直接入口開關（ALLOW_LOCAL_LOGIN）只由上游（旅／支部系統）選單／sig 遠端操作，或在本節點 GAS Script Properties 手動設定；本 APP 屬下游系統，介面內不設此掣。誤閂而鎖死時：由上游重開，或中央管理帳號（超管）直接登入本 APP 救援（超管唔經旅團登記 Sheet，閂口後仍可進入）。</p>
       </div>
       <div class="info-section" style="border-left-color:var(--blue);background:var(--blue-light)">
         <h3 style="color:var(--blue)">🔄 搬舊數（JSON 匯出／匯入，保留密碼 hash）</h3>
@@ -5195,38 +5189,10 @@ async function deleteRosterMember(ymis){
   }catch(e){ showToast('刪除失敗：'+e.message,'error'); }
 }
 
-// ===== 旅系統：ALLOW_LOCAL_LOGIN 直接入口、搬舊數（支部表已取消，接駁經 Sheet 選單）=====
-async function refreshAllowLocalLogin(){
-  const chk=document.getElementById('allowLocalLoginChk');
-  const st=document.getElementById('allowLocalLoginStatus');
-  if(st) st.textContent='載入中...';
-  try{
-    const d=await apiRequest('getAllowLocalLogin',{token:currentToken});
-    if(d.success){
-      const allow=!!d.allow;
-      if(chk) chk.checked=allow;
-      if(st) st.textContent=allow?'當前：已開啟 - 允許本地直寫':'當前：已關閉 - 僅 sig 可寫（旅控團／團控進度）';
-      if(st) st.style.color=allow?'var(--green)':'var(--red)';
-    }else throw new Error(d.error||'讀取失敗');
-  }catch(e){
-    if(st) st.textContent='讀取失敗：'+e.message;
-    if(st) st.style.color='var(--red)';
-  }
-}
-async function toggleAllowLocalLogin(checked){
-  const st=document.getElementById('allowLocalLoginStatus');
-  if(st) st.textContent='設定中...';
-  try{
-    const d=await apiRequest('setAllowLocalLogin',{token:currentToken,allow:checked});
-    if(d.success){
-      showToast('✅ '+(d.message||'已更新'),'success');
-      refreshAllowLocalLogin();
-    }else throw new Error(d.error||'設定失敗');
-  }catch(e){
-    showToast('設定失敗：'+e.message,'error');
-    refreshAllowLocalLogin();
-  }
-}
+// ===== 旅系統：搬舊數（支部表已取消，接駁經 Sheet 選單）=====
+// ALLOW_LOCAL_LOGIN 直接入口掣已移離本下游 UI（2026-09-26）：掣由上游選單／sig 遠端操作，
+// 或在本節點 GAS Script Properties 手動設定；後端 getAllowLocalLogin／setAllowLocalLogin
+// action 保留（上游 sig 及後備通道用），本前端不再呼叫。
 async function exportUsersJson(){
   const st=document.getElementById('migrationStatus');
   if(st) st.textContent='匯出中...';

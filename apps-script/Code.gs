@@ -76,6 +76,8 @@ function safeSheetText(v,maxLen){
 //   - 本節點 Script Properties 的 ALLOW_LOCAL_LOGIN 係「直接入口」掣：
 //     未設定＝開啟（現有旅團零影響）；任何唔係 1/true/yes/on/open 的值
 //     （false/0/no/off 或串錯字）＝閂口（fail closed）；閂口後只接受有效 sig。
+//     例外：中央管理帳號（super_admin）唔經旅團登記 Sheet，其 super_ticket 登入及
+//     rbs-super-v1- token 操作閂口後照放行（救援鎖死旅團嘅最後通道）。
 //   - 登記資料、sig、nonce 全部只存 Script Properties / CacheService，一律不寫入任何工作表。
 //   - sig 係 GAS→GAS 直連（HMAC-SHA256），唔經 Vercel proxy；下游永不回打上游，不設回調。
 const LINK_FLAG = 'ALLOW_LOCAL_LOGIN';
@@ -122,6 +124,13 @@ function localLoginAllowed() {
   const v = String(linkProps().getProperty(LINK_FLAG) || '').trim().toLowerCase();
   if (!v) return true;
   return ['1', 'true', 'yes', 'on', 'open'].indexOf(v) >= 0;
+}
+// 中央管理帳號（super_admin）本地 token 識別：SUPER_TOKEN_PREFIX 前綴＋有效（validateToken 還原保留帳號）。
+// 超管帳號唔係經旅團登記 Sheet（Users 表）開嘅戶：密碼喺 Vercel SUPER_KEY、票據經固定端點 /api/super 驗票，
+// 唔屬「本地直接入口」管轄；閂口後照樣放行（登入後嘅 token 操作），係救援鎖死旅團（例如誤閂直接入口）嘅最後通道。
+function isSuperAdminToken(token) {
+  if (!token || String(token).indexOf(SUPER_TOKEN_PREFIX) !== 0) return false;
+  return validateToken(token) === SUPER_ADMIN_ID;
 }
 function setLocalLoginAllowed(allow, actor) {
   linkProps().setProperty(LINK_FLAG, allow ? 'true' : 'false');
@@ -976,7 +985,8 @@ function doGet(e){
   const params=(e&&e.parameter)||{};
   const action=String(params.action||'');
   // 旅系統：閂口後直接入口一律拒絕（只收上游 sig；簽名請求一律走 doPost）
-  if(!localLoginAllowed()) return jsonResponse(linkClosedResponse(action));
+  // 例外：中央管理帳號 token（超管唔經旅團登記 Sheet，閂口後仍可入嚟救援）
+  if(!localLoginAllowed() && !isSuperAdminToken(params.token)) return jsonResponse(linkClosedResponse(action));
   if(action==='load'){
     // 向後兼容：allow load without apikey (troops.json may not have apikey)，但帶咗 apikey 就必須驗證
     const reqKey=params.apikey;
@@ -994,11 +1004,13 @@ function doPost(e){
     // 旅系統：上游簽名（sig）請求優先路由（先驗 sig）；未簽名時先留中央登入，再檢查直接入口掣
     if(verifyLinkSig(e,body,rawBody)) return handleSignedRequest(action,body);
     // 中央管理帳號登入（Vercel 側 SUPER_KEY 驗證 → 短效票據 → 固定端點驗票）：與旅系統閘門無關，
-    // 直接入口關閉後仍要可用（A SUPER_KEY 與旅系統脫鉤，是次不改動）；
+    // 直接入口關閉後仍要可用（超管唔係經旅團登記 Sheet 開嘅戶，係救援鎖死旅團嘅最後通道）；
     // 只放行保留帳號＋super_ticket（防：一般帳號帶假票據繞過閂口）
     if(action==='login' && body.super_ticket && isSuperAdminId(body.login_id)) return handleLogin(body.login_id,body.password,body.super_ticket);
     // 旅系統：閂口後本地直接入口全拒（login/apply/GET load/apikey save/token 操作），只收 sig
-    if(!localLoginAllowed()) return jsonResponse(linkClosedResponse(action));
+    // 例外：中央管理帳號 token（rbs-super-v1-）照放行——超管登入後要救到嘢（getAllUsers／重設密碼／
+    // setAllowLocalLogin 重開掣等），否則閂口鎖死連超管都救唔返
+    if(!localLoginAllowed() && !isSuperAdminToken(body.token)) return jsonResponse(linkClosedResponse(action));
     if(action==='login') return handleLogin(body.login_id,body.password);
     if(action==='logout'){ destroyToken(body.token); return jsonResponse({success:true}); }
     if(action==='apply') return handleApply(body.ymis,body.name,body.email,body.requested_role||'member',body.branch);

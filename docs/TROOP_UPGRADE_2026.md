@@ -1,6 +1,6 @@
 # 旅系統對齊 — 進度系統版（roverbadge）
 
-> 版本號只保留在此 MD。`apps-script/Code.gs` 與 `assets/batch-onboard/Code.gs` 內所有 `// vX.X` 版本註解已全數清除（`tests/troop_link.test.mjs` 第 10 項守護）。
+> 版本號只保留在此 MD。`apps-script/Code.gs` 與 `assets/batch-onboard/Code.gs` 內所有 `// vX.X` 版本註解已全數清除（`tests/troop_link.test.mjs` 第 11 項守護）。
 
 **版號：v9.0 — 旅系統對齊版（2026-09-22；2026-09-23 補完接入步驟表與支部 SHEET 成對說明）；對齊基準：vsbadge `operations/TROOP_LINK_UPGRADE.md`**
 
@@ -135,11 +135,13 @@ sig       = hex( HMAC-SHA256( canonical, sigKey ) )
 | 用戶 token 操作 | 照舊 | **拒** |
 | 上游 `sig` 請求 | **接受** | **接受** |
 | `login` + `super_ticket`（A 中央管理帳號，回打 `/api/super` 驗票） | **接受** | **接受**（與旅系統閘門脫鉤） |
+| 中央管理帳號 token（`rbs-super-v1-`）操作（`getAllUsers`／重設密碼／`setAllowLocalLogin` 重開掣等） | **接受** | **接受**（救援通道：超管唔係經旅團登記 Sheet 開嘅戶，閂口鎖死時靠佢救返） |
 
 - 掣值只存**本節點** Script Properties `ALLOW_LOCAL_LOGIN`；
-  寫入途徑：Sheet 選單「🚪 本機直接入口」、前端卡（`setAllowLocalLogin`，團長以上）、上游 sig（`setLocalLogin`）。
-- 前端「🔐 上下游控管」卡片同步顯示狀態（`getAllowLocalLogin` 同時回 `allow`／`allow_local_login`，向後兼容）。
+  寫入途徑：Sheet 選單「🚪 本機直接入口」、上游 sig（`setLocalLogin`）。
+  （2026-09-26 起**前端卡已移除**：本 APP 屬下游系統，直接入口掣不應出現喺下游介面，只由上游選單／sig 遠端操作；後端 `getAllowLocalLogin`／`setAllowLocalLogin` action 保留畀上游 sig 及後備通道用。）
 - 上游仍可以 sig 讀寫下游（包括用 `setLocalLogin` 再開返）；閂口係可逆。
+  另一條救援路：中央管理帳號（超管）super_ticket 登入閂口後照放行，登入後嘅 `rbs-super-v1-` token 操作（讀名單／重設密碼／重開掣）同樣放行——否則誤閂會連超管都鎖死，無人救到。
 
 ---
 
@@ -219,9 +221,13 @@ vsbadge 係「零改動前端（選單版）」；roverbadge 已有管理介面�
 
 - 「🏕️ 支部管理」卡片（呼叫已移除嘅 branch action）→ 改「🔗 旅系統接駁」資訊卡
   （講明接駁經 Sheet 選單「🔗 旅系統」、sig 唔經 proxy、新節點接入流程）
-- 「🔐 上下游控管：ALLOW_LOCAL_LOGIN」卡片保留並同步新語義（未設定＝開啟、fail closed、`upstream_only`）
+- 「🔐 上下游控管：ALLOW_LOCAL_LOGIN」卡片 **已移除**（2026-09-26）：本 APP 屬下游系統，
+  直接入口掣唔應喺下游介面出現——掣一律由上游（旅／支部系統）選單經 sig 遠端操作，
+  或喺本節點 GAS Script Properties 手動設定；資訊卡保留一句講明掣嘅所在＋誤閂救援路徑
+  （上游重開／超管直入）。後端 action（`getAllowLocalLogin`／`setAllowLocalLogin`）保留畀上游 sig。
 - 「🔄 搬舊數」卡片保留：proxy `exportUsers` 後備匯出（包成新格式）＋ 匯入（兼容 `{users:[...]}`/陣列）
-- 移除死代碼：`refreshBranches/openBranchModal/saveBranchFront/deleteBranchFront`
+- 移除死代碼：`refreshBranches/openBranchModal/saveBranchFront/deleteBranchFront`、
+  `refreshAllowLocalLogin/toggleAllowLocalLogin`（隨卡片一齊移除）
 
 ---
 
@@ -232,24 +238,25 @@ vsbadge 係「零改動前端（選單版）」；roverbadge 已有管理介面�
 | `apps-script/Code.gs` | 旅系統接駁段＋選單＋新 doGet/doPost 路由；移除支部工作表／舊 sig；`addUser_` 純函數＋`handleAddUser` 包裝；upsert/匯出改新語義 |
 | `assets/batch-onboard/Code.gs` | 移除版本註解（文字保留） |
 | `index.html` | 卡片同步（見第 9 項）；移除 branch 死代碼 |
-| `tests/troop_link.test.mjs` | **新增**：10 項守護（in-memory GAS 雙節點＋假網路＋假 Drive，載入真實 Code.gs） |
+| `tests/troop_link.test.mjs` | **新增**：11 項守護（in-memory GAS 雙節點＋假網路＋假 Drive，載入真實 Code.gs） |
 | `scripts/build.mjs` | **新增**：部署產物包裝器（靜態檔＝.vercelignore 之後＋5 個 function bundle，零依賴）。產物寫入本地 `.vercel-build/`（gitignored）做驗證；**Vercel 部署維持傳統模式**（vercel.json + .vercelignore），唔用 Build Output API（原因見 `docs/VERCEL_API_404_POSTMORTEM.md` 第 8 節） |
 | `tests/build.test.mjs` | **新增**：產物底線（機密／開發檔唔上線、5 function 可運行、公開 Code.gs 無版號） |
 | `package.json` | 新增 `test:link`／`build`／`test:build`（`build` 行 2026-09-23 補回——vercel-config【5】【6】守護要求）；`test` 鏈納入兩個新測試 |
 | `.vercelignore` | 新增 `docs/TROOP_UPGRADE_2026.md`（本 MD 係操作機密文檔，唔上線） |
 | `api/` | **零改動** |
 
-**`tests/troop_link.test.mjs` 10 項**（守上面 1–7）：
+**`tests/troop_link.test.mjs` 11 項**（守上面 1–7）：
 1. 直接入口掣：未設定時現有旅團行為完全不變
 2. 閂口後：直接登入／申請／GET load／apikey save／token save 全部被拒，只收 sig
-3. 上游登記下游 SHEET KEY 後，sig 請求可讀可寫下游
-4. sig 防護：錯誤 key、竄改 body、過期時間戳、重放 nonce、白名單外 action 全部被拒
-5. ABCD 四項登記資料只存 Script Properties，絕不寫入任何工作表
-6. 開戶：上游揀團開戶，經 sig 落下游寫（兩邊同一 password_hash）
-7. 搬舊數：匯出含 hash（Drive 私人檔）→ 匯入逐個 upsertUser 直插 hash（保留舊密碼）
-8. 上游以 sig 批量匯入下游（importUsers）與讀取用戶清單（回應唔會洩漏 hash）
-9. 上游傳來的標籤不可變成工作表算式（auth_by／操作紀錄）
-10. GS 程式內不留版號註解（版號只留 MD）
+3. 閂口後超管救援通道：super_ticket 登入＋`rbs-super-v1-` token 操作照放行、可重開掣（偽造超管 token 照拒）
+4. 上游登記下游 SHEET KEY 後，sig 請求可讀可寫下游
+5. sig 防護：錯誤 key、竄改 body、過期時間戳、重放 nonce、白名單外 action 全部被拒
+6. ABCD 四項登記資料只存 Script Properties，絕不寫入任何工作表
+7. 開戶：上游揀團開戶，經 sig 落下游寫（兩邊同一 password_hash）
+8. 搬舊數：匯出含 hash（Drive 私人檔）→ 匯入逐個 upsertUser 直插 hash（保留舊密碼）
+9. 上游以 sig 批量匯入下游（importUsers）與讀取用戶清單（回應唔會洩漏 hash）
+10. 上游傳來的標籤不可變成工作表算式（auth_by／操作紀錄）
+11. GS 程式內不留版號註解（版號只留 MD）
 
 ---
 
