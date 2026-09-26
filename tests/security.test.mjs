@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import { createHash } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import { getRegistry, getTrustedTroop, listPublicTroops, isTrustedExecUrl } from '../api/_registry.js';
 import { accountId, checkSuperPassword, sealSuper, openSuper } from '../api/_super.js';
 import proxy from '../api/proxy.js';
@@ -140,6 +140,11 @@ test('Proxy blocks incorrect password before fetch; never forwards password; wra
 function gasContext() {
   const used = new Map(); let verified = false; let fetches = 0;
   const context = vm.createContext({
+    Utilities: {
+      DigestAlgorithm: { SHA_256: 'SHA_256' }, Charset: { UTF_8: 'UTF_8' },
+      computeDigest: (algo, value) => Array.from(createHash('sha256').update(String(value), 'utf8').digest()),
+      computeHmacSha256Signature: (value, key) => Array.from(createHmac('sha256', String(key)).update(String(value), 'utf8').digest())
+    },
     LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock() {} }) },
     CacheService: { getScriptCache: () => ({ get: k => used.get(k), put: (k, v) => used.set(k, v) }) },
     ScriptApp: { getService: () => ({ getUrl: () => backend }) },
@@ -153,7 +158,6 @@ function gasContext() {
   context.jsonResponse = obj => obj;
   context.getApiKey = () => 'secret-api-key';
   context.hashPassword = value => createHash('sha256').update(String(value)).digest('hex');
-  context.setSuperAdminLastLogin = () => {};
   context.createToken = () => 'rbs-super-v1-test-token';
   return { context, accept: () => { verified = true; }, fetches: () => fetches };
 }
@@ -176,5 +180,8 @@ test('Actual Code.gs invalidates legacy sessions without deleting or migrating S
   ] }) }) });
   assert.equal(g.validateToken('old-token'), null);
   assert.equal(g.validateToken('member-token'), '1234567890');
-  assert.equal(g.validateToken('rbs-super-v1-new'), accountId);
+  // 無狀態 super session：Sheet 行唔會令一條「值唔啱」嘅 rbs-super-v1- token 生效（偽造／舊殘留一律無效）
+  assert.equal(g.validateToken('rbs-super-v1-new'), null);
+  // 真正嘅無狀態 token 唔使任何 Sheet 行都驗到（登入零 Sheet 紀錄）
+  assert.equal(g.validateToken(g.superAdminSessionToken()), accountId);
 });

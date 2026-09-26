@@ -1,11 +1,11 @@
 樂行童軍進度追蹤系統	Rover Scout Progress Tracker
 樂行童軍進度追蹤	Rover Scout Progress Tracker
-樂行童軍進度追蹤系統 v5.0 - 手機友善・批量開戶・全前端控制	Rover Scout Progress Tracker v5.0 - Mobile friendly · Bulk onboarding · Full front-end control
-樂行童軍進度追蹤 v4.2	Rover Scout Progress Tracker v4.2
-Rover Scout Progress Tracker v4.2 • 貝登堡獎章 Logo + 2026年第5版綱要	Rover Scout Progress Tracker v4.2 • Baden-Powell Award logo + 2026 5th Edition Scheme
+樂行童軍進度追蹤系統 v5.1 - 手機友善・批量開戶・全前端控制	Rover Scout Progress Tracker v5.1 - Mobile friendly · Bulk onboarding · Full front-end control
+樂行童軍進度追蹤 v5.1	Rover Scout Progress Tracker v5.1
+Rover Scout Progress Tracker v5.1 • 貝登堡獎章 Logo + 2026年第5版綱要	Rover Scout Progress Tracker v5.1 • Baden-Powell Award logo + 2026 5th Edition Scheme
 基於 2026年第5版《樂行童軍訓練綱要》 | 支援離線暫存 • 批量寫入 • 批量開戶 • 全前端控制 • 保護兒童 Safe from Harm	Based on the 5th Edition of the Rover Scout Training Scheme (2026) | Offline staging • Batch writing • Bulk onboarding • Full front-end control • Safe from Harm
 基於 2026年第5版《樂行童軍訓練綱要》• 支援離線暫存•批量寫入•成員申請確認•表格自動填寫	Based on the 5th Edition of the Rover Scout Training Scheme (2026) • Offline staging • batch writing • member request confirmation • form auto-fill
-COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 v5.0	COPYRIGHT 2026 Scout System • Rover Scout Progress Tracker v5.0
+COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 v5.1	COPYRIGHT 2026 Scout System • Rover Scout Progress Tracker v5.1
 香港童軍總會	Scout Association of Hong Kong
 🏠 進入系統	🏠 Enter System
 📋 新旅團部署	📋 New Group Deployment
@@ -374,7 +374,7 @@ USER (系統使用者)	USER (system user)
 ，可勾選及管理。	, can tick and manage.
 USER 總數	Total USERs
 = 成員 + 領袖 全部。	= all members + leaders.
-🧪 測試工具 (僅中央管理帳號可見)	🧪 Test Tools (central admin only)
+🧪 測試工具	🧪 Test Tools
 一鍵載入 10個 MOCK 成員到前端快取，方便測試全團批量剔、會員章一眼睇等。MOCK數據只存瀏覽器快取，不會寫入正式 Google Sheet，除非你按確認寫入。	Load 10 MOCK members into the front-end cache in one click, useful for testing Group batch ticking and the Membership Badge at-a-glance view. MOCK data is stored only in the browser cache and will NOT be written to the real Google Sheet unless you confirm the write.
 🧪 載入10個MOCK成員到全團	🧪 Load 10 MOCK members into the Group
 🗑️ 清除MOCK快取	🗑️ Clear MOCK cache
@@ -909,3 +909,13 @@ YMIS 或登記電郵	YMIS or registered email
 未能確認入口來源	Could not confirm the entry source
 不支援的請求方式	Unsupported request method
 未能連接驗證服務，請重試或聯絡管理員	Could not reach the verification service. Please retry or contact the admin
+
+最新：v5.1	Latest: v5.1
+YMIS PDF 批量開戶、🐛💬 回報 · 意見按鈕（Scout Admin 統一回報）、非官方聲明、手機頂部按鈕排列整齊化、全 APP 版號統一 v5.1	YMIS PDF bulk onboarding, 🐛💬 Report · Feedback buttons (Scout Admin unified reporting), unofficial notice, tidier mobile top buttons, app-wide version aligned to v5.1
+🐛💬 回報 · 意見	🐛💬 Report · Feedback
+問題回報 / 意見回饋（經 Scout Admin 統一回收，可匿名）	Report an issue / send feedback (via Scout Admin, anonymous welcome)
+⚠️ 非官方聲明：本系統為獨立開發的非官方工具，並非香港童軍總會官方產品，與總會並無隸屬或贊助關係。	⚠️ Unofficial notice: this system is an independently developed unofficial tool. It is NOT an official product of the Scout Association of Hong Kong and has no affiliation with or sponsorship from the Association.
+
+私隱：普通成員預設只看自己，能否看其他成員由團長開放。	Privacy: members only see themselves by default; the Group Scout Leader decides whether they can view others.
+本節點係進度系統（下游），唔設支部表。上下游接駁經 Google Sheet 選單「🔗 旅系統」操作（sig 係 GAS→GAS 直連，唔經本 proxy）：➕ 登記下游（URL + SHEET KEY）→ 📡 測試下游連線 → 📤 匯出 JSON（含 hash，Drive 私人檔）→ 📥 匯入 JSON → 🚪 閂下游直接入口 → 👤 為下游開戶。新節點接入：選單「🔑 顯示 BACKEND／APIKEY（交 ADMIN）」→ 收件匣 → ADMIN 登記 Vercel env。	This node is a Progress System (downstream); it has no Branch sheet. Upstream/downstream linking is done via the Google Sheet menu "🔗 Troop System" (sig is a direct GAS→GAS connection, not via this proxy): ➕ Register downstream (URL + SHEET KEY) → 📡 Test downstream connection → 📤 Export JSON (with hash, private Drive file) → 📥 Import JSON → 🚪 Close downstream direct entry → 👤 Create accounts for downstream. New node onboarding: menu "🔑 Show BACKEND/APIKEY (for the ADMIN)" → inbox → ADMIN registers in Vercel env.
+⚠️ 直接入口開關（ALLOW_LOCAL_LOGIN）只由上游（旅／支部系統）選單／sig 遠端操作，或在本節點 GAS Script Properties 手動設定；本 APP 屬下游系統，介面內不設此掣。誤閂而鎖死時：由上游選單「🚪 下游直接入口」重開。	⚠️ The direct-entry switch (ALLOW_LOCAL_LOGIN) is operated only by the upstream (Troop/Branch system) menu via sig, or set manually in this node's GAS Script Properties. This app is a downstream system and does not offer this switch in its UI. If it is closed by mistake and locks everyone out: re-open it from the upstream menu "🚪 Downstream direct entry".

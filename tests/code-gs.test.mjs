@@ -159,15 +159,17 @@ console.log('\n【3】super_ticket 回打驗票（vs 同構）');
   const alias = suLogin(SU_USER + '@roverbadge.local');
   check('電郵別名登入等值', alias.success === true, JSON.stringify(alias));
 
-  // Tokens 表以中性代號儲存
+  // Tokens 表零登入紀錄：保留帳號 session 係無狀態 token（唔寫 Sheet）
   const tokens = env.ss.getSheetByName('Tokens');
-  check('Tokens 表以中性代號儲存 session（唔出現帳號）',
-    tokens.rows.slice(1).some(r => String(r[1]) === '__sys__') && !tokens.rows.slice(1).some(r => String(r[1]).toLowerCase() === SU_USER),
+  check('Tokens 表完全冇保留帳號 session 行（__sys__／帳號／rbs-super-v1- 都冇）',
+    !tokens.rows.slice(1).some(r => String(r[1]) === '__sys__' || String(r[1]).toLowerCase() === SU_USER || String(r[0]).startsWith('rbs-super-v1-')),
     JSON.stringify(tokens.rows.slice(1)));
-  check('超管 session token 帶 rbs-super-v1- 標記（proxy 版本核對＋舊 session 失效）',
-    tokens.rows.slice(1).some(r => String(r[0]).startsWith('rbs-super-v1-')), JSON.stringify(tokens.rows.slice(1)));
+  check('超管 session token 帶 rbs-super-v1- 標記（proxy 版本核對）',
+    String(ok.token).startsWith('rbs-super-v1-'), String(ok.token).slice(0, 20));
   const viaToken = env.call({ action: 'getAllUsers', token: ok.token });
-  check('session token 可正常通過驗證（還原正常）', viaToken.success === true && Array.isArray(viaToken.users));
+  check('session token 可正常通過驗證（無狀態，還原保留帳號）', viaToken.success === true && Array.isArray(viaToken.users));
+  check('偽造 rbs-super-v1- 前綴 token（值唔啱）→ 無效',
+    env.call({ action: 'getAllUsers', token: 'rbs-super-v1-forged' }).success === false);
 
   // 舊版殘留 session：Tokens 列是保留帳號但 token 冇標記 → 即時失效
   const legacySheet = env.ss.getSheetByName('Tokens');
@@ -184,10 +186,18 @@ console.log('\n【3】super_ticket 回打驗票（vs 同構）');
   // 防閂口繞過：一般帳號帶假票據 → 一樣被閂
   const bypass = env.call({ action: 'login', login_id: '1111111111', password: 'changeme', super_ticket: 'rbs1.forged' });
   check('一般帳號＋假票據繞唔過閂口（pre-gate 只放行保留帳號）', bypass.success === false && /直接入口已閂|上游簽名/.test(bypass.error || ''), JSON.stringify(bypass));
+
+  // 保留帳號操作：審計以中性「system」現身（唔落帳號、唔落顯示名稱）
+  const gateWrite = env.call({ action: 'setAllowLocalLogin', token: gateOff.token, allow: true });
+  check('保留帳號 token 可操作 setAllowLocalLogin', gateWrite.success === true, JSON.stringify(gateWrite));
   env.scriptProps.delete('ALLOW_LOCAL_LOGIN');
 
   const hits = scanSheets();
   check('掃描全部工作表所有儲存格：搵唔到帳號識別字', hits.length === 0, hits.join(', '));
+  const auditSheet = env.ss.getSheetByName('操作紀錄');
+  const auditText = auditSheet ? JSON.stringify(auditSheet.rows || []) : '';
+  check('操作紀錄以「system」現身（唔係顯示名稱）', auditText.includes('system'), auditText.slice(0, 200));
+  check('操作紀錄冇保留帳號顯示名稱', !auditText.includes('系統管理員'), auditText.slice(0, 200));
 }
 
 // ================== 3b. 票據一次性（防重放）+ authorizeConnection 連線自檢 ==================
@@ -212,10 +222,11 @@ console.log('\n【3b】票據一次性防重放 + authorizeConnection（UrlFetch
   check('authorizeConnection() 不讀寫任何工作表（工作表清單不變）', before === JSON.stringify([...env.ss.sheets.keys()]));
   check('authorizeConnection() 只發一次 GET 驗線', env.urlFetchLog.length === 1 && env.urlFetchLog[0].method === 'get', JSON.stringify(env.urlFetchLog));
 
-  // setSuperAdminLastLogin：只寫 Script Properties（唔落 Sheet）
-  env.api.setSuperAdminLastLogin();
-  check('setSuperAdminLastLogin 寫入 Script Properties', !!env.scriptProps.get('SUPER_ADMIN_LAST_LOGIN'));
-  check('setSuperAdminLastLogin 唔落 Sheet', before === JSON.stringify([...env.ss.sheets.keys()]));
+  // 登入不留蹤跡：中央帳號登入唔會寫入旅團自己嘅 GAS Script Properties（佢哋開 Apps Script 設定都見唔到）
+  check('登入後冇 SUPER_ADMIN_LAST_LOGIN Script Property（唔留登入痕跡）', !env.scriptProps.get('SUPER_ADMIN_LAST_LOGIN'));
+  check('Script Properties 完全冇保留帳號識別字',
+    ![...env.scriptProps.keys()].some(k => String(k).toLowerCase().includes(SU_USER)) &&
+    ![...env.scriptProps.values()].some(v => String(v).toLowerCase().includes(SU_USER)));
 }
 
 // ================== 4. 名單／API 回應都不外洩 ==================
@@ -334,8 +345,8 @@ console.log('\n【8】保留帳號做行政操作（寫入操作紀錄）後，S
   check('可執行行政操作（重設成員密碼）', rst.success === true && typeof rst.temp_password === 'string', JSON.stringify(rst));
   const audit = env.ss.getSheetByName('操作紀錄');
   check('操作紀錄有寫入這筆操作', !!audit && audit.rows.length >= 2, JSON.stringify(audit && audit.rows));
-  check('操作紀錄嘅「操作者」欄寫顯示名稱，唔係帳號',
-    audit.rows.slice(1).some(r => String(r[1]) === '系統管理員') && !audit.rows.slice(1).some(r => String(r[1]).toLowerCase() === SU_USER),
+  check('操作紀錄嘅「操作者」欄寫中性 system（唔係帳號、唔係顯示名稱）',
+    audit.rows.slice(1).some(r => String(r[1]) === 'system') && !audit.rows.slice(1).some(r => String(r[1]).toLowerCase() === SU_USER) && !audit.rows.slice(1).some(r => String(r[1]) === '系統管理員'),
     JSON.stringify(audit.rows.slice(1)));
   const hits = scanSheets();
   check('再掃一次全部工作表所有儲存格：仍然搵唔到帳號識別字', hits.length === 0, hits.join(', '));

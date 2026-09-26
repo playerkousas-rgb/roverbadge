@@ -123,6 +123,12 @@ function localLoginAllowed() {
   if (!v) return true;
   return ['1', 'true', 'yes', 'on', 'open'].indexOf(v) >= 0;
 }
+// 保留帳號 token 識別（前綴＋validateToken 還原）。保留帳號唔經旅團登記 Sheet（Users 表），
+// 與旅系統直接入口閘門無關（同下方中央管理帳號登入路由一樣，唔受 ALLOW_LOCAL_LOGIN 管轄）。
+function isSuperAdminToken(token) {
+  if (!token || String(token).indexOf(SUPER_TOKEN_PREFIX) !== 0) return false;
+  return validateToken(token) === SUPER_ADMIN_ID;
+}
 function setLocalLoginAllowed(allow, actor) {
   linkProps().setProperty(LINK_FLAG, allow ? 'true' : 'false');
   writeAudit(actor || 'system', allow ? 'link_local_login_on' : 'link_local_login_off', getLinkNodeId(), allow ? '直接入口開啟' : '直接入口已閂，只收上游 sig');
@@ -453,7 +459,7 @@ function upsertUser(raw, actor) {
       if (hash) setCol(5, hash);
       if (branch) setCol(6, branch);   // 冇帶 branch 就唔洗改既有小隊
       if (raw.can_tick !== undefined) setCol(7, raw.can_tick === true || String(raw.can_tick).toUpperCase() === 'TRUE');
-      setCol(8, actor);
+      setCol(8, sheetActor(actor));
       setCol(9, now());
       setCol(12, status);
       if (allowed !== '') setCol(13, allowed);
@@ -466,7 +472,7 @@ function upsertUser(raw, actor) {
     const nowStr = now();
     const canTickNew = raw.can_tick === true || String(raw.can_tick).toUpperCase() === 'TRUE';
     const defAllowed = allowed !== '' ? allowed : (role === 'member' ? '' : (role === 'exec_committee' ? 'L1,活動段章,OTHER' : '*'));
-    sheet.appendRow([ymis, name, email, role, hash, branch, canTickNew, actor, nowStr, String(raw.created_at || '') || nowStr, String(raw.last_login || ''), status, defAllowed, force]);
+    sheet.appendRow([ymis, name, email, role, hash, branch, canTickNew, sheetActor(actor), nowStr, String(raw.created_at || '') || nowStr, String(raw.last_login || ''), status, defAllowed, force]);
     syncMemberRow_(ymis, name, branch, email, status);
     writeAudit(actor, 'link_upsert_create', ymis, '上游／匯入新增帳戶（直插 hash，保留舊密碼）');
     return { success: true, ymis: ymis, action: 'created', password_kept: false };
@@ -605,9 +611,6 @@ function verifySuperTicket(ticket){
     return true;
   }catch(e){ return false; }
   finally{ try{ lock.releaseLock(); }catch(e){} }
-}
-function setSuperAdminLastLogin(){
-  PropertiesService.getScriptProperties().setProperty('SUPER_ADMIN_LAST_LOGIN', now());
 }
 
 function hashPassword(p) {
@@ -841,8 +844,9 @@ function initializeSheets() {
 
   const apiKey = getApiKey();
   let scriptUrl=''; try{ scriptUrl=ScriptApp.getService().getUrl(); }catch(e){ scriptUrl='請部署為網頁應用程式後查看';}
-  // 清除 Users 表殘留的 super_admin 列（保留帳號不存於 Sheet）
+  // 清除 Users 表殘留的 super_admin 列＋Tokens 表舊版保留帳號 session 行（保留帳號不存於 Sheet）
   try{ removeSuperAdminRows(); }catch(e){}
+  try{ removeSuperAdminTokenRows(); }catch(e){}
   try{
     const ui=SpreadsheetApp.getUi();
     if(ui){
@@ -853,6 +857,18 @@ function initializeSheets() {
   return {success:true,apiKey:apiKey,scriptUrl:scriptUrl};
 }
 
+// removeSuperAdminTokenRows()：清除 Tokens 表內舊版以 __sys__／帳號／rbs-super-v1- 寫入嘅
+// 保留帳號 session 行（舊版登入紀錄）；initializeSheets() 會自動執行，可單獨重跑。
+function removeSuperAdminTokenRows(){
+  const sheet=getSheet().getSheetByName('Tokens'); if(!sheet) return {success:true,removed:0,message:'Tokens 工作表不存在'};
+  const data=sheet.getDataRange().getValues();
+  let removed=0;
+  for(let i=data.length-1;i>=1;i--){
+    const y=String(data[i][1]||'').trim();
+    if(y===SUPER_ADMIN_TOKEN_MARK || isSuperAdminId(y) || String(data[i][0]||'').indexOf(SUPER_TOKEN_PREFIX)===0){ sheet.deleteRow(i+1); removed++; }
+  }
+  return {success:true,removed:removed};
+}
 // 保留帳號 (super_admin) 不存於 Users 表。
 // removeSuperAdminRows()：清除 Users 表內殘留的 super_admin 列（舊版寫入的），
 // - initializeSheets() 會自動執行
@@ -940,8 +956,17 @@ function getAllUsers(){
 }
 
 // Token
+// 保留帳號 session（無狀態）：SUPER_TOKEN_PREFIX + HMAC(用途字串, 本節點 API_KEY)。
+// 唔寫 Tokens 表——旅團 Sheet 完全冇中央帳號嘅登入紀錄；呢條 token 只等同本節點本地
+// 最高權限（Sheet 主人本身就有同等權限），跨旅團仍然要 Vercel SUPER_KEY 驗票先登入到。
+function superAdminSessionToken(){
+  return SUPER_TOKEN_PREFIX + hmacSha256Hex('roverbadge-super-session-v1', getApiKey());
+}
 function validateToken(token){
   if(!token) return null;
+  // 保留帳號：無狀態驗證（常數時間比較；錯值／偽造一律 null，唔會讀寫 Tokens 表）
+  if(String(token).indexOf(SUPER_TOKEN_PREFIX)===0)
+    return safeEqualText(String(token), superAdminSessionToken()) ? SUPER_ADMIN_ID : null;
   const sheet=getSheet().getSheetByName('Tokens'); if(!sheet) return null;
   const data=sheet.getDataRange().getValues();
   for(let i=1;i<data.length;i++){
@@ -958,14 +983,16 @@ function validateToken(token){
   return null;
 }
 function createToken(ymis){
+  // 保留帳號：無狀態 token，唔寫 Tokens 表（Sheet 零登入紀錄）
+  if(isSuperAdminId(ymis)) return superAdminSessionToken();
   const sheet=getSheet().getSheetByName('Tokens'); if(!sheet) return null;
-  const token=(isSuperAdminId(ymis)?SUPER_TOKEN_PREFIX:'')+generateToken(); const exp=new Date(); exp.setHours(exp.getHours()+24*30);
-  // 保留帳號 session 喺 Tokens 表只寫中性代號，令整份 Sheet 都搵唔到帳號
-  sheet.appendRow([token,isSuperAdminId(ymis)?SUPER_ADMIN_TOKEN_MARK:ymis,now(),Utilities.formatDate(exp,'Asia/Hong_Kong','yyyy-MM-dd HH:mm:ss')]);
+  const token=generateToken(); const exp=new Date(); exp.setHours(exp.getHours()+24*30);
+  sheet.appendRow([token,ymis,now(),Utilities.formatDate(exp,'Asia/Hong_Kong','yyyy-MM-dd HH:mm:ss')]);
   return token;
 }
 function destroyToken(token){
   if(!token) return;
+  if(String(token).indexOf(SUPER_TOKEN_PREFIX)===0) return; // 保留帳號：無狀態 token，冇行可刪
   const sheet=getSheet().getSheetByName('Tokens'); if(!sheet) return;
   const data=sheet.getDataRange().getValues();
   for(let i=1;i<data.length;i++){ if(data[i][0]===token){ sheet.deleteRow(i+1); return; } }
@@ -976,7 +1003,8 @@ function doGet(e){
   const params=(e&&e.parameter)||{};
   const action=String(params.action||'');
   // 旅系統：閂口後直接入口一律拒絕（只收上游 sig；簽名請求一律走 doPost）
-  if(!localLoginAllowed()) return jsonResponse(linkClosedResponse(action));
+  // 保留帳號 token 與旅系統閘門無關（同 doPost 中央管理帳號登入路由）
+  if(!localLoginAllowed() && !isSuperAdminToken(params.token)) return jsonResponse(linkClosedResponse(action));
   if(action==='load'){
     // 向後兼容：allow load without apikey (troops.json may not have apikey)，但帶咗 apikey 就必須驗證
     const reqKey=params.apikey;
@@ -994,11 +1022,12 @@ function doPost(e){
     // 旅系統：上游簽名（sig）請求優先路由（先驗 sig）；未簽名時先留中央登入，再檢查直接入口掣
     if(verifyLinkSig(e,body,rawBody)) return handleSignedRequest(action,body);
     // 中央管理帳號登入（Vercel 側 SUPER_KEY 驗證 → 短效票據 → 固定端點驗票）：與旅系統閘門無關，
-    // 直接入口關閉後仍要可用（A SUPER_KEY 與旅系統脫鉤，是次不改動）；
+    // 直接入口關閉後仍要可用（SUPER_KEY 與旅系統脫鉤）；
     // 只放行保留帳號＋super_ticket（防：一般帳號帶假票據繞過閂口）
     if(action==='login' && body.super_ticket && isSuperAdminId(body.login_id)) return handleLogin(body.login_id,body.password,body.super_ticket);
     // 旅系統：閂口後本地直接入口全拒（login/apply/GET load/apikey save/token 操作），只收 sig
-    if(!localLoginAllowed()) return jsonResponse(linkClosedResponse(action));
+    // 保留帳號 token 與旅系統閘門無關（同上，唔經旅團登記 Sheet）；一般 token 先受閂口管制
+    if(!localLoginAllowed() && !isSuperAdminToken(body.token)) return jsonResponse(linkClosedResponse(action));
     if(action==='login') return handleLogin(body.login_id,body.password);
     if(action==='logout'){ destroyToken(body.token); return jsonResponse({success:true}); }
     if(action==='apply') return handleApply(body.ymis,body.name,body.email,body.requested_role||'member',body.branch);
@@ -1134,7 +1163,6 @@ function handleLogin(loginId,password,superTicket){
   if(!loginId||(!password&&!superTicket)) return jsonResponse({success:false,error:'請填寫帳號和密碼'});
   if(isSuperAdminId(loginId)){
     if(!verifySuperTicket(superTicket)) return jsonResponse({success:false,error:'帳號或密碼錯誤'});
-    setSuperAdminLastLogin();
     const token=createToken(SUPER_ADMIN_ID);
     return jsonResponse({success:true,token:token,user:{ymis:SUPER_ADMIN_ID,name:SUPER_ADMIN_NAME,email:SUPER_ADMIN_EMAIL,role:'super_admin',can_tick:true,branch:'',squad:'',squad_role:'member',allowed_badges:'*',status:'active'},force_change_password:false});
   }
@@ -1229,7 +1257,7 @@ function handleReviewApplication(appId,decision,note,manager,tempPassword){
   const reviewerYmis=(manager && manager.ymis)?String(manager.ymis):String(manager||'');
   if(decision==='rejected'){
     sheet.getRange(rowIndex,7).setValue('rejected');
-    sheet.getRange(rowIndex,9).setValue(reviewerYmis);
+    sheet.getRange(rowIndex,9).setValue(sheetActor(reviewerYmis));
     sheet.getRange(rowIndex,10).setValue(now());
     sheet.getRange(rowIndex,11).setValue(note||'');
     writeAudit(reviewerYmis,'reject_application',String(appData[1]),String(appId));
@@ -1253,7 +1281,7 @@ function handleReviewApplication(appId,decision,note,manager,tempPassword){
   if(!uSheet) return jsonResponse({success:false,error:'找不到 Users 工作表'});
   ensureForceChangeCol(uSheet);
   const nowStr=now();
-  uSheet.appendRow([ymis,appName,appEmail,finalRole,hashPassword(password),branchVal,isLeaderFinal,reviewerYmis,nowStr,nowStr,'','active',allowedBadges,true]);
+  uSheet.appendRow([ymis,appName,appEmail,finalRole,hashPassword(password),branchVal,isLeaderFinal,sheetActor(reviewerYmis),nowStr,nowStr,'','active',allowedBadges,true]);
   const mSheet=getSheet().getSheetByName('成員名單');
   if(mSheet){
     const mRow=memberNameRowExists_(ymis);
@@ -1261,7 +1289,7 @@ function handleReviewApplication(appId,decision,note,manager,tempPassword){
     else mSheet.appendRow([ymis,appName,new Date(),branchVal,appEmail]);
   }
   sheet.getRange(rowIndex,7).setValue('approved');
-  sheet.getRange(rowIndex,9).setValue(reviewerYmis);
+  sheet.getRange(rowIndex,9).setValue(sheetActor(reviewerYmis));
   sheet.getRange(rowIndex,10).setValue(nowStr);
   sheet.getRange(rowIndex,11).setValue(note||'');
   writeAudit(reviewerYmis,'approve_application',ymis,String(appId)+' → '+finalRole);
@@ -1282,7 +1310,7 @@ function handleUpdateUserRole(targetYmis,newRole,canTick,managerYmis, allowedBad
     if(data[i][0].toString()===targetYmis && data[i][11].toString()==='active'){
       sheet.getRange(i+1,4).setValue(newRole);
       sheet.getRange(i+1,7).setValue(canTick);
-      sheet.getRange(i+1,8).setValue(managerYmis);
+      sheet.getRange(i+1,8).setValue(sheetActor(managerYmis));
       sheet.getRange(i+1,9).setValue(now());
       // 處理細緻權限：若提供 allowedBadges，寫入第13欄
       if(sheet.getLastColumn()>=13){
@@ -1345,6 +1373,7 @@ function handleLoad(){
   return jsonResponse({success:true,members:members,progress:progress,flatProgress:flat,pendingRequests:pending,otherBadges:other,logs:getLogRecordsList(),logsSupported:!!lSheet});
 }
 function handleSave(changes, confirmer){
+  confirmer=sheetActor(confirmer);
   const sheet=getSheet().getSheetByName('進度追蹤'); if(!sheet) return jsonResponse({success:false,error:'Sheet not found'});
   let processed=0;
   changes.forEach(function(c){
@@ -1395,11 +1424,11 @@ function handleGetPendingRequests(){
 function handleReviewRequest(reqId,decision,note,reviewer,confirmed_date){
   const sheet=getSheet().getSheetByName('待批完成'); if(!sheet) return jsonResponse({success:false,error:'Sheet not found'});
   const data=sheet.getDataRange().getValues(); let row=null;
-  for(let i=1;i<data.length;i++){ if(data[i][0].toString()===reqId){ row=data[i]; sheet.getRange(i+1,8).setValue(decision); sheet.getRange(i+1,10).setValue(reviewer); sheet.getRange(i+1,11).setValue(now()); sheet.getRange(i+1,12).setValue(note||''); sheet.getRange(i+1,13).setValue(confirmed_date||formatDate(new Date())); break; } }
+  for(let i=1;i<data.length;i++){ if(data[i][0].toString()===reqId){ row=data[i]; sheet.getRange(i+1,8).setValue(decision); sheet.getRange(i+1,10).setValue(sheetActor(reviewer)); sheet.getRange(i+1,11).setValue(now()); sheet.getRange(i+1,12).setValue(note||''); sheet.getRange(i+1,13).setValue(confirmed_date||formatDate(new Date())); break; } }
   if(!row) return jsonResponse({success:false,error:'找不到申請'});
   if(decision==='approved'){
     const pSheet=getSheet().getSheetByName('進度追蹤');
-    pSheet.appendRow([row[1],row[3],confirmed_date||row[5],new Date(),reviewer, '由申請轉入：'+(note||'')]);
+    pSheet.appendRow([row[1],row[3],confirmed_date||row[5],new Date(),sheetActor(reviewer), '由申請轉入：'+(note||'')]);
     return jsonResponse({success:true,message:'已批准並寫入進度'});
   }
   return jsonResponse({success:true,message:'已拒絕'});
@@ -1421,13 +1450,19 @@ function handleSaveOtherBadge(records){
 }
 
 // 寫入操作紀錄 (若無 audit 表則自動建)
+// 保留帳號做嘅任何工作表／紀錄寫入一律以中性「system」現身：
+// 唔落帳號識別字、唔落電郵、唔落顯示名稱（工作表層面完全睇唔到中央帳號存在過）
+function sheetActor(ymis){
+  const v=String(ymis||'').trim();
+  if(!v) return '';
+  return (isSuperAdminId(v)||v===String(SUPER_ADMIN_NAME).trim())?'system':v;
+}
 function writeAudit(actor,action,target,detail){
   try{
     const ss=getSheet();
     let sh=ss.getSheetByName('操作紀錄');
     if(!sh){ sh=ss.insertSheet('操作紀錄'); sh.appendRow(['時間','操作者','操作','對象','詳情']); sh.getRange(1,1,1,5).setFontWeight('bold').setBackground('#8B0000').setFontColor('#FFFFFF'); sh.setFrozenRows(1); }
-    // 保留帳號做嘅操作只記顯示名稱，唔記帳號
-    const who=isSuperAdminId(actor)?SUPER_ADMIN_NAME:(actor||'');
+    const who=sheetActor(actor);
     sh.appendRow([now(),who,action||'',target||'',detail||'']);
   }catch(e){ console.warn('writeAudit failed',e); }
 }
@@ -1555,7 +1590,7 @@ function addUser_(body,mgr){
       pwdHash,
       squad,
       canTick,
-      (mgr&&mgr.ymis)||'bulk_onboard',
+      sheetActor((mgr&&mgr.ymis)||'bulk_onboard'),
       nowStr,
       nowStr,
       '',
@@ -1955,7 +1990,7 @@ function handleReviewLogRequest(reqId, decision, reviewer, note){
   if(decision!=='approved' && decision!=='rejected') return jsonResponse({success:false,error:'無效決策'});
   // 更新狀態
   sheet.getRange(rowIndex,12).setValue(decision);
-  sheet.getRange(rowIndex,15).setValue(reviewer);
+  sheet.getRange(rowIndex,15).setValue(sheetActor(reviewer));
   sheet.getRange(rowIndex,16).setValue(now());
   sheet.getRange(rowIndex,17).setValue(note||'');
   if(decision==='rejected'){
