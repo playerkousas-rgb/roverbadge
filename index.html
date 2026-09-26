@@ -1215,7 +1215,7 @@ const LANG_DICT={
   "，可勾選及管理。": ", can tick and manage.",
   "USER 總數": "Total USERs",
   "= 成員 + 領袖 全部。": "= all members + leaders.",
-  "🧪 測試工具 (僅中央管理帳號可見)": "🧪 Test Tools (central admin only)",
+  "🧪 測試工具": "🧪 Test Tools",
   "一鍵載入 10個 MOCK 成員到前端快取，方便測試全團批量剔、會員章一眼睇等。MOCK數據只存瀏覽器快取，不會寫入正式 Google Sheet，除非你按確認寫入。": "Load 10 MOCK members into the front-end cache in one click, useful for testing Group batch ticking and the Membership Badge at-a-glance view. MOCK data is stored only in the browser cache and will NOT be written to the real Google Sheet unless you confirm the write.",
   "🧪 載入10個MOCK成員到全團": "🧪 Load 10 MOCK members into the Group",
   "🗑️ 清除MOCK快取": "🗑️ Clear MOCK cache",
@@ -4682,8 +4682,7 @@ async function loadUsers(){
   try{
     const d=await apiRequest('getAllUsers',{token:currentToken});
     if(d.success){
-      // 系統管理帳號（super_admin）不存於 Users 表：任何角色（包括 super_admin 自己）一律不顯示
-      // 前端不再寫死任何帳號名稱，只按 role 與「自己這個 super_admin 帳號」過濾
+      // super_admin 角色用戶一律不顯示（登入者自己除外），名單過濾只按 role，不寫死任何帳號
       const selfSuperId=(currentUser && currentUser.role==='super_admin') ? String(currentUser.ymis||'').trim().toLowerCase() : '';
       d.users=(d.users||[]).filter(u=>u.role!=='super_admin' && (!selfSuperId || String(u.ymis||'').trim().toLowerCase()!==selfSuperId));
       // 角色說明 + 測試工具 - 管理員相關僅管理員可見
@@ -4706,7 +4705,7 @@ async function loadUsers(){
       let mockTool='';
       if(currentUser && currentUser.role==='super_admin'){
         mockTool=`<div class="info-section" style="border-left-color:var(--orange);background:#FFF7ED">
-          <h3>🧪 測試工具 (僅中央管理帳號可見)</h3>
+          <h3>🧪 測試工具</h3>
           <p style="font-size:11px;color:var(--text-light);margin-bottom:8px">一鍵載入 10個 MOCK 成員到前端快取，方便測試全團批量剔、會員章一眼睇等。MOCK數據只存瀏覽器快取，不會寫入正式 Google Sheet，除非你按確認寫入。</p>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-sm btn-warning" onclick="loadMockMembers()">🧪 載入10個MOCK成員到全團</button>

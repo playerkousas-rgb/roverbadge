@@ -374,7 +374,7 @@ USER (系統使用者)	USER (system user)
 ，可勾選及管理。	, can tick and manage.
 USER 總數	Total USERs
 = 成員 + 領袖 全部。	= all members + leaders.
-🧪 測試工具 (僅中央管理帳號可見)	🧪 Test Tools (central admin only)
+🧪 測試工具	🧪 Test Tools
 一鍵載入 10個 MOCK 成員到前端快取，方便測試全團批量剔、會員章一眼睇等。MOCK數據只存瀏覽器快取，不會寫入正式 Google Sheet，除非你按確認寫入。	Load 10 MOCK members into the front-end cache in one click, useful for testing Group batch ticking and the Membership Badge at-a-glance view. MOCK data is stored only in the browser cache and will NOT be written to the real Google Sheet unless you confirm the write.
 🧪 載入10個MOCK成員到全團	🧪 Load 10 MOCK members into the Group
 🗑️ 清除MOCK快取	🗑️ Clear MOCK cache

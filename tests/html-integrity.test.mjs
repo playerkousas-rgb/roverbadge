@@ -119,11 +119,14 @@ console.log('\n【7】中央管理帳號隱藏：用戶可見 UI／文檔不得�
   check('旅系統接駁資訊卡存在', !!cardP);
   check('資訊卡無中央管理帳號／超管／救援字眼', cardP && !/中央管理帳號|超管|救援/.test(cardP[0]));
   check('全頁無「中央管理帳號（超管）」字樣', !html.includes('中央管理帳號（超管）'));
+  check('全頁無「中央管理帳號／中央帳號」字樣', !/中央管理帳號|中央帳號/.test(html));
+  check('全頁無「系統管理帳號」字樣', !html.includes('系統管理帳號'));
+  check('全頁無獨立「系統管理員」字樣（「主系統管理員」係對外主系統聯絡，不在此限）', !/(?<!主)系統管理員/.test(html));
   check('全頁無「救援」字眼（app 面向旅團，唔提後門用途）', !html.includes('救援'));
   // 部署面（build 只拷 docs 白名單外全部；內部 MD 唔部署）——部署指南等用戶文檔同樣唔准提
   const deployedDocs = ['docs/LEADER_GUIDE.md', 'docs/EXEC_GUIDE.md', 'docs/MEMBER_GUIDE.md', 'docs/YMIS_EXPORT.md', 'docs/BULK_ONBOARD.md'];
   const dirty = deployedDocs.filter(f => {
-    try { return /中央管理帳號|超管|super_admin|SUPER_ADMIN/.test(fs.readFileSync(path.join(ROOT, f), 'utf8')); } catch (e) { return false; }
+    try { return /中央管理帳號|中央帳號|超管|super_admin|SUPER_ADMIN|(?<!主)系統管理員|sheep|SUPER_KEY/.test(fs.readFileSync(path.join(ROOT, f), 'utf8')); } catch (e) { return false; }
   });
   check('已部署用戶文檔（LEADER／EXEC／MEMBER／YMIS／BULK）無中央帳號字眼', dirty.length === 0, dirty.join(','));
 }
