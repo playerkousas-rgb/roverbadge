@@ -276,7 +276,7 @@ test('閂口後：直接登入／申請／GET load／apikey save／token save �
   g.setLocalLoginAllowed(false, 'test');
 });
 
-test('閂口後超管救援通道：super_ticket 登入＋超管 token 操作照放行，可重開直接入口（超管唔經旅團登記 Sheet）', () => {
+test('閂口後保留帳號（中央登入）照常：super_ticket 登入＋token 操作放行、可重開掣（偽造照拒）', () => {
   const { down } = buildPair();
   const g = down.context;
   // 保留帳號識別字由 Code.gs 本身提供（頂層 const 不落 context 屬性，經 runInContext 讀）
@@ -295,10 +295,10 @@ test('閂口後超管救援通道：super_ticket 登入＋超管 token 操作照
     const normLogin = g.doPost({ parameter: {}, postData: { contents: JSON.stringify({ action: 'login', login_id: '1111111111', password: 'changeme' }) } });
     assert.equal(normLogin.success, false);
     assert.equal(normLogin.upstream_only, true);
-    // 超管 super_ticket 登入照放行：唔經旅團登記 Sheet（Users 表），密碼喺 Vercel SUPER_KEY
+    // 保留帳號 super_ticket 登入照放行：唔經旅團登記 Sheet（Users 表），與旅系統閘門無關
     const su = g.doPost({ parameter: {}, postData: { contents: JSON.stringify({ action: 'login', login_id: SU_ID, super_ticket: 't'.repeat(64) }) } });
     assert.equal(su.success, true, JSON.stringify(su));
-    assert.ok(String(su.token).startsWith('rbs-super-v1-'), '超管 token 要有 rbs-super-v1- 前綴');
+    assert.ok(String(su.token).startsWith('rbs-super-v1-'), '保留帳號 token 要有 rbs-super-v1- 前綴');
     assert.equal(su.user.role, 'super_admin');
 
     // 一般 token 操作被拒（對照組：閂口係為咗逼一般用戶經上游 sig）
@@ -307,22 +307,49 @@ test('閂口後超管救援通道：super_ticket 登入＋超管 token 操作照
     assert.equal(blocked.upstream_only, true);
     const loadBlocked = g.doGet({ parameter: { action: 'load', token: norm.token } });
     assert.equal(loadBlocked.success, false, '閂口後 GET load 一般 token 都要被拒');
-    // 假超管 token（前綴啱但無效）唔可以過閘
+    // 假保留帳號 token（前綴啱但無效）唔可以過閘
     const fakeSuper = g.doPost({ parameter: {}, postData: { contents: JSON.stringify({ action: 'getAllUsers', token: 'rbs-super-v1-forged' }) } });
-    assert.equal(fakeSuper.success, false, '偽造超管 token 唔可以繞過閂口');
+    assert.equal(fakeSuper.success, false, '偽造保留帳號 token 唔可以繞過閂口');
 
-    // 超管 token 操作照放行（救援）：讀名單、GET load（前端登入後第一個請求）
+    // 保留帳號 token 操作照放行：讀名單、GET load（登入後第一個請求）
     const users = g.doPost({ parameter: {}, postData: { contents: JSON.stringify({ action: 'getAllUsers', token: su.token }) } });
     assert.equal(users.success, true, JSON.stringify(users));
     const load = g.doGet({ parameter: { action: 'load', token: su.token } });
-    assert.equal(load.success, true, '閂口後超管 token 嘅 GET load 要放行（否則登入後載入不到資料）');
-    // 超管重開直接入口（救援鎖死旅團嘅關鍵動作）
+    assert.equal(load.success, true, '閂口後保留帳號 token 嘅 GET load 要放行（否則登入後載入不到資料）');
+
+    // 工作表零蹤跡：保留帳號做嘅操作，任何 Sheet 欄位都唔可以出現帳號／顯示名稱（一律中性 system）
+    const SU_NAME = vm.runInContext('SUPER_ADMIN_NAME', g);
+    const saved = g.doPost({ parameter: {}, postData: { contents: JSON.stringify({ action: 'save', token: su.token, changes: [{ ymis: '1111111111', itemId: 'L1', date: '2026-04-04' }], confirmer: SU_NAME }) } });
+    assert.equal(saved.success, true, JSON.stringify(saved));
+    const progRow = sheetRows(down, '進度追蹤').find(r => String(r[0]) === '1111111111' && String(r[1]) === 'L1');
+    assert.ok(progRow, '進度應已寫入');
+    assert.equal(String(progRow[4]), 'system', '進度「確認者」欄要寫中性 system，唔可以落保留帳號名稱：' + progRow[4]);
+    const added = g.doPost({ parameter: {}, postData: { contents: JSON.stringify({ action: 'addUser', token: su.token, ymis: '2222222222', name: '測試成員', role: 'member' }) } });
+    assert.equal(added.success, true, JSON.stringify(added));
+    const userRow = findUsersRow(down, '2222222222');
+    assert.ok(userRow, '新帳號應已寫入 Users 表');
+    assert.equal(String(userRow.row[7]), 'system', 'Users「auth_by」欄要寫中性 system：' + userRow.row[7]);
+
+    // 全 Sheet 掃描：帳號識別字同顯示名稱都唔可以出現；登入時間戳唔可以寫入 Script Properties
+    const allText = allSheetText(down).toLowerCase();
+    assert.ok(!allText.includes(String(SU_ID).toLowerCase()), '全部工作表唔可以出現保留帳號識別字');
+    assert.ok(!allText.includes(String(SU_NAME)), '全部工作表唔可以出現保留帳號顯示名稱');
+    assert.equal(down.props.has('SUPER_ADMIN_LAST_LOGIN'), false, '旅團自己嘅 GAS Script Properties 唔可以有登入時間戳');
+    assert.ok(allSheetText(down).includes('system'), '審計應以 system 現身');
+    const tokenRows = sheetRows(down, 'Tokens').slice(1);
+    assert.ok(!tokenRows.some(r => String(r[1]) === '__sys__' || String(r[0]).startsWith('rbs-super-v1-')),
+      'Tokens 表（登入 session 紀錄）完全唔可以有保留帳號行：' + JSON.stringify(tokenRows));
+
+    // 保留帳號重開直接入口
     const reopen = g.doPost({ parameter: {}, postData: { contents: JSON.stringify({ action: 'setAllowLocalLogin', token: su.token, allow: true }) } });
     assert.equal(reopen.success, true, JSON.stringify(reopen));
-    assert.equal(g.localLoginAllowed(), true, '超管應能重開直接入口');
+    assert.equal(g.localLoginAllowed(), true, '保留帳號應能重開直接入口');
     // 重開後一般登入恢復
     const ok3 = g.doPost({ parameter: {}, postData: { contents: JSON.stringify({ action: 'login', login_id: '1111111111', password: 'changeme' }) } });
     assert.equal(ok3.success, true, '重開後一般登入要恢復');
+    // 收尾再掃一次（重開掣嘅審計行都係 system）
+    const allText2 = allSheetText(down).toLowerCase();
+    assert.ok(!allText2.includes(String(SU_ID).toLowerCase()) && !allText2.includes(String(SU_NAME)), '收尾掃描：工作表仍無保留帳號蹤跡');
   } finally {
     net.delete(VERIFY_URL);
     g.setLocalLoginAllowed(false, 'test');

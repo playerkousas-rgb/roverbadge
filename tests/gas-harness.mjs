@@ -204,7 +204,7 @@ export function loadCodeGs({ promptAnswers = [], urlFetchHandler = null } = {}) 
   const exported = `
 ;globalThis.__api = {
   initializeSheets, removeSuperAdminRows, handleLogin, getUser, getAllUsers,
-  getMembers, getApiKey, doPost, doGet, isSuperAdminId, verifySuperTicket, authorizeConnection, setSuperAdminLastLogin,
+  getMembers, getApiKey, doPost, doGet, isSuperAdminId, verifySuperTicket, authorizeConnection,
   // 測試內省用：保留帳號識別字（唯一宣告在 Code.gs），用以驗證名單過濾與防護邏輯
   SUPER_ADMIN_ID
 };`;

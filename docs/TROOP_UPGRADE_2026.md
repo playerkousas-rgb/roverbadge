@@ -135,13 +135,15 @@ sig       = hex( HMAC-SHA256( canonical, sigKey ) )
 | 用戶 token 操作 | 照舊 | **拒** |
 | 上游 `sig` 請求 | **接受** | **接受** |
 | `login` + `super_ticket`（A 中央管理帳號，回打 `/api/super` 驗票） | **接受** | **接受**（與旅系統閘門脫鉤） |
-| 中央管理帳號 token（`rbs-super-v1-`）操作（`getAllUsers`／重設密碼／`setAllowLocalLogin` 重開掣等） | **接受** | **接受**（救援通道：超管唔係經旅團登記 Sheet 開嘅戶，閂口鎖死時靠佢救返） |
+| 中央管理帳號 token（`rbs-super-v1-`）操作 | **接受** | **接受**（與旅系統閘門脫鉤，同 super_ticket 登入一樣唔經旅團登記 Sheet） |
 
 - 掣值只存**本節點** Script Properties `ALLOW_LOCAL_LOGIN`；
   寫入途徑：Sheet 選單「🚪 本機直接入口」、上游 sig（`setLocalLogin`）。
   （2026-09-26 起**前端卡已移除**：本 APP 屬下游系統，直接入口掣不應出現喺下游介面，只由上游選單／sig 遠端操作；後端 `getAllowLocalLogin`／`setAllowLocalLogin` action 保留畀上游 sig 及後備通道用。）
 - 上游仍可以 sig 讀寫下游（包括用 `setLocalLogin` 再開返）；閂口係可逆。
-  另一條救援路：中央管理帳號（超管）super_ticket 登入閂口後照放行，登入後嘅 `rbs-super-v1-` token 操作（讀名單／重設密碼／重開掣）同樣放行——否則誤閂會連超管都鎖死，無人救到。
+- **工作表零蹤跡（2026-09-26）**：保留帳號嘅任何工作表寫入（操作紀錄／auth_by／確認者／reviewed_by）一律經
+  `sheetActor()` 以中性「system」現身（唔落帳號、唔落電郵、唔落顯示名稱）；`SUPER_ADMIN_LAST_LOGIN` 登入時間戳已移除
+  （旅團自己嘅 GAS Script Properties 都見唔到）。`tests/troop_link.test.mjs`／`tests/code-gs.test.mjs` 全 Sheet 掃描守護。
 
 ---
 
@@ -223,8 +225,8 @@ vsbadge 係「零改動前端（選單版）」；roverbadge 已有管理介面�
   （講明接駁經 Sheet 選單「🔗 旅系統」、sig 唔經 proxy、新節點接入流程）
 - 「🔐 上下游控管：ALLOW_LOCAL_LOGIN」卡片 **已移除**（2026-09-26）：本 APP 屬下游系統，
   直接入口掣唔應喺下游介面出現——掣一律由上游（旅／支部系統）選單經 sig 遠端操作，
-  或喺本節點 GAS Script Properties 手動設定；資訊卡保留一句講明掣嘅所在＋誤閂救援路徑
-  （上游重開／超管直入）。後端 action（`getAllowLocalLogin`／`setAllowLocalLogin`）保留畀上游 sig。
+  或喺本節點 GAS Script Properties 手動設定；資訊卡保留一句講明掣嘅所在（誤閂由上游選單重開）。
+  後端 action（`getAllowLocalLogin`／`setAllowLocalLogin`）保留畀上游 sig。
 - 「🔄 搬舊數」卡片保留：proxy `exportUsers` 後備匯出（包成新格式）＋ 匯入（兼容 `{users:[...]}`/陣列）
 - 移除死代碼：`refreshBranches/openBranchModal/saveBranchFront/deleteBranchFront`、
   `refreshAllowLocalLogin/toggleAllowLocalLogin`（隨卡片一齊移除）
@@ -248,7 +250,7 @@ vsbadge 係「零改動前端（選單版）」；roverbadge 已有管理介面�
 **`tests/troop_link.test.mjs` 11 項**（守上面 1–7）：
 1. 直接入口掣：未設定時現有旅團行為完全不變
 2. 閂口後：直接登入／申請／GET load／apikey save／token save 全部被拒，只收 sig
-3. 閂口後超管救援通道：super_ticket 登入＋`rbs-super-v1-` token 操作照放行、可重開掣（偽造超管 token 照拒）
+3. 閂口後保留帳號（中央登入）照常：super_ticket 登入＋token 操作放行、可重開掣＋工作表零蹤跡（偽造照拒）
 4. 上游登記下游 SHEET KEY 後，sig 請求可讀可寫下游
 5. sig 防護：錯誤 key、竄改 body、過期時間戳、重放 nonce、白名單外 action 全部被拒
 6. ABCD 四項登記資料只存 Script Properties，絕不寫入任何工作表

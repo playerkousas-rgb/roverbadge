@@ -84,12 +84,12 @@
 - 4 字元係明確選擇嘅政策：離線暴力破解風險仍然存在；登入限速（每旅團每 IP 60 秒 10 次）只能減慢線上嘗試
 - 姊妹 APP 各自設同一個 `SUPER_KEY` 即可用同一組憑證；跨 APP SSO 未實作
 - 防護保留：不能停用／重設密碼／更改角色／以此帳號開戶
-- 進度紀錄嘅「確認者」欄寫嘅係顯示名稱（`系統管理員`），唔係帳號
-- **閂口救援通道（2026-09-26 起）**：超管帳號唔係經旅團登記 Sheet（Users 表）開嘅戶，
-  所以旅團後端嘅直接入口掣（`ALLOW_LOCAL_LOGIN=false`，只收上游 sig）管唔到佢——
-  super_ticket 登入**同登入後嘅 token 操作**（讀名單／重設密碼／`setAllowLocalLogin` 重開掣）
-  閂口後照放行。旅團被誤閂鎖死時：上游重開，或超管直接登入該旅團救援（`tests/troop_link.test.mjs` 第 3 項守護）。
-  一般用戶 token 則照舊被拒（閂口係為咗逼一般用戶經上游 sig 入）。
+- 進度紀錄嘅「確認者」欄一律寫中性 `system`，唔係帳號、亦唔係顯示名稱
+- **工作表／Script Properties 零蹤跡（2026-09-26 起）**：保留帳號嘅任何工作表寫入（操作紀錄／auth_by／
+  確認者／reviewed_by）一律經 `sheetActor()` 寫中性 `system`；`SUPER_ADMIN_LAST_LOGIN` 登入時間戳已移除。
+  旅團喺 Sheet、操作紀錄、Apps Script 設定任何一層都見唔到中央帳號存在過
+  （`tests/troop_link.test.mjs` 第 3 項＋`tests/code-gs.test.mjs` 全 Sheet 掃描守護）。
+  呢個帳號點用係 ADMIN 自己嘅事，旅團面（UI／文檔／Sheet）一律唔提。
 
 **如要換密碼：** 只改 Vercel `SUPER_KEY` → Redeploy → 完成（唔使碰 GAS／Sheet；舊加密 session 會失效，重新登入即可）。
 

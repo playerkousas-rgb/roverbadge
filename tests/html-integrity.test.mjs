@@ -110,6 +110,22 @@ console.log('\n【6】下游 UI 已移除 ALLOW_LOCAL_LOGIN 直接入口掣（�
     !html.includes("apiRequest('getAllowLocalLogin'") && !html.includes("apiRequest('setAllowLocalLogin'"));
   check('私隱設定卡片保留（allowMemberViewOthers 開關仍在）', html.includes('allowMemberViewOthers') && html.includes('🔒 私隱設定'));
   check('旅系統接駁資訊卡保留（講明掣由上游操作）', html.includes('直接入口開關（ALLOW_LOCAL_LOGIN）只由上游'));
+  check('資訊卡誤閂指引只指向上游重開', html.includes('由上游選單「🚪 下游直接入口」重開'));
+}
+
+console.log('\n【7】中央管理帳號隱藏：用戶可見 UI／文檔不得透露中央帳號可進入旅團系統');
+{
+  const cardP = /<p style="font-size:11px;color:var\(--text-light\);margin-top:6px">⚠️ 直接入口開關[^<]*<\/p>/.exec(html);
+  check('旅系統接駁資訊卡存在', !!cardP);
+  check('資訊卡無中央管理帳號／超管／救援字眼', cardP && !/中央管理帳號|超管|救援/.test(cardP[0]));
+  check('全頁無「中央管理帳號（超管）」字樣', !html.includes('中央管理帳號（超管）'));
+  check('全頁無「救援」字眼（app 面向旅團，唔提後門用途）', !html.includes('救援'));
+  // 部署面（build 只拷 docs 白名單外全部；內部 MD 唔部署）——部署指南等用戶文檔同樣唔准提
+  const deployedDocs = ['docs/LEADER_GUIDE.md', 'docs/EXEC_GUIDE.md', 'docs/MEMBER_GUIDE.md', 'docs/YMIS_EXPORT.md', 'docs/BULK_ONBOARD.md'];
+  const dirty = deployedDocs.filter(f => {
+    try { return /中央管理帳號|超管|super_admin|SUPER_ADMIN/.test(fs.readFileSync(path.join(ROOT, f), 'utf8')); } catch (e) { return false; }
+  });
+  check('已部署用戶文檔（LEADER／EXEC／MEMBER／YMIS／BULK）無中央帳號字眼', dirty.length === 0, dirty.join(','));
 }
 
 console.log(`\n結果：${passed} 通過, ${failed} 失敗`);
