@@ -88,11 +88,11 @@ console.log('\n【4】版號對齊：UI 各處版本必須一致，且等於 pac
 
 console.log('\n【5】Scout Admin 回報 · 意見按鈕 ＋ 非官方聲明');
 {
-  check('引入 scout-admin widget.js（統一回報格式 v1）',
-    html.includes('<script src="https://scout-admin-blue.vercel.app/widget.js" data-app="進度追蹤"></script>'));
-  check('openScoutReport() 已定義（開 widget modal，fallback report.html）',
-    /function openScoutReport\(\)/.test(html) && html.includes("report.html?app='+encodeURIComponent('進度追蹤')"));
-  check('widget 預設 FAB 已隱藏（改用本 APP 上方按鈕）', html.includes('#scoutw-fab{display:none!important}'));
+  check('回報表單改由同源 Proxy 安全轉送（不依賴外部 widget）',
+    !html.includes('scout-admin-blue.vercel.app/widget.js') && html.includes("apiRequest('submitFeedback'"));
+  check('openScoutReport() 開啟狀態明確的回報 modal',
+    /function openScoutReport\(\)\{ showScoutReportModal\(\); \}/.test(html) && html.includes('id="feedbackModal"'));
+  check('提交狀態提供傳送中及收件確認提示', html.includes("'sending'") && html.includes("deliveryStatus==='confirmed'") && html.includes('role="status" aria-live="polite"'));
   check('登入前（首頁 welcome-nav）有回報 · 意見按鈕', /<button class="welcome-feedback" onclick="openScoutReport\(\)"/.test(html));
   check('登入頁有回報 · 意見連結', /onclick="openScoutReport\(\);return false"/.test(html));
   check('登入後 header 常駐回報 · 意見按鈕', /class="lang-toggle btn-feedback-top" onclick="openScoutReport\(\)"/.test(html));

@@ -185,3 +185,55 @@ test('Actual Code.gs invalidates legacy sessions without deleting or migrating S
   // 真正嘅無狀態 token 唔使任何 Sheet 行都驗到（登入零 Sheet 紀錄）
   assert.equal(g.validateToken(g.superAdminSessionToken()), accountId);
 });
+
+test('Feedback relay confirms delivery only after inbox receipt and distinguishes rejected from unknown', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalLog = console.log;
+  const logs = []; let upstream = { status: 200, body: { status: 'success' } }; let sent = null;
+  console.log = line => logs.push(JSON.parse(line));
+  globalThis.fetch = async (url, init) => {
+    assert.match(url, /^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/);
+    sent = JSON.parse(init.body);
+    return { status: upstream.status, text: async () => typeof upstream.body === 'string' ? upstream.body : JSON.stringify(upstream.body) };
+  };
+  try {
+    const ok = await call(proxy, request('submitFeedback', {
+      type: 'issue', title: 'Page freezes', desc: 'The progress page freezes after saving.', contact: '',
+      troopId: '0082', name: '=malicious'
+    }, ''));
+    assert.equal(ok.code, 200);
+    assert.equal(ok.body.deliveryStatus, 'confirmed');
+    assert.equal(sent.sourceApp, 'roverbadge');
+    assert.equal(sent.troopId, '0082');
+    assert.equal(sent.name, "'=malicious");
+    assert.equal(sent.contact, '', 'anonymous feedback remains supported');
+    assert.equal(sent.type, 'issue');
+
+    upstream = { status: 200, body: { status: 'rejected' } };
+    const rejected = await call(proxy, request('submitFeedback', {
+      type: 'feedback', content: 'Please improve the page.', fbType: '建議', contact: 'leader@example.org'
+    }, ''));
+    assert.equal(rejected.code, 502);
+    assert.equal(rejected.body.deliveryStatus, 'rejected');
+
+    upstream = { status: 200, body: 'not-json' };
+    const uncertainResponse = await call(proxy, request('submitFeedback', {
+      type: 'issue', title: 'Network issue', desc: 'Cannot load my progress', contact: '12345678'
+    }, ''));
+    assert.equal(uncertainResponse.body.deliveryStatus, 'unknown');
+
+    globalThis.fetch = async () => { throw new Error('connection reset after request'); };
+    const uncertainNetwork = await call(proxy, request('submitFeedback', {
+      type: 'issue', title: 'Network issue', desc: 'Cannot load my progress', contact: '12345678'
+    }, ''));
+    assert.equal(uncertainNetwork.body.deliveryStatus, 'unknown');
+
+    const invalid = await call(proxy, request('submitFeedback', { type: 'other', contact: '' }, ''));
+    assert.equal(invalid.body.deliveryStatus, 'not_sent');
+    assert.ok(logs.some(row => row.result === 'feedback_received'));
+    assert(!JSON.stringify(logs).includes('Page freezes'));
+  } finally {
+    globalThis.fetch = originalFetch;
+    console.log = originalLog;
+  }
+});

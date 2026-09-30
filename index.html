@@ -77,6 +77,8 @@ a:hover{text-decoration:underline}
 .login-msg{padding:10px;border-radius:8px;margin-bottom:12px;font-size:12px;display:none;text-align:center}
 .login-msg.error{display:block;background:#FFF5F5;color:var(--red);border:1px solid #F5C6CB}
 .login-msg.success{display:block;background:#F0FFF4;color:var(--green);border:1px solid #C3E6CB}
+.login-msg.pending{display:block;background:#EEF6FF;color:var(--blue);border:1px solid #B8DAFF}
+.login-msg.warning{display:block;background:#FFF8E1;color:#805B00;border:1px solid #FFE082}
 .form-group{margin-bottom:12px}
 .form-group label{display:block;margin-bottom:5px;font-weight:600;font-size:12px;color:var(--text)}
 .form-group input,.form-group select,.form-group textarea{width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;transition:.2s;background:#fff}
@@ -100,7 +102,7 @@ a:hover{text-decoration:underline}
 .lang-toggle:hover{background:rgba(255,255,255,0.25);transform:translateY(-1px)}
 .main-app-header .lang-toggle{position:static;border-color:rgba(255,255,255,0.5);background:rgba(255,255,255,0.12);color:#fff}
 /* ===== Scout Admin 統一回報（問題回報／意見回饋）===== */
-/* widget.js 會自生右下浮動按鈕；本 APP 改用上方常駐「回報 · 意見」按鈕開啟同一個 modal，故隱藏 FAB 免重複 */
+/* 回報表單直接由本 APP 提供；保留舊 widget FAB 隱藏規則，避免若外部程式注入時出現重複按鈕。 */
 #scoutw-fab{display:none!important}
 /* 首頁 welcome-nav 內的回報按鈕：金色外框，與三個分頁按鈕區分 */
 .welcome-nav button.welcome-feedback{border-color:var(--gold-dark);background:#FFF8E1;color:#7A5A00}
@@ -359,7 +361,7 @@ a:hover{text-decoration:underline}
       <button class="active" data-tab="enter" onclick="showWelcomeTab('enter', this)">🏠 進入系統</button>
       <button data-tab="setup" onclick="showWelcomeTab('setup', this)">📋 新旅團部署</button>
       <button data-tab="guide" onclick="showWelcomeTab('guide', this)">📖 使用教學</button>
-      <button class="welcome-feedback" onclick="openScoutReport()" title="問題回報 / 意見回饋（經 Scout Admin 統一回收，可匿名）">🐛💬 回報 · 意見</button>
+      <button class="welcome-feedback" onclick="openScoutReport()" title="問題回報 / 意見回饋（經 Scout Admin 統一回收；可匿名，留聯絡方式可收通知）">🐛💬 回報 · 意見</button>
       <!-- changelog hidden for production -->
     </div>
     <button class="lang-toggle" onclick="setUILang(UI_LANG==='en'?'zh':'en')">🌐 English</button>
@@ -508,7 +510,7 @@ a:hover{text-decoration:underline}
     <div class="user-info">
       <span class="user-chip" id="userInfo">—</span>
       <button class="lang-toggle" onclick="setUILang(UI_LANG==='en'?'zh':'en')">🌐 English</button>
-      <button class="lang-toggle btn-feedback-top" onclick="openScoutReport()" title="問題回報 / 意見回饋（經 Scout Admin 統一回收，可匿名）">🐛💬 回報 · 意見</button>
+      <button class="lang-toggle btn-feedback-top" onclick="openScoutReport()" title="問題回報 / 意見回饋（經 Scout Admin 統一回收；可匿名，留聯絡方式可收通知）">🐛💬 回報 · 意見</button>
       <button class="btn btn-sm btn-secondary" onclick="doLogout()">登出</button>
     </div>
   </div>
@@ -563,6 +565,19 @@ a:hover{text-decoration:underline}
       <button class="btn btn-secondary" onclick="closeContactModal()">取消</button>
       <button class="btn btn-primary" id="btnSubmitContact" onclick="submitRegistration()">提交申請</button>
     </div>
+  </div>
+</div>
+
+<div id="feedbackModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="feedbackTitle">
+  <div class="modal-content">
+    <h3 id="feedbackTitle">🐛💬 回報問題／意見</h3>
+    <p style="font-size:11px;color:var(--text-light);line-height:1.6;margin:-6px 0 12px">填寫後按送出，畫面會顯示傳送狀態；只有收件系統確認接收後才會顯示成功。</p>
+    <div class="form-group"><label for="feedbackType">回報類型</label><select id="feedbackType" onchange="syncFeedbackType()"><option value="issue">問題／需要協助</option><option value="feedback">意見／建議</option></select></div>
+    <div class="form-group" id="feedbackCategoryGroup" style="display:none"><label for="feedbackCategory">意見類型</label><select id="feedbackCategory"><option value="建議">建議</option><option value="讚">讚</option><option value="批評">批評</option><option value="其他">其他</option></select></div>
+    <div class="form-group"><label id="feedbackMessageLabel" for="feedbackMessage">你需要什麼協助？ *</label><textarea id="feedbackMessage" rows="4" maxlength="2000" placeholder="簡單描述問題或希望改善的地方"></textarea></div>
+    <div class="form-group"><label for="feedbackContact">聯絡方式（電郵／電話，選填可匿名）</label><input id="feedbackContact" type="text" maxlength="120" autocomplete="email" placeholder="留下聯絡方式以便回覆；可留空匿名提交"></div>
+    <div id="feedbackMsg" class="login-msg" role="status" aria-live="polite" aria-atomic="true"></div>
+    <div class="modal-actions"><button type="button" class="btn btn-secondary" id="btnCloseFeedback" onclick="closeModal('feedbackModal')">取消</button><button type="button" class="btn btn-primary" id="btnSubmitFeedback" aria-describedby="feedbackMsg" onclick="submitFeedback()">送出</button></div>
   </div>
 </div>
 
@@ -792,10 +807,6 @@ a:hover{text-decoration:underline}
 </footer>
 
 <script src="assets/ymis-parse.js"></script>
-<!-- Scout Admin 統一回報 widget（統一回報格式 v1，見 SCOUT_ADMIN.md）：問題回報／意見回饋直達 scout-admin 後台。
-     data-app="進度追蹤"＝來源系統正式名稱；本 APP 的「🐛💬 回報 · 意見」按鈕（登入前 welcome-nav／登入頁連結／登入後 header 常駐）
-     一律經 openScoutReport() 開啟這個 widget 的 modal；widget 載入失敗時 fallback 到獨立回報頁 report.html -->
-<script src="https://scout-admin-blue.vercel.app/widget.js" data-app="進度追蹤"></script>
 <script>
 /* ================== i18n (English mode) ================== */
 const UI_LANG=(function(){ try{ return localStorage.getItem('roverbadge_lang')||'zh'; }catch(e){ return 'zh'; } })();
@@ -818,6 +829,23 @@ const LANG_DICT={
   "YMIS PDF 批量開戶、🐛💬 回報 · 意見按鈕（Scout Admin 統一回報）、非官方聲明、手機頂部按鈕排列整齊化、全 APP 版號統一 v5.1": "YMIS PDF bulk onboarding, 🐛💬 Report · Feedback buttons (Scout Admin unified reporting), unofficial notice, tidier mobile top buttons, app-wide version aligned to v5.1",
   "🐛💬 回報 · 意見": "🐛💬 Report · Feedback",
   "問題回報 / 意見回饋（經 Scout Admin 統一回收，可匿名）": "Report an issue / send feedback (via Scout Admin, anonymous welcome)",
+  "問題回報 / 意見回饋（經 Scout Admin 統一回收；可匿名，留聯絡方式可收通知）": "Report an issue / send feedback (via Scout Admin; anonymous submissions are welcome, add contact details for a reply)",
+  "🐛💬 回報問題／意見": "🐛💬 Report a problem / feedback",
+  "填寫後按送出，畫面會顯示傳送狀態；只有收件系統確認接收後才會顯示成功。": "After you submit, the delivery status is shown here. Success is displayed only after the receiving system confirms receipt.",
+  "回報類型": "Report type",
+  "問題／需要協助": "Problem / help needed",
+  "意見／建議": "Feedback / suggestion",
+  "意見類型": "Feedback category",
+  "你需要什麼協助？ *": "What help do you need? *",
+  "你想提供什麼意見？ *": "What feedback would you like to share? *",
+  "簡單描述問題或希望改善的地方": "Briefly describe the problem or suggested improvement",
+  "聯絡方式（電郵／電話，選填可匿名）": "Contact details (email / phone; optional, anonymous submissions welcome)",
+  "留下聯絡方式以便回覆；可留空匿名提交": "Leave contact details for a reply; leave blank to submit anonymously",
+  "建議": "Suggestion",
+  "讚": "Praise",
+  "批評": "Criticism",
+  "其他": "Other",
+  "送出": "Submit",
   "⚠️ 非官方聲明：本系統為獨立開發的非官方工具，並非香港童軍總會官方產品，與總會並無隸屬或贊助關係。": "⚠️ Unofficial notice: this system is an independently developed unofficial tool. It is NOT an official product of the Scout Association of Hong Kong and has no affiliation with or sponsorship from the Association.",
   "• 目前 v5.0 FINAL 已穩定，測試完成": "• v5.0 FINAL is stable and fully tested",
   "• 新版本新增功能和改動說明": "• New features and changes in this version",
@@ -1763,27 +1791,8 @@ let currentTroopId='',currentTroopName='';
 const API_ENDPOINT='/api/proxy';
 
 /* ================== Scout Admin 統一回報（問題回報／意見回饋） ==================
-   對接 scout-admin「統一回報格式 v1」（SCOUT_ADMIN.md）：widget.js（data-app="進度追蹤"）
-   負責 modal 與送出，來源系統、欄位、接收端全部統一；本 APP 各頁的「🐛💬 回報 · 意見」
-   按鈕（登入前 welcome-nav、登入頁連結、登入後 header 常駐）都開啟同一個 modal。
-   widget 未載入（離線／被擋）時 fallback 到獨立回報頁 report.html。 */
-function openScoutReport(){
-  try{
-    const ov=document.getElementById('scoutw-overlay');
-    if(ov){
-      // 已選旅團 → 預填旅團號（選填欄，提交前仍可改）
-      if(typeof currentTroopId==='string' && currentTroopId){
-        ['scoutw_i_troop','scoutw_f_troop'].forEach(function(id){
-          const el=document.getElementById(id);
-          if(el && !el.value.trim()) el.value=currentTroopId;
-        });
-      }
-      ov.classList.add('open');
-      return;
-    }
-  }catch(e){}
-  window.open('https://scout-admin-blue.vercel.app/report.html?app='+encodeURIComponent('進度追蹤'), '_blank', 'noopener');
-}
+   以同源 /api/proxy 轉送至中央收件匣；按鈕只開本地表單，回報顯示傳送中／確認成功／未能確認等狀態。 */
+function openScoutReport(){ showScoutReportModal(); }
 
 /* ================== 統一後端請求封裝（唯一出口：同源 /api/proxy） ==================
    - 所有 GAS 通訊必須經過這裡，禁止各自直接 fetch GAS URL
@@ -2699,6 +2708,49 @@ async function resetMemberPassword(ymis){
   }
 }
 
+/* ================== Scout Admin 統一回報：傳送狀態 ================== */
+let feedbackSubmitState='idle'; // idle / sending / sent / failed / unknown
+function reportText(zh,en){ return isEn()?en:zh; }
+function syncFeedbackType(){
+  const feedback=document.getElementById('feedbackType').value==='feedback';
+  document.getElementById('feedbackCategoryGroup').style.display=feedback?'':'none';
+  document.getElementById('feedbackMessageLabel').textContent=reportText(feedback?'你想提供什麼意見？ *':'你需要什麼協助？ *',feedback?'What feedback would you like to share? *':'What help do you need? *');
+}
+function setFeedbackControlsDisabled(disabled){ ['feedbackType','feedbackCategory','feedbackMessage','feedbackContact'].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=disabled;}); }
+function showScoutReportModal(){
+  const modal=document.getElementById('feedbackModal'),status=document.getElementById('feedbackMsg'),btn=document.getElementById('btnSubmitFeedback'),close=document.getElementById('btnCloseFeedback');
+  if(feedbackSubmitState==='idle'){
+    document.getElementById('feedbackMessage').value='';document.getElementById('feedbackContact').value='';document.getElementById('feedbackType').value='issue';document.getElementById('feedbackCategory').value='建議';syncFeedbackType();
+    status.textContent='';status.className='login-msg';btn.disabled=false;btn.textContent=reportText('送出','Send');close.disabled=false;close.textContent=reportText('取消','Cancel');setFeedbackControlsDisabled(false);
+  }else if(feedbackSubmitState==='sending'){
+    status.textContent=reportText('正在傳送，請稍候…','Sending, please wait…');status.className='login-msg pending';btn.disabled=true;btn.textContent=reportText('傳送中…','Sending…');close.disabled=true;setFeedbackControlsDisabled(true);
+  }else if(feedbackSubmitState==='sent'){
+    status.textContent=reportText('✅ 收件系統已確認接收，回報已成功傳送。','✅ The receiving system confirmed receipt. Your report was sent successfully.');status.className='login-msg success';btn.disabled=true;btn.textContent=reportText('已成功傳送','Sent successfully');close.disabled=false;close.textContent=reportText('關閉','Close');setFeedbackControlsDisabled(true);
+  }else if(feedbackSubmitState==='unknown'){
+    status.textContent=reportText('⚠️ 連線中斷，暫時未能確認是否送達。請先勿重複提交；如要重試，系統會再次傳送。','⚠️ Connection was interrupted and delivery could not be confirmed. Avoid duplicates; retrying will send again.');status.className='login-msg warning';btn.disabled=false;btn.textContent=reportText('確認後重試','Confirm and retry');close.disabled=false;close.textContent=reportText('關閉','Close');setFeedbackControlsDisabled(false);
+  }else{
+    status.textContent=reportText('未能送出回報：','The report was not sent: ')+(window.__feedbackError||reportText('請檢查資料後重試。','Check the details and try again.'));status.className='login-msg error';btn.disabled=false;btn.textContent=reportText('重試','Try again');close.disabled=false;close.textContent=reportText('取消','Cancel');setFeedbackControlsDisabled(false);
+  }
+  modal.classList.add('active');
+}
+async function submitFeedback(){
+  if(feedbackSubmitState==='sending'||feedbackSubmitState==='sent')return;
+  const message=document.getElementById('feedbackMessage').value.trim(),contact=document.getElementById('feedbackContact').value.trim(),kind=document.getElementById('feedbackType').value;
+  const status=document.getElementById('feedbackMsg'),btn=document.getElementById('btnSubmitFeedback'),close=document.getElementById('btnCloseFeedback');
+  if(message.length<5||(contact&&contact.length<3)){status.textContent=reportText('請填寫至少5字內容；如填聯絡方式，請輸入至少3個字元。','Enter a message of at least 5 characters; contact details, if provided, must have at least 3 characters.');status.className='login-msg error';return;}
+  if(feedbackSubmitState==='unknown'&&!confirm(reportText('上次傳送結果未能確認，重試可能造成重複回報。確定再次傳送？','The previous delivery could not be confirmed. Retrying may create a duplicate. Send again?')))return;
+  const payload={type:kind,contact,troopId:currentTroopId&&currentTroopId!=='DEMO'?currentTroopId:'',name:currentUser&&currentUser.role!=='super_admin'?(currentUser.name||''):''};
+  if(kind==='issue'){payload.title=message.split(/\r?\n/)[0].trim().substring(0,120)||'使用協助';payload.desc=message;payload.severity='中';}else{payload.fbType=document.getElementById('feedbackCategory').value;payload.content=message;}
+  feedbackSubmitState='sending';status.textContent=reportText('正在傳送，請稍候…','Sending, please wait…');status.className='login-msg pending';btn.disabled=true;btn.textContent=reportText('傳送中…','Sending…');close.disabled=true;setFeedbackControlsDisabled(true);
+  try{
+    const result=await apiRequest('submitFeedback',payload,{timeout:58000,troopId:''});
+    if(result&&result.success&&result.deliveryStatus==='confirmed')feedbackSubmitState='sent';
+    else if(!result||!['not_sent','rejected'].includes(result.deliveryStatus))feedbackSubmitState='unknown';
+    else{feedbackSubmitState='failed';window.__feedbackError=result.error||reportText('收件系統未接受回報。','The receiving system did not accept the report.');}
+  }catch(e){feedbackSubmitState='unknown';}
+  finally{close.disabled=false;setFeedbackControlsDisabled(feedbackSubmitState==='sent');showScoutReportModal();}
+}
+
 /* ================== Contact ================== */
 function showContactModal(){ document.getElementById('contactModal').classList.add('active'); }
 /* ================== v8.8 忘記密碼（免登入公開） ================== */
@@ -2716,7 +2768,7 @@ async function submitForgotPassword(){
   btn.disabled=false; btn.textContent='寄出臨時密碼';
 }
 function closeContactModal(){ document.getElementById('contactModal').classList.remove('active'); }
-function closeModal(id){ document.getElementById(id).classList.remove('active'); }
+function closeModal(id){ if(id==='feedbackModal'&&feedbackSubmitState==='sending')return; document.getElementById(id).classList.remove('active'); if(id==='feedbackModal'&&feedbackSubmitState==='sent')feedbackSubmitState='idle'; }
 async function submitRegistration(){
   const ti=document.getElementById('c_troopId').value.trim(), tn=document.getElementById('c_troopName').value.trim(), su=document.getElementById('c_scriptUrl').value.trim(), ak=document.getElementById('c_apiKey').value.trim(), nt=document.getElementById('c_note').value.trim();
   const btn=document.getElementById('btnSubmitContact');
@@ -2895,8 +2947,10 @@ function switchTab(name, btn){
 // ESC 緊急退出 + 雙擊 Header 返回首頁
 document.addEventListener('keydown', (e)=>{
   if(e.key==='Escape'){
+    // 傳送中的回報不可被 Escape 隱藏，以免用戶看不到傳送狀態。
+    if(feedbackSubmitState==='sending'&&document.getElementById('feedbackModal')?.classList.contains('active')){ e.preventDefault(); return; }
     // 關閉所有 modal 和 overlay
-    document.querySelectorAll('.modal.active').forEach(m=>m.classList.remove('active'));
+    document.querySelectorAll('.modal.active').forEach(m=>{ if(m.id!=='feedbackModal'||feedbackSubmitState!=='sending')m.classList.remove('active'); });
     document.getElementById('savingOverlay')?.classList.remove('active');
     // 若不在進度頁，返回進度頁
     const activeTab=document.querySelector('.tab-content.active');
@@ -4632,6 +4686,20 @@ function renderInfoTab(){
     <div style="margin-top:8px;font-size:11px;color:var(--text-light)"><b>評估原則：</b>${tp.assessmentPrinciples}</div>
     <div style="margin-top:10px"><b style="font-size:12px">有用連結：</b><div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">${tp.links.map(l=>`<a href="${l.url}" target="_blank" class="link-card" style="padding:8px;margin:0"><div class="link-icon">🔗</div><div class="link-text"><div class="title">${l.title}</div><div class="url">${l.url}</div></div></a>`).join('')}</div></div>
   </div>`;
+
+  const lt=itemsData.legacyTransition;
+  if(lt){
+    const transitionText=(row,key)=>isEn()?(row['en'+key[0].toUpperCase()+key.slice(1)]||row[key]||''):(row[key]||'');
+    const transitionRows=(lt.mappings||[]).map(row=>`<tr><td>${escapeHtmlText(transitionText(row,'old'))}</td><td>${escapeHtmlText(transitionText(row,'new'))}</td><td>${escapeHtmlText(transitionText(row,'note'))}</td></tr>`).join('');
+    const transitionNotes=(lt.additionalNotes||[]).map(note=>`<li>${escapeHtmlText(isEn()?note.en:note.zh)}</li>`).join('');
+    html+=`<details class="info-section" style="border-left:4px solid var(--gold-dark);background:#FFFCF2"><summary style="cursor:pointer;font-weight:700;color:var(--maroon);font-size:15px">🧭 ${escapeHtmlText(isEn()?lt.enTitle:lt.title)}</summary>
+      <p style="font-size:12px;line-height:1.8;margin:10px 0">${escapeHtmlText(isEn()?lt.enPolicy:lt.policy)}</p>
+      <p style="font-size:11px;background:#FFF4D6;padding:9px;border-radius:7px;line-height:1.7">${isEn()?'Transition period:':'過渡期：'} <b>${lt.effectiveDate} — ${lt.deadline}</b></p>
+      <div style="overflow-x:auto;margin-top:10px"><table style="width:100%;border-collapse:collapse;font-size:11px;line-height:1.6"><thead><tr style="background:var(--maroon);color:#fff"><th style="padding:8px;text-align:left">${isEn()?'4th Edition completed item':'第四版已完成項目'}</th><th style="padding:8px;text-align:left">${isEn()?'5th Edition transition':'第五版過渡對應'}</th><th style="padding:8px;text-align:left">${isEn()?'Notes':'備註'}</th></tr></thead><tbody>${transitionRows}</tbody></table></div>
+      <ul style="font-size:11px;line-height:1.7;margin-top:8px;padding-left:20px">${transitionNotes}</ul>
+      <a class="link-card" href="${lt.sourceUrl}" target="_blank" rel="noopener"><div class="link-icon">📢</div><div class="link-text"><div class="title">${escapeHtmlText(isEn()?lt.enSource:lt.source)}</div><div class="url">P022/2026 — ${isEn()?'official circular':'官方通告及附件一'}</div></div></a>
+    </details>`;
+  }
 
   html+=`<div class="info-section"><h3>🛡️ ${sfh.title}</h3><p style="font-size:11px;background:#FFF5F5;padding:8px;border-radius:6px;border-left:3px solid var(--red)">${sfh.policy}</p>
     <div style="margin-top:10px"><b style="font-size:12px">必修課程：</b>${sfh.learning.map(l=>`<div class="link-card"><div class="link-icon">${l.mandatory?'⭐':'📚'}</div><div class="link-text"><div class="title">${l.title} ${l.mandatory?'<span style="background:var(--red);color:#fff;padding:1px 5px;border-radius:999px;font-size:9px">必修</span>':''}</div><div style="font-size:11px;color:var(--text-light)">${l.desc||''}</div><div class="url">${l.url}</div></div><a href="${l.url}" target="_blank" class="btn btn-sm btn-primary no-print">前往</a></div>`).join('')}
