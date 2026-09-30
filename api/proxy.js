@@ -58,7 +58,7 @@ const TOKEN_ACTIONS = new Set([
 // 上游 sig 直通可替代 token 的操作（閂口後經 sig 落下游寫）
 const SIG_ACTIONS = new Set(['addUser','upsertUser','addMember','exportUsers','getBranches','saveBranch','deleteBranch','getAllowLocalLogin','setAllowLocalLogin']);
 // Proxy 內部特殊 action（不轉發去旅團 GAS）
-const LOCAL_ACTIONS = new Set(['submitRegistration']);
+const LOCAL_ACTIONS = new Set(['submitRegistration', 'submitFeedback']);
 // GAS 端以 doGet 處理的 action（其餘一律 POST 去 doPost）
 const GET_ACTIONS = new Set(['load', 'getLoginMode']);
 
@@ -138,6 +138,56 @@ export default async function handler(req, res) {
   try { dataBytes = Buffer.byteLength(JSON.stringify(data), 'utf8'); } catch (e) { dataBytes = MAX_DATA_BYTES + 1; }
   if (dataBytes > MAX_DATA_BYTES) {
     return sendJson(res, 413, { success: false, error: '提交內容過大，請分批處理' });
+  }
+
+  // ===== 統一回報：只經伺服器端固定收件匣轉送；回應明確標示送達狀態 =====
+  if (action === 'submitFeedback') {
+    if (!isTrustedExecUrl(SCOUT_ADMIN_API)) {
+      safeLog({ result: 'feedback_inbox_misconfig', ms: Date.now() - t0 });
+      return sendJson(res, 500, { success: false, deliveryStatus: 'not_sent', error: '回報服務暫時無法使用，請稍後重試' });
+    }
+    const type = String(data.type || '').trim().toLowerCase();
+    const contact = String(data.contact || '').trim().substring(0, 120);
+    if (!['issue', 'feedback'].includes(type)) return sendJson(res, 400, { success: false, deliveryStatus: 'not_sent', error: '回報類型不正確' });
+    if (contact && contact.length < 3) return sendJson(res, 400, { success: false, deliveryStatus: 'not_sent', error: '聯絡方式最少需要3個字元' });
+    const safeText = (value, limit) => {
+      const text = String(value || '').trim().substring(0, limit);
+      return /^[=+\-@]/.test(text) ? "'" + text : text;
+    };
+    const troopIdRaw = String(data.troopId || '').trim();
+    const troopId = /^[0-9A-Za-z_-]{1,32}$/.test(troopIdRaw) ? troopIdRaw : '';
+    const name = safeText(data.name, 80);
+    const common = { type, sourceApp: 'roverbadge', troopId, name, contact: safeText(contact, 120) };
+    let payload;
+    if (type === 'issue') {
+      const title = String(data.title || '').trim().substring(0, 120);
+      const desc = String(data.desc || '').trim().substring(0, 2000);
+      if (!title || !desc) return sendJson(res, 400, { success: false, deliveryStatus: 'not_sent', error: '請簡單寫下問題及需要的協助' });
+      const severity = ['低', '中', '高', '緊急'].includes(String(data.severity || '')) ? String(data.severity) : '中';
+      payload = { ...common, title: safeText(title, 120), desc: safeText(desc, 2000), severity };
+    } else {
+      const content = String(data.content || '').trim().substring(0, 2000);
+      if (content.length < 5) return sendJson(res, 400, { success: false, deliveryStatus: 'not_sent', error: '請簡單描述你的意見' });
+      const fbType = ['建議', '讚', '批評', '其他'].includes(String(data.fbType || '')) ? String(data.fbType) : '建議';
+      payload = { ...common, fbType, content: safeText(content, 2000) };
+    }
+    try {
+      const up = await callUpstream(SCOUT_ADMIN_API, { method: 'POST', payload });
+      if (!up.json) {
+        safeLog({ result: 'feedback_inbox_bad_response', status: up.status, ms: Date.now() - t0 });
+        return sendJson(res, 502, { success: false, deliveryStatus: 'unknown', error: '暫時未能確認回報是否送達' });
+      }
+      if (up.json.status !== 'success') {
+        safeLog({ result: 'feedback_inbox_rejected', status: up.status, ms: Date.now() - t0 });
+        return sendJson(res, 502, { success: false, deliveryStatus: 'rejected', error: '回報未能送出，請稍後重試' });
+      }
+      safeLog({ result: 'feedback_received', status: up.status, ms: Date.now() - t0 });
+      return sendJson(res, 200, { success: true, deliveryStatus: 'confirmed', message: '已傳送給開發者，請等待通知。' });
+    } catch (e) {
+      const timeout = e && e.name === 'TimeoutError';
+      safeLog({ result: timeout ? 'feedback_timeout' : 'feedback_send_error', ms: Date.now() - t0 });
+      return sendJson(res, timeout ? 504 : 502, { success: false, deliveryStatus: 'unknown', error: '暫時未能確認回報是否送達' });
+    }
   }
 
   // ===== 特殊：新旅團接入申請（轉發去中央管理員收件匣，目的地固定於伺服器端）=====

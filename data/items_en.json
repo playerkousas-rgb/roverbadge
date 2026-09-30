@@ -549,5 +549,113 @@
       "code": "PT/69",
       "description": "Submit the assessment plan to the Headquarters Commissioner (Rover Scouts) for approval before commencing the assessment"
     }
+  },
+  "legacyTransition": {
+    "title": "第四版 → 第五版過渡安排",
+    "enTitle": "4th → 5th Edition Transition Arrangements",
+    "from": "《樂行童軍訓練綱要》第四版",
+    "enFrom": "4th Edition Rover Scout Training Scheme",
+    "to": "《樂行童軍訓練綱要》第五版",
+    "enTo": "5th Edition Rover Scout Training Scheme",
+    "effectiveDate": "2026-08-15",
+    "deadline": "2029-08-14",
+    "source": "香港童軍總會通告 P022/2026 附件一「樂行童軍支部」",
+    "enSource": "Scout Association of Hong Kong Circular P022/2026, Annex 1 — Rover Scout Section",
+    "sourceUrl": "https://www.scout.org.hk/uploads/tc/circulars/23585/p022-26.pdf",
+    "policy": "2026年8月15日或之後宣誓的樂行童軍，必須按第五版考核。此前宣誓的成員可選擇按第五版考核，或沿用第四版，但須於2029年8月14日或以前完成；逾期未完成的獎章或項目須按第五版考核。選擇第五版者，可按下表把第四版已完成項目過渡至第五版；第五版所有項目備註仍適用。",
+    "enPolicy": "Rover Scouts invested on or after 15 August 2026 must be assessed under the 5th Edition. Those invested before that date may use the 5th Edition or continue under the 4th Edition, completing it by 14 August 2029. Any unfinished award or item after the deadline must be assessed under the 5th Edition. Members choosing the 5th Edition may transfer completed 4th Edition items as shown below; all 5th Edition notes still apply.",
+    "mappings": [
+      {
+        "id": "epaulettes",
+        "old": "「樂行童軍肩章」",
+        "enOld": "Rover Scout Epaulettes",
+        "new": "「樂行童軍肩章」之相應部分",
+        "enNew": "Corresponding parts of the Rover Scout Epaulettes",
+        "note": "通告只列「相應部分」，須按實際已完成內容核對。",
+        "enNote": "The circular specifies “corresponding parts” only; verify against the actual completed requirements."
+      },
+      {
+        "id": "scout-knowledge",
+        "old": "「童軍知識」",
+        "enOld": "Scout Knowledge",
+        "new": "「樂行童軍肩章」之相應部分",
+        "enNew": "Corresponding parts of the Rover Scout Epaulettes",
+        "note": "按第五版肩章相應部分核實，不可整章自動視作完成。",
+        "enNote": "Verify the corresponding 5th Edition epaulette requirements; do not assume the whole badge is complete."
+      },
+      {
+        "id": "scoutcraft-1b",
+        "old": "「童軍技能（I）」乙部（船藝除外）",
+        "enOld": "Scoutcraft (I), Part B (excluding seamanship)",
+        "new": "「童軍技能」之（1）",
+        "enNew": "Scoutcraft (1)",
+        "note": "船藝不包括在此項對照內。",
+        "enNote": "Seamanship is excluded from this mapping."
+      },
+      {
+        "id": "scoutcraft-1c",
+        "old": "「童軍技能（I）」丙部",
+        "enOld": "Scoutcraft (I), Part C",
+        "new": "「童軍技能」之（2）",
+        "enNew": "Scoutcraft (2)",
+        "note": "依通告所列部分對照。",
+        "enNote": "Transfer only the part specified in the circular."
+      },
+      {
+        "id": "scoutcraft-1a",
+        "old": "「童軍技能（I）」甲部",
+        "enOld": "Scoutcraft (I), Part A",
+        "new": "「服務」之（1）",
+        "enNew": "Service (1)",
+        "note": "此舊項目對照至新綱要「服務」範疇。",
+        "enNote": "This old requirement maps to the Service section in the new scheme."
+      },
+      {
+        "id": "community-service-ii",
+        "old": "「社區服務（II）」",
+        "enOld": "Community Service (II)",
+        "new": "「服務」之（2）及（3）",
+        "enNew": "Service (2) and (3)",
+        "note": "須按新綱要項目備註核對服務要求。",
+        "enNote": "Check the new-scheme notes for the service requirements."
+      },
+      {
+        "id": "personal-interest",
+        "old": "「個人興趣」",
+        "enOld": "Personal Interest",
+        "new": "「興趣及技能」或「身心健康」",
+        "enNew": "Interests and Skills or Physical and Mental Wellbeing",
+        "note": "按該項個人興趣的性質決定對應範疇，不能一概而論。",
+        "enNote": "The corresponding section depends on the nature of the personal interest; there is no blanket mapping."
+      },
+      {
+        "id": "world-awareness",
+        "old": "「認識世界」",
+        "enOld": "World Awareness",
+        "new": "「國際視野」",
+        "enNew": "International Outlook",
+        "note": "按通告所列範疇對照。",
+        "enNote": "Transfer according to the section mapping specified in the circular."
+      },
+      {
+        "id": "challenge",
+        "old": "「挑戰項目」",
+        "enOld": "Challenge Project",
+        "new": "「挑戰」",
+        "enNew": "Challenge",
+        "note": "按第五版「挑戰」項目的內容及備註核實。",
+        "enNote": "Verify against the 5th Edition Challenge requirements and notes."
+      }
+    ],
+    "additionalNotes": [
+      {
+        "zh": "已完成木章訓練系統第一及第二階段者，可視作已完成第五版「準領袖培訓」項目，並可佩戴基維爾巾圈。",
+        "en": "Members who completed Wood Badge Training System Stages 1 and 2 before the new scheme may be regarded as having completed the 5th Edition Pre-Leader Training item and may wear the Gilwell woggle."
+      },
+      {
+        "zh": "無論採用新或舊制度，申請進度性獎章均須使用指定表格。詳細資格與安排以總會通告及最新綱要為準。",
+        "en": "Use the prescribed forms whichever scheme is followed. Refer to the Association circular and latest training scheme for full eligibility and arrangements."
+      }
+    ]
   }
 }
