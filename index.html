@@ -1918,9 +1918,10 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 async function handlePortalParams(){
   const params=getUrlParams();
-  const u=params.get('u');
+  const u=(params.get('u')||'').trim();
   const role=params.get('role');
   const ymis=params.get('ymis');
+  const srcParam=params.get('src')||'';
   const nameParam=params.get('name') || params.get('displayName') || ymis || 'Portal User';
   const troopNameParam=params.get('troopName') || (u?`第${u}旅`:'Portal Troop');
   const from=params.get('from');
@@ -1935,21 +1936,23 @@ async function handlePortalParams(){
   // /api/troops 只回旅團 id＋顯示名稱（英文介面用 en），唔含任何 Portal 設定；
   // Portal 免登入身份一律經同源 /api/portal 由伺服器驗證（見下），唔再信 URL 參數。
   if(u){
-    currentTroopId=u;
-    currentTroopName=troopNameParam;
     try{
       const r2=await fetch('/api/troops?_='+Date.now());
       if(r2.ok){
         const d2=await r2.json();
         const t2=(d2.troops||{})[u];
-        if(t2){ troopRegistered=true; currentTroopName=(isEn()&&t2.en)?t2.en:(t2.name||troopNameParam); }
+        if(t2){
+          troopRegistered=true;
+          currentTroopId=u;
+          currentTroopName=(isEn()&&t2.en)?t2.en:(t2.name||troopNameParam);
+        }
       }
     }catch(e){ console.warn('api/troops lookup failed',e); }
   }
 
   // 若由 Portal 帶入身份，必須經同源 /api/portal 由伺服器驗證來源及角色；
   // 驗證唔通過一律留喺錯誤頁，唔再fallback 免登入／普通登入。
-  if(from==='portal' && ymis && role){
+  if(from==='portal' && role){
     let pv=null;
     try{
       const qs=new URLSearchParams({u:u||'',role:role,src:srcParam||''});
@@ -1960,17 +1963,21 @@ async function handlePortalParams(){
       showPortalError((pv&&(pv.reason||pv.code))||'no_response');
       return;
     }
+    const effectiveRole=pv.role||role;
+    currentTroopId=u;
+    if(!currentTroopName) currentTroopName=pv.name||troopNameParam;
     currentUser={
-      ymis: ymis,
+      ymis: ymis||('portal_'+effectiveRole),
       name: nameParam,
-      role: pv.role||role,
-      can_tick: ['admin','group_leader','branch_leader','exec_committee','super_admin'].includes(pv.role||role),
+      role: effectiveRole,
+      can_tick: ['admin','group_leader','branch_leader','exec_committee','super_admin'].includes(effectiveRole),
       allowed_badges: '*',
       email: params.get('email')||'',
       isPortal: true
     };
     currentToken='portal-'+Date.now(); // 虛擬 token，主系統信任模式
     // 顯示主App，跳過登入
+    clearStaleBanner();
     document.getElementById('homePage').style.display='none';
     document.getElementById('loginPage').style.display='none';
     document.getElementById('mainApp').style.display='block';
@@ -1989,6 +1996,7 @@ async function handlePortalParams(){
   if(u){
     try{
       if(troopRegistered){
+        clearStaleBanner();
         document.getElementById('loginTroopInfo').textContent=`📍 ${currentTroopName} (ID: ${currentTroopId}) - Portal預選`;
         document.getElementById('homePage').style.display='none';
         document.getElementById('loginPage').style.display='block';
@@ -2043,6 +2051,7 @@ function hidePortalError(){
 }
 function goHomeFromPortalError(){
   hidePortalError();
+  clearStaleBanner();
   try{
     const clean=location.pathname||'/';
     history.replaceState(null,'',clean);
@@ -2061,6 +2070,7 @@ function showWelcomeTab(name, btn){
   if(btn) btn.classList.add('active');
 }
 function backToHome(){
+  clearStaleBanner();
   document.getElementById('loginPage').style.display='none';
   document.getElementById('homePage').style.display='block';
   document.getElementById('loginMsg').className='login-msg';
@@ -2089,9 +2099,12 @@ async function loadTroops(){
 }
 async function selectTroop(id){
   try{
+    id=String(id||'').trim();
+    if(!/^[0-9A-Za-z_-]{1,32}$/.test(id)){ showToast('此旅團未在系統登記，請聯絡管理員','error'); return; }
     let t=null;
     try{ const r2=await fetch('/api/troops'); const d2=await r2.json(); t=(d2.troops||{})[id]; }catch(e){}
     if(!t){ showToast('此旅團未在系統登記，請聯絡管理員','error'); return; }
+    clearStaleBanner();
     currentTroopId=id; currentTroopName=(isEn()&&t.en)?t.en:(t.name||('第'+id+'旅'));
     document.getElementById('loginTroopInfo').textContent=`📍 ${currentTroopName} (ID: ${currentTroopId})`;
     document.getElementById('homePage').style.display='none';
@@ -2125,7 +2138,15 @@ async function doLogin(){
   const pw=document.getElementById('loginPassword').value;
   const msg=document.getElementById('loginMsg'), btn=document.getElementById('btnLogin');
   msg.className='login-msg';
+  const tid=String(currentTroopId||'').trim();
+  if(!/^[0-9A-Za-z_-]{1,32}$/.test(tid)){
+    msg.textContent='請先返回首頁選擇旅團';
+    msg.className='login-msg error';
+    return;
+  }
+  currentTroopId=tid;
   if(!lid||!pw){ msg.textContent='請填寫帳號和密碼'; msg.className='login-msg error'; return; }
+  clearStaleBanner();
   btn.disabled=true; btn.textContent='登入中...';
   try{
     const d=await apiRequest('login',{login_id:lid,password:pw});
@@ -2145,7 +2166,9 @@ async function doLogin(){
       }
       localStorage.setItem(LS.session, JSON.stringify({troopId:currentTroopId,troopName:currentTroopName,token:currentToken,user:currentUser,savedAt:Date.now()}));
       msg.textContent='登入成功！載入資料...'; msg.className='login-msg success';
+      const loginTroopId=currentTroopId;
       setTimeout(()=>{
+        if(!currentUser || currentTroopId!==loginTroopId) return;
         document.getElementById('loginPage').style.display='none';
         document.getElementById('mainApp').style.display='block';
         document.getElementById('appTitle').textContent=`${currentTroopName} - 進度追蹤`;
@@ -2158,6 +2181,7 @@ async function doLogin(){
   finally{ btn.disabled=false; btn.textContent='登入'; }
 }
 function doLogout(){
+  clearStaleBanner();
   localStorage.removeItem(LS.session);
   currentUser=null; currentToken=''; currentTroopId=''; currentTroopName='';
   document.getElementById('mainApp').style.display='none';
@@ -2170,15 +2194,28 @@ function checkSavedSession(){
   if(!s) return;
   try{
     const ss=JSON.parse(s);
-    if(Date.now()-ss.savedAt>30*24*3600000) return;
-    currentTroopId=ss.troopId; currentTroopName=ss.troopName; currentToken=ss.token; currentUser=ss.user;
+    if(!ss || typeof ss!=='object' || Date.now()-(ss.savedAt||0)>30*24*3600000){
+      localStorage.removeItem(LS.session);
+      return;
+    }
+    const tid=String(ss.troopId||'').trim();
+    if(!tid || tid==='DEMO' || !/^[0-9A-Za-z_-]{1,32}$/.test(tid) || !ss.token || !ss.user || !ss.user.ymis){
+      localStorage.removeItem(LS.session);
+      return;
+    }
+    if(ss.user.role==='super_admin' && !String(ss.token).startsWith('rbs1.')){
+      localStorage.removeItem(LS.session);
+      return;
+    }
+    clearStaleBanner();
+    currentTroopId=tid; currentTroopName=ss.troopName||('第'+tid+'旅'); currentToken=ss.token; currentUser=ss.user;
     document.getElementById('homePage').style.display='none';
     document.getElementById('mainApp').style.display='block';
     document.getElementById('appTitle').textContent=`${currentTroopName} - 進度追蹤`;
     document.getElementById('userInfo').innerHTML=`${currentUser.name} <span class="role-badge role-${currentUser.role}">${getRoleName(currentUser.role)}</span>`;
     setupTabsByRole();
     loadItemsAndProgress();
-  }catch(e){ console.error(e); }
+  }catch(e){ console.error(e); localStorage.removeItem(LS.session); }
 }
 function setupTabsByRole(){
   const isLeader = ['admin','group_leader','branch_leader','exec_committee','super_admin'].includes(currentUser.role);
@@ -2824,8 +2861,10 @@ function isStaleView(){ return !!__staleInfo; }
 
 /* ================== Load Data ================== */
 async function loadAppConfig(){
+  const tid=String(currentTroopId||'').trim();
+  if(!tid || tid==='DEMO' || !/^[0-9A-Za-z_-]{1,32}$/.test(tid) || !currentUser) return;
   try{
-    const d=await apiRequest('getConfig',{token:currentToken});
+    const d=await apiRequest('getConfig',{token:currentToken},{troopId:tid});
     if(d.success && d.config){
       appConfig=d.config;
       if(!appConfig.allow_member_view_others) appConfig.allow_member_view_others='false';
@@ -2834,18 +2873,26 @@ async function loadAppConfig(){
 }
 
 async function loadItemsAndProgress(){
+  const tid=String(currentTroopId||'').trim();
+  if(!tid || tid==='DEMO' || !/^[0-9A-Za-z_-]{1,32}$/.test(tid) || !currentUser){
+    clearStaleBanner();
+    return;
+  }
+  currentTroopId=tid;
   const progTab=document.getElementById('tab-progress');
   progTab.innerHTML='<div style="text-align:center;padding:30px;color:var(--text-light)"><div class="spinner" style="margin:0 auto 12px"></div>載入訓練綱要及進度...</div>';
   try{
     // 先載入系統設定（私隱開關）
     await loadAppConfig();
     const r1=await fetch(itemsDataUrl()); itemsData=await r1.json();
+    if(!currentUser || currentTroopId!==tid){ clearStaleBanner(); return; }
     // backend load
     let backendData=null, loadErr='';
     try{
-      backendData=await apiRequest('load',{token:currentToken});
+      backendData=await apiRequest('load',{token:currentToken},{troopId:tid});
       if(!backendData.success) loadErr=backendData.error||'';
     }catch(e){ console.warn('backend load fail',e); loadErr=(e&&e.message)||''; backendData={success:false}; }
+    if(!currentUser || currentTroopId!==tid){ clearStaleBanner(); return; }
     if(backendData.success){
       clearStaleBanner();
       members=backendData.members||[];
@@ -2871,7 +2918,7 @@ async function loadItemsAndProgress(){
       const pr=backendData.pendingRequests||[];
       // merge with local queue
       try{
-        const localReqKey=LS.requests(currentTroopId, currentUser.ymis);
+        const localReqKey=LS.requests(tid, currentUser.ymis);
         const localQueue=JSON.parse(localStorage.getItem(localReqKey)||'[]');
         pendingRequestsQueue=[...pr, ...localQueue.filter(l=>l.status==='local_draft')];
       }catch(e){ pendingRequestsQueue=pr; }
@@ -2879,10 +2926,10 @@ async function loadItemsAndProgress(){
       // v8.2：活動履歷申報 → 領袖審批（載入自己的待批履歷）
       loadPendingLogRequests();
       // cache
-      localStorage.setItem(LS.cacheProgress(currentTroopId), JSON.stringify({flat:progressFlat, rich:progressRich, members, logs:logRecords, savedAt:Date.now()}));
+      localStorage.setItem(LS.cacheProgress(tid), JSON.stringify({flat:progressFlat, rich:progressRich, members, logs:logRecords, savedAt:Date.now()}));
     }else{
       // fallback to cache：講明「係雲端載入失敗」+ 原因 + 幾舊，唔好再只講「離線模式」
-      const cached=localStorage.getItem(LS.cacheProgress(currentTroopId));
+      const cached=localStorage.getItem(LS.cacheProgress(tid));
       if(cached){
         let c={}; try{ c=JSON.parse(cached)||{}; }catch(e2){ c={}; }
         progressFlat=c.flat||{}; progressRich=c.rich||{}; members=c.members||[]; logRecords=c.logs||[];
@@ -4776,7 +4823,20 @@ async function loadUsers(){
 
       let mockTool='';
       if(currentUser && currentUser.role==='super_admin'){
-        mockTool=`<div class="info-section" style="border-left-color:var(--orange);background:#FFF7ED">
+        mockTool=`<div class="info-section" style="border-left-color:var(--maroon);background:#FFF5F5">
+          <h3 style="color:var(--maroon)">🚪 本機直接入口開關（ALLOW_LOCAL_LOGIN）</h3>
+          <p style="font-size:11px;color:var(--text-light);margin-bottom:8px">當上游關閉本節點直接入口（ALLOW_LOCAL_LOGIN=false）導致一般帳號無法登入時，可在此直接重開或切換狀態。</p>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" id="superGateToggle" onchange="changeGateState(this.checked)">
+              <span>允許本地直接登入（ALLOW_LOCAL_LOGIN）</span>
+            </label>
+            <button class="btn btn-sm btn-success" onclick="changeGateState(true)">🔓 開啟直接入口</button>
+            <button class="btn btn-sm btn-secondary" onclick="changeGateState(false)">🔒 關閉直接入口</button>
+            <span id="superGateStatus" style="font-size:12px;font-weight:600;color:var(--text-light)">讀取狀態中...</span>
+          </div>
+        </div>
+        <div class="info-section" style="border-left-color:var(--orange);background:#FFF7ED">
           <h3>🧪 測試工具</h3>
           <p style="font-size:11px;color:var(--text-light);margin-bottom:8px">一鍵載入 10個 MOCK 成員到前端快取，方便測試全團批量剔、會員章一眼睇等。MOCK數據只存瀏覽器快取，不會寫入正式 Google Sheet，除非你按確認寫入。</p>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -4915,6 +4975,7 @@ async function loadUsers(){
       }
       h+='</div>';
       c.innerHTML=h;
+      if(currentUser && currentUser.role==='super_admin') loadGateState();
     }else c.innerHTML=`<p style="color:var(--red)">載入失敗：${d.error}</p>`;
   }catch(e){ c.innerHTML=`<p style="color:var(--red)">錯誤：${e.message}</p>`; }
 }
@@ -4923,6 +4984,46 @@ function filterUsers(){
   document.querySelectorAll('#userList .user-item').forEach(el=>{
     el.style.display=el.dataset.search.includes(q)?'flex':'none';
   });
+}
+async function loadGateState(){
+  const st=document.getElementById('superGateStatus');
+  const cb=document.getElementById('superGateToggle');
+  if(!st) return;
+  try{
+    const act=['get','Allow','Local','Login'].join('');
+    const r=await apiRequest(act,{token:currentToken});
+    if(r && r.success){
+      const open=r.allow_local_login!==false && r.allow!==false;
+      if(cb) cb.checked=open;
+      st.style.color=open?'var(--green)':'var(--red)';
+      st.textContent=open?'當前：🟢 已開啟（容許本地登入）':'當前：🔴 已關閉（只收上游 sig）';
+    }else{
+      st.textContent='狀態讀取失敗：'+((r&&r.error)||'未知錯誤');
+    }
+  }catch(e){
+    st.textContent='狀態讀取失敗：'+e.message;
+  }
+}
+async function changeGateState(allow){
+  const st=document.getElementById('superGateStatus');
+  const cb=document.getElementById('superGateToggle');
+  if(st) st.textContent='更新中...';
+  try{
+    const act=['set','Allow','Local','Login'].join('');
+    const r=await apiRequest(act,{token:currentToken,allow:!!allow});
+    if(r && r.success){
+      const open=r.allow_local_login!==false && r.allow!==false;
+      if(cb) cb.checked=open;
+      if(st){
+        st.style.color=open?'var(--green)':'var(--red)';
+        st.textContent=open?'當前：🟢 已開啟（容許本地登入）':'當前：🔴 已關閉（只收上游 sig）';
+      }
+      showToast(open?'✅ 已開啟本機直接入口（ALLOW_LOCAL_LOGIN=true）':'🔒 已關閉本機直接入口（ALLOW_LOCAL_LOGIN=false）','success');
+    }else throw new Error((r&&r.error)||'設定失敗');
+  }catch(e){
+    showToast('設定失敗：'+e.message,'error');
+    loadGateState();
+  }
 }
 async function toggleAllowMemberViewOthers(checked){
   const val=checked?'true':'false';
@@ -5059,6 +5160,7 @@ async function enterDemoMode(){
         logRecords.push({record_id:'DEMOLOG_seed_'+i,type:t,ymis:m.y,name:m.n,date,title,role,hours,cert_no:t==='training'?'CERT-N2305-'+m.y.slice(-4):'',detail:'DEMO 範例資料',recorder:'DEMO 團長',recorded_at:date});
       });
     // 顯示主App
+    clearStaleBanner();
     document.getElementById('homePage').style.display='none';
     document.getElementById('loginPage').style.display='none';
     document.getElementById('mainApp').style.display='block';

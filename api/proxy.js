@@ -17,10 +17,56 @@
 //
 // GAS request schema 完全保留（action + 原欄位），一般旅團帳號流程不需修改任何 Code.gs。
 
+import { createHash, createHmac, randomBytes } from 'node:crypto';
 import { getTrustedTroop, isTrustedExecUrl } from './_registry.js';
 import { accountId, isSuperId, checkSuperPassword, superConfigured, sealSuper, openSuper } from './_super.js';
 
 export const config = { maxDuration: 60 };
+
+const SUPER_SESSION_PURPOSE = 'roverbadge-super-session-v1';
+const LINK_SIG_PURPOSE = 'roverbadge-troop-sig-v1';
+const SIGNED_ACTION_MAP = {
+  getAllowLocalLogin: 'getLinkState',
+  setAllowLocalLogin: 'setLocalLogin'
+};
+const LINK_SIG_SUPPORTED = new Set([
+  'load', 'getLoginMode', 'getLinkState', 'getMembers', 'getConfig', 'getAllUsers',
+  'getOtherBadges', 'getPendingRequests', 'getApplications', 'getLogRecords', 'getPendingLogRequests',
+  'exportUsers', 'save', 'saveOtherBadge', 'requestComplete', 'reviewRequest', 'addMember', 'addUser',
+  'upsertUser', 'importUsers', 'resetPassword', 'deactivateUser', 'reactivateUser',
+  'updateUserProfile', 'deleteMember', 'deleteUser', 'updateUserRole', 'updatePermissions',
+  'updateConfig', 'saveLogRecord', 'deleteLogRecord', 'submitLogRequest', 'reviewLogRequest',
+  'reviewApplication', 'setLocalLogin'
+]);
+
+function buildSuperInnerToken(apikey) {
+  return 'rbs-super-v1-' + createHmac('sha256', String(apikey || '')).update(SUPER_SESSION_PURPOSE, 'utf8').digest('hex');
+}
+
+function buildSuperUser() {
+  return {
+    ymis: accountId,
+    name: '系統管理員',
+    email: `${accountId}@roverbadge.local`,
+    role: 'super_admin',
+    can_tick: true,
+    branch: '',
+    squad: '',
+    squad_role: 'member',
+    allowed_badges: '*',
+    status: 'active'
+  };
+}
+
+function makeLinkSig(action, rawPayload, apikey) {
+  const ts = String(Date.now());
+  const nonce = randomBytes(16).toString('hex');
+  const digest = createHash('sha256').update(String(rawPayload || ''), 'utf8').digest('hex');
+  const canonical = [String(action || ''), ts, nonce, digest].join('\n');
+  const sigKey = createHmac('sha256', String(apikey || '')).update(LINK_SIG_PURPOSE, 'utf8').digest('hex');
+  const sig = createHmac('sha256', sigKey).update(canonical, 'utf8').digest('hex');
+  return { sig, ts, nonce };
+}
 
 // ---- 可調參數（皆可由 Vercel env 覆寫）----
 const UPSTREAM_TIMEOUT_MS = (() => {
@@ -103,6 +149,43 @@ async function callUpstream(url, { method, params, payload }) {
     init.body = JSON.stringify(payload || {});
   }
   const up = await fetch(target, init);
+  const text = await up.text();
+  let json = null;
+  try { json = JSON.parse(text); } catch (e) { /* 非 JSON */ }
+  return { status: up.status, json, raw: text };
+}
+
+// 當保留帳號（已於 Vercel 通過 SUPER_KEY 及 rbs1. session 驗證）存取已閂口（ALLOW_LOCAL_LOGIN=false）
+// 或未升級之 GAS 時，自動以該旅團已登記的 APIKEY 簽署 sig 請求轉發，確保保留帳號在任何閂口狀態下都能進入及操作。
+async function callUpstreamSigned(troop, action, data) {
+  if (!troop || !troop.apikey) return null;
+  const signedAction = SIGNED_ACTION_MAP[action] || action;
+  if (!LINK_SIG_SUPPORTED.has(signedAction)) return null;
+  const clean = {};
+  for (const [k, v] of Object.entries(data || {})) {
+    if (k === 'sig' || k === 'sig_ts' || k === 'sig_nonce' || k === 'token' || k === 'apikey') continue;
+    clean[k] = v;
+  }
+  clean.action = signedAction;
+  clean.on_behalf = 'system';
+  clean.on_behalf_name = 'system';
+  clean.on_behalf_role = 'admin';
+  if ('confirmer' in clean) clean.confirmer = 'system';
+  if ('recorder_name' in clean) clean.recorder_name = 'system';
+  const rawPayload = JSON.stringify(clean);
+  const inner = makeLinkSig(signedAction, rawPayload, troop.apikey);
+  const bodyWithSig = { ...clean, sig: inner.sig, sig_ts: inner.ts, sig_nonce: inner.nonce };
+  const rawOutgoing = JSON.stringify(bodyWithSig);
+  const outer = makeLinkSig(signedAction, rawOutgoing, troop.apikey);
+  const target = troop.backend + (troop.backend.includes('?') ? '&' : '?') +
+    `sig=${encodeURIComponent(outer.sig)}&sts=${encodeURIComponent(outer.ts)}&snonce=${encodeURIComponent(outer.nonce)}`;
+  const up = await fetch(target, {
+    method: 'POST',
+    redirect: 'follow',
+    signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: rawOutgoing
+  });
   const text = await up.text();
   let json = null;
   try { json = JSON.parse(text); } catch (e) { /* 非 JSON */ }
@@ -243,6 +326,18 @@ export default async function handler(req, res) {
     delete data.password;
     data.super_ticket = sealSuper('login', { troopId, backend: troop.backend, apikey: troop.apikey }, 60);
   }
+  let isSuperSession = false;
+  if (typeof data.token === 'string' && data.token.startsWith('rbs1.')) {
+    const session = openSuper('session', data.token);
+    if (!session || session.troopId !== troopId || typeof session.token !== 'string') {
+      return sendJson(res, 401, { success: false, error: '登入已過期，請重新登入' });
+    }
+    if (action === 'changePassword') return sendJson(res, 403, { success: false, error: '此帳號不支援在此更改密碼，請聯絡管理員' });
+    data.token = session.token;
+    isSuperSession = true;
+    if ('confirmer' in data) data.confirmer = 'system';
+    if ('recorder_name' in data) data.recorder_name = 'system';
+  }
   if (TOKEN_ACTIONS.has(action)) {
     // 若帶有 sig 且屬於 SIG_ACTIONS 則可經上游 sig 直通（真偽由 GAS 驗證）
     const hasSig = typeof data.sig === 'string' && data.sig.length >= 8;
@@ -252,43 +347,73 @@ export default async function handler(req, res) {
         return sendJson(res, 401, { success: false, error: '未登入或登入已過期，請重新登入' });
       }
     }
-    if (typeof data.token === 'string' && data.token.startsWith('rbs1.')) {
-      const session = openSuper('session', data.token);
-      if (!session || session.troopId !== troopId) return sendJson(res, 401, { success: false, error: '登入已過期，請重新登入' });
-      if (action === 'changePassword') return sendJson(res, 403, { success: false, error: '此帳號不支援在此更改密碼，請聯絡管理員' });
-      data.token = session.token;
-    }
   }
   const effectiveApikey = troop.apikey;
 
   try {
-    let up;
-    if (GET_ACTIONS.has(action)) {
-      up = await callUpstream(troop.backend, {
-        method: 'GET',
-        params: { action, apikey: effectiveApikey || undefined, token: data.token }
-      });
-    } else {
-      const payload = { ...data, action };
-      if (effectiveApikey) payload.apikey = effectiveApikey;
-      up = await callUpstream(troop.backend, { method: 'POST', payload });
+    let up = null;
+    try {
+      if (GET_ACTIONS.has(action)) {
+        up = await callUpstream(troop.backend, {
+          method: 'GET',
+          params: { action, apikey: effectiveApikey || undefined, token: data.token }
+        });
+      } else {
+        const payload = { ...data, action };
+        if (effectiveApikey) payload.apikey = effectiveApikey;
+        up = await callUpstream(troop.backend, { method: 'POST', payload });
+      }
+    } catch (innerErr) {
+      if (!superLogin) throw innerErr;
     }
 
-    if (!up.json) {
+    // 保留帳號已於 Vercel 通過 SUPER_KEY 驗證（不經 Sheet Users 表）；
+    // 即使旅團 GAS 直接入口已閂（ALLOW_LOCAL_LOGIN=false）或後端未升級／未跑 authorizeConnection，
+    // 仍以本旅團 APIKEY 簽發無狀態 session，確保保留帳號任何情況下都能進入。
+    if (superLogin) {
+      const validUpstreamSuper = up && up.json && up.json.success &&
+        typeof up.json.token === 'string' && up.json.token.startsWith('rbs-super-v1-') &&
+        up.json.user && up.json.user.role === 'super_admin';
+      const rawSuperToken = validUpstreamSuper ? up.json.token : buildSuperInnerToken(effectiveApikey);
+      const superUser = validUpstreamSuper ? up.json.user : buildSuperUser();
+      const sealed = sealSuper('session', { troopId, token: rawSuperToken }, 30 * 24 * 60 * 60);
+      safeLog({ result: 'ok', troopId, action, status: (up && up.status) || 200, ms: Date.now() - t0 });
+      return sendJson(res, 200, {
+        success: true,
+        token: sealed,
+        user: superUser,
+        force_change_password: false
+      });
+    }
+
+    // 保留帳號後續操作：若旅團 GAS 因 ALLOW_LOCAL_LOGIN=false（只收上游 sig）或未升級而拒絕直接請求，
+    // 自動改以本旅團 APIKEY 簽署 sig 請求重試，無痕繞過閂口限制。
+    if (isSuperSession) {
+      if (action === 'logout' && (!up || !up.json || !up.json.success)) {
+        safeLog({ result: 'ok', troopId, action, status: 200, ms: Date.now() - t0 });
+        return sendJson(res, 200, { success: true });
+      }
+      const gateOrTokenBlocked = !up || !up.json || (!up.json.success && (
+        up.json.upstream_only === true ||
+        up.json.local_login === false ||
+        /直接入口已閂|ALLOW_LOCAL_LOGIN|Token 無效或過期|無效或已過期的登入令牌|未授權|未登入|找不到用戶/.test(String(up.json.error || ''))
+      ));
+      if (gateOrTokenBlocked) {
+        const signedUp = await callUpstreamSigned(troop, action, data);
+        if (signedUp && signedUp.json) up = signedUp;
+      }
+    }
+
+    if (!up || !up.json) {
       // 上游 HTTP 失敗或回應非 JSON（GAS HTML error page）
-      safeLog({ result: 'upstream_bad_response', troopId, action, status: up.status, ms: Date.now() - t0 });
-      const msg = up.status >= 400
-        ? `旅團後端暫時無法使用（HTTP ${up.status}），請稍後重試`
+      const st = (up && up.status) || 502;
+      safeLog({ result: 'upstream_bad_response', troopId, action, status: st, ms: Date.now() - t0 });
+      const msg = st >= 400
+        ? `旅團後端暫時無法使用（HTTP ${st}），請稍後重試`
         : '旅團後端回應格式異常，請稍後重試或通知管理員檢查 Apps Script 部署';
       return sendJson(res, 502, { success: false, error: msg });
     }
 
-    if (superLogin && up.json.success) {
-      if (!up.json.token?.startsWith('rbs-super-v1-') || up.json.user?.role !== 'super_admin') {
-        return sendJson(res, 502, { success: false, error: '旅團後端版本需要更新，請聯絡管理員' });
-      }
-      up.json.token = sealSuper('session', { troopId, token: up.json.token }, 30 * 24 * 60 * 60);
-    }
     safeLog({ result: 'ok', troopId, action, status: up.status, ms: Date.now() - t0 });
     // GAS 業務錯誤（success:false）照原樣回傳，前端按語意顯示
     return sendJson(res, 200, up.json);

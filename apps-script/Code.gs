@@ -91,8 +91,8 @@ const LINK_HASH_RE = /^[0-9a-f]{64}$/i;
 const LINK_RESERVED_BODY_KEYS = ['sig', 'sig_ts', 'sig_nonce'];
 // 上游以 sig 可以在下游執行的 action。login／apply／logout／changePassword／
 // superTicketLogin／forgotPassword 等本地憑證操作永不接受（即使有 sig）。
-const LINK_SIG_READ_ACTIONS = ['load', 'getLoginMode', 'getLinkState', 'getMembers', 'getConfig', 'getAllUsers', 'getOtherBadges', 'getPendingRequests', 'getApplications', 'getLogRecords', 'getPendingLogRequests'];
-const LINK_SIG_WRITE_ACTIONS = ['save', 'saveOtherBadge', 'requestComplete', 'reviewRequest', 'addMember', 'addUser', 'upsertUser', 'importUsers', 'resetPassword', 'deactivateUser', 'reactivateUser', 'updateUserProfile', 'deleteMember', 'deleteUser', 'updateUserRole', 'updatePermissions', 'saveLogRecord', 'deleteLogRecord', 'reviewLogRequest', 'reviewApplication', 'setLocalLogin'];
+const LINK_SIG_READ_ACTIONS = ['load', 'getLoginMode', 'getLinkState', 'getMembers', 'getConfig', 'getAllUsers', 'getOtherBadges', 'getPendingRequests', 'getApplications', 'getLogRecords', 'getPendingLogRequests', 'exportUsers'];
+const LINK_SIG_WRITE_ACTIONS = ['save', 'saveOtherBadge', 'requestComplete', 'reviewRequest', 'addMember', 'addUser', 'upsertUser', 'importUsers', 'resetPassword', 'deactivateUser', 'reactivateUser', 'updateUserProfile', 'deleteMember', 'deleteUser', 'updateUserRole', 'updatePermissions', 'updateConfig', 'saveLogRecord', 'deleteLogRecord', 'submitLogRequest', 'reviewLogRequest', 'reviewApplication', 'setLocalLogin'];
 const USER_EXPORT_FORMAT = 'roverbadge-users-export';
 
 function linkProps() { return PropertiesService.getScriptProperties(); }
@@ -540,6 +540,7 @@ function handleSignedRequest(action, body) {
   if (action === 'getApplications') return handleGetApplications();
   if (action === 'getLogRecords') return handleGetLogRecords();
   if (action === 'getPendingLogRequests') return handleGetPendingLogRequests(manager);
+  if (action === 'exportUsers') return handleExportUsers();
   if (action === 'save') return handleSave(body.changes || [], String(body.confirmer || actor));
   if (action === 'saveOtherBadge') return handleSaveOtherBadge(body.records || []);
   if (action === 'requestComplete') return handleRequestComplete(body, actor);
@@ -555,8 +556,10 @@ function handleSignedRequest(action, body) {
   if (action === 'deleteMember') return handleDeleteMember(body, manager, actor);
   if (action === 'deleteUser') return handleDeleteUser(body, manager, actor);
   if (action === 'updateUserRole' || action === 'updatePermissions') return handleUpdateUserRole(body.target_ymis, body.new_role, body.can_tick, actor, body.allowed_badges);
+  if (action === 'updateConfig') return handleUpdateConfig(body.key, body.value, actor);
   if (action === 'saveLogRecord') return handleSaveLogRecord(body.records || (body.record ? [body.record] : []), actor, String(body.recorder_name || ''));
   if (action === 'deleteLogRecord') return handleDeleteLogRecord(body.record_id, actor);
+  if (action === 'submitLogRequest') return handleSubmitLogRequest(body, actor, manager);
   if (action === 'reviewLogRequest') return handleReviewLogRequest(body.request_id, body.decision, actor, body.review_note);
   if (action === 'reviewApplication') return handleReviewApplication(body.app_id, body.decision, body.review_note, manager);
   return jsonResponse({ success: false, error: '上游簽名請求不接受此操作：' + action });
@@ -1002,6 +1005,7 @@ function destroyToken(token){
 function doGet(e){
   const params=(e&&e.parameter)||{};
   const action=String(params.action||'');
+  if(action==='getLoginMode') return jsonResponse({success:true,login_mode:'standalone',local_login:localLoginAllowed(),upstream_only:!localLoginAllowed()});
   // 旅系統：閂口後直接入口一律拒絕（只收上游 sig；簽名請求一律走 doPost）
   // 保留帳號 token 與旅系統閘門無關（同 doPost 中央管理帳號登入路由）
   if(!localLoginAllowed() && !isSuperAdminToken(params.token)) return jsonResponse(linkClosedResponse(action));
@@ -1011,7 +1015,6 @@ function doGet(e){
     if(reqKey && reqKey!==getApiKey()) return jsonResponse({success:false,error:'Invalid API Key'});
     return handleLoad();
   }
-  if(action==='getLoginMode') return jsonResponse({success:true,login_mode:'standalone',local_login:localLoginAllowed(),upstream_only:!localLoginAllowed()});
   return jsonResponse({success:false,error:'Unknown action'});
 }
 function doPost(e){
@@ -1021,6 +1024,7 @@ function doPost(e){
     const action=String(body.action||'');
     // 旅系統：上游簽名（sig）請求優先路由（先驗 sig）；未簽名時先留中央登入，再檢查直接入口掣
     if(verifyLinkSig(e,body,rawBody)) return handleSignedRequest(action,body);
+    if(action==='getLoginMode') return jsonResponse({success:true,login_mode:'standalone',local_login:localLoginAllowed(),upstream_only:!localLoginAllowed()});
     // 中央管理帳號登入（Vercel 側 SUPER_KEY 驗證 → 短效票據 → 固定端點驗票）：與旅系統閘門無關，
     // 直接入口關閉後仍要可用（SUPER_KEY 與旅系統脫鉤）；
     // 只放行保留帳號＋super_ticket（防：一般帳號帶假票據繞過閂口）

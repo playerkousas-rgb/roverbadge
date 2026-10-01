@@ -237,3 +237,97 @@ test('Feedback relay confirms delivery only after inbox receipt and distinguishe
     console.log = originalLog;
   }
 });
+
+test('Super admin bypasses Sheet ALLOW_LOCAL_LOGIN=false gate on both login and subsequent actions via sig fallback', async () => {
+  const originalFetch = globalThis.fetch;
+  const gas = gasContext();
+  const g = gas.context;
+  const closedError = action => ({
+    success: false,
+    local_login: false,
+    upstream_only: true,
+    error: `此後端的直接入口已閂（ALLOW_LOCAL_LOGIN=false），只接受上游簽名（sig）請求；請由上游（旅／支部系統）入口登入。（已拒絕：${action}）`
+  });
+  const requests = [];
+  globalThis.fetch = async (url, init) => {
+    const u = new URL(url);
+    const params = Object.fromEntries(u.searchParams.entries());
+    const rawBody = init.method === 'POST' ? String(init.body || '{}') : '';
+    const parsed = rawBody ? JSON.parse(rawBody) : {};
+    requests.push({ method: init.method, params, parsed, rawBody });
+
+    // Simulate a Sheet whose direct entry gate is closed (ALLOW_LOCAL_LOGIN=false)
+    // and only accepts valid sig-signed POST requests via Code.gs verifyLinkSig
+    if (init.method === 'POST' && g.verifyLinkSig({ parameter: params }, parsed, rawBody)) {
+      if (parsed.action === 'load') {
+        return { status: 200, text: async () => JSON.stringify({ success: true, members: [{ ymis: '1234567890', name: '陳大文' }], progress: {} }) };
+      }
+      if (parsed.action === 'getAllUsers') {
+        return { status: 200, text: async () => JSON.stringify({ success: true, users: [{ ymis: '1234567890', name: '陳大文', role: 'member' }] }) };
+      }
+      if (parsed.action === 'save') {
+        return { status: 200, text: async () => JSON.stringify({ success: true, confirmer: parsed.confirmer, on_behalf: parsed.on_behalf }) };
+      }
+      if (parsed.action === 'getLinkState') {
+        return { status: 200, text: async () => JSON.stringify({ success: true, allow_local_login: false }) };
+      }
+      if (parsed.action === 'setLocalLogin') {
+        const allow = ['1', 'true', 'yes', 'on', 'open'].includes(String(parsed.allow || '').trim().toLowerCase());
+        return { status: 200, text: async () => JSON.stringify({ success: true, allow_local_login: allow }) };
+      }
+    }
+    const act = params.action || parsed.action || 'unknown';
+    return { status: 200, text: async () => JSON.stringify(closedError(act)) };
+  };
+  try {
+    // 1. Super admin login succeeds even though Sheet rejected login with ALLOW_LOCAL_LOGIN=false
+    const login = await call(proxy, request('login', { login_id: accountId, password: process.env.SUPER_KEY }));
+    assert.equal(login.code, 200);
+    assert.equal(login.body.success, true);
+    assert.equal(login.body.user.role, 'super_admin');
+    assert.match(String(login.body.token || ''), /^rbs1\./);
+    const sessionToken = login.body.token;
+
+    // 2. Subsequent load (normally GET) automatically falls back to sig-signed POST and succeeds
+    const loadRes = await call(proxy, request('load', { token: sessionToken }));
+    assert.equal(loadRes.code, 200);
+    assert.equal(loadRes.body.success, true);
+    assert.equal(loadRes.body.members.length, 1);
+
+    // 3. Subsequent getAllUsers, save, getAllowLocalLogin, setAllowLocalLogin also succeed via sig-signed POST
+    const usersRes = await call(proxy, request('getAllUsers', { token: sessionToken }));
+    assert.equal(usersRes.code, 200);
+    assert.equal(usersRes.body.success, true);
+
+    const saveRes = await call(proxy, request('save', { token: sessionToken, changes: [{ ymis: '1234567890', itemId: 'L1', date: '2026-10-01' }], confirmer: '系統管理員' }));
+    assert.equal(saveRes.code, 200);
+    assert.equal(saveRes.body.success, true);
+    assert.equal(saveRes.body.confirmer, 'system');
+    assert.equal(saveRes.body.on_behalf, 'system');
+
+    const gateStatus = await call(proxy, request('getAllowLocalLogin', { token: sessionToken }));
+    assert.equal(gateStatus.code, 200);
+    assert.equal(gateStatus.body.success, true);
+    assert.equal(gateStatus.body.allow_local_login, false);
+
+    const gateReopen = await call(proxy, request('setAllowLocalLogin', { token: sessionToken, allow: true }));
+    assert.equal(gateReopen.code, 200);
+    assert.equal(gateReopen.body.success, true);
+    assert.equal(gateReopen.body.allow_local_login, true);
+
+    // 4. Ordinary member login is still rejected when ALLOW_LOCAL_LOGIN=false
+    const memberLogin = await call(proxy, request('login', { login_id: '1234567890', password: 'changeme' }));
+    assert.equal(memberLogin.code, 200);
+    assert.equal(memberLogin.body.success, false);
+    assert.equal(memberLogin.body.upstream_only, true);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('Frontend guards prevent empty/invalid troopId from triggering staleBanner 旅團編號格式不正確', () => {
+  const html = fs.readFileSync('index.html', 'utf8');
+  assert.match(html, /function doLogout\(\)\{\s*clearStaleBanner\(\);/, 'doLogout must clear staleBanner');
+  assert.match(html, /function backToHome\(\)\{\s*clearStaleBanner\(\);/, 'backToHome must clear staleBanner');
+  assert.match(html, /async function loadItemsAndProgress\(\)\{\s*const tid=String\(currentTroopId\|\|''\)\.trim\(\);\s*if\(!tid \|\| tid==='DEMO' \|\| !\/\^\[0-9A-Za-z_-\]\{1,32\}\$\/\.test\(tid\) \|\| !currentUser\)\{\s*clearStaleBanner\(\);\s*return;\s*\}/, 'loadItemsAndProgress must guard troopId and clear staleBanner');
+});
