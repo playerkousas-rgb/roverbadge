@@ -12,7 +12,7 @@
 前端 (單一 index.html, 150KB 左右, 含所有邏輯)
 ├── PNG LOGO 256px + 128px + SVG fallback (assets/)
 ├── data/items.json (考核項目定義，306項，第11版)
-├── assets/ (bp-award-logo-256.png, bp-award-logo-128.png — 貝登堡獎章作 Logo)
+├── assets/ (rover-badge-256.png, rover-badge-128.png + favicon.ico／favicon-16/32.png／apple-touch-icon-180.png — 樂行童軍徽章作 Logo)
 ├── apps-script/Code.gs (單一檔案版，含 系統管理員、細緻權限、私隱開關)
 ├── api/ (proxy.js / troops.js / portal.js / super.js + _registry.js / _super.js)
 ├── vercel.json (零配置：maxDuration + headers，見下方「Vercel 部署」，唔准用 builds/routes)
@@ -47,7 +47,7 @@
 - 全團總覽限制 30欄/50人，卡片 + 表格 + 批量區
 
 ### LOGO
-- 使用貝登堡獎章 PNG 256px + 128px + SVG fallback，`<img src="assets/bp-award-logo-256.png" onerror="fallback">`，favicon 同用 128px
+- 使用樂行童軍徽章 PNG 256px + 128px + SVG fallback，`<img src="assets/rover-badge-256.png" onerror="fallback">`；favicon 用 assets/favicon.ico + favicon-16/32.png + rover-badge-128.png，iOS 主畫面用 apple-touch-icon-180.png（全部由 assets/BPA.png 產生，指令見 scripts/make-icons.sh）
 - 不要用 1.3M 原圖，ZIP 會大
 
 ### 瀏覽器暫存→批量寫入
@@ -160,7 +160,7 @@
 
 ### B. Logo / 制服色
 - 樂行用棗紅色 #8B0000 + 金色 #FFD700 + 火炬
-- 幼童軍用黃色為主、童軍綠色為主、樂行紅色為主，換 assets/bp-award-logo-*.png 為該支部標誌，但保持 256px + 128px 大小，不要用1.3M原圖
+- 幼童軍用黃色為主、童軍綠色為主、樂行紅色為主，換 assets/rover-badge-*.png（連 favicon 一套）為該支部標誌，但保持 256px + 128px 大小，不要用1.3M原圖；圖示生成指令見 scripts/make-icons.sh
 - 變更 :root --maroon 色碼為該支部主色
 
 ### C. 表格

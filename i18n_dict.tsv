@@ -2,7 +2,7 @@
 樂行童軍進度追蹤	Rover Scout Progress Tracker
 樂行童軍進度追蹤系統 v5.1 - 手機友善・批量開戶・全前端控制	Rover Scout Progress Tracker v5.1 - Mobile friendly · Bulk onboarding · Full front-end control
 樂行童軍進度追蹤 v5.1	Rover Scout Progress Tracker v5.1
-Rover Scout Progress Tracker v5.1 • 貝登堡獎章 Logo + 2026年第5版綱要	Rover Scout Progress Tracker v5.1 • Baden-Powell Award logo + 2026 5th Edition Scheme
+Rover Scout Progress Tracker v5.1 • 樂行童軍徽章 + 2026年第5版綱要	Rover Scout Progress Tracker v5.1 • Rover Scout emblem + 2026 5th Edition Scheme
 基於 2026年第5版《樂行童軍訓練綱要》 | 支援離線暫存 • 批量寫入 • 批量開戶 • 全前端控制 • 保護兒童 Safe from Harm	Based on the 5th Edition of the Rover Scout Training Scheme (2026) | Offline staging • Batch writing • Bulk onboarding • Full front-end control • Safe from Harm
 基於 2026年第5版《樂行童軍訓練綱要》• 支援離線暫存•批量寫入•成員申請確認•表格自動填寫	Based on the 5th Edition of the Rover Scout Training Scheme (2026) • Offline staging • batch writing • member request confirmation • form auto-fill
 COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 v5.1	COPYRIGHT 2026 Scout System • Rover Scout Progress Tracker v5.1
@@ -41,6 +41,7 @@ PNG LOGO 256px、防卡死、批量、官方表格、細緻權限、MOCK測試�
 👨‍💼 領袖 leader	👨‍💼 Leader
 樂行童軍獎章	Rover Scout Award
 貝登堡獎章	Baden-Powell Award
+樂行童軍徽章	Rover Scout emblem
 會員章	Membership Badge
 肩章	Epaulettes
 📋 新旅團部署指南 - 有主系統 / 無主系統 兩條路 (10分鐘)	📋 New Group Deployment Guide - with or without the main system, two tracks (10 min)
