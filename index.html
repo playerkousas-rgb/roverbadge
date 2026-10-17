@@ -1813,7 +1813,7 @@ async function apiDiagnose(){
   // 探測同源端點 /api/troops：回傳 JSON 就代表 Vercel 已建成 function；
   // HTML 404 即代表 /api/* 整條路徑未被部署（登入必然失敗，同帳號密碼無關）。
   let j=null;
-  try{ const r=await fetch('/api/troops',{cache:'no-store'}); j=await r.json().catch(()=>null); }catch(e){ j=null; }
+  try{ const r=await fetch('/api/troops'); j=await r.json().catch(()=>null); }catch(e){ j=null; }
   if(j && typeof j==='object'){
     out.deployed=true;
     const t=j.troops;
@@ -1938,7 +1938,7 @@ async function handlePortalParams(){
   // Portal 免登入身份一律經同源 /api/portal 由伺服器驗證（見下），唔再信 URL 參數。
   if(u){
     try{
-      const r2=await fetch('/api/troops?_='+Date.now());
+      const r2=await fetch('/api/troops');
       if(r2.ok){
         const d2=await r2.json();
         const t2=(d2.troops||{})[u];
@@ -2084,7 +2084,7 @@ async function loadTroops(){
   // 旅團清單唯一來源：同源 /api/troops（Vercel 環境變數 Registry）。
   // 沒有前端 fallback／寫死旅團：登記與否只由伺服器端環境變數決定。
   try{
-    const r2=await fetch('/api/troops?_='+Date.now());
+    const r2=await fetch('/api/troops');
     const d2=await r2.json();
     const troops=d2.troops||{};
     const ids=Object.keys(troops);
