@@ -15,7 +15,7 @@ for (const f of ['AGENT_TEMPLATE_FOR_OTHER_SECTIONS.md', 'DEPLOY_GUIDE_V5_DUALTR
   fs.rmSync(path.join(staticDir, 'docs', f), { force: true });
 }
 const dependencies = {
-  proxy: ['_registry', '_super'], troops: ['_registry'], portal: ['_registry'], super: ['_registry', '_super']
+  proxy: ['_registry', '_super', '_admin'], troops: ['_registry'], portal: ['_registry'], super: ['_registry', '_super']
 };
 for (const [name, deps] of Object.entries(dependencies)) {
   const dir = path.join(output, 'functions/api', name + '.func');

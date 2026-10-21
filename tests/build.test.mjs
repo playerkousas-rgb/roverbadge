@@ -46,7 +46,9 @@ test('Build Output API contains only intended static files and four runnable fun
       const response = await fetch(`http://127.0.0.1:${server.address().port}/api/${name}`);
       assert.equal(response.status, name === 'troops' ? 200 : name === 'portal' ? 404 : 405);
       assert.match(response.headers.get('content-type'), /application\/json/);
-      assert.match(response.headers.get('cache-control'), /no-store/);
+      // /api/troops 只公開 id+name，設計上可短暫公開快取；其餘 API 一律 no-store。
+      const cache = response.headers.get('cache-control') || '';
+      assert.match(cache, name === 'troops' ? /public|no-store/ : /no-store/, name + ': ' + cache);
       const body = await response.json(); assert.equal(typeof body, 'object');
     } finally { await new Promise(resolve => server.close(resolve)); }
     const route = config.routes.find(r => r.src && new RegExp(r.src).test('/api/' + name + '.js'));

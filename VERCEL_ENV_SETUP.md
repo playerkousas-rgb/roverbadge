@@ -100,6 +100,50 @@ curl -s 'https://roverbadge.vercel.app/api/portal?u=0082&role=member'  # 期望 
 
 ---
 
+## 中央收件匣：新旅團接入申請／回報（Scout Admin GS）
+
+「📋 提交旅團接入申請」同「🐛💬 回報問題／意見」都由 `/api/proxy` 喺伺服器端送往同一個
+Scout Admin GS 收件匣，**前端永遠唔會知道、亦唔會傳送收件匣 URL**。
+
+| Name | 用途 | 優先次序 |
+|------|------|----------|
+| `SCOUT_ADMIN_API` | 中央收件匣 `/exec` URL（Scout 系列共用命名） | 1 |
+| `ROVERBADGE_ADMIN_API` | 本 APP 專用命名 | 2 |
+| `CUBSBADGE_ADMIN_API` | 幼童軍 APP 命名（姊妹 APP 共用同一段 helper） | 3 |
+| `SCOUTBADGE_ADMIN_API` | ScoutBadge 命名（**目前 Vercel 用嘅名**） | 4 |
+| （內建預設） | 四個都未設／空白時用內建 `/exec` URL | 5 |
+
+- 讀取係動態 helper（`api/_admin.js` `getAdminApiUrl()`），每次請求重新讀 env 並 `.trim()`；
+  空白字串視同未設定，會自動試下一個名稱。
+- `submitRegistration` 同 `submitFeedback` **共用同一個 helper**，唔會一邊改咗一邊未改。
+- 呢條路徑**唔需要 `SUPER_KEY`**，亦保證唔會將伺服器端任何密鑰放入送往上游的 JSON。
+
+**送往 Scout Admin GS 的申請 payload（與 ScoutBadge / vsbadge / cubsbadge 對齊）：**
+
+```json
+{
+  "type": "apply",
+  "appType": "roverbadge",
+  "troopId": "0082",
+  "troopName": "第 82 旅",
+  "backendUrl": "https://script.google.com/macros/s/.../exec",
+  "apiKey": "rover_xxx",
+  "note": "[roverbadge] 原備註"
+}
+```
+
+- `type` 固定 `apply`；`appType` 固定 `roverbadge`（姊妹 APP 用 `cubsbadge` 等）。
+- Scout Admin GS `FIELD_MAP["URL"]` 只認 `backendUrl`：前端格式照舊送 `scriptUrl`，
+  由伺服器端映射為 `backendUrl`，**永不轉發 `scriptUrl`**。
+- `troopId` / `backendUrl` / `apiKey` 缺漏 → 回 `400`（附 `missing`），**唔會呼叫上游**。
+- `troopName` 空白 → 自動補 `第 {troopId} 旅`，避免 Scout Admin 看板略過唔顯示卡片。
+- `note` 自動加 `[roverbadge]` 標記（已加過唔會重複），管理員一眼睇出邊個 APP 寄出。
+- 成功判斷：HTTP 2xx **且** `status === "success"` 或 `success === true` → 回
+  `200 { success: true, message: "申請已提交" }`；其餘（`status: "error"`、非 2xx、
+  非 JSON、空回應）一律 `502 { success: false, ... }`，唔會假成功。
+
+---
+
 ## 中央管理帳號（SUPER_KEY）
 
 v8.9 起，系統管理員密碼改由 **Vercel 環境變數 `SUPER_KEY`** 驗證，只喺 Vercel 側比對；**任何密碼／hash 都唔會送到 GAS、Sheet、URL、前端或 log**。

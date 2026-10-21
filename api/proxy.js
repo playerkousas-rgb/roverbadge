@@ -20,6 +20,7 @@
 import { createHash, createHmac, randomBytes } from 'node:crypto';
 import { getTrustedTroop, isTrustedExecUrl } from './_registry.js';
 import { accountId, isSuperId, checkSuperPassword, superConfigured, sealSuper, openSuper } from './_super.js';
+import { APP_TYPE, buildRegistrationPayload, getAdminApiUrl, isAdminSuccess } from './_admin.js';
 
 export const config = { maxDuration: 60 };
 
@@ -76,9 +77,9 @@ const UPSTREAM_TIMEOUT_MS = (() => {
 })();
 const MAX_DATA_BYTES = 2 * 1024 * 1024; // 單次請求 data 上限 (2MB)
 
-// 中央管理員收件匣（新旅團接入申請）。目的地是伺服器端固定常數，不由用戶輸入決定。
-const SCOUT_ADMIN_API = process.env.SCOUT_ADMIN_API ||
-  'https://script.google.com/macros/s/AKfycbxj5BDDGgjs559smkK4Z5aYImWYeXbN5af8U1ObON0z9WnsN6QJW4I1XWolhs5kQ_H-UQ/exec';
+// 中央管理員收件匣（新旅團接入申請／回報）。URL 由 api/_admin.js 動態解析
+// （SCOUT_ADMIN_API → ROVERBADGE_ADMIN_API → CUBSBADGE_ADMIN_API → SCOUTBADGE_ADMIN_API → 內建預設），
+// 目的地永遠是伺服器端常數，不由用戶輸入決定。
 
 // ---- action 白名單（對照 Code.gs doGet/doPost）----
 // 公開（無需 token）
@@ -225,7 +226,8 @@ export default async function handler(req, res) {
 
   // ===== 統一回報：只經伺服器端固定收件匣轉送；回應明確標示送達狀態 =====
   if (action === 'submitFeedback') {
-    if (!isTrustedExecUrl(SCOUT_ADMIN_API)) {
+    const adminApi = getAdminApiUrl();
+    if (!isTrustedExecUrl(adminApi)) {
       safeLog({ result: 'feedback_inbox_misconfig', ms: Date.now() - t0 });
       return sendJson(res, 500, { success: false, deliveryStatus: 'not_sent', error: '回報服務暫時無法使用，請稍後重試' });
     }
@@ -255,12 +257,12 @@ export default async function handler(req, res) {
       payload = { ...common, fbType, content: safeText(content, 2000) };
     }
     try {
-      const up = await callUpstream(SCOUT_ADMIN_API, { method: 'POST', payload });
+      const up = await callUpstream(adminApi, { method: 'POST', payload });
       if (!up.json) {
         safeLog({ result: 'feedback_inbox_bad_response', status: up.status, ms: Date.now() - t0 });
         return sendJson(res, 502, { success: false, deliveryStatus: 'unknown', error: '暫時未能確認回報是否送達' });
       }
-      if (up.json.status !== 'success') {
+      if (!isAdminSuccess(up.status, up.json)) {
         safeLog({ result: 'feedback_inbox_rejected', status: up.status, ms: Date.now() - t0 });
         return sendJson(res, 502, { success: false, deliveryStatus: 'rejected', error: '回報未能送出，請稍後重試' });
       }
@@ -274,31 +276,43 @@ export default async function handler(req, res) {
   }
 
   // ===== 特殊：新旅團接入申請（轉發去中央管理員收件匣，目的地固定於伺服器端）=====
+  // 公開路徑：唔需要 SUPER_KEY，亦保證唔會將伺服器端任何密鑰放入送往上游的 JSON。
   if (action === 'submitRegistration') {
-    if (!isTrustedExecUrl(SCOUT_ADMIN_API)) {
+    const adminApi = getAdminApiUrl();
+    if (!isTrustedExecUrl(adminApi)) {
       safeLog({ result: 'admin_api_misconfig', ms: Date.now() - t0 });
       return sendJson(res, 500, { success: false, error: '伺服器設定錯誤，請聯絡管理員' });
     }
-    const regPayload = {
-      troopId: String(data.troopId || '').substring(0, 32),
-      troopName: String(data.troopName || '').substring(0, 100),
-      scriptUrl: String(data.scriptUrl || '').substring(0, 300),
-      apiKey: String(data.apiKey || '').substring(0, 120),
-      appType: 'roverbadge',
-      note: String(data.note || '').substring(0, 500)
-    };
+    // Scout Admin GS 只認 backendUrl（不認 scriptUrl）；前端格式照舊，由呢層映射。
+    const registration = buildRegistrationPayload(data, { appType: APP_TYPE });
+    if (!registration.ok) {
+      safeLog({ result: 'admin_registration_invalid', missing: registration.missing.join(','), ms: Date.now() - t0 });
+      return sendJson(res, 400, {
+        success: false,
+        error: '請填寫旅團編號、Apps Script URL 及 API Key',
+        missing: registration.missing
+      });
+    }
+    const regPayload = registration.payload;
+    // 送上游前再明確清走任何密鑰欄位（payload 由白名單欄位重建，呢步係額外保險）。
+    delete regPayload.superKey;
+    delete regPayload.super_key;
+    delete regPayload.SUPER_KEY;
     try {
-      const up = await callUpstream(SCOUT_ADMIN_API, { method: 'POST', payload: regPayload });
-      if (!up.json) {
+      const up = await callUpstream(adminApi, { method: 'POST', payload: regPayload });
+      // Scout Admin GS 以 { status: 'success' } 表示成功；亦兼容 { success: true }。
+      // HTTP 非 2xx、非 JSON、status 唔啱，一律當未送達，唔可以回前端成功。
+      if (!isAdminSuccess(up.status, up.json)) {
         safeLog({ result: 'admin_upstream_bad', status: up.status, ms: Date.now() - t0 });
         return sendJson(res, 502, { success: false, error: '申請未能送達管理員，請稍後重試' });
       }
       safeLog({ result: 'registration_ok', status: up.status, ms: Date.now() - t0 });
       return sendJson(res, 200, { success: true, message: '申請已提交' });
     } catch (e) {
-      const timeout = e && e.name === 'TimeoutError';
+      const timeout = e && (e.name === 'TimeoutError' || e.name === 'AbortError');
       safeLog({ result: timeout ? 'admin_timeout' : 'admin_fetch_error', ms: Date.now() - t0 });
-      return sendJson(res, timeout ? 504 : 502, { success: false, error: timeout ? '提交逾時，請稍後重試' : '申請未能送達管理員，請稍後重試' });
+      // 契約：未能確認送達一律 502 success:false（前端只會顯示失敗，不會假成功）
+      return sendJson(res, 502, { success: false, error: timeout ? '提交逾時，請稍後重試' : '申請未能送達管理員，請稍後重試' });
     }
   }
 
