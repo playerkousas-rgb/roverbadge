@@ -2818,11 +2818,13 @@ async function submitRegistration(){
   if(!ti||!su||!ak){ showToast('請填寫旅團編號、Script URL 和 API Key','error'); return; }
   btn.disabled=true; btn.textContent='提交中...';
   try{
-    await apiRequest('submitRegistration',{troopId:ti,troopName:tn,scriptUrl:su,apiKey:ak,note:nt});
-    showToast('✅ 申請已提交！管理員會盡快處理','success');
+    const d=await apiRequest('submitRegistration',{troopId:ti,troopName:tn,scriptUrl:su,apiKey:ak,note:nt},{troopId:''});
+    // 後端確認成功才會顯示成功；400（缺漏）／502（未送達）一律當失敗
+    if(!d||d.success!==true) throw new Error((d&&d.error)||'申請未能提交');
+    showToast('✅ '+(d.message||'申請已提交')+'！管理員會盡快處理','success');
     closeContactModal();
     ['c_troopId','c_troopName','c_scriptUrl','c_apiKey','c_note'].forEach(id=>document.getElementById(id).value='');
-  }catch(e){ showToast('❌ 提交失敗，請檢查網絡','error'); }
+  }catch(e){ showToast('❌ '+(e&&e.message?e.message:'提交失敗，請檢查網絡'),'error'); }
   finally{ btn.disabled=false; btn.textContent='提交申請'; }
 }
 function showToast(m,t=''){

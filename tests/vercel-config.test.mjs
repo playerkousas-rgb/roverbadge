@@ -1,7 +1,7 @@
 // vercel.json / 部署設定規則檢查（Build Output API 時代）
 //
 // 約定（vsbadge 同構）：
-//   - vercel.json 只准 version/framework/buildCommand 三個頂層欄位（多一個就 build 失敗）
+//   - vercel.json 只准 version/framework/buildCommand（＋合法的 git.deploymentEnabled）頂層欄位
 //   - buildCommand 指向 npm run build（scripts/build.mjs → .vercel/output）
 //   - legacy builds/routes/functions 欄位一旦回來，Build Output 部署就會出事
 //   - .vercelignore 唔准存在（會剝走 scripts/，build.mjs → runtime-config.mjs → Code.gs 讀唔到）
@@ -22,9 +22,13 @@ function check(name, cond, extra = '') {
 console.log('\n【1】頂層欄位必須全部係 Vercel 認得嘅（additionalProperties:false → 多一個欄位就 build 失敗）');
 {
   const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'vercel.json'), 'utf8'));
-  const allowed = new Set(['version', 'framework', 'buildCommand']);
+  // `git.deploymentEnabled` 係 Vercel 官方支援嘅頂層欄位（控制邊個分支會自動部署），
+  // 唔屬於 legacy builds/routes/functions，所以同 version/framework/buildCommand 一齊准許。
+  const allowed = new Set(['version', 'framework', 'buildCommand', 'git']);
   const unknown = Object.keys(cfg).filter(k => !allowed.has(k));
   check('冇未知頂層欄位', unknown.length === 0, `未知：${unknown.join(', ')}`);
+  check('git 設定只含 deploymentEnabled（唔會連其他部署行為一齊改）',
+    !cfg.git || (typeof cfg.git === 'object' && JSON.stringify(Object.keys(cfg.git)) === '["deploymentEnabled"]'));
   check('version=2（Build Output API）', cfg.version === 2, JSON.stringify(cfg.version));
   check('framework=null（靜態＋自管 function）', cfg.framework === null, JSON.stringify(cfg.framework));
   check('buildCommand 指向 npm run build', cfg.buildCommand === 'npm run build', JSON.stringify(cfg.buildCommand));
@@ -53,7 +57,7 @@ console.log('\n【4】function 執行時限由 api 內 export config 管理');
 {
   const proxy = fs.readFileSync(path.join(ROOT, 'api', 'proxy.js'), 'utf8');
   check('api/proxy.js export const config（maxDuration 60）', /export const config = \{ maxDuration: 60 \};/.test(proxy), '找不到 export const config');
-  for (const f of ['troops.js', 'portal.js', 'super.js', '_super.js', '_registry.js']) {
+  for (const f of ['troops.js', 'portal.js', 'super.js', '_super.js', '_registry.js', '_admin.js']) {
     const src = fs.readFileSync(path.join(ROOT, 'api', f), 'utf8');
     check(`api/${f} 冇硬寫 maxDuration（統一由 proxy config／平台預設管）`, !/maxDuration/.test(src));
   }

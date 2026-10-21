@@ -13,7 +13,10 @@ import { startMockGas, SUPER_ADMIN_ID_FOR_TESTS } from './mock-gas.mjs';
 // ---- 必須在 import api 模組前設定 env（proxy 於 import 時讀 timeout） ----
 const PORT_A = parseInt(process.env.E2E_PORT_A || '3901', 10);
 const PORT_B = parseInt(process.env.E2E_PORT_B || '3902', 10);
+const PORT_INBOX = parseInt(process.env.E2E_PORT_INBOX || '3903', 10);
 process.env.ROVERBADGE_PROXY_TEST = '1';            // 允許 localhost mock（只限測試）
+// 中央收件匣（Scout Admin GS）以 SCOUTBADGE_ADMIN_API 命名（與 Vercel 實際設定一致）
+process.env.SCOUTBADGE_ADMIN_API = `http://127.0.0.1:${PORT_INBOX}/exec`;
 process.env.ROVERBADGE_PROXY_TIMEOUT_MS = '3000';   // 測試用短 timeout
 process.env.TROOP_0082_NAME = '旅團A(0082)';
 process.env.TROOP_0082_BACKEND = `http://127.0.0.1:${PORT_A}/exec`;
@@ -724,10 +727,81 @@ console.log('\n【18】Portal 免登入：真實 /api/portal over HTTP（來源�
   check('portal 回應無 CORS header（只給同源前端用）', ok1.headers.get('access-control-allow-origin') === null);
 }
 
+// ================== 19. Scout Admin GS 新旅團接入申請（收件匣契約）==================
+console.log('\n【19】Scout Admin GS 新旅團接入申請：SCOUTBADGE_ADMIN_API → type=apply → backendUrl → 成功/失敗判斷');
+const inboxRequests = [];
+let inboxMode = 'success';
+const inboxServer = http.createServer((req, res) => {
+  const chunks = [];
+  req.on('data', c => chunks.push(c));
+  req.on('end', () => {
+    let body = null;
+    try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch (e) { /* non-json */ }
+    inboxRequests.push({ url: req.url, method: req.method, body });
+    const json = (status, value) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(value)); };
+    if (inboxMode === 'error') return json(200, { status: 'error', message: 'rejected' });
+    if (inboxMode === 'http500') return json(500, { status: 'success' });
+    if (inboxMode === 'legacy') return json(200, { success: true });
+    if (inboxMode === 'not-json') { res.writeHead(200, { 'Content-Type': 'text/html' }); return res.end('<html>error</html>'); }
+    return json(200, { status: 'success', message: 'received' });
+  });
+});
+await new Promise(r => inboxServer.listen(PORT_INBOX, '127.0.0.1', r));
+{
+  const count0 = inboxRequests.length;
+  const ok = await apiRequest('submitRegistration', {
+    troopId: '0088', troopName: '', scriptUrl: 'https://script.google.com/macros/s/NEWTROOP0088/exec',
+    apiKey: 'new_troop_key', note: '請開通'
+  }, { troopId: '' });
+  check('真實 apiRequest 提交申請 → success:true + 訊息「申請已提交」',
+    ok.success === true && ok.message === '申請已提交', JSON.stringify(ok));
+  check('收件匣收到 1 個請求', inboxRequests.length === count0 + 1);
+  const sent = inboxRequests[inboxRequests.length - 1].body;
+  check('payload type=apply + appType=roverbadge', sent.type === 'apply' && sent.appType === 'roverbadge', JSON.stringify(sent));
+  check('scriptUrl 已映射為 backendUrl 且唔再送 scriptUrl',
+    sent.backendUrl === 'https://script.google.com/macros/s/NEWTROOP0088/exec' && !('scriptUrl' in sent), JSON.stringify(sent));
+  check('空白 troopName 補「第 0088 旅」', sent.troopName === '第 0088 旅', sent.troopName);
+  check('note 自動加 [roverbadge] 標記', sent.note === '[roverbadge] 請開通', sent.note);
+  check('payload 冇 SUPER_KEY／superKey', !/superKey|super_key|SUPER_KEY/.test(JSON.stringify(sent)) && !JSON.stringify(sent).includes(process.env.SUPER_KEY));
+
+  const beforeMissing = inboxRequests.length;
+  const missing = await postProxy({ troopId: '', action: 'submitRegistration', data: { troopName: '欠欄位' } });
+  check('必填缺漏 → HTTP 400 且唔呼叫上游', missing.status === 400 && missing.json.success === false && inboxRequests.length === beforeMissing, `${missing.status}`);
+  check('400 回應列出 missing 欄位', Array.isArray(missing.json.missing) && missing.json.missing.includes('troopId') && missing.json.missing.includes('apiKey'));
+
+  inboxMode = 'legacy';
+  const legacy = await postProxy({
+    troopId: '', action: 'submitRegistration',
+    data: { troopId: '0089', backendUrl: 'https://script.google.com/macros/s/NEWTROOP0089/exec', apiKey: 'k89', note: '[roverbadge] 已有' }
+  });
+  check('兼容上游 { success:true } → 200', legacy.status === 200 && legacy.json.success === true);
+  const legacySent = inboxRequests[inboxRequests.length - 1].body;
+  check('已帶 [roverbadge] 備註唔會重複加前綴', legacySent.note === '[roverbadge] 已有', legacySent.note);
+
+  for (const mode of ['error', 'http500', 'not-json']) {
+    inboxMode = mode;
+    const bad = await postProxy({
+      troopId: '', action: 'submitRegistration',
+      data: { troopId: '0090', scriptUrl: 'https://script.google.com/macros/s/NEWTROOP0090/exec', apiKey: 'k90' }
+    });
+    check(`上游 ${mode} → HTTP 502 + success:false`, bad.status === 502 && bad.json.success === false && bad.json.message === undefined, `${mode}:${bad.status}`);
+  }
+
+  inboxMode = 'success';
+  const beforeFb = inboxRequests.length;
+  const feedback = await postProxy({
+    troopId: '', action: 'submitFeedback',
+    data: { type: 'issue', title: '測試', desc: '同一收件匣測試', contact: 'tester@example.org' }
+  });
+  check('submitFeedback 共用同一個收件匣 helper（SCOUTBADGE_ADMIN_API）',
+    feedback.status === 200 && feedback.json.deliveryStatus === 'confirmed' && inboxRequests.length === beforeFb + 1);
+}
+
 // ================== 收尾 ==================
 console.log('\n========================================');
 console.log(`結果：${passed} 通過, ${failed} 失敗`);
 await mockA.close();
 await mockB.close();
 appServer.close();
+inboxServer.close();
 if (failed > 0) process.exit(1);

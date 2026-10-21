@@ -50,6 +50,11 @@ DOWNSTREAM_<id>_KEY = <下游節點 API_KEY>
 
 一次過流程：Sheet 選單 **🔗 旅系統 → 🔑 顯示 BACKEND／APIKEY（交 ADMIN）** →
 收件匣（前端 `submitRegistration` → `/api/proxy` → 固定中央收件端點）→ ADMIN 入 Vercel env。
+伺服器端會固定送 `type: "apply"` + `appType: "roverbadge"`，並將前端 `scriptUrl` 映射為
+`backendUrl`（Scout Admin GS `FIELD_MAP["URL"]` 只認 `backendUrl`）；`troopName` 空白時補
+`第 {troopId} 旅`、`note` 自動加 `[roverbadge]` 標記，確保 Scout Admin「🏛️ 旅團登記」卡片必定顯示。
+收件匣 URL 由 `SCOUT_ADMIN_API` / `ROVERBADGE_ADMIN_API` / `CUBSBADGE_ADMIN_API` /
+`SCOUTBADGE_ADMIN_API` 任何一個提供（詳見 `VERCEL_ENV_SETUP.md`）。
 
 **禁令：**
 - ❌ ABCD 一律唔寫入任何工作表（登記資料只存 Script Properties）
@@ -68,7 +73,7 @@ DOWNSTREAM_<id>_KEY = <下游節點 API_KEY>
 | 步驟 | 做乜 | 邊度做 |
 |---|---|---|
 | 1 | 部署 GS，抄 B 的 URL，生成 D | 每層 Sheet → Apps Script → 部署（執行身分「我」、存取權「任何人」）→ 選單「🔗 旅系統 → 🔑 顯示 BACKEND／APIKEY（交 ADMIN）」 |
-| 2 | 填 C，連 B/D 經收件匣交 ADMIN | 首頁「📋 新旅團部署」表單（旅團編號／名稱／Apps Script URL／API Key）→ `submitRegistration` → `/api/proxy` → 固定中央收件端點 |
+| 2 | 填 C，連 B/D 經收件匣交 ADMIN | 首頁「📋 新旅團部署」表單（旅團編號／名稱／Apps Script URL／API Key）→ `submitRegistration` → `/api/proxy` → 固定中央收件端點（`type=apply`、`appType=roverbadge`、`backendUrl`） |
 | 3 | 每團補一張支部 SHEET，與現有進度 SHEET 成對 | 新 Sheet → 貼同一份 `Code.gs` → `initializeSheets()` → 部署 → 抄 B/D |
 | 4 | 上游控下游寫：掣在上游（旅控團、團控進度） | 上游選單「➕ 登記下游（URL + SHEET KEY）」→「📡 測試下游連線（sig）」；「🚪 下游直接入口」經 sig 打下游 `setLocalLogin`，旗 `ALLOW_LOCAL_LOGIN` 寫在下游 Script Properties，閂後只收 sig |
 | 5 | 搬舊數（第 6 節） | 舊進度「📤 匯出 JSON（含 hash）」→ 新支部「📥 匯入 JSON」，逐個 `upsertUser` 直插 hash（保留舊密碼） |
