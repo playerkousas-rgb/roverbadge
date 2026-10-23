@@ -307,7 +307,12 @@
           "completion": "one",
           "formSummary": "☐ A: Wilderness Challenge　☐ B: Personal Challenge"
         }
-      ]
+      ],
+      "awardRule": {
+        "segmentsRequired": 4,
+        "segmentsTotal": 7,
+        "note": "Complete 4 of the 7 components to apply for the Rover Scout Award (Scheme p.19)"
+      }
     },
     {
       "id": "L4",
@@ -316,7 +321,7 @@
       "en": "Baden-Powell Award",
       "color": "#FFD700",
       "purpose": "Complete all 7 assessment components; the District Commissioner and Regional Commissioner interview and recommend the member, and the Headquarters endorses and issues the award — the highest honour of the Rover Scout Section",
-      "description": "After completing the Rover Scout Award, continue and complete the remaining 3 components so that all 7 components are completed. Average completion time: 12-18 months (18 months+ on average overall).",
+      "description": "After completing the Rover Scout Award, continue and complete the remaining 3 components so that all 7 components are completed. Average completion time: 12 to 18 months.",
       "requirements": "Complete all 7 components",
       "segments": [
         {
@@ -725,6 +730,15 @@
       "prefillDates": false,
       "awardChoice": true,
       "progressTicks": false
+    }
+  },
+  "relatedForms": {
+    "PT75": {
+      "code": "PT/75",
+      "name": "Application for Extension of Time Limit for the Section Highest Badge",
+      "officialUrl": "https://www.scout.org.hk/uploads/tc/forms/12470/PT75.pdf",
+      "appliesTo": "Cubs, Scouts, Venture Scouts and Rover Scouts (as listed on the official forms index)",
+      "note": "Use to request an extension if the section highest badge cannot be completed in time."
     }
   },
   "legacyTransition": {

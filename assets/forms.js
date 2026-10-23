@@ -208,7 +208,8 @@
     var out = [];
     var groups = [
       { forms: items.forms || {}, icon: '📄', tag: '新制（第五版）官方表格 (PDF)' },
-      { forms: items.oldForms || {}, icon: '🗃️', tag: '舊制（第四版）官方表格 (PDF)・僅供沿用第四版者' }
+      { forms: items.oldForms || {}, icon: '🗃️', tag: '舊制（第四版）官方表格 (PDF)・僅供沿用第四版者' },
+      { forms: items.relatedForms || {}, icon: '📎', tag: '相關表格（官方）' }
     ];
     groups.forEach(function (g) {
       Object.keys(g.forms).forEach(function (key) {

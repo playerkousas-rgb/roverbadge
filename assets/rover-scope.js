@@ -242,7 +242,23 @@
     });
   }
 
+  // 獎章獲頒狀態：badge.awardRule = { segmentsRequired, segmentsTotal }（綱要 p.19）
+  // 沒有 awardRule 的獎章回傳 null。只表示「已符合獲頒條件」，實際簽發以總會為準。
+  function badgeAwardStatus(badge, flat) {
+    var rule = badge && badge.awardRule;
+    if (!rule) return null;
+    var segs = badge.segments || [];
+    var done = segs.filter(function (s) { return segmentDone(s, flat || {}); }).length;
+    return {
+      segmentsDone: done,
+      segmentsTotal: segs.length,
+      required: rule.segmentsRequired,
+      awarded: done >= rule.segmentsRequired
+    };
+  }
+
   return {
+    badgeAwardStatus: badgeAwardStatus,
     SCHEME_KEYS: SCHEME_KEYS,
     parseTokens: parseTokens,
     segmentItemIds: segmentItemIds,

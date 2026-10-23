@@ -135,7 +135,7 @@
       "en": "Rover Scout Epaulettes",
       "color": "#2E7D32",
       "purpose": "提供階梯，讓剛獲會員章的樂行童軍對支部活動及童軍技能有基本認識",
-      "description": "須經團長批核推薦，由區長/助理區總監(樂行)/總部總監確認簽發。完成先修章者視作已完成。",
+      "description": "須經團長批核及推薦，由樂行童軍區長／助理區總監（樂行童軍）／助理總部總監（樂行童軍）／總部總監（樂行童軍）確認及簽發。完成先修章者視作已完成。",
       "segments": [
         {
           "code": "L2-INTRO",
@@ -307,7 +307,12 @@
           "completion": "one",
           "formSummary": "☐ 甲：野外挑戰　☐ 乙：個人挑戰"
         }
-      ]
+      ],
+      "awardRule": {
+        "segmentsRequired": 4,
+        "segmentsTotal": 7,
+        "note": "7個考驗範疇中完成4個，即可申請樂行童軍獎章（綱要 p.19）"
+      }
     },
     {
       "id": "L4",
@@ -316,7 +321,7 @@
       "en": "Baden-Powell Award",
       "color": "#FFD700",
       "purpose": "完成全部7項考驗，經區總監及地域總監接見推薦，總會審批簽發，最高榮譽",
-      "description": "完成樂行童軍獎章後繼續完成餘下3項，共7項全部完成。需12-18個月，平均18個月以上。",
+      "description": "完成樂行童軍獎章後繼續完成餘下3項，共7項全部完成。平均於12至18個月內完成。",
       "requirements": "7項全部完成",
       "segments": [
         {
@@ -708,6 +713,15 @@
       "prefillDates": false,
       "awardChoice": true,
       "progressTicks": false
+    }
+  },
+  "relatedForms": {
+    "PT75": {
+      "code": "PT/75",
+      "name": "延長考取支部最高獎章期限申請表",
+      "officialUrl": "https://www.scout.org.hk/uploads/tc/forms/12470/PT75.pdf",
+      "appliesTo": "幼童軍、童軍、深資童軍、樂行童軍（官方表格索引所列）",
+      "note": "如未能於期限內完成支部最高獎章，可申請延長。"
     }
   },
   "legacyTransition": {

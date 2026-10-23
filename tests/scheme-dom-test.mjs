@@ -17,6 +17,7 @@ try {
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const items = JSON.parse(fs.readFileSync(path.join(root, 'data/items.json'), 'utf8'));
+const itemsData_L3 = () => items.badges.find(b => b.id === 'L3');
 const LEADER = { ymis: '1111111111', name: '領袖甲', role: 'group_leader', can_tick: true, allowed_badges: '*' };
 const MEMBER = { ymis: '2222222222', name: '成員乙', role: 'member' };
 const OLD_FLAT = { 'S4-AWARD-CORE-01': '2025-01-10', 'L1-ACT-01': '2025-02-01' };
@@ -129,6 +130,26 @@ test('表格頁舊制卡片：不再寫「只提供連結」', () => {
   const html = d.getElementById('tab-forms').innerHTML;
   assert.doesNotMatch(html, /僅提供連結|只提供連結/);
   assert.match(html, /舊制（第四版）表格/);
+});
+
+test('進度頁 L3 獎章：顯示段章達標狀態（7 段中 4 段即符合獲頒條件）', () => {
+  const L3 = itemsData_L3();
+  const seg = n => Object.fromEntries(L3.segments.slice(0, n).flatMap(sg => sg.items.map(i => [i.id, '2026-01-01'])));
+  ev(`schemeMap={'2222222222':'new'}; selectedProgressYmis='2222222222'`);
+  ev(`progressFlat={'1111111111':{},'2222222222':${JSON.stringify(seg(3))}}`);
+  ev('renderProgressTab()');
+  let html = d.getElementById('tab-progress').innerHTML;
+  assert.match(html, /段章 3\/7（需 4 段）/);
+  ev(`progressFlat={'1111111111':{},'2222222222':${JSON.stringify(seg(4))}}`);
+  ev('renderProgressTab()');
+  html = d.getElementById('tab-progress').innerHTML;
+  assert.match(html, /已符合獲頒條件/);
+});
+
+test('資料頁官方連結包含相關表格 PT/75（延長期限）', () => {
+  ev('renderInfoTab()');
+  const html = d.getElementById('tab-info').innerHTML;
+  assert.match(html, /PT\/75/);
 });
 
 test('頁面載入無未處理的腳本錯誤（不計 CDN 與 localStorage 的環境噪音）', () => {

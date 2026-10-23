@@ -2,6 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import items from '../data/items.json' with { type: 'json' };
+import itemsEnJson from '../data/items_en.json' with { type: 'json' };
 import { loadRoverModules } from './browser-module-harness.mjs';
 
 const { RoverScope: S } = loadRoverModules();
@@ -186,4 +187,48 @@ test('權限選單包含舊制獎章（group=old），且不影響現行獎章',
   const opts = S.permissionOptions(items);
   assert.ok(opts.some(o => o.value === 'S4-AWARD' && o.group === 'old'));
   assert.ok(opts.some(o => o.value === 'L3' && o.group === 'badge'));
+});
+
+// ── 樂行配套（綱要核對）：獎章獲頒狀態、時限文字、相關表格 ──
+const itemsEn = itemsEnJson;
+
+test('獎章獲頒狀態：樂行童軍獎章 7 段中完成 4 段即符合（綱要 p.19）', () => {
+  // 每段全部項目完成才算該段完成（INTL／CHALLENGE 為任選一）
+  const segFlat = n => Object.fromEntries(L3.segments.slice(0, n).flatMap(seg => seg.items.map(i => [i.id, '2026-01-01'])));
+  const st3 = S.badgeAwardStatus(L3, segFlat(3));
+  assert.equal(st3.segmentsDone, 3);
+  assert.equal(st3.required, 4);
+  assert.equal(st3.segmentsTotal, 7);
+  assert.equal(st3.awarded, false);
+  const st4 = S.badgeAwardStatus(L3, segFlat(4));
+  assert.equal(st4.segmentsDone, 4);
+  assert.equal(st4.awarded, true);
+  // 段章只完成一部分不計入
+  const partial = S.badgeAwardStatus(L3, { 'L3-LEADER-01': '2026-01-01' });
+  assert.equal(partial.segmentsDone, 0);
+});
+
+test('獲頒狀態：沒有 awardRule 的獎章回傳 null（會員章、肩章、貝登堡）', () => {
+  const L1b = items.badges.find(b => b.id === 'L1');
+  assert.equal(S.badgeAwardStatus(L1b, {}), null);
+  assert.equal(S.badgeAwardStatus(items.badges.find(b => b.id === 'L4'), {}), null);
+});
+
+test('L4 時限文字與綱要一致：平均於 12 至 18 個月內完成（不再寫「平均 18 個月以上」）', () => {
+  const l4 = items.badges.find(b => b.id === 'L4');
+  assert.match(l4.description, /平均於12至18個月內完成/);
+  assert.doesNotMatch(JSON.stringify(items) + JSON.stringify(itemsEn), /平均18個月以上|18 months\+|18 months\+ on average/);
+});
+
+test('L2 肩章簽發人與綱要一致（含助理總部總監（樂行童軍））', () => {
+  const l2 = items.badges.find(b => b.id === 'L2');
+  assert.match(l2.description, /助理總部總監（樂行童軍）/);
+});
+
+test('相關表格 PT/75（延長期限）：中英文資料一致，且官方連結指向 PT/75', () => {
+  assert.equal(items.relatedForms.PT75.code, 'PT/75');
+  assert.equal(itemsEn.relatedForms.PT75.code, 'PT/75');
+  assert.equal(items.relatedForms.PT75.officialUrl, itemsEn.relatedForms.PT75.officialUrl);
+  assert.match(items.relatedForms.PT75.officialUrl, /forms\/12470\/PT75\.pdf$/);
+  assert.match(items.relatedForms.PT75.appliesTo, /樂行童軍/);
 });
