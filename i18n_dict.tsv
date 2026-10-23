@@ -1,11 +1,11 @@
 樂行童軍進度追蹤系統	Rover Scout Progress Tracker
 樂行童軍進度追蹤	Rover Scout Progress Tracker
-樂行童軍進度追蹤系統 v5.1 - 手機友善・批量開戶・全前端控制	Rover Scout Progress Tracker v5.1 - Mobile friendly · Bulk onboarding · Full front-end control
-樂行童軍進度追蹤 v5.1	Rover Scout Progress Tracker v5.1
-Rover Scout Progress Tracker v5.1 • 樂行童軍徽章 + 2026年第5版綱要	Rover Scout Progress Tracker v5.1 • Rover Scout emblem + 2026 5th Edition Scheme
+樂行童軍進度追蹤系統 v5.2 - 手機友善・批量開戶・全前端控制	Rover Scout Progress Tracker v5.2 - Mobile friendly · Bulk onboarding · Full front-end control
+樂行童軍進度追蹤 v5.2	Rover Scout Progress Tracker v5.2
+Rover Scout Progress Tracker v5.2 • 樂行童軍徽章 + 2026年第5版綱要	Rover Scout Progress Tracker v5.2 • Rover Scout emblem + 2026 5th Edition Scheme
 基於 2026年第5版《樂行童軍訓練綱要》 | 支援離線暫存 • 批量寫入 • 批量開戶 • 全前端控制 • 保護兒童 Safe from Harm	Based on the 5th Edition of the Rover Scout Training Scheme (2026) | Offline staging • Batch writing • Bulk onboarding • Full front-end control • Safe from Harm
 基於 2026年第5版《樂行童軍訓練綱要》• 支援離線暫存•批量寫入•成員申請確認•表格自動填寫	Based on the 5th Edition of the Rover Scout Training Scheme (2026) • Offline staging • batch writing • member request confirmation • form auto-fill
-COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 v5.1	COPYRIGHT 2026 Scout System • Rover Scout Progress Tracker v5.1
+COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 v5.2	COPYRIGHT 2026 Scout System • Rover Scout Progress Tracker v5.2
 香港童軍總會	Scout Association of Hong Kong
 🏠 進入系統	🏠 Enter System
 📋 新旅團部署	📋 New Group Deployment
@@ -843,8 +843,9 @@ YMIS 或登記電郵	YMIS or registered email
 不支援的請求方式	Unsupported request method
 未能連接驗證服務，請重試或聯絡管理員	Could not reach the verification service. Please retry or contact the admin
 
-最新：v5.1	Latest: v5.1
-YMIS PDF 批量開戶、🐛💬 回報 · 意見按鈕（Scout Admin 統一回報）、非官方聲明、手機頂部按鈕排列整齊化、全 APP 版號統一 v5.1	YMIS PDF bulk onboarding, 🐛💬 Report · Feedback buttons (Scout Admin unified reporting), unofficial notice, tidier mobile top buttons, app-wide version aligned to v5.1
+最新：v5.2	Latest: v5.2
+v5.2：第五版綱要核對（L2 簽發人、L4 時限、L3 段章獲頒狀態、PT/75 延長表格連結）；學制（新制／舊制／舊制過渡新制）；後端強制 allowed_badges；撤銷「可勾選」全面生效	v5.2: 5th-edition scheme check (L2 signatory, L4 timeframe, L3 award status, PT/75 extension form link); per-member scheme (new / old / transition); server-enforced allowed_badges; revoking "can tick" now applies to all ticking, approvals and edits
+v5.1 更新：YMIS PDF 批量開戶、🐛💬 回報 · 意見按鈕（Scout Admin 統一回報）、非官方聲明、手機頂部按鈕排列整齊化、全 APP 版號統一 v5.1	v5.1 update: YMIS PDF bulk onboarding, 🐛💬 Report · Feedback buttons (Scout Admin unified reporting), unofficial notice, tidier mobile top buttons, app-wide version aligned to v5.1
 🐛💬 回報 · 意見	🐛💬 Report · Feedback
 問題回報 / 意見回饋（經 Scout Admin 統一回收，可匿名）	Report an issue / send feedback (via Scout Admin, anonymous welcome)
 ⚠️ 非官方聲明：本系統為獨立開發的非官方工具，並非香港童軍總會官方產品，與總會並無隸屬或贊助關係。	⚠️ Unofficial notice: this system is an independently developed unofficial tool. It is NOT an official product of the Scout Association of Hong Kong and has no affiliation with or sponsorship from the Association.

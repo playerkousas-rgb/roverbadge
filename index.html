@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>樂行童軍進度追蹤系統 v5.1 - 手機友善・批量開戶・全前端控制</title>
+<title>樂行童軍進度追蹤系統 v5.2 - 手機友善・批量開戶・全前端控制</title>
 <link rel="icon" href="assets/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
@@ -358,7 +358,7 @@ a:hover{text-decoration:underline}
       </div>
       <div style="text-align:left">
         <h1>樂行童軍進度追蹤系統</h1>
-        <p>Rover Scout Progress Tracker v5.1 • 樂行童軍徽章 + 2026年第5版綱要</p>
+        <p>Rover Scout Progress Tracker v5.2 • 樂行童軍徽章 + 2026年第5版綱要</p>
       </div>
     </div>
     <div class="header-subtitle">基於 2026年第5版《樂行童軍訓練綱要》• 支援離線暫存•批量寫入•成員申請確認•表格自動填寫</div>
@@ -468,8 +468,9 @@ a:hover{text-decoration:underline}
         <div style="margin-top:8px;font-size:11px;color:var(--text-light)">COPYRIGHT 2026 Scout System</div>
       </div>
       <div class="info-section" style="margin-top:12px">
-        <h3>最新：v5.1</h3>
-        <p style="font-size:12px">YMIS PDF 批量開戶、🐛💬 回報 · 意見按鈕（Scout Admin 統一回報）、非官方聲明、手機頂部按鈕排列整齊化、全 APP 版號統一 v5.1</p>
+        <h3>最新：v5.2</h3>
+        <p style="font-size:12px">v5.2：第五版綱要核對（L2 簽發人、L4 時限、L3 段章獲頒狀態、PT/75 延長表格連結）；學制（新制／舊制／舊制過渡新制）；後端強制 allowed_badges；撤銷「可勾選」全面生效</p>
+        <p style="font-size:12px">v5.1 更新：YMIS PDF 批量開戶、🐛💬 回報 · 意見按鈕（Scout Admin 統一回報）、非官方聲明、手機頂部按鈕排列整齊化、全 APP 版號統一 v5.1</p>
       </div>
     </div>
   </div>
@@ -480,7 +481,7 @@ a:hover{text-decoration:underline}
   <div class="app-header-common" style="padding:14px">
     <div class="logo-row" style="margin-bottom:0">
       <div class="logo-svg-wrap"><img src="assets/rover-badge-256.png" alt="樂行童軍徽章" onerror="this.style.display='none'"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:32px;height:32px"><path d="M30 85 L50 38 L70 85" fill="none" stroke="#FFD700" stroke-width="3" stroke-linecap="round"/><rect x="47" y="42" width="6" height="34" fill="#8B0000" rx="2"/><ellipse cx="50" cy="42" rx="9" ry="2.5" fill="none" stroke="#FFD700" stroke-width="1.2"/><path d="M45 46 Q42 36 48 28 Q50 24 50 20 Q50 16 52 13 Q55 18 54 24 Q53 28 55 32 Q58 38 55 46" fill="#FFA000"/></svg></div>
-      <div><h1 style="font-size:18px">樂行童軍進度追蹤 v5.1</h1></div>
+      <div><h1 style="font-size:18px">樂行童軍進度追蹤 v5.2</h1></div>
     </div>
   </div>
   <div class="container">
@@ -821,7 +822,7 @@ a:hover{text-decoration:underline}
 <div id="toast" class="toast"></div>
 
 <footer style="text-align:center;padding:20px 16px;margin-top:20px;border-top:2px solid var(--border);font-size:12px;color:var(--text-light);background:var(--card)">
-  <div>COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 v5.1</div>
+  <div>COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 v5.2</div>
   <div style="margin-top:4px;font-size:11px">基於 2026年第5版《樂行童軍訓練綱要》 | 支援離線暫存 • 批量寫入 • 批量開戶 • 全前端控制 • 保護兒童 Safe from Harm</div>
   <div style="margin-top:4px;font-size:10px">⚠️ 非官方聲明：本系統為獨立開發的非官方工具，並非香港童軍總會官方產品，與總會並無隸屬或贊助關係。</div>
 </footer>
@@ -835,12 +836,12 @@ const UI_LANG=(function(){ try{ return localStorage.getItem('roverbadge_lang')||
 const LANG_DICT={
   "樂行童軍進度追蹤系統": "Rover Scout Progress Tracker",
   "樂行童軍進度追蹤": "Rover Scout Progress Tracker",
-  "樂行童軍進度追蹤系統 v5.1 - 手機友善・批量開戶・全前端控制": "Rover Scout Progress Tracker v5.1 - Mobile friendly · Bulk onboarding · Full front-end control",
-  "樂行童軍進度追蹤 v5.1": "Rover Scout Progress Tracker v5.1",
-  "Rover Scout Progress Tracker v5.1 • 樂行童軍徽章 + 2026年第5版綱要": "Rover Scout Progress Tracker v5.1 • Rover Scout emblem + 2026 5th Edition Scheme",
+  "樂行童軍進度追蹤系統 v5.2 - 手機友善・批量開戶・全前端控制": "Rover Scout Progress Tracker v5.2 - Mobile friendly · Bulk onboarding · Full front-end control",
+  "樂行童軍進度追蹤 v5.2": "Rover Scout Progress Tracker v5.2",
+  "Rover Scout Progress Tracker v5.2 • 樂行童軍徽章 + 2026年第5版綱要": "Rover Scout Progress Tracker v5.2 • Rover Scout emblem + 2026 5th Edition Scheme",
   "基於 2026年第5版《樂行童軍訓練綱要》 | 支援離線暫存 • 批量寫入 • 批量開戶 • 全前端控制 • 保護兒童 Safe from Harm": "Based on the 5th Edition of the Rover Scout Training Scheme (2026) | Offline staging • Batch writing • Bulk onboarding • Full front-end control • Safe from Harm",
   "基於 2026年第5版《樂行童軍訓練綱要》• 支援離線暫存•批量寫入•成員申請確認•表格自動填寫": "Based on the 5th Edition of the Rover Scout Training Scheme (2026) • Offline staging • batch writing • member request confirmation • form auto-fill",
-  "COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 v5.1": "COPYRIGHT 2026 Scout System • Rover Scout Progress Tracker v5.1",
+  "COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 v5.2": "COPYRIGHT 2026 Scout System • Rover Scout Progress Tracker v5.2",
   "香港童軍總會": "Scout Association of Hong Kong",
   "🏠 進入系統": "🏠 Enter System",
   "📋 新旅團部署": "📋 New Group Deployment",
@@ -1677,8 +1678,9 @@ const LANG_DICT={
   "未能確認入口來源": "Could not confirm the entry source",
   "不支援的請求方式": "Unsupported request method",
   "未能連接驗證服務，請重試或聯絡管理員": "Could not reach the verification service. Please retry or contact the admin",
-  "最新：v5.1": "Latest: v5.1",
-  "YMIS PDF 批量開戶、🐛💬 回報 · 意見按鈕（Scout Admin 統一回報）、非官方聲明、手機頂部按鈕排列整齊化、全 APP 版號統一 v5.1": "YMIS PDF bulk onboarding, 🐛💬 Report · Feedback buttons (Scout Admin unified reporting), unofficial notice, tidier mobile top buttons, app-wide version aligned to v5.1",
+  "最新：v5.2": "Latest: v5.2",
+  "v5.2：第五版綱要核對（L2 簽發人、L4 時限、L3 段章獲頒狀態、PT/75 延長表格連結）；學制（新制／舊制／舊制過渡新制）；後端強制 allowed_badges；撤銷「可勾選」全面生效": "v5.2: 5th-edition scheme check (L2 signatory, L4 timeframe, L3 award status, PT/75 extension form link); per-member scheme (new / old / transition); server-enforced allowed_badges; revoking \"can tick\" now applies to all ticking, approvals and edits",
+  "v5.1 更新：YMIS PDF 批量開戶、🐛💬 回報 · 意見按鈕（Scout Admin 統一回報）、非官方聲明、手機頂部按鈕排列整齊化、全 APP 版號統一 v5.1": "v5.1 update: YMIS PDF bulk onboarding, 🐛💬 Report · Feedback buttons (Scout Admin unified reporting), unofficial notice, tidier mobile top buttons, app-wide version aligned to v5.1",
   "🐛💬 回報 · 意見": "🐛💬 Report · Feedback",
   "問題回報 / 意見回饋（經 Scout Admin 統一回收，可匿名）": "Report an issue / send feedback (via Scout Admin, anonymous welcome)",
   "⚠️ 非官方聲明：本系統為獨立開發的非官方工具，並非香港童軍總會官方產品，與總會並無隸屬或贊助關係。": "⚠️ Unofficial notice: this system is an independently developed unofficial tool. It is NOT an official product of the Scout Association of Hong Kong and has no affiliation with or sponsorship from the Association.",
