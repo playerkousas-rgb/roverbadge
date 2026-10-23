@@ -84,6 +84,7 @@ grep -rnE --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=.vercel \
 | 35 | items.json L2 描述（肩章簽發人） | 「區長/助理區總監(樂行)/總部總監確認簽發」（缺助理總部總監） | 「樂行童軍區長／助理區總監（樂行童軍）／助理總部總監（樂行童軍）／總部總監（樂行童軍）確認及簽發」（英文版本已有四個職級） | 綱要 p.18 肩章考核流程 |
 | 36 | 官方表格：PT/75（延長考取支部最高獎章期限申請表） | 無；APP 不提供此連結 | 新增 `relatedForms.PT75`，於表格頁官方連結區（資料頁）顯示；中英文資料一致 | 官方表格索引（type=8）列出「幼童軍、童軍、深資童軍、樂行童軍」適用，https://www.scout.org.hk/uploads/tc/forms/12470/PT75.pdf |
 | 37 | 進度頁 L3 樂行童軍獎章（獲頒條件） | 進度頁只顯示「已完成項目數／15」，不顯示 7 段中完成幾段，樂行成員無從得知是否符合獲頒條件 | 新增 `awardRule`（7 段中 4 段）；獎章標題顯示「段章 X/7（需 4 段）」，達標時顯示「🏅 段章 X/7：已符合獲頒條件」（實際簽發以總會為準）。段章是否完成沿用 `segmentDone`（任選段章按 completion 規則） | 綱要 p.14、p.19 |
+| 38 | 可勾選（`can_tick`）撤銷（團長決定：撤銷後不可勾選、審批或直接編輯，即使角色為領袖） | 只有日誌記錄檢查 `can_tick`（saveLogRecord、deleteLogRecord）；進度勾選（save）、其他獎章（saveOtherBadge）、審批（reviewRequest、reviewLogRequest）、待審清單與學制（setScheme，為他人）只看角色，撤銷後仍可勾選 | Code.gs 統一 `canTickUser_(u)`（角色 ∧ `can_tick===true`），用於 save、saveOtherBadge、reviewRequest、reviewLogRequest、saveLogRecord、deleteLogRecord、getPendingLogRequests、setScheme（為他人）；超管旁路保留於項目層。index.html 統一 `canTickNow()`，用於進度核取框、OT 核取框與按鈕、日誌編輯、審批按鈕。檢視不受影響。測試：`tests/can-tick.test.mjs`（12）、`tests/can-tick-dom-test.mjs`（8）；以變異測試確認測試會因移除檢查而失敗 |
 
 ---
 
@@ -116,7 +117,7 @@ grep -rnE --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=.vercel \
 | `L3-INTL-*`、`L3-CHALLENGE-*` ID 與段章代碼不一致 | **已解決**：用戶授權改名，改為 `-01`／`-02`（§2 第 31 項） | — |
 | `allowed_badges` 只在前端判斷 | **已解決**：後端強制（§2 第 24 項） | — |
 | 學制的資格（宣誓日期） | **已決定（用戶）**：系統不檢查宣誓日期，由旅團自行處理 | — |
-| 後端 `can_tick` 旗標（「可勾選」） | 見下方「`can_tick` 說明」。管理頁「授權勾選／收回權限」按鈕**只影響日誌記錄**（saveLogRecord、deleteLogRecord）；進度勾選、審批（save、saveOtherBadge、reviewRequest）**只看角色**，前後端都不看 `can_tick`，所以收回權限後仍可勾進度（既有缺口，本次未改） | **待用戶決定**：A) 進度勾選也要求 `can_tick=true`；B) 取消該按鈕，只用角色 |
+| 後端 `can_tick` 旗標（「可勾選」） | **已解決（團長決定：撤銷即全面生效）**：見 §2 第 38 項 | 部署前確認 users 工作表第 7 欄（`can_tick`）為 TRUE／FALSE；空白視為不可勾選（若現有領袖此欄為空白，須先設為 TRUE） |
 | Apps Script 語法 | `node --check` 無法解析 `.gs`；後端由 `tests/gas-harness.mjs` 實際執行驗證 | 上線前在 Apps Script 編輯器實測 |
 | 代理層 APIKEY | `api/proxy.js` 會附上旅團 APIKEY 於每個轉發請求（既有設計）。現在權限以 token 為準，但 APIKEY 本身仍具系統權限（只檢查學制） | 如要收窄，可改為只對無 token 的請求附 APIKEY |
 | 學制未套用於總覽、按項目、矩陣頁 | **已決定（用戶）**：不擴展。舊制成員沒有 S4 獎章紀錄，這三頁顯示 S4 沒有實際用途 | — |
@@ -185,5 +186,4 @@ grep -rnE --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=.vercel \
 ### `can_tick` 說明
 
 - `can_tick` 是用戶的「可勾選」欄位（users 工作表第 7 欄），管理頁有「授權勾選／收回權限」按鈕。
-- 現況：只有日誌記錄檢查它（saveLogRecord、deleteLogRecord）。進度勾選與審批只檢查角色（團長、管委等），前端與後端都不看它。
-- 因此按「收回權限」後，該領袖仍可勾選進度。這是既有缺口，本次新增的後端檢查（§2 第 24 項）沿用同一規則，未改變。
+- 現況（第三輪修正）：撤銷後不可勾選進度、審批、其他獎章、日誌新增／刪除、學制（為他人），仍可查看。見 §2 第 38 項。

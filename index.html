@@ -2327,6 +2327,8 @@ const ROLE_LEVEL_FRONT={'super_admin':100,'admin':80,'group_leader':60,'branch_l
 const CAN_MANAGE_FRONT={'super_admin':['admin','group_leader','branch_leader','exec_committee','member'],'admin':['group_leader','branch_leader','exec_committee','member'],'group_leader':['branch_leader','exec_committee','member'],'branch_leader':['exec_committee','member']};
 function canManageFront(me,target){ if(!me) return false; if(me==='super_admin') return true; return (CAN_MANAGE_FRONT[me]||[]).indexOf(target)>=0; }
 function canUserTickRole(role){ return ['admin','group_leader','branch_leader','exec_committee','super_admin'].includes(role); }
+// 勾選權限 = 角色 且 「可勾選」開關（can_tick，由團長授權／收回）。收回後不可勾選、審批或直接編輯。
+function canTickNow(){ return !!currentUser && canUserTickRole(currentUser.role) && currentUser.can_tick===true; }
 
 // ===== 權限與可勾選範圍：判斷邏輯全部在 assets/rover-scope.js（token 規則見該檔頂部註解）=====
 let _scopeIdx=null,_scopeIdxSrc=null;
@@ -2342,7 +2344,7 @@ function scopeIndexFor(ymis){ return RoverScope.buildIndex(itemsData, schemeFor(
 function schemeSelectorHtml(targetYmis){
   if(!itemsData||!itemsData.schemes) return '';
   const sk=schemeFor(targetYmis); const list=itemsData.schemes.list;
-  const can=targetYmis===currentUser.ymis || canUserTickRole(currentUser.role);
+  const can=targetYmis===currentUser.ymis || canTickNow();
   const opts=Object.keys(list).map(k=>`<option value="${k}" ${k===sk?'selected':''}>${escapeHtmlText(list[k].label)}</option>`).join('');
   return `<div class="info-section" style="padding:10px 12px"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><label style="font-size:12px;font-weight:600">學制：</label><select id="schemeSelect" ${can?'':'disabled'} onchange="onSchemeChange('${escapeAttr(targetYmis)}',this.value)">${opts}</select><small style="color:var(--text-light)">${escapeHtmlText(list[sk].desc||'')}</small></div></div>`;
 }
@@ -2368,7 +2370,7 @@ function awardChipHtml(badge, flat){
 function renderTransitionPanel(targetYmis, flat, isLeader){
   if(schemeFor(targetYmis)!=='transition' || !itemsData.oldBadges) return '';
   const idx=scopeIndexFor(targetYmis);
-  const canTick=isLeader && canUserTickRole(currentUser.role);
+  const canTick=isLeader && canTickNow();
   const rows=[];
   itemsData.oldBadges.forEach(b=>b.segments.forEach(s=>s.items.forEach(it=>{
     const rec=flat[it.id]; const t=it.transition||{mode:'none',to:[],note:''}; const tg=t.to||[];
@@ -2396,6 +2398,7 @@ function addTransitionPending(s4Id, ymis){
 }
 function canCurrentUserTickItem(itemId){
   if(!currentUser) return false;
+  if(!canTickNow()) return false;
   if(currentUser.role==='super_admin') return true;
   const stored=String(currentUser.allowed_badges||'').trim();
   // 空白 = 按角色預設（領袖 *；管委 items.json permissionDefaults.exec_committee；成員無）
@@ -3202,7 +3205,7 @@ function renderProgressTab(){
             const rec = otherFlat[ob.id];
             const checked = !!rec;
             const dateVal = rec?.date||'';
-            const editable = isLeader && canUserTickRole(currentUser.role);
+            const editable = isLeader && canTickNow();
             return `<div class="item-row ${checked?'checked':''}" data-item-id="${ob.id}">
               <input type="checkbox" class="checkbox" ${checked?'checked':''} ${editable?'':'disabled'} onchange="handleOtherBadgeToggle('${ob.id}','${escapeAttr(ob.name)}','${targetYmis}',this.checked)">
               <div class="item-main"><div class="item-name">${ob.icon||''} ${ob.name}</div><div class="item-meta">${dateVal?`📅 ${dateVal}`:''} ${rec?.cert?`📜 ${rec.cert}`:''} - ${ob.desc||''}</div></div>
@@ -3269,8 +3272,8 @@ function renderItemRow(item, flat, targetYmis, isLeaderView){
   const isParent=item.subItems && item.subItems.length>0;
   const checked=flat[item.id]?true:false;
   const dateVal=flat[item.id]||'';
-  const canEdit=isLeaderView && targetYmis!==currentUser.ymis || isLeaderView && members.length>0 ? canUserTickRole(currentUser.role) : false; // leader can edit selected member
-  const actuallyCanEdit = canUserTickRole(currentUser.role) && (isLeaderView); // simplify: if current user can tick, allow edit of selected member
+  const canEdit=isLeaderView && targetYmis!==currentUser.ymis || isLeaderView && members.length>0 ? canTickNow() : false; // leader can edit selected member
+  const actuallyCanEdit = canTickNow() && (isLeaderView); // simplify: if current user can tick, allow edit of selected member
   // For member viewing self: cannot edit
   const editable = actuallyCanEdit && !isMember();
   // For non-parent item row
@@ -3355,7 +3358,7 @@ function showSubDetail(name, detail){
 
 /* Checkbox + Date handling */
 function handleCheckboxToggle(itemId, checked, targetYmis, isParent=false){
-  if(!canUserTickRole(currentUser.role)){ showToast('你沒有勾選權限，請使用申請功能','warning'); return; }
+  if(!canTickNow()){ showToast('你沒有勾選權限，請使用申請功能','warning'); return; }
   if(!canCurrentUserTickItem(itemId)){ showToast('你的權限不可勾選此項目 ('+itemId+')，請聯絡團長/管理員設定','warning'); return; }
   const date=checked? todayISO() : '';
   // if parent checked, auto check all subs
@@ -3759,7 +3762,7 @@ function renderOverviewTable(){
   renderOverviewCards();
 }
 function toggleMemberItem(ymis,itemId,cell){
-  if(!canUserTickRole(currentUser.role)){ showToast('沒有權限','error'); return; }
+  if(!canTickNow()){ showToast('沒有權限','error'); return; }
   const done=cell.textContent==='✓';
   const newDone=!done;
   cell.textContent=newDone?'✓':'';
@@ -3828,7 +3831,7 @@ async function renderRequestsTab(){
   let badgeRequests=[];
   let userApplications=[];
   // 載入獎章申請 (待批完成)
-  if(canUserTickRole(currentUser.role)){
+  if(canTickNow()){
     try{
       const d=await apiRequest('getPendingRequests',{token:currentToken});
       if(d.success){ badgeRequests=d.requests||[]; }
@@ -3848,11 +3851,11 @@ async function renderRequestsTab(){
     }catch(e){ console.warn(e); }
   }
   // v8.2：載入活動履歷申報（領袖審批用）
-  if(canUserTickRole(currentUser.role)){
+  if(canTickNow()){
     await loadPendingLogRequests();
   }
   const pendingLogRequestsView = pendingLogRequests.filter(r=>r.status==='pending');
-  const logCanApprove = canUserTickRole(currentUser.role);
+  const logCanApprove = canTickNow();
   // 合併本地暫存
   try{
     const localKey=LS.requests(currentTroopId, currentUser.ymis);
@@ -3889,7 +3892,7 @@ async function renderRequestsTab(){
 
   // 獎章審批區
   html+=`<div id="approvalBadgeView">`;
-  html+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="font-size:14px;color:var(--maroon)">🏅 獎章審批 - 成員申請完成</h3>${canUserTickRole(currentUser.role)?`<button class="btn btn-sm btn-success" onclick="batchApprove()">✅ 批量批准選中</button>`:''}</div>`;
+  html+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="font-size:14px;color:var(--maroon)">🏅 獎章審批 - 成員申請完成</h3>${canTickNow()?`<button class="btn btn-sm btn-success" onclick="batchApprove()">✅ 批量批准選中</button>`:''}</div>`;
   if(totalBadge===0){
     html+=`<p style="color:var(--text-light);font-size:12px;padding:10px;background:var(--bg);border-radius:8px">暫無獎章待批</p>`;
   }else{
@@ -3903,7 +3906,7 @@ async function renderRequestsTab(){
           ${req.evidence?`<div style="font-size:11px;background:#FAFAFA;padding:6px;border-radius:6px;margin-top:4px;border-left:2px solid var(--border)">📎 ${req.evidence}</div>`:''}
         </div>
         <div class="app-item-actions" style="flex-direction:column">
-          ${canUserTickRole(currentUser.role)?`<label style="font-size:11px"><input type="checkbox" class="batch-check" data-req="${req.request_id}"> 選中</label>
+          ${canTickNow()?`<label style="font-size:11px"><input type="checkbox" class="batch-check" data-req="${req.request_id}"> 選中</label>
           <button class="btn btn-sm btn-success" onclick="reviewSingleRequest('${req.request_id}','approved')">✅ 批准</button>
           <button class="btn btn-sm btn-danger" onclick="reviewSingleRequest('${req.request_id}','rejected')">❌ 拒絕</button>
           <input type="date" id="confirmDate_${req.request_id}" value="${req.requested_date||todayISO()}" style="font-size:11px;padding:3px;border:1px solid var(--border);border-radius:4px;margin-top:4px">`:`<span style="font-size:11px;color:var(--text-light)">${req.status==='pending'?'⏳ 待領袖確認': req.status==='local_draft'?'💾 已暫存': req.status}</span>`}
@@ -4125,7 +4128,7 @@ async function batchApproveLog(){
 function renderOtherBadgesTab(){
   const c=document.getElementById('tab-other');
   if(!itemsData || !itemsData.otherBadges){ c.innerHTML='<p>載入中...</p>'; return; }
-  const isLeader=canUserTickRole(currentUser.role);
+  const isLeader=canUserTickRole(currentUser.role); const canEdit=canTickNow();
   const targetYmis=isLeader? (selectedProgressYmis||currentUser.ymis) : currentUser.ymis;
   let html=`<div class="filter-bar"><label style="font-size:12px;font-weight:600">檢視成員：</label><select id="otherMemberSelect" onchange="onOtherMemberChange(this.value)">${members.map(m=>`<option value="${m.ymis}" ${m.ymis===targetYmis?'selected':''}>${m.name} (${m.ymis})</option>`).join('')}</select><button class="btn btn-sm btn-secondary" onclick="loadOtherBadges()">🔄 載入</button></div>`;
   html+=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">`;
@@ -4137,9 +4140,9 @@ function renderOtherBadgesTab(){
       <p style="font-size:11px;color:var(--text-light)">${ob.desc||''}</p>
       ${ob.detail?`<p style="font-size:10px;color:var(--text-light);margin-top:4px">${ob.detail}</p>`:''}
       <div style="margin-top:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-        <input type="date" id="otherDate_${ob.id}" value="${rec?.date||''}" style="padding:4px 6px;font-size:11px;border:1px solid var(--border);border-radius:6px" ${!isLeader?'disabled':''}>
-        <input type="text" id="otherCert_${ob.id}" placeholder="證書編號" value="${rec?.cert||''}" style="padding:4px 6px;font-size:11px;border:1px solid var(--border);border-radius:6px;width:110px" ${!isLeader?'disabled':''}>
-        ${isLeader?`<button class="btn btn-sm ${done?'btn-secondary':'btn-success'}" onclick="toggleOtherBadge('${ob.id}','${escapeAttr(ob.name)}','${targetYmis}')">${done?'更新':'完成'}</button>`:''}
+        <input type="date" id="otherDate_${ob.id}" value="${rec?.date||''}" style="padding:4px 6px;font-size:11px;border:1px solid var(--border);border-radius:6px" ${!canEdit?'disabled':''}>
+        <input type="text" id="otherCert_${ob.id}" placeholder="證書編號" value="${rec?.cert||''}" style="padding:4px 6px;font-size:11px;border:1px solid var(--border);border-radius:6px;width:110px" ${!canEdit?'disabled':''}>
+        ${canEdit?`<button class="btn btn-sm ${done?'btn-secondary':'btn-success'}" onclick="toggleOtherBadge('${ob.id}','${escapeAttr(ob.name)}','${targetYmis}')">${done?'更新':'完成'}</button>`:''}
       </div>
     </div>`;
   });
@@ -4173,7 +4176,7 @@ async function toggleOtherBadge(badgeId, name, targetYmis){
 }
 async function handleOtherBadgeToggle(badgeId, name, targetYmis, checked){
   if(!canCurrentUserTickItem(badgeId) && !canCurrentUserTickItem('OTHER')){ showToast('無權限勾選此其他獎章','warning'); return; }
-  if(!canUserTickRole(currentUser.role)){ showToast('無權限','error'); return; }
+  if(!canTickNow()){ showToast('無權限','error'); return; }
   const date = checked ? todayISO() : '';
   const prevEntry = otherBadgesMap[targetYmis] ? JSON.parse(JSON.stringify(otherBadgesMap[targetYmis])) : {};
   if(!otherBadgesMap[targetYmis]) otherBadgesMap[targetYmis]={};
@@ -4233,7 +4236,7 @@ function hasPendingLogEdit(recordId){
 }
 function renderLogsTab(){
   const c=document.getElementById('tab-logs');
-  const isLeader=canUserTickRole(currentUser.role);
+  const isLeader=canUserTickRole(currentUser.role); const canEdit=canTickNow();
   const targetYmis=isLeader?(selectedProgressYmis||currentUser.ymis):currentUser.ymis;
   // 舊後端未支援 → 顯示升級提示（現有功能完全不受影響）
   if(!logRecordsSupported && currentTroopId!=='DEMO'){
@@ -4255,13 +4258,13 @@ function renderLogsTab(){
   }
   html+=`<span style="font-size:11px;color:var(--text-light)">🤝 服務 ${countOf('service')} · 🏕️ 活動 ${countOf('activity')} · 🎓 訓練班 ${countOf('training')}${serviceHours?` · 服務總時數 <b>${serviceHours}</b>`:''}</span>`;
   html+=`<button class="btn btn-sm btn-secondary" onclick="refreshLogRecords()" title="重新載入">🔄</button>`;
-  if(isLeader) html+=`<button class="btn btn-sm btn-primary" onclick="openLogRecordModal()">➕ 新增紀錄</button>`;
+  if(canEdit) html+=`<button class="btn btn-sm btn-primary" onclick="openLogRecordModal()">➕ 新增紀錄</button>`;
   else html+=`<button class="btn btn-sm btn-primary" onclick="openLogRecordModal()">➕ 申報活動</button>`;
   html+='</div>';
   // 類型篩選
   html+=`<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">${['all','service','activity','training'].map(t=>`<button class="btn btn-sm ${logFilterType===t?'btn-primary':'btn-outline'}" onclick="logFilterType='${t}';renderLogsTab()">${t==='all'?'全部':logTypeIcon(t)+' '+logTypeLabel(t)}</button>`).join('')}</div>`;
   // 成員：顯示自己的申報／修改狀態（待審批）
-  if(!isLeader){
+  if(!canEdit){
     const myPending=pendingLogRequests.filter(r=>r.ymis===targetYmis).sort((a,b)=>(b.requested_at||'').localeCompare(a.requested_at||''));
     if(myPending.length>0){
       html+=`<div class="info-section" style="border-left:4px solid var(--orange)"><h3>📋 我的申報（活動履歷）<small style="color:var(--text-light)">(${myPending.length})</small></h3>`;
@@ -4345,7 +4348,7 @@ async function refreshLogRecords(){
 let editingLogRecordId=null;
 function openLogRecordModal(recordId){
   if(!logRecordsSupported && currentTroopId!=='DEMO'){ showToast('後端未升級 v8.2，暫未能申報／儲存','error'); return; }
-  const isLeader=canUserTickRole(currentUser.role);
+  const isLeader=canUserTickRole(currentUser.role); const canEdit=canTickNow();
   editingLogRecordId=recordId||null;
   const isEdit=!!recordId;
   // 成員：隱藏「選擇成員／批量」區，顯示申報提示
@@ -4353,7 +4356,7 @@ function openLogRecordModal(recordId){
   if(memberSelGroup) memberSelGroup.style.display=isLeader?'block':'none';
   const hintEl=document.getElementById('logModalHint');
   if(hintEl){
-    if(isLeader){ hintEl.style.display='none'; }
+    if(canEdit){ hintEl.style.display='none'; }
     else{
       hintEl.style.display='block';
       hintEl.textContent=isEdit?'📌 此為已批紀錄的「申請修改」：送出後會重新交回領袖審批，批准後才更新。':'📌 你將自行申報此活動履歷，送出後由領袖審批才正式生效。';
@@ -4363,12 +4366,12 @@ function openLogRecordModal(recordId){
   document.getElementById('lgMember').innerHTML=opts;
   document.getElementById('lgBatchMembers').innerHTML=opts;
   document.getElementById('lgBatchMode').checked=false;
-  document.getElementById('lgBatchMode').disabled=!isLeader;
+  document.getElementById('lgBatchMode').disabled=!canEdit;
   syncLogBatchMode();
   if(isEdit){
     const r=logRecords.find(x=>x.record_id===recordId);
     if(!r){ showToast('找不到紀錄，請先重新載入','error'); return; }
-    document.getElementById('logModalTitle').textContent=isLeader?'✏️ 編輯紀錄':'✏️ 申請修改紀錄';
+    document.getElementById('logModalTitle').textContent=canEdit?'✏️ 編輯紀錄':'✏️ 申請修改紀錄';
     document.getElementById('lgType').value=r.type; document.getElementById('lgType').disabled=true;
     document.getElementById('lgMember').value=r.ymis; document.getElementById('lgMember').disabled=true;
     document.getElementById('lgDate').value=r.date||todayISO();
@@ -4378,7 +4381,7 @@ function openLogRecordModal(recordId){
     document.getElementById('lgCertNo').value=r.cert_no||'';
     document.getElementById('lgDetail').value=r.detail||'';
   }else{
-    document.getElementById('logModalTitle').textContent=isLeader?'➕ 新增活動履歷紀錄':'➕ 申報活動履歷';
+    document.getElementById('logModalTitle').textContent=canEdit?'➕ 新增活動履歷紀錄':'➕ 申報活動履歷';
     document.getElementById('lgType').disabled=false;
     document.getElementById('lgMember').disabled=false;
     document.getElementById('lgType').value='service';
@@ -4415,7 +4418,7 @@ function syncLogTypeFields(){
 async function submitLogRecord(){
   const btn=document.getElementById('btnSaveLogRecord');
   if(btn.disabled) return; // 防止重複提交
-  const isLeader=canUserTickRole(currentUser.role);
+  const isLeader=canUserTickRole(currentUser.role); const canEdit=canTickNow();
   const oldRec=editingLogRecordId?logRecords.find(x=>x.record_id===editingLogRecordId):null;
   const type=oldRec?oldRec.type:document.getElementById('lgType').value;
   const date=document.getElementById('lgDate').value;
@@ -4434,11 +4437,11 @@ async function submitLogRecord(){
   let targets=[];
   if(oldRec){
     targets=[{ymis:oldRec.ymis,name:oldRec.name||(members.find(m=>m.ymis===oldRec.ymis)||{}).name||''}];
-  }else if(isLeader && document.getElementById('lgBatchMode').checked){
+  }else if(canEdit && document.getElementById('lgBatchMode').checked){
     targets=[...document.getElementById('lgBatchMembers').selectedOptions].map(o=>({ymis:o.value,name:(members.find(m=>m.ymis===o.value)||{}).name||''}));
     if(targets.length===0){ showToast('請選擇至少一位成員','error'); return; }
   }else{
-    const y=isLeader?document.getElementById('lgMember').value:currentUser.ymis;
+    const y=canEdit?document.getElementById('lgMember').value:currentUser.ymis;
     targets=[{ymis:y,name:(members.find(m=>m.ymis===y)||{}).name||currentUser.name||''}];
   }
   const records=targets.map(t=>({...(oldRec?{record_id:oldRec.record_id}:{}),type,ymis:t.ymis,name:t.name,date,title,role,hours:hours!==''?String(hours):'',cert_no,detail}));
@@ -4516,7 +4519,7 @@ async function cancelLogRequest(requestId){
   }catch(e){ showToast('撤銷失敗：'+e.message,'error'); }
 }
 async function deleteLogRecord(recordId){
-  if(!canUserTickRole(currentUser.role)){ showToast('只有領袖可以刪除紀錄','warning'); return; }
+  if(!canTickNow()){ showToast('只有領袖可以刪除紀錄','warning'); return; }
   const r=logRecords.find(x=>x.record_id===recordId);
   if(!confirm(tr(`確定刪除「${r?r.title:recordId}」？此操作不能復原。`))) return;
   try{

@@ -635,6 +635,9 @@ const CAN_MANAGE_ROLES = {
   'branch_leader': ['exec_committee','member'] 
 };
 function canUserTick(r){ return CAN_TICK_ROLES.indexOf(r)>=0; }
+// 勾選權限 = 角色屬勾選角色 且 「可勾選」開關（users 第 7 欄 can_tick）為 true。
+// 收回權限即時生效：團長收回副團長的可勾選後，即使角色是領袖也不可勾選或審批。
+function canTickUser_(u){ return !!u && canUserTick(u.role) && u.can_tick===true; }
 
 // ===== 學制（新制／舊制／舊制過渡新制）與 allowed_badges 後端強制 =====
 // 項目目錄（ITEM_CATALOG_）與角色預設（DEFAULT_PERMS_）由 scripts/gen-backend-catalog.mjs 產生，勿手改。
@@ -754,8 +757,8 @@ function tokenAllowsItem_(allowed, itemId){
 // 操作者能否勾選此項（不含學制）。actor 為 null ＝ 有效 API Key（系統）全權
 function actorCanTickItem_(actor, itemId){
   if(!actor) return true;
+  if(!canTickUser_(actor)) return false;
   if(actor.role==='super_admin') return true;
-  if(!canUserTick(actor.role)) return false;
   return tokenAllowsItem_(permissionStringOf_(actor), itemId);
 }
 // 整批檢查：任一筆違反即整批拒絕（呼叫端不得寫入）。pairs: [{ymis,itemId}]。回傳 null＝通過，字串＝錯誤
@@ -779,7 +782,7 @@ function handleSetScheme(body, actor, actorYmis){
   const scheme=String((body&&body.scheme)||'').trim();
   if(!target) return jsonResponse({success:false,error:'缺少成員 YMIS'});
   if(SCHEME_KEYS_.indexOf(scheme)<0) return jsonResponse({success:false,error:'學制須為 new（新制）／old（舊制）／transition（舊制過渡新制）'});
-  if(target!==me && !(actor && (actor.role==='super_admin' || canUserTick(actor.role))))
+  if(target!==me && !(actor && canTickUser_(actor)))
     return jsonResponse({success:false,error:'只可由可勾選的領袖為他人設定學制'});
   const sh=schemeSheet_(true);
   const data=sh.getDataRange().getValues(); let row=-1;
@@ -1299,7 +1302,7 @@ function doPost(e){
     }
     if(action==='getMembers'){ return jsonResponse({success:true,members:getMembers()}); }
     if(action==='getPendingRequests'){ if(getRoleLevel(user.role)<0) return jsonResponse({success:false,error:'權限不足'}); return handleGetPendingRequests(); }
-    if(action==='reviewRequest'){ if(!canUserTick(user.role)) return jsonResponse({success:false,error:'權限不足，需領袖權限'}); return handleReviewRequest(body.request_id, body.decision, body.review_note, user, body.confirmed_date); }
+    if(action==='reviewRequest'){ if(!canTickUser_(user)) return jsonResponse({success:false,error:'權限不足，需領袖權限'}); return handleReviewRequest(body.request_id, body.decision, body.review_note, user, body.confirmed_date); }
     if(action==='setScheme') return handleSetScheme(body, user, ymis);
     if(action==='getOtherBadges'){ return handleGetOtherBadges(body.target_ymis||ymis); }
     if(action==='getApplications'){ if(getRoleLevel(user.role)<40) return jsonResponse({success:false,error:'權限不足，需團長/支部領袖'}); return handleGetApplications(); }
@@ -1310,17 +1313,17 @@ function doPost(e){
     }
     if(action==='getLogRecords') return handleGetLogRecords();
     if(action==='saveLogRecord'){
-      if(!canUserTick(user.role) || user.can_tick!==true) return jsonResponse({success:false,error:'權限不足，需已獲勾選權限的領袖'});
+      if(!canTickUser_(user)) return jsonResponse({success:false,error:'權限不足，需已獲勾選權限的領袖'});
       return handleSaveLogRecord(body.records||(body.record?[body.record]:[]), ymis, body.recorder_name||'');
     }
     if(action==='deleteLogRecord'){
-      if(!canUserTick(user.role) || user.can_tick!==true) return jsonResponse({success:false,error:'權限不足，需已獲勾選權限的領袖'});
+      if(!canTickUser_(user)) return jsonResponse({success:false,error:'權限不足，需已獲勾選權限的領袖'});
       return handleDeleteLogRecord(body.record_id, ymis);
     }
     if(action==='getPendingLogRequests') return handleGetPendingLogRequests(user);
     if(action==='submitLogRequest') return handleSubmitLogRequest(body, ymis, user);
     if(action==='reviewLogRequest'){
-      if(!canUserTick(user.role)) return jsonResponse({success:false,error:'權限不足，需領袖權限'});
+      if(!canTickUser_(user)) return jsonResponse({success:false,error:'權限不足，需領袖權限'});
       return handleReviewLogRequest(body.request_id, body.decision, ymis, body.review_note);
     }
 
@@ -2152,7 +2155,7 @@ function getPendingLogRequestsList(viewYmis, isLeader){
 }
 function handleGetPendingLogRequests(user){
   if(!getSheet().getSheetByName(LOG_PENDING_SHEET_NAME)) return jsonResponse({success:false,error:'「'+LOG_PENDING_SHEET_NAME+'」工作表不存在：請在 Apps Script 執行 initializeSheets() 補建'});
-  const isLeader=canUserTick(user.role);
+  const isLeader=canTickUser_(user);
   return jsonResponse({success:true,requests:getPendingLogRequestsList(user.ymis, isLeader),canApprove:isLeader});
 }
 function handleSubmitLogRequest(body, requesterYmis, user){

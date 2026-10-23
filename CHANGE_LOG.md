@@ -21,8 +21,9 @@
 - **文件**：`docs/AGENT_TEMPLATE_FOR_OTHER_SECTIONS.md` 表格代碼只保留樂行（用戶指示）。
 - **樂行配套核對（第二輪）**：依綱要逐章比對，修正 L4 時限文字（平均於 12 至 18 個月內完成）、L2 簽發人（補助理總部總監）；進度頁 L3 獎章顯示「7 段中 4 段」達標狀態（`awardRule`，`RoverScope.badgeAwardStatus`）；官方連結新增相關表格 PT/75（延長考取期限）。詳見 `docs/OTHER_SECTION_RESIDUE_AUDIT_2026-10.md` §7。
 - **測試**：新增 `tests/allowed-badges.test.mjs`、`tests/catalog-sync.test.mjs`、`tests/proxy-actions.test.mjs`、`tests/scheme-dom-test.mjs`（jsdom，可選）；`troop_link`／`security` 夾具改用真實項目 ID `L1-ACT-01`（後端現在驗證項目 ID）。`npm run check` 73/0；`npm test` 結束碼 0。
+- **可勾選（`can_tick`）**：團長決定撤銷後不可勾選、審批或直接編輯（即使角色為領袖）。後端 `canTickUser_` 統一檢查（進度 save、其他獎章、審批、日誌、待審清單、學制為他人）；前端 `canTickNow()` 統一判斷。撤銷後仍可查看。見稽核文件 §2 第 38 項。
 
-**未完成／待決**：熱線 `2957 6414` 未核實；`L1-01`／`L1-02` 舊名未核對；佩戴指引日期標籤未核對；舊制 PT/21、22 項目未逐字對照舊制 PDF；`can_tick` 旗標前後端均未使用（待用戶決定）；Apps Script 上線前須實測。
+**未完成／待決**：熱線 `2957 6414` 未核實；`L1-01`／`L1-02` 舊名未核對；佩戴指引日期標籤未核對；舊制 PT/21、22 項目未逐字對照舊制 PDF；Apps Script 上線前須實測。
 
 ## 2026-10-23 — 首次登入教學（App＋文件）＋ 主系統介紹暫時隱藏 ＋ 兩項對齊改善
 
