@@ -107,8 +107,8 @@ console.log('\n【2】執行真實 initializeSheets()：setup 小視窗唔提保
   check('initializeSheets() 回傳值冇保留帳號資訊', !/超管|super_admin/i.test(JSON.stringify(initResult)));
 }
 
-// ================== 2b. ensureAdminSeed（2026-10 對齊 vsbadge）：重跑補回、預設密碼重標強制改密 ==================
-console.log('\n【2b】initializeSheets() 可重跑：ensureAdminSeed 補回被刪管理員、預設密碼重標強制改密');
+// ================== 2b. ensureAdminSeed（資料保全規則）：重跑只補缺失列；強制改密改在登入時判斷，不改寫既有列 ==================
+console.log('\n【2b】initializeSheets() 可重跑：只補回被刪管理員；預設密碼改在登入時強制改密（不改寫用戶列）');
 {
   const users = env.ss.getSheetByName('Users');
   const adminCount = () => users.rows.filter(r => String(r[0]) === '1111111111').length;
@@ -139,10 +139,12 @@ console.log('\n【2b】initializeSheets() 可重跑：ensureAdminSeed 補回被�
   check('補返嘅管理員可用 1111111111／changeme 登入並被要求改密',
     relogin.success === true && relogin.force_change_password === true, JSON.stringify(relogin));
 
-  // 4) 密碼仲係預設但 force 俾人改咗做 false：重跑會重標返 true（對齊 vs L349-351）
+  // 4) 密碼仲係預設、旗標被人設為 false：重跑「唔再改寫」旗標（資料保全），但登入時仍強制改密
   users.getRange(adminIdx + 1, 14).setValue(false);
   env.api.initializeSheets();
-  check('仲用緊預設密碼嘅帳號重跑後重標強制改密', users.getRange(adminIdx + 1, 14).getValue() === true);
+  check('重跑初始化唔改寫既有用戶列嘅 force_change_password（資料保全）', users.getRange(adminIdx + 1, 14).getValue() === false);
+  const stillDefault = env.call({ action: 'login', login_id: '1111111111', password: 'changeme' });
+  check('密碼仍為預設值 ⇒ 登入時仍要求強制改密（唔靠寫入旗標）', stillDefault.success === true && stillDefault.force_change_password === true, JSON.stringify(stillDefault));
 }
 
 // ================== 3. 登入：舊密碼入口已封閉；回打驗票先有 session（vs 同構） ==================
@@ -366,6 +368,13 @@ console.log('\n【7】回歸檢查');
   uSheet.appendRow(['legacy_sysop2', '舊版殘留', '', 'super_admin', sha256('y'), 'b4', true, 'system', '', '', '', 'active', '*']);
   const residue = uSheet.rows.slice(1).filter(r => String(r[3]) === 'super_admin' || String(r[0]).toLowerCase() === SU_USER).length;
   check('測試環境確實有殘留列可清', residue >= 1, `殘留 ${residue} 列`);
+  // 資料保全：initializeSheets() 唔再自動刪除殘留列；殘留列亦唔可以作為登入身分
+  const rowsBeforeInit = uSheet.rows.length;
+  env.api.initializeSheets();
+  check('initializeSheets() 唔刪除任何殘留 super_admin 列（資料保全）', uSheet.rows.length === rowsBeforeInit, `rows ${rowsBeforeInit} → ${uSheet.rows.length}`);
+  const residueLogin = env.call({ action: 'login', login_id: 'legacy_sysop2', password: 'y' });
+  check('殘留 super_admin 列唔可以作為登入身分', residueLogin.success !== true && !residueLogin.token, JSON.stringify(residueLogin));
+  // 手動清理（管理員自行執行，須先備份）仍可用
   const rm = env.api.removeSuperAdminRows();
   check('removeSuperAdminRows() 清走全部殘留的 super_admin 列', rm.removed === residue, `removed=${rm.removed}, 應為 ${residue}`);
   check('清完之後 Users 表再冇 super_admin 列', !env.api.getAllUsers().some(u => u.role === 'super_admin'));

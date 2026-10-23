@@ -817,6 +817,25 @@ function findActiveGroupLeader(excludeYmis){
 // 公開申請只接受 member／branch_leader（管委／團長／管理員須由現任管理層直接開立）
 const VALID_ROLES = ['member','exec_committee','branch_leader','group_leader','admin'];
 const APPLY_ROLES = ['member','branch_leader'];
+// ===== GS 版本與初始化核對（最新版本公告用；index.html 的 GS_LATEST 須同步改）=====
+// 發佈新版 Code.gs 時更新 GS_VERSION／GS_RELEASE_DATE；本版若要求執行一次 initializeSheets()，GS_INIT_REQUIRED=true。
+// INITIALIZED_GS_VERSION（Script Property）只在 initializeSheets() 成功走完最後一步才寫入，
+// 表示「此 GS 版本的初始化已完成」。initializeSheets() 只做增補（缺表／缺欄位標題／缺預設管理員），
+// 不刪除、不改寫任何既有用戶、進度、紀錄或金鑰資料（見 docs/LEADER_GUIDE.md「資料保全規則」）。
+const GS_VERSION = '5.2.1';
+const GS_RELEASE_DATE = '2026-10-23';
+const GS_INIT_REQUIRED = true;
+const GS_INIT_PROP = 'INITIALIZED_GS_VERSION';
+function gsVersionInfo_(){
+  let initialized='';
+  try{ initialized=String(PropertiesService.getScriptProperties().getProperty(GS_INIT_PROP)||''); }catch(e){}
+  return {gsVersion:GS_VERSION, gsReleaseDate:GS_RELEASE_DATE, initRequired:GS_INIT_REQUIRED, initializedGsVersion:initialized};
+}
+// 表頭只在「該格完全空白」時才寫入，絕不覆蓋既有欄名
+function setHeaderIfEmpty_(sheet, col, label){
+  if(!sheet) return;
+  if(!String(sheet.getRange(1,col).getValue()||'').trim()) sheet.getRange(1,col).setValue(label);
+}
 const FORCE_CHANGE_COL = 14;
 function ensureForceChangeCol(uSheet){
   if(!uSheet) return;
@@ -825,8 +844,9 @@ function ensureForceChangeCol(uSheet){
   }
 }
 // 預設管理員 seed（2026-10 對齊 vsbadge ensureSeedAccount）：
-// 每次 initializeSheets 都檢查；只有完全搵唔到（同 YMIS 或同 Email）先補回，唔會覆蓋既有帳號資料。
-// 另外任何帳號密碼仲係預設值（changeme）就一併重標 force_change_password=true（首次登入強制改密）。
+// 每次 initializeSheets 都檢查；只有完全搵唔到（同 YMIS 或同 Email）先補回（新增列，不覆蓋既有帳號）。
+// 注意：本函式不再逐列改寫既有帳號的 force_change_password。「密碼仍為預設值就強制改密」改在
+// handleLogin() 讀取時判斷（見 isDefaultPasswordHash_），既不改寫用戶資料，也保留強制改密效果。
 function ensureAdminSeed(uSheet){
   if(!uSheet) return;
   ensureForceChangeCol(uSheet);
@@ -856,14 +876,18 @@ function ensureAdminSeed(uSheet){
     row[13]=true;                      // force_change_password
     uSheet.appendRow(row);
   }
-  const defaultHash = hashPassword(ADMIN_PASS);
-  for(let i=1;i<data.length;i++){
-    if(String(data[i][4]||'')===defaultHash){
-      uSheet.getRange(i+1,FORCE_CHANGE_COL).setValue(true);
-    }
-  }
 }
 function isForceChangeValue(v){ return v===true || String(v).toUpperCase()==='TRUE'; }
+// 密碼雜湊仍等於預設密碼（changeme）＝ 必須首次登入強制改密（讀取時判斷，不寫入資料）
+// 舊版殘留保留帳號列（角色 super_admin 或 YMIS 等於保留識別字）：只用於讀取時略過，不刪除
+function isLegacySuperRow_(row){
+  const y=String((row&&row[0])||'').trim().toLowerCase();
+  const role=String((row&&row[3])||'').trim().toLowerCase();
+  return role==='super_admin' || (!!SUPER_ADMIN_ID && y===String(SUPER_ADMIN_ID).toLowerCase());
+}
+function isDefaultPasswordHash_(hash){ return String(hash||'')!=='' && String(hash)===hashPassword(ADMIN_PASS); }
+// 旅系統 GS 版本核對（前端「最新版本公告」用；唯讀，不含任何用戶資料）
+function ecStatusResponse_(){ return jsonResponse(Object.assign({success:true}, gsVersionInfo_())); }
 // 設計：停用帳號仍佔用其 YMIS／Email（保留歷史進度與審批軌跡），不可用同一 YMIS／Email 另開新帳號；
 //       如需重用，領袖應在「用戶管理」恢復該帳號（reactivateUser）而非重新開戶。
 function normalizeEmail_(email){ return String(email||'').trim().toLowerCase(); }
@@ -932,10 +956,8 @@ function initializeSheets() {
     pSheet.getRange(1,1,1,6).setFontWeight('bold').setBackground('#8B0000').setFontColor('#FFFFFF');
     pSheet.setFrozenRows(1);
   } else {
-    // ensure 6 columns header
-    if(pSheet.getLastColumn()<6){
-      pSheet.getRange(1,5).setValue('確認者'); pSheet.getRange(1,6).setValue('備註');
-    }
+    // 補缺欄表頭（只寫空白格，不覆蓋既有欄名）
+    setHeaderIfEmpty_(pSheet,5,'確認者'); setHeaderIfEmpty_(pSheet,6,'備註');
   }
   let mSheet = ss.getSheetByName('成員名單');
   if(!mSheet){
@@ -951,13 +973,11 @@ function initializeSheets() {
     uSheet.getRange(1,1,1,14).setFontWeight('bold').setBackground('#8B0000').setFontColor('#FFFFFF');
     uSheet.setFrozenRows(1);
   } else {
-    // 確保第13欄存在
-    if(uSheet.getLastColumn()<13){
-      uSheet.getRange(1,13).setValue('allowed_badges');
-    }
+    // 確保第13欄表頭存在（只寫空白格）
+    setHeaderIfEmpty_(uSheet,13,'allowed_badges');
   }
-  // 2026-10 對齊 vsbadge：每次初始化都確保預設管理員存在（被刪會補回），
-  // 仲用緊預設密碼嘅帳號重標首次登入強制改密（唔會覆蓋已改密碼嘅帳號）
+  // 2026-10 對齊 vsbadge：每次初始化都確保預設管理員存在（被刪會補回，新增列）；
+  // 不再改寫既有帳號的 force_change_password（預設密碼強制改密改在 handleLogin 判斷）
   ensureAdminSeed(uSheet);
   let aSheet = ss.getSheetByName('Applications');
   if(!aSheet){
@@ -1035,9 +1055,9 @@ function initializeSheets() {
 
   const apiKey = getApiKey();
   let scriptUrl=''; try{ scriptUrl=ScriptApp.getService().getUrl(); }catch(e){ scriptUrl='請部署為網頁應用程式後查看';}
-  // 清除 Users 表殘留的 super_admin 列＋Tokens 表舊版保留帳號 session 行（保留帳號不存於 Sheet）
-  try{ removeSuperAdminRows(); }catch(e){}
-  try{ removeSuperAdminTokenRows(); }catch(e){}
+  // 資料保全：初始化不再自動刪除任何列（舊版殘留 super_admin 列、Tokens 殘留 session 皆保留；
+  // 這些列已由 isLegacySuperRow_() 在登入時略過，不能作為身分）。如需清理，須由管理員手動執行
+  // removeSuperAdminRows()／removeSuperAdminTokenRows()，並先備份試算表。
   try{
     const ui=SpreadsheetApp.getUi();
     if(ui){
@@ -1045,7 +1065,9 @@ function initializeSheets() {
       ui.alert('✅ 初始化完成！\n\nSheets：進度追蹤、成員名單、Users、Applications、Tokens、SystemConfig、待批完成、其他獎章、活動履歷、待批履歷\n\n🔗 旅系統：選單「🔗 旅系統」→「🔑 顯示 BACKEND／APIKEY（交 ADMIN）」一次過抄 B／D；上下游接駁（登記下游／sig／閂口／搬舊數）全部經該選單操作\n\n🔑 API Key:\n'+apiKey+'\n\n👤 旅團管理員 YMIS: '+ADMIN_YMIS+' 初始密碼: '+ADMIN_PASS+'（請立即登入後更改）\n\n🌐 URL:\n'+scriptUrl);
     }
   }catch(e){}
-  return {success:true,apiKey:apiKey,scriptUrl:scriptUrl};
+  // 最後一步：只有以上全部成功，才記下「此 GS 版本的初始化已完成」（前端據此顯示「全部完成」）
+  PropertiesService.getScriptProperties().setProperty(GS_INIT_PROP, GS_VERSION);
+  return {success:true,apiKey:apiKey,scriptUrl:scriptUrl,gsVersion:GS_VERSION,initializedGsVersion:GS_VERSION};
 }
 
 // removeSuperAdminTokenRows()：清除 Tokens 表內舊版以 __sys__／帳號／rbs-super-v1- 寫入嘅
@@ -1097,6 +1119,8 @@ function getUser(ymis){
   const hasAllowedCol = sheet.getLastColumn()>=13;
   const key=String(ymis||'').trim();
   for(let i=1;i<data.length;i++){
+    // 舊版殘留 super_admin 列：保留不刪（資料保全），但不可作為登入身分
+    if(isLegacySuperRow_(data[i])) continue;
     if(String(data[i][0]||'').trim()===key && String(data[i][11]||'').trim()==='active'){
       return {
         ymis:data[i][0].toString(),
@@ -1124,6 +1148,7 @@ function getUserByEmail(email){
   if(!target) return null;
   const hasAllowed = sheet.getLastColumn()>=13;
   for(let i=1;i<data.length;i++){
+    if(isLegacySuperRow_(data[i])) continue; // 舊版殘留 super_admin 列不可作為登入身分（保留不刪）
     if(String(data[i][2]||'').trim().toLowerCase()===target && String(data[i][11]||'').trim()==='active'){
       return {ymis:data[i][0].toString(),name:data[i][1]?data[i][1].toString():'',email:data[i][2].toString(),role:data[i][3]?data[i][3].toString():'member',can_tick:data[i][6]===true||data[i][6]==='TRUE',allowed_badges: hasAllowed ? (data[i][12]?data[i][12].toString():'') : '',squad:data[i][5]?data[i][5].toString():'',squad_role:'member'};
     }
@@ -1194,6 +1219,8 @@ function doGet(e){
   const params=(e&&e.parameter)||{};
   const action=String(params.action||'');
   if(action==='getLoginMode') return jsonResponse({success:true,login_mode:'standalone',local_login:localLoginAllowed(),upstream_only:!localLoginAllowed()});
+  // GS 版本核對：唯讀、只回版本與初始化標記，不含用戶資料；放在閂口之前，旅系統關閉時仍可核對
+  if(action==='ecStatus') return ecStatusResponse_();
   // 旅系統：閂口後直接入口一律拒絕（只收上游 sig；簽名請求一律走 doPost）
   // 保留帳號 token 與旅系統閘門無關（同 doPost 中央管理帳號登入路由）
   if(!localLoginAllowed() && !isSuperAdminToken(params.token)) return jsonResponse(linkClosedResponse(action));
@@ -1385,7 +1412,8 @@ function handleLogin(loginId,password,superTicket){
       if(rowY===user.ymis || rowE===user.email.toLowerCase() || rowY===loginId){
         const token=createToken(user.ymis);
         sheet.getRange(i+1,11).setValue(now());
-        const forceChange=data[i].length>=FORCE_CHANGE_COL && isForceChangeValue(data[i][FORCE_CHANGE_COL-1]);
+        // 強制改密：旗標為 TRUE，或密碼仍是預設值（讀取時判斷；不寫入用戶資料）
+        const forceChange=(data[i].length>=FORCE_CHANGE_COL && isForceChangeValue(data[i][FORCE_CHANGE_COL-1])) || isDefaultPasswordHash_(data[i][4]);
         return jsonResponse({success:true,token:token,user:user,force_change_password:forceChange});
       }
     }
@@ -1575,7 +1603,8 @@ function handleLoad(){
   const oSheet=ss.getSheetByName('其他獎章'); const other={};
   if(oSheet){ const data=oSheet.getDataRange().getValues(); for(let i=1;i<data.length;i++){ const y=data[i][0].toString(); if(!y) continue; if(!other[y]) other[y]={}; other[y][data[i][1].toString()]={name:data[i][2]?data[i][2].toString():'',date:data[i][3]?formatDate(data[i][3]):'',cert:data[i][4]?data[i][4].toString():''}; } }
   const lSheet=ss.getSheetByName(LOG_SHEET_NAME);
-  return jsonResponse({success:true,members:members,progress:progress,flatProgress:flat,pendingRequests:pending,otherBadges:other,logs:getLogRecordsList(),logsSupported:!!lSheet,schemes:schemeMap_(),schemeDefault:SCHEME_DEFAULT_});
+  const gsInfo=gsVersionInfo_();
+  return jsonResponse({success:true,members:members,progress:progress,flatProgress:flat,pendingRequests:pending,otherBadges:other,logs:getLogRecordsList(),logsSupported:!!lSheet,schemes:schemeMap_(),schemeDefault:SCHEME_DEFAULT_,gsVersion:gsInfo.gsVersion,gsReleaseDate:gsInfo.gsReleaseDate,initRequired:gsInfo.initRequired,initializedGsVersion:gsInfo.initializedGsVersion});
 }
 // 進度寫入（整批檢查後才寫）。actor：token 使用者（檢查角色＋allowed_badges）；null ＝ API Key 系統
 function handleSave(changes, confirmer, actor){

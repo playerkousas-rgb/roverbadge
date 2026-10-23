@@ -93,6 +93,40 @@
 
 **如要換密碼：** 只改 Vercel `SUPER_KEY` → Redeploy → 完成（唔使碰 GAS／Sheet；舊加密 session 會失效，重新登入即可）。
 
+## GS 版本核對、初始化標記與資料保全（v5.2.1 起）
+
+**規格**（對齊 CubBadge 機制，數據與版號為本 repo 自身）：
+
+| 位置 | 內容 |
+| --- | --- |
+| `apps-script/Code.gs` | `GS_VERSION`／`GS_RELEASE_DATE`／`GS_INIT_REQUIRED`；`ecStatus` action（doGet，位於「旅系統閂口」之前，只回版本與標記，不含用戶資料） |
+| `load`（doGet） | 回傳 `gsVersion`、`gsReleaseDate`、`initRequired`、`initializedGsVersion` |
+| `initializeSheets()` | 全部步驟成功後，最後一行寫入 Script Property `INITIALIZED_GS_VERSION` = `GS_VERSION`；中途失敗則不寫入 |
+| `assets/gs-release.js` | 前端 `GS_LATEST`（版本、日期、是否需要初始化）；`statusOf()` 判斷 `outdated`／`needs_init`／`ok` |
+| `index.html` | 首頁／登入頁／登入後主頁的公告區；`gsRecheck()` 呼叫 `apiRequest('ecStatus')` |
+| `api/proxy.js` | `ecStatus` 同時在 `PUBLIC_ACTIONS` 與 `GET_ACTIONS` |
+
+**三種狀態判斷**（`assets/gs-release.js`）
+
+1. `outdated`：沒有 `gsVersion`（舊版 GS）或 `gsVersion` < `GS_LATEST.version`。
+2. `needs_init`：`initRequired` 為真，而 `initializedGsVersion` ≠ `gsVersion`。
+3. `ok`：以上皆不成立，顯示綠色「✅ 已核對」。
+
+**發佈新版 GS 的檢查清單**
+
+1. `Code.gs`：更新 `GS_VERSION`、`GS_RELEASE_DATE`；若本版要求執行 `initializeSheets()`，`GS_INIT_REQUIRED = true`。
+2. `assets/gs-release.js`：同步更新 `GS_LATEST`（`tests/release-version.test.mjs` 會檢查兩者一致）。
+3. `CHANGE_LOG.md`：寫明版本、是否需要初始化、對資料的影響（應為「無刪除、無改寫」）。
+4. 新增的 `initializeSheets()` 步驟必須是**增補**：建表、補空白表頭、補缺失列。任何刪除或改寫既有值的改動，須經用戶確認，並寫入 CHANGE_LOG。
+5. 執行 `npm run check` 與 `npm test`；`tests/release-version.test.mjs` 的 before/after 快照測試會證明重跑初始化不改寫既有資料。
+6. 通知各旅團領袖：在 Apps Script 建立**新版本**部署（沿用原 Web App 網址）；只重新部署 Vercel 不足夠（舊 GS 會拒絕 proxy 的 token 請求）。
+
+**資料保全規則**（硬性；領袖版說明見 `docs/LEADER_GUIDE.md`）
+
+- `initializeSheets()` 不刪列、不改寫既有值、不重設密碼、不改 `force_change_password`、不改 API Key。
+- 殘留 super_admin 列：`initializeSheets()` 不再自動刪除；`handleLogin`／`getUser`／`getUserByEmail` 讀取時略過（`isLegacySuperRow_`），不能作為登入身分。`removeSuperAdminRows()` 保留給人手執行。
+- 預設密碼強制改密：由 `handleLogin` 讀取時判斷（`isDefaultPasswordHash_`），不寫入 Users 表。
+
 ## 檢查
 
 - 0082R 已移除：scoutbadge 之前有殘留，已清

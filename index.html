@@ -345,11 +345,26 @@ a:hover{text-decoration:underline}
   .tab-content{padding:10px}
   .badge-header h3 small{display:block;margin-top:2px}
 }
+.gs-notice-wrap{margin:10px auto;max-width:960px;padding:0 12px}
+.gs-notice{border:1px solid #E0C9A6;border-left:5px solid var(--maroon);background:#FFFBF2;border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.6}
+.gs-notice h3{font-size:15px;margin:0 0 4px;color:var(--maroon)}
+.gs-badge{display:inline-block;border-radius:8px;padding:6px 10px;margin:6px 0;font-weight:600}
+.gs-badge.gs-ok{background:#E8F7EC;color:#1B6E33;border:1px solid #7CC48F}
+.gs-badge.gs-warn{background:#FFF3CD;color:#7A5A00;border:1px solid #E0B94D}
+.gs-badge.gs-danger{background:#FDECEC;color:#8B0000;border:1px solid #E08A8A}
+.gs-badge.gs-info{background:#EEF4FB;color:#1F4E79;border:1px solid #9DBBDD}
+.gs-must-init{font-weight:700;color:#8B0000;margin:4px 0}
+.gs-meta{font-size:12px;color:var(--text-light)}
+.gs-steps{margin:6px 0 6px 20px;padding:0}
+.gs-steps li{margin:2px 0}
+.gs-data-safe{font-size:12px;background:#EEF8F1;border-radius:8px;padding:6px 8px;margin:6px 0}
+.gs-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 </style>
 </head>
 <body>
 <!-- ===== Home ===== -->
 <div id="homePage">
+  <div id="gsNoticeHome" class="gs-notice-wrap"></div>
   <div class="app-header-common">
     <div class="logo-row">
       <div class="logo-svg-wrap" aria-hidden="true" title="樂行童軍徽章">
@@ -478,6 +493,7 @@ a:hover{text-decoration:underline}
 
 <!-- ===== Login ===== -->
 <div id="loginPage" style="display:none">
+  <div id="gsNoticeLogin" class="gs-notice-wrap"></div>
   <div class="app-header-common" style="padding:14px">
     <div class="logo-row" style="margin-bottom:0">
       <div class="logo-svg-wrap"><img src="assets/rover-badge-256.png" alt="樂行童軍徽章" onerror="this.style.display='none'"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:32px;height:32px"><path d="M30 85 L50 38 L70 85" fill="none" stroke="#FFD700" stroke-width="3" stroke-linecap="round"/><rect x="47" y="42" width="6" height="34" fill="#8B0000" rx="2"/><ellipse cx="50" cy="42" rx="9" ry="2.5" fill="none" stroke="#FFD700" stroke-width="1.2"/><path d="M45 46 Q42 36 48 28 Q50 24 50 20 Q50 16 52 13 Q55 18 54 24 Q53 28 55 32 Q58 38 55 46" fill="#FFA000"/></svg></div>
@@ -509,6 +525,7 @@ a:hover{text-decoration:underline}
 
 <!-- ===== Main App ===== -->
 <div id="mainApp" style="display:none">
+  <div id="gsNoticeMain" class="gs-notice-wrap"></div>
   <div class="main-app-header">
     <div class="left">
       <div class="logo-mini" style="overflow:hidden"><img src="assets/rover-badge-128.png" alt="樂行童軍徽章" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:24px;height:24px;display:none"><path d="M30 85 L50 38 L70 85" fill="none" stroke="#FFD700" stroke-width="3" stroke-linecap="round"/><rect x="47" y="42" width="6" height="34" fill="#fff" rx="2"/><ellipse cx="50" cy="42" rx="9" ry="2.5" fill="none" stroke="#FFD700" stroke-width="1.2"/><path d="M45 46 Q42 36 48 28 Q50 24 50 20 Q50 16 52 13 Q55 18 54 24 Q53 28 55 32 Q58 38 55 46" fill="#FFD700"/></svg></div>
@@ -829,6 +846,7 @@ a:hover{text-decoration:underline}
 
 <script src="assets/ymis-parse.js"></script>
 <script src="assets/rover-scope.js"></script>
+<script src="assets/gs-release.js"></script>
 <script src="assets/forms.js"></script>
 <script>
 /* ================== i18n (English mode) ================== */
@@ -1775,6 +1793,28 @@ const LANG_DICT={
   "其他獎章 全部（OT-*）": "All other badges (OT-*)",
   "審核員 Assessor": "Assessor",
   "徽章佩戴指引": "Badge Wearing Guide",
+  "📢 最新版本公告": "📢 Latest Version Notice",
+  "GS 最新版本": "Latest GS version",
+  "本旅團 GS 版本": "This troop's GS version",
+  "初始化標記": "Initialization marker",
+  "請先選擇旅團並登入，即可核對本旅團 GS 版本": "Select a troop and log in to check this troop's GS version",
+  "尚未核對，請按「重新檢查」": "Not checked yet. Press \"Re-check\"",
+  "核對中…": "Checking…",
+  "無法連線核對，請稍後按「重新檢查」": "Could not check. Please press \"Re-check\" later",
+  "⚠️ GS 未更新：本旅團 Apps Script 仍是舊版，請先更新 Code.gs": "⚠️ GS not updated: this troop's Apps Script is still an old version. Please update Code.gs first",
+  "⚠️ GS 已更新但未初始化：必須執行一次 initializeSheets()": "⚠️ GS updated but not initialized: you must run initializeSheets() once",
+  "✅ 已核對：GS 已是最新版本，初始化已完成": "✅ Checked: GS is up to date and initialization is complete",
+  "必須執行一次 initializeSheets()": "You must run initializeSheets() once",
+  "🛡️ 資料保全：更新 Code.gs 不會清除既有資料；initializeSheets() 只補缺少的表格與欄位標題，不刪除、不改寫用戶、進度、紀錄或金鑰。": "🛡️ Data safety: updating Code.gs does not delete existing data. initializeSheets() only adds missing sheets and column headers; it does not delete or change any users, progress, records or keys.",
+  "⬇️ 下載 Code.gs": "⬇️ Download Code.gs",
+  "🔄 重新檢查": "🔄 Re-check",
+  "更新步驟": "Update steps",
+  "下載 Code.gs（按下方按鈕）": "Download Code.gs (use the button below)",
+  "開啟旅團試算表 →「擴充功能」→「Apps Script」，全選刪除舊碼，貼上新 Code.gs 並儲存": "Open the troop's spreadsheet → \"Extensions\" → \"Apps Script\". Select all, delete the old code, paste the new Code.gs and save",
+  "「部署」→「管理部署作業」→ 編輯 ✏️ →「版本」選「新版本」→「部署」（沿用原有 Web App 網址，不要另建）": "\"Deploy\" → \"Manage deployments\" → Edit ✏️ → \"Version\": \"New version\" → \"Deploy\" (keep the existing Web App URL; do not create a new one)",
+  "若需要初始化：在 Apps Script 函式選單選 initializeSheets，執行一次（首次需授權）": "If initialization is needed: choose initializeSheets in the Apps Script function menu and run it once (authorise on first run)",
+  "回到本頁按「重新檢查」，出現綠色「已核對」即完成": "Come back here and press \"Re-check\"; the green \"Checked\" badge means done",
+  "請先選擇旅團並登入": "Please select a troop and log in first",
 };
 const LANG_KEYS=Object.keys(LANG_DICT).sort(function(a,b){ return b.length-a.length; });
 const LANG_RE=new RegExp('('+LANG_KEYS.map(function(k){ return k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }).join('|')+')','g');
@@ -2077,6 +2117,58 @@ function backToHome(){
   document.getElementById('loginId').value='';
   document.getElementById('loginPassword').value='';
 }
+// ===== 最新版本公告（GS 版本核對）=====
+// 版本判斷見 assets/gs-release.js（GsRelease）。這裡只負責顯示與「重新檢查」；唯讀，不寫入任何旅團資料。
+let gsCheckInfo=null;   // 最近一次 ecStatus／load 的回報（只存在本頁記憶體）
+let gsCheckState='';    // '' ｜ 'busy' ｜ 'error'
+function gsNoticeHtml(where){
+  const L=GsRelease.GS_LATEST;
+  const st=GsRelease.statusOf(gsCheckInfo, L);
+  const needInit=GsRelease.initNotice(gsCheckInfo, L);
+  let badge;
+  if(gsCheckState==='busy') badge='<div class="gs-badge gs-info">'+tr('核對中…')+'</div>';
+  else if(gsCheckState==='error') badge='<div class="gs-badge gs-warn">'+tr('無法連線核對，請稍後按「重新檢查」')+'</div>';
+  else if(st.code==='unchecked') badge='<div class="gs-badge gs-info">'+tr(where==='home'?'請先選擇旅團並登入，即可核對本旅團 GS 版本':'尚未核對，請按「重新檢查」')+'</div>';
+  else if(st.code==='outdated') badge='<div class="gs-badge gs-danger">'+tr('⚠️ GS 未更新：本旅團 Apps Script 仍是舊版，請先更新 Code.gs')+'</div>';
+  else if(st.code==='needs_init') badge='<div class="gs-badge gs-warn">'+tr('⚠️ GS 已更新但未初始化：必須執行一次 initializeSheets()')+'</div>';
+  else badge='<div class="gs-badge gs-ok">'+tr('✅ 已核對：GS 已是最新版本，初始化已完成')+'</div>';
+  const meta=(where!=='home' && gsCheckInfo && st.code!=='unchecked')
+    ? '<div class="gs-meta">'+tr('本旅團 GS 版本')+'：v'+escapeHtmlText(st.gsVersion||'—')+'　'+tr('初始化標記')+'：'+escapeHtmlText(st.initializedGsVersion||'—')+'</div>' : '';
+  const mustInit=needInit ? '<div class="gs-must-init">'+tr('必須執行一次 initializeSheets()')+'</div>' : '';
+  return '<div class="gs-notice">'+
+    '<h3>'+tr('📢 最新版本公告')+'</h3>'+
+    '<div>'+tr('GS 最新版本')+'：<b>v'+escapeHtmlText(L.version)+'</b>（'+escapeHtmlText(L.releaseDate)+'）</div>'+
+    badge+meta+mustInit+
+    '<div class="gs-steps-title"><b>'+tr('更新步驟')+'</b></div>'+
+    '<ol class="gs-steps">'+
+      '<li>'+tr('下載 Code.gs（按下方按鈕）')+'</li>'+
+      '<li>'+tr('開啟旅團試算表 →「擴充功能」→「Apps Script」，全選刪除舊碼，貼上新 Code.gs 並儲存')+'</li>'+
+      '<li>'+tr('「部署」→「管理部署作業」→ 編輯 ✏️ →「版本」選「新版本」→「部署」（沿用原有 Web App 網址，不要另建）')+'</li>'+
+      '<li>'+tr('若需要初始化：在 Apps Script 函式選單選 initializeSheets，執行一次（首次需授權）')+'</li>'+
+      '<li>'+tr('回到本頁按「重新檢查」，出現綠色「已核對」即完成')+'</li>'+
+    '</ol>'+
+    '<div class="gs-data-safe">'+tr('🛡️ 資料保全：更新 Code.gs 不會清除既有資料；initializeSheets() 只補缺少的表格與欄位標題，不刪除、不改寫用戶、進度、紀錄或金鑰。')+'</div>'+
+    '<div class="gs-actions">'+
+      '<a class="btn btn-sm btn-outline" href="'+L.codeUrl+'" download>'+tr('⬇️ 下載 Code.gs')+'</a>'+
+      '<button class="btn btn-sm" type="button" onclick="gsRecheck()">'+tr('🔄 重新檢查')+'</button>'+
+    '</div></div>';
+}
+function renderGsNotices(){
+  [['gsNoticeHome','home'],['gsNoticeLogin','login'],['gsNoticeMain','main']].forEach(function(pair){
+    const el=document.getElementById(pair[0]);
+    if(el) el.innerHTML=gsNoticeHtml(pair[1]);
+  });
+}
+async function gsRecheck(){
+  if(!currentTroopId){ showToast(tr('請先選擇旅團並登入'),'error'); return; }
+  gsCheckState='busy'; renderGsNotices();
+  try{
+    const r=await apiRequest('ecStatus',{},{troopId:currentTroopId});
+    gsCheckInfo=r||{}; gsCheckState='';
+  }catch(e){ console.warn('ecStatus fail',e); gsCheckState='error'; }
+  renderGsNotices();
+}
+document.addEventListener('DOMContentLoaded', renderGsNotices);
 async function loadTroops(){
   const grid=document.getElementById('troopGrid');
   grid.innerHTML='<p style="grid-column:1/-1;text-align:center;color:var(--text-light);padding:20px">載入中...</p>';
@@ -2123,6 +2215,8 @@ async function selectTroop(id){
       }
     }catch(e){ console.warn('api diagnose skipped',e); }
     switchLoginType('member');
+    // 選定旅團後自動核對 GS 版本（唯讀）
+    gsCheckInfo=null; gsCheckState=''; renderGsNotices(); gsRecheck();
   }catch(e){ console.error(e); showToast('無法取得旅團設定','error'); }
 }
 function switchLoginType(t){
@@ -2998,6 +3092,8 @@ async function loadItemsAndProgress(){
     if(!currentUser || currentTroopId!==tid){ clearStaleBanner(); return; }
     if(backendData.success){
       clearStaleBanner();
+      // 最新版本公告：load 已回報 gsVersion／initializedGsVersion（舊版 GS 無此欄 ＝ 未更新）
+      gsCheckInfo=backendData; gsCheckState=''; renderGsNotices();
       members=backendData.members||[];
       schemeMap=backendData.schemes||{}; schemeDefault=backendData.schemeDefault||'new';
       // compat: progress may be flat or rich
