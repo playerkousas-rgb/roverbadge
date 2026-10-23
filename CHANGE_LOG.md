@@ -13,7 +13,7 @@
 - **文件**：`docs/LEADER_GUIDE.md` 新增「最新版本公告、GS 更新與資料保全（必讀）」；`APP_ADMIN_WORKFLOW.md` 新增 GS 版本核對規格與發佈檢查清單。
 - **字典**：`i18n_dict.tsv` 新增 22 組中英字串，同步 `index.html`（963 筆）。
 - **測試**：新增 `tests/release-version.test.mjs`（12 項：版本一致、三狀態、閂口下 ecStatus、標記時機、舊結構升級、完整 before/after 快照、前端接線與翻譯覆蓋、proxy 白名單），已加入 `npm test`；`tests/code-gs.test.mjs` 2b 與殘留列斷言改為新規則。
-- **部署提醒**：Vercel 重新部署後，各旅團須在 Apps Script 貼上新 `Code.gs` 並建立**新版本**部署（沿用原 Web App 網址），再執行一次 `initializeSheets()`。
+- **部署提醒**：Vercel 重新部署後，各旅團須在 Apps Script 貼上新 `Code.gs` 並在既有部署上選**新版本**（沿用原 Web App 網址，不要新建部署），再執行一次 `initializeSheets()`。
 
 ## 2026-10-23 — 其他章節殘留審計（VSBADGE 骨架混入）＋ 新制表格重建
 

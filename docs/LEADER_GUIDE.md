@@ -79,7 +79,7 @@
 
 | 顯示 | 意思 | 你要做的事 |
 | --- | --- | --- |
-| ⚠️ GS 未更新 | 旅團 Apps Script 仍是舊版（或未回報版本） | 下載最新 Code.gs，貼上並建立新版本部署，再執行一次 initializeSheets()（見下） |
+| ⚠️ GS 未更新 | 旅團 Apps Script 仍是舊版（或未回報版本） | 下載最新 Code.gs，貼上並在既有部署上選新版本，再執行一次 initializeSheets()（見下） |
 | ⚠️ GS 已更新但未初始化 | 已貼上新版，但未執行 initializeSheets()，畫面會寫「必須執行一次 initializeSheets()」 | 在 Apps Script 執行一次 initializeSheets() |
 | ✅ 已核對 | GS 已是最新版本，初始化已完成 | 無需操作 |
 
