@@ -1318,12 +1318,11 @@ const LANG_DICT={
   "樂行童軍訓練綱要 第5版 (2026)": "Rover Scout Training Scheme 5th Edition (2026)",
   "新修訂支部訓練綱要通告 P022-26": "Circular P022-26 - Revised Sectional Training Schemes",
   "2026.02 樂行支部通告": "Rover Section circular, Feb 2026",
-  "佩戴重點（2024新指引）：": "Wearing key points (2024 new guide): ",
+  "佩戴重點（《支部成員徽章佩戴指引》通告 13/2023）：": "Wearing key points (Badge Wearing Guidelines, Circular 13/2023): ",
   "• 和平使者章佩戴左胸袋中央，取代會員章": "• Messengers of Peace Badge worn on the centre of the left chest pocket, replacing the Membership Badge",
   "• 急救章統一左袖上方AYP下方": "• First Aid Badge on the upper left sleeve, below the AYP badge",
   "• 拯溺布章佩戴左袖上方中央": "• Scout Lifesaving Badge worn on the centre of the upper left sleeve",
   "• 世界童軍獎章最多右袖平行4枚": "• Up to 4 WOSM badges in parallel on the right sleeve",
-  "• 貝登堡獎章可終身佩戴": "• The Baden-Powell Award can be worn for life",
   "🖨️ 樂行童軍表格自動填寫 (已更新最新官方)": "🖨️ Rover Scout Form Auto-fill (updated to the latest official)",
   "自動帶入姓名、YMIS、旅團、證書號碼、完成日期": "Auto-fills name, YMIS, Group, certificate numbers and completion dates",
   "一鍵列印官方格式": "Print the official format in one click",
@@ -4786,12 +4785,11 @@ function renderInfoTab(){
       ${RoverForms.officialLinksHtml(itemsData)}${(itemsData.trainingPlan&&itemsData.trainingPlan.links||[]).map(l=>`<a href="${escapeHtmlText(l.url)}" target="_blank" rel="noopener" class="link-card"><div class="link-icon">🗂️</div><div class="link-text"><div class="title">${escapeHtmlText(l.title)}</div><div class="url">${escapeHtmlText(l.desc||'')}</div></div></a>`).join('')}<a href="https://sites.google.com/view/hong-kong-rover-scout/" target="_blank" rel="noopener" class="link-card"><div class="link-icon">👕</div><div class="link-text"><div class="title">徽章佩戴指引</div><div class="url">樂行童軍資訊網（以官方公告為準）</div></div></a>
     </div>
     <div style="margin-top:10px;font-size:11px;line-height:1.6;background:var(--bg);padding:10px;border-radius:8px">
-      <b>佩戴重點（2024新指引）：</b><br>
+      <b>佩戴重點（《支部成員徽章佩戴指引》通告 13/2023）：</b><br>
       • 和平使者章佩戴左胸袋中央，取代會員章<br>
       • 急救章統一左袖上方AYP下方<br>
       • 拯溺布章佩戴左袖上方中央<br>
-      • 世界童軍獎章最多右袖平行4枚<br>
-      • 貝登堡獎章可終身佩戴
+      • 世界童軍獎章最多右袖平行4枚
     </div>
   </div>`;
 
