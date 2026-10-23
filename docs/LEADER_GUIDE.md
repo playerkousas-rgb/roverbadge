@@ -1,5 +1,9 @@
 # 👨‍💼 領袖使用教學 (Branch Leader / Group Leader / Admin)
 
+> 🆕 **新部署旅團第一次登入**：預設管理員帳號係 YMIS `1111111111`／密碼 `changeme`
+> （用「👤 成員」分頁以 YMIS 登入，首次登入會強制改密碼）。
+> 完整步驟見 [DEPLOY_GUIDE_V5_DUALTRACK.md](DEPLOY_GUIDE_V5_DUALTRACK.md)「首次登入（預設管理員帳號）」。
+
 > 你擁有全部權限，負責審批、授權、批量操作
 
 ## 核心功能

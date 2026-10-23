@@ -59,6 +59,34 @@ check('login header version translated', doc.querySelector('#loginPage h1').text
 check('login 回報 link translated', [...doc.querySelectorAll('#loginPage a')].some(a => a.textContent.trim() === '🐛💬 Report · Feedback'));
 check('itemsDataUrl() = en json', domEn.window.itemsDataUrl() === 'data/items_en.json');
 
+// ---------- 部署頁（2026-10：首次登入步驟 + 主系統暫時隱藏） ----------
+const setupSteps = [...doc.querySelectorAll('#welcome-setup .steps .step')];
+check('部署頁顯示 5 個步驟（軌道B 已隱藏）', setupSteps.length === 5, `實際 ${setupSteps.length}`);
+const setupH4 = setupSteps.map(s => s.querySelector('h4').textContent.trim());
+check('部署頁步驟標題已全數翻譯（無中文夾雜）',
+  setupH4.join('|') === 'Common: download the backend code (single-file version)|Common: create a Google Sheet and deploy|Submit to the roverbadge admin|First sign-in (default admin account)|Privacy choice',
+  setupH4.join('|'));
+check('部署頁冇顯示軌道B步驟', ![...doc.querySelectorAll('#welcome-setup h4')].some(h => h.textContent.includes('軌道B') || h.textContent.includes('Track B')));
+const setupText = doc.querySelector('#welcome-setup').textContent;
+check('首次登入步驟顯示預設管理員帳密', setupText.includes('1111111111') && setupText.includes('changeme'));
+check('部署頁步驟區英文化（無殘留中文字）', !/[\u4e00-\u9fff]/.test(setupText), setupText.match(/[\u4e00-\u9fff][^\n<>]{0,20}/)?.[0] || '');
+
+// ---------- 強制改密 modal（2026-10：取代 window.prompt） ----------
+const fc = doc.querySelector('#forceChangeModal');
+check('forceChangeModal 存在', !!fc);
+check('forceChangeModal 標題已翻譯', fc && fc.querySelector('h3').textContent.trim() === '🔒 Set a New Password', fc && fc.querySelector('h3').textContent);
+check('forceChangeModal 全文英文化（無殘留中文字）', fc && !/[\u4e00-\u9fff]/.test(fc.textContent), fc && (fc.textContent.match(/[\u4e00-\u9fff][^\n<>]{0,20}/)?.[0] || ''));
+check('forceChangeModal 兩個密碼欄 placeholder 已翻譯',
+  fc && fc.querySelector('#fcNew1').placeholder === 'at least 4 characters' && fc.querySelector('#fcNew2').placeholder === 'enter again',
+  fc && (fc.querySelector('#fcNew1').placeholder + '|' + fc.querySelector('#fcNew2').placeholder));
+check('forceChangeModal 按鈕已翻譯',
+  fc && fc.querySelector('#btnCancelForceChange').textContent.trim() === 'Cancel (back to sign-in)' && fc.querySelector('#btnForceChange').textContent.trim() === 'Confirm Change');
+
+// 靜態源碼層：被隱藏段落仍然保留喺註解入面（重啟用）
+check('源碼保留 [主系統暫時隱藏] 標記', html.includes('[主系統暫時隱藏 2026-10]'));
+check('軌道B步驟仍喺源碼註解內（未刪）', /<!--[\s\S]*?軌道B：有主系統並想接上[\s\S]*?-->/.test(html));
+check('主系統介紹卡仍喺源碼註解內（未刪）', /<!--[\s\S]*?主系統平台是什麼[\s\S]*?-->/.test(html));
+
 // observer test: dynamically inject Chinese into a container
 const probe = doc.createElement('div');
 probe.innerHTML = '<p>📅 活動履歷</p><input placeholder="搜尋成員姓名/ YMIS">';
@@ -87,6 +115,17 @@ doc2.body.appendChild(probe3);
 probe3.textContent = '我的進度';
 await sleep(50);
 check('zh: no translation applied', probe3.textContent === '我的進度', probe3.textContent);
+
+// zh: 部署頁結構（步驟 4 首次登入、步驟 5 私隱、軌道B 唔顯示）
+const zhSteps = [...doc2.querySelectorAll('#welcome-setup .steps .step')];
+const zhH4 = zhSteps.map(s => s.querySelector('h4').textContent.trim());
+check('zh: 部署頁 5 步、第4步係首次登入、第5步係私隱',
+  zhSteps.length === 5 && zhH4[3] === '首次登入（預設管理員帳號）' && zhH4[4] === '私隱選擇', zhH4.join('|'));
+check('zh: 部署頁冇顯示軌道B（但註解保留喺源碼）', !zhH4.some(h => h.includes('軌道B')));
+const zhSetupText = doc2.querySelector('#welcome-setup').textContent;
+check('zh: 首次登入步驟顯示 YMIS 1111111111 同 changeme',
+  zhSetupText.includes('YMIS 1111111111') && zhSetupText.includes('changeme'));
+check('zh: forceChangeModal 顯示中文標題', doc2.querySelector('#forceChangeModal h3').textContent.trim() === '🔒 請設定新密碼');
 
 console.log(`\n結果：${passed} 通過, ${failed} 失敗`);
 process.exit(failed ? 1 : 0);

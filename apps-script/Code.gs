@@ -665,6 +665,45 @@ function ensureForceChangeCol(uSheet){
     uSheet.getRange(1,FORCE_CHANGE_COL).setValue('force_change_password');
   }
 }
+// 預設管理員 seed（2026-10 對齊 vsbadge ensureSeedAccount）：
+// 每次 initializeSheets 都檢查；只有完全搵唔到（同 YMIS 或同 Email）先補回，唔會覆蓋既有帳號資料。
+// 另外任何帳號密碼仲係預設值（changeme）就一併重標 force_change_password=true（首次登入強制改密）。
+function ensureAdminSeed(uSheet){
+  if(!uSheet) return;
+  ensureForceChangeCol(uSheet);
+  const data = uSheet.getDataRange().getValues();
+  const id = String(ADMIN_YMIS).toLowerCase();
+  const email = String(ADMIN_EMAIL).toLowerCase();
+  let exists = false;
+  for(let i=1;i<data.length;i++){
+    const rid = String(data[i][0]||'').toLowerCase();
+    const rem = String(data[i][2]||'').toLowerCase();
+    if(rid===id || (email && rem===email)){ exists=true; break; }
+  }
+  if(!exists){
+    const row = ['','','','','','','','','','','','','',''];
+    row[0]=ADMIN_YMIS;                 // ymis
+    row[1]=ADMIN_NAME;                 // name
+    row[2]=ADMIN_EMAIL;                // email
+    row[3]='admin';                    // role
+    row[4]=hashPassword(ADMIN_PASS);   // password_hash
+    row[5]='b4';                       // branch
+    row[6]=true;                       // can_tick
+    row[7]='system';                   // auth_by
+    row[8]=now();                      // auth_date
+    row[9]=now();                      // created_at
+    row[11]='active';                  // status
+    row[12]='*';                       // allowed_badges（管理員默認全部）
+    row[13]=true;                      // force_change_password
+    uSheet.appendRow(row);
+  }
+  const defaultHash = hashPassword(ADMIN_PASS);
+  for(let i=1;i<data.length;i++){
+    if(String(data[i][4]||'')===defaultHash){
+      uSheet.getRange(i+1,FORCE_CHANGE_COL).setValue(true);
+    }
+  }
+}
 function isForceChangeValue(v){ return v===true || String(v).toUpperCase()==='TRUE'; }
 // 設計：停用帳號仍佔用其 YMIS／Email（保留歷史進度與審批軌跡），不可用同一 YMIS／Email 另開新帳號；
 //       如需重用，領袖應在「用戶管理」恢復該帳號（reactivateUser）而非重新開戶。
@@ -751,26 +790,15 @@ function initializeSheets() {
     uSheet.appendRow(['ymis','name','email','role','password_hash','branch','can_tick','auth_by','auth_date','created_at','last_login','status','allowed_badges','force_change_password']);
     uSheet.getRange(1,1,1,14).setFontWeight('bold').setBackground('#8B0000').setFontColor('#FFFFFF');
     uSheet.setFrozenRows(1);
-    uSheet.getRange(2,1).setValue(ADMIN_YMIS);
-    uSheet.getRange(2,2).setValue(ADMIN_NAME);
-    uSheet.getRange(2,3).setValue(ADMIN_EMAIL);
-    uSheet.getRange(2,4).setValue('admin');
-    uSheet.getRange(2,5).setValue(hashPassword(ADMIN_PASS));
-    uSheet.getRange(2,6).setValue('b4');
-    uSheet.getRange(2,7).setValue(true);
-    uSheet.getRange(2,8).setValue('system');
-    uSheet.getRange(2,9).setValue(now());
-    uSheet.getRange(2,10).setValue(now());
-    uSheet.getRange(2,12).setValue('active');
-    uSheet.getRange(2,13).setValue('*'); // 管理員默認全部
-    uSheet.getRange(2,14).setValue(true);
   } else {
     // 確保第13欄存在
     if(uSheet.getLastColumn()<13){
       uSheet.getRange(1,13).setValue('allowed_badges');
     }
-    ensureForceChangeCol(uSheet);
   }
+  // 2026-10 對齊 vsbadge：每次初始化都確保預設管理員存在（被刪會補回），
+  // 仲用緊預設密碼嘅帳號重標首次登入強制改密（唔會覆蓋已改密碼嘅帳號）
+  ensureAdminSeed(uSheet);
   let aSheet = ss.getSheetByName('Applications');
   if(!aSheet){
     aSheet = ss.insertSheet('Applications');

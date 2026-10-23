@@ -334,7 +334,7 @@ CSV 解析失敗：	CSV parse failed:
 批准	Approve
 拒絕	Reject
 確定要	Confirm 
-此申請？	this request?
+此申請？	 this request?
 嗎？	?
 確定批量批准	Confirm batch-approving 
  項？	 items?
@@ -727,9 +727,6 @@ PDF 密碼（如有）	PDF password (if any)
  筆）	)
 團員 member	Member
 管委 exec_committee	CMC exec_committee
-支部領袖 branch_leader	Branch leader branch_leader
-團長 group_leader	Group leader group_leader
-管理員 admin	Admin admin
 請至少勾選一位有效成員（YMIS 須10位數字且有姓名）	Select at least one valid member (10-digit YMIS with a name)
 此 PDF 有密碼保護，請輸入密碼：	This PDF is password-protected. Enter the password:
 PDF 密碼不正確，請重新輸入	Incorrect PDF password, please re-enter
@@ -920,3 +917,78 @@ YMIS PDF 批量開戶、🐛💬 回報 · 意見按鈕（Scout Admin 統一回�
 私隱：普通成員預設只看自己，能否看其他成員由團長開放。	Privacy: members only see themselves by default; the Group Scout Leader decides whether they can view others.
 本節點係進度系統（下游），唔設支部表。上下游接駁經 Google Sheet 選單「🔗 旅系統」操作（sig 係 GAS→GAS 直連，唔經本 proxy）：➕ 登記下游（URL + SHEET KEY）→ 📡 測試下游連線 → 📤 匯出 JSON（含 hash，Drive 私人檔）→ 📥 匯入 JSON → 🚪 閂下游直接入口 → 👤 為下游開戶。新節點接入：選單「🔑 顯示 BACKEND／APIKEY（交 ADMIN）」→ 收件匣 → ADMIN 登記 Vercel env。	This node is a Progress System (downstream); it has no Branch sheet. Upstream/downstream linking is done via the Google Sheet menu "🔗 Troop System" (sig is a direct GAS→GAS connection, not via this proxy): ➕ Register downstream (URL + SHEET KEY) → 📡 Test downstream connection → 📤 Export JSON (with hash, private Drive file) → 📥 Import JSON → 🚪 Close downstream direct entry → 👤 Create accounts for downstream. New node onboarding: menu "🔑 Show BACKEND/APIKEY (for the ADMIN)" → inbox → ADMIN registers in Vercel env.
 ⚠️ 直接入口開關（ALLOW_LOCAL_LOGIN）只由上游（旅／支部系統）選單／sig 遠端操作，或在本節點 GAS Script Properties 手動設定；本 APP 屬下游系統，介面內不設此掣。誤閂而鎖死時：由上游選單「🚪 下游直接入口」重開。	⚠️ The direct-entry switch (ALLOW_LOCAL_LOGIN) is operated only by the upstream (Troop/Branch system) menu via sig, or set manually in this node's GAS Script Properties. This app is a downstream system and does not offer this switch in its UI. If it is closed by mistake and locks everyone out: re-open it from the upstream menu "🚪 Downstream direct entry".
+問題回報 / 意見回饋（經 Scout Admin 統一回收；可匿名，留聯絡方式可收通知）	Report an issue / send feedback (via Scout Admin; anonymous submissions are welcome, add contact details for a reply)
+🐛💬 回報問題／意見	🐛💬 Report a problem / feedback
+填寫後按送出，畫面會顯示傳送狀態；只有收件系統確認接收後才會顯示成功。	After you submit, the delivery status is shown here. Success is displayed only after the receiving system confirms receipt.
+回報類型	Report type
+問題／需要協助	Problem / help needed
+意見／建議	Feedback / suggestion
+意見類型	Feedback category
+你需要什麼協助？ *	What help do you need? *
+你想提供什麼意見？ *	What feedback would you like to share? *
+簡單描述問題或希望改善的地方	Briefly describe the problem or suggested improvement
+聯絡方式（電郵／電話，選填可匿名）	Contact details (email / phone; optional, anonymous submissions welcome)
+留下聯絡方式以便回覆；可留空匿名提交	Leave contact details for a reply; leave blank to submit anonymously
+建議	Suggestion
+讚	Praise
+批評	Criticism
+其他	Other
+送出	Submit
+提交後由旅團領袖在 APP 內審批，批准後預設密碼為 1234，首次登入須更改。	After submission, the Group's leader approves it inside the APP; once approved, the default password is 1234 and must be changed at first login.
+申請身份 *	Apply as *
+童軍成員	Rover member
+領袖（支部領袖）	Leader (Rover Scout Leader)
+成員、領袖都可自行申請；團長／管理員／管委須由現任管理層在「用戶管理」直接開立。	Members and leaders may apply themselves; GSL / Admin / CMC accounts must be created by current management in User Management.
+* 領袖必填	* required for leaders
+領袖申請必須填寫聯絡電郵	Leaders must provide a contact email
+Email 格式不正確	Invalid email format
+首次登入／密碼已重設，請設定新密碼（至少4位，不可與原密碼相同）	First login / password reset — set a new password (min 4 characters, not the same as the old one)
+必須先更改密碼才能進入系統	You must change your password before entering the system
+新密碼至少4位	New password must be at least 4 characters
+新密碼不可與原密碼相同	New password cannot be the same as the old password
+更改密碼失敗	Password change failed
+密碼已更新	Password updated
+團長只能有一位，全團已有現任團長。如需更換，請先將現任團長轉為其他角色。	There can only be one GSL. To replace them, change the current GSL to another role first.
+此人是全團唯一的團長，轉走後全團將暫時沒有團長。確定繼續嗎？	This person is the only GSL. The troop will temporarily have no GSL. Continue?
+此人是全團唯一的團長，停用後全團將暫時沒有團長。確定繼續嗎？	This person is the only GSL. Deactivating them leaves the troop with no GSL. Continue?
+團長全團只可有一位。	There can only be one GSL in the troop. 
+現任：	Current: 
+如需更換，請先將現任團長轉為其他角色。	 To replace them, change the current GSL to another role first.
+目前未有團長。	There is currently no GSL.
+請用電郵登入	Please log in with email
+YMIS：	YMIS: 
+✅ 已批准並建立帳戶	✅ Application approved and account created
+開立角色：	Opened as: 
+預設密碼：	Default password: 
+首次登入須更改密碼	Must change password at first login
+批量開戶失敗：	Bulk onboarding failed:\n
+領袖可留空 YMIS（用電郵登入）	Leaders may leave YMIS empty (log in with email)
+YMIS（成員必填10位；領袖可留空）	YMIS (required 10 digits for members; optional for leaders)
+聯絡電郵（領袖必填）	Contact email (required for leaders)
+CSV 中沒有有效資料（成員 YMIS 須為10位數字；領袖可留空）	No valid rows in CSV (member YMIS must be 10 digits; leaders may leave it empty)
+JSON 中沒有有效資料（成員 YMIS 須為10位數字；領袖可留空）	No valid rows in JSON (member YMIS must be 10 digits; leaders may leave it empty)
+ 筆，略過 	 records, skipped 
+ 項未保存 (已暫存於瀏覽器)	 unsaved changes (staged in browser)
+ 項	 items
+，失敗 	, failed 
+準備寫入 	Preparing to write 
+YMIS	YMIS
+📋 新旅團部署指南 (10分鐘)	📋 New Group Deployment Guide (10 min)
+提交給 roverbadge 管理員	Submit to the roverbadge admin
+首次登入（預設管理員帳號）	First sign-in (default admin account)
+initializeSheets 跑完會自動建立預設管理員。登記完成後首頁揀該旅團卡片 → 用「👤 成員」分頁登入（YMIS 登入，唔好用「👨‍💼 領袖」＝Email 分頁）：	initializeSheets automatically creates a default admin. Once registration is complete, pick the Group card on the home page → sign in via the "👤 Member" tab (YMIS sign-in, not the "👨‍💼 Leader" = Email tab):
+首次登入會強制改密碼（最少 4 位）。之後喺「用戶管理」開返各領袖自己嘅帳號並設角色／權限，喺「審批中心」批成員申請。	The first sign-in forces a password change (min 4 characters). Then create each leader's own account with roles/permissions in "User Management", and approve member applications in the "Approval Centre".
+若旅團重私隱，成員預設只看自己；若想互相鼓勵，團長可在用戶管理→系統設定開啟「允許成員互相查看進度」	For privacy-focused Groups, members see only themselves by default; for mutual encouragement, the Group Scout Leader can enable "Allow members to view each other's progress" in User Management → System Settings
+將旅團編號、名稱、URL、API Key 交 roverbadge 管理員登記	Send the Group ID, name, URL and API Key to the roverbadge admin for registration
+登記完成後首頁會出現旅團卡片，選團即可登入	Once registered, the Group card appears on the home page — pick the Group and sign in
+成員可直接 bookmark 本系統連結使用	Members can bookmark the link to this system and use it directly
+🔒 請設定新密碼	🔒 Set a New Password
+首次登入／密碼已重設，必須先設定新密碼才能進入系統（至少4位，不可與原密碼相同）	First sign-in or password reset: you must set a new password before entering the system (min 4 characters, must differ from the old password)
+新密碼	New Password
+再次輸入新密碼	Re-enter New Password
+至少4位	at least 4 characters
+再輸入一次	enter again
+取消（返回登入）	Cancel (back to sign-in)
+確認更改	Confirm Change
+兩次輸入的新密碼不一致	The two passwords entered do not match
+更改中...	Changing...
