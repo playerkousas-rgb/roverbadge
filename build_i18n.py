@@ -5,6 +5,11 @@ path = '/home/user/roverbadge/index.html'
 src = open(path, encoding='utf-8').read()
 
 # ---------- 1. Build LANG_DICT from TSV ----------
+# 轉義約定（2026-10 起）：key／value 內 \n、\t、\\ 以反斜線轉義存放，
+# 讀入時 unescape（目前得 1 個 value 用到：'批量開戶失敗：' 嘅英文結尾換行）。
+def tsv_unesc(s):
+    return s.replace('\\\\', '\x00').replace('\\n', '\n').replace('\\t', '\t').replace('\x00', '\\')
+
 dict_items = []
 seen = set()
 with open('/home/user/roverbadge/i18n_dict.tsv', encoding='utf-8') as f:
@@ -12,12 +17,30 @@ with open('/home/user/roverbadge/i18n_dict.tsv', encoding='utf-8') as f:
         line = line.rstrip('\n')
         if not line.strip() or '\t' not in line: continue
         k, v = line.split('\t', 1)
+        k, v = tsv_unesc(k), tsv_unesc(v)
         if k in seen: continue
         seen.add(k)
         dict_items.append((k, v))
 
 def js_str(s):
     return '"' + s.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n') + '"'
+
+# ---------- 0. --sync-dict 模式（2026-10 新增，idempotent） ----------
+# 主流程係一次性 migration（anchor 被改寫後再跑會 assert fail）。
+# 日常加／改翻譯請改用：python3 build_i18n.py --sync-dict
+# 只按 i18n_dict.tsv 重新生成 index.html 內 const LANG_DICT={...}; 區塊，
+# 其他注入（init JS、toggle、EMBEDDED_GUIDES 等）唔會再郁。
+if '--sync-dict' in sys.argv:
+    start_tok = 'const LANG_DICT={'
+    si = src.find(start_tok)
+    assert si >= 0, 'LANG_DICT block not found'
+    ei = src.find('};', si)
+    assert ei >= 0, 'LANG_DICT closing not found'
+    body = '\n'.join('  ' + js_str(k) + ': ' + js_str(v) + ',' for k, v in dict_items)
+    src = src[:si] + start_tok + '\n' + body + '\n' + src[ei:]
+    open(path, 'w', encoding='utf-8').write(src)
+    print('sync-dict DONE:', len(dict_items), 'entries written to LANG_DICT')
+    sys.exit(0)
 
 lines = []
 lines.append('/* ================== i18n (English mode) ================== */')

@@ -409,8 +409,10 @@ a:hover{text-decoration:underline}
     </div>
 
     <div id="welcome-setup" class="welcome-section">
-      <h2 style="font-size:18px;color:var(--maroon);margin-bottom:12px">📋 新旅團部署指南 - 有主系統 / 無主系統 兩條路 (10分鐘)</h2>
-      
+      <h2 style="font-size:18px;color:var(--maroon);margin-bottom:12px">📋 新旅團部署指南 (10分鐘)</h2>
+
+      <!-- [主系統暫時隱藏 2026-10] 主系統（scoutsystem-2.0）未開發完成，暫停對外介紹；現階段只推廣進度追蹤系統。
+           重啟方法：解除本註解（連同下面「軌道B」步驟註解）並重排步驟號；i18n_dict.tsv 內對應翻譯 key 全部保留未刪；詳見 CHANGE_LOG.md。
       <div class="info-card" style="background:var(--blue-light);border-color:var(--blue);margin-bottom:12px">
         <h3 style="color:var(--blue)">🌟 先了解一下：主系統平台是什麼？</h3>
         <p style="font-size:12px">你而家用緊嘅 <b>樂行童軍進度追蹤</b> 係一個 Tier 3 元件，可以獨立用，但其實屬於更龐大的 <b>scoutsystem-2.0 主系統平台</b>：</p>
@@ -424,17 +426,21 @@ a:hover{text-decoration:underline}
       </div>
 
       <div class="info-card" style="background:var(--maroon-light);margin-bottom:12px"><h3>🗺️ 部署地圖 - 兩條路</h3><p style="font-size:11px">共通：下載 Code.gs → 建 Sheet → 執行 initializeSheets → 部署 → 複製 URL+API Key<br><b>軌道A 無主系統/有但想獨立用：</b> 將 URL+Key 交 roverbadge 管理員 → 管理員在 Vercel 環境變數登記 → 完成 → 用法：roverbadge.vercel.app 選旅團登入<br><b>軌道B 有主系統並想接上：</b> 同樣交 roverbadge 管理員（Vercel 環境變數登記）→ 管理員加設 PORTAL_DEFAULT_ORIGIN（主系統網址）+ PORTAL_DEFAULT_ROLES（可用角色）→ 主系統卡片只需設 u 參數（backend/apikey 不用）→ 用法：Dashboard 點卡片 → 自動帶入 from=portal&src=主系統網址&embed=1 → 伺服器驗證來源及角色後直接用（ymis 可省略）</p></div>
+      -->
 
       <div class="tutorial">
         <div class="steps">
           <div class="step"><div class="step-number">1</div><div class="step-content"><h4>共通：下載後端程式碼 (單一檔案版)</h4><p>包含待批、其他獎章、批量、PNG、私隱開關</p><a href="apps-script/Code.gs" download="Code.gs" class="btn btn-primary btn-sm" style="margin-top:6px">⬇️ 下載 Code.gs (最新)</a></div></div>
           <div class="step"><div class="step-number">2</div><div class="step-content"><h4>共通：建立 Google Sheet 並部署</h4><p><b>2.1</b> 建新試算表<br><b>2.2</b> 擴充功能→Apps Script，貼上 Code.gs<br><b>2.3</b> 儲存→執行 initializeSheets，授權，複製 API Key<br><b>2.4</b> 部署為網頁應用程式 (執行身分我，存取權任何人)，複製 URL (/exec)</p></div></div>
-          <div class="step"><div class="step-number">3</div><div class="step-content"><h4>軌道A：無主系統 - 提交給 roverbadge 管理員</h4><p>將旅團編號、名稱、URL、API Key 交 roverbadge 管理員，在 Vercel 環境變數登記（TROOP_{編號}_NAME / _BACKEND / _APIKEY），重新部署後獨立可用</p></div></div>
+          <div class="step"><div class="step-number">3</div><div class="step-content"><h4>提交給 roverbadge 管理員</h4><p>將旅團編號、名稱、URL、API Key 交 roverbadge 管理員，在 Vercel 環境變數登記（TROOP_{編號}_NAME / _BACKEND / _APIKEY），重新部署後獨立可用</p></div></div>
+          <div class="step"><div class="step-number">4</div><div class="step-content"><h4>首次登入（預設管理員帳號）</h4><p>initializeSheets 跑完會自動建立預設管理員。登記完成後首頁揀該旅團卡片 → 用「👤 成員」分頁登入（YMIS 登入，唔好用「👨‍💼 領袖」＝Email 分頁）：<br><b style="font-size:13px">YMIS 1111111111　密碼 changeme</b><br>首次登入會強制改密碼（最少 4 位）。之後喺「用戶管理」開返各領袖自己嘅帳號並設角色／權限，喺「審批中心」批成員申請。</p></div></div>
+          <!-- [主系統暫時隱藏 2026-10] 軌道B（接上主系統）未開放。重啟方法：解除本註解及上方介紹卡註解，重排步驟號（現時 4=首次登入、5=私隱選擇），詳見 CHANGE_LOG.md：
           <div class="step"><div class="step-number">4</div><div class="step-content"><h4>軌道B：有主系統並想接上 - 額外提交給主系統管理員</h4><p>告知主系統管理員旅團編號：旅團設定→元件設定 roverbadge 卡片只需設 u 參數（backend/apikey 不用；就算 URL 帶入亦會被忽略）。之後成員點 Dashboard 卡片自動帶入 ?u=0082&role=&from=portal&src=主系統網址&embed=1（ymis 可省略），經伺服器驗證來源及角色後免密碼進入</p></div></div>
-          <div class="step"><div class="step-number">5</div><div class="step-content"><h4>私隱選擇</h4><p>有主系統不等於一定要接，可自由選擇獨立用。若旅團重私隱，成員預設只看自己；若想互相鼓勵，團長可在用戶管理→系統設定開啟「允許成員互相查看進度」</p></div></div>
+          -->
+          <div class="step"><div class="step-number">5</div><div class="step-content"><h4>私隱選擇</h4><p>若旅團重私隱，成員預設只看自己；若想互相鼓勵，團長可在用戶管理→系統設定開啟「允許成員互相查看進度」</p></div></div>
         </div>
       </div>
-      <div class="info-card" style="border-color:var(--blue);background:var(--blue-light)"><h3 style="color:var(--blue)">📧 完成後提交</h3><p style="font-size:11px">獨立用：交 roverbadge 管理員<br>接入主系統：同時交主系統管理員（填 backend+apikey）<br>兩條路可同時用，領袖從主系統入，成員 bookmark 獨立連結</p><button class="btn btn-blue" onclick="showContactModal()" style="width:100%">📧 一鍵提交接入申請給 roverbadge 管理員</button></div>
+      <div class="info-card" style="border-color:var(--blue);background:var(--blue-light)"><h3 style="color:var(--blue)">📧 完成後提交</h3><p style="font-size:11px">將旅團編號、名稱、URL、API Key 交 roverbadge 管理員登記<br>登記完成後首頁會出現旅團卡片，選團即可登入<br>成員可直接 bookmark 本系統連結使用</p><button class="btn btn-blue" onclick="showContactModal()" style="width:100%">📧 一鍵提交接入申請給 roverbadge 管理員</button></div>
     </div>
 
     <div id="welcome-guide" class="welcome-section">
@@ -594,6 +600,20 @@ a:hover{text-decoration:underline}
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('forgotPasswordModal')">取消</button>
       <button class="btn btn-primary" id="btnForgotPassword" onclick="submitForgotPassword()">寄出臨時密碼</button>
+    </div>
+  </div>
+</div>
+
+<div id="forceChangeModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="forceChangeTitle">
+  <div class="modal-content">
+    <h3 id="forceChangeTitle">🔒 請設定新密碼</h3>
+    <p style="font-size:12px;color:var(--text-light);line-height:1.6;margin:-4px 0 10px">首次登入／密碼已重設，必須先設定新密碼才能進入系統（至少4位，不可與原密碼相同）</p>
+    <div class="form-group"><label for="fcNew1">新密碼</label><input type="password" id="fcNew1" placeholder="至少4位" maxlength="100" autocomplete="new-password"></div>
+    <div class="form-group"><label for="fcNew2">再次輸入新密碼</label><input type="password" id="fcNew2" placeholder="再輸入一次" maxlength="100" autocomplete="new-password" onkeydown="if(event.key==='Enter')submitForceChange()"></div>
+    <div id="fcMsg" class="login-msg" role="alert"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" id="btnCancelForceChange" onclick="cancelForceChange()">取消（返回登入）</button>
+      <button type="button" class="btn btn-primary" id="btnForceChange" onclick="submitForceChange()">確認更改</button>
     </div>
   </div>
 </div>
@@ -830,28 +850,6 @@ const LANG_DICT={
   "📖 使用教學": "📖 User Guide",
   "📦 版本更新紀錄（未來用於新版本後端GS及功能改動）": "📦 Version History (for future backend GS versions and feature changes)",
   "最新：v5.0 FINAL": "Latest: v5.0 FINAL",
-  "最新：v5.1": "Latest: v5.1",
-  "YMIS PDF 批量開戶、🐛💬 回報 · 意見按鈕（Scout Admin 統一回報）、非官方聲明、手機頂部按鈕排列整齊化、全 APP 版號統一 v5.1": "YMIS PDF bulk onboarding, 🐛💬 Report · Feedback buttons (Scout Admin unified reporting), unofficial notice, tidier mobile top buttons, app-wide version aligned to v5.1",
-  "🐛💬 回報 · 意見": "🐛💬 Report · Feedback",
-  "問題回報 / 意見回饋（經 Scout Admin 統一回收，可匿名）": "Report an issue / send feedback (via Scout Admin, anonymous welcome)",
-  "問題回報 / 意見回饋（經 Scout Admin 統一回收；可匿名，留聯絡方式可收通知）": "Report an issue / send feedback (via Scout Admin; anonymous submissions are welcome, add contact details for a reply)",
-  "🐛💬 回報問題／意見": "🐛💬 Report a problem / feedback",
-  "填寫後按送出，畫面會顯示傳送狀態；只有收件系統確認接收後才會顯示成功。": "After you submit, the delivery status is shown here. Success is displayed only after the receiving system confirms receipt.",
-  "回報類型": "Report type",
-  "問題／需要協助": "Problem / help needed",
-  "意見／建議": "Feedback / suggestion",
-  "意見類型": "Feedback category",
-  "你需要什麼協助？ *": "What help do you need? *",
-  "你想提供什麼意見？ *": "What feedback would you like to share? *",
-  "簡單描述問題或希望改善的地方": "Briefly describe the problem or suggested improvement",
-  "聯絡方式（電郵／電話，選填可匿名）": "Contact details (email / phone; optional, anonymous submissions welcome)",
-  "留下聯絡方式以便回覆；可留空匿名提交": "Leave contact details for a reply; leave blank to submit anonymously",
-  "建議": "Suggestion",
-  "讚": "Praise",
-  "批評": "Criticism",
-  "其他": "Other",
-  "送出": "Submit",
-  "⚠️ 非官方聲明：本系統為獨立開發的非官方工具，並非香港童軍總會官方產品，與總會並無隸屬或贊助關係。": "⚠️ Unofficial notice: this system is an independently developed unofficial tool. It is NOT an official product of the Scout Association of Hong Kong and has no affiliation with or sponsorship from the Association.",
   "• 目前 v5.0 FINAL 已穩定，測試完成": "• v5.0 FINAL is stable and fully tested",
   "• 新版本新增功能和改動說明": "• New features and changes in this version",
   "• 新版本後端 Code.gs 下載（記得保有舊資料 - initializeSheets 不會清舊資料）": "• New backend Code.gs download (your old data is kept - initializeSheets does not clear old data)",
@@ -947,40 +945,6 @@ const LANG_DICT={
   "備註（聯絡方式/特殊需要等）": "Notes (contact method / special needs, etc.)",
   "例: 電話號碼 / 9月新入團": "e.g. phone number / joining in September",
   "提交後由旅團領袖在 APP 內審批，批准後會建立帳戶並設置臨時密碼。": "After submission, the Group's leader approves it inside the APP; once approved, an account is created with a temporary password.",
-  "提交後由旅團領袖在 APP 內審批，批准後預設密碼為 1234，首次登入須更改。": "After submission, the Group's leader approves it inside the APP; once approved, the default password is 1234 and must be changed at first login.",
-  "申請身份 *": "Apply as *",
-  "童軍成員": "Rover member",
-  "領袖（支部領袖）": "Leader (Rover Scout Leader)",
-  "成員、領袖都可自行申請；團長／管理員／管委須由現任管理層在「用戶管理」直接開立。": "Members and leaders may apply themselves; GSL / Admin / CMC accounts must be created by current management in User Management.",
-  "* 領袖必填": "* required for leaders",
-  "YMIS 須為 10位數字": "YMIS must be 10 digits",
-  "領袖申請必須填寫聯絡電郵": "Leaders must provide a contact email",
-  "Email 格式不正確": "Invalid email format",
-  "首次登入／密碼已重設，請設定新密碼（至少4位，不可與原密碼相同）": "First login / password reset — set a new password (min 4 characters, not the same as the old one)",
-  "必須先更改密碼才能進入系統": "You must change your password before entering the system",
-  "新密碼至少4位": "New password must be at least 4 characters",
-  "新密碼不可與原密碼相同": "New password cannot be the same as the old password",
-  "更改密碼失敗": "Password change failed",
-  "密碼已更新": "Password updated",
-  "團長只能有一位，全團已有現任團長。如需更換，請先將現任團長轉為其他角色。": "There can only be one GSL. To replace them, change the current GSL to another role first.",
-  "此人是全團唯一的團長，轉走後全團將暫時沒有團長。確定繼續嗎？": "This person is the only GSL. The troop will temporarily have no GSL. Continue?",
-  "此人是全團唯一的團長，停用後全團將暫時沒有團長。確定繼續嗎？": "This person is the only GSL. Deactivating them leaves the troop with no GSL. Continue?",
-  "團長全團只可有一位。": "There can only be one GSL in the troop. ",
-  "現任：": "Current: ",
-  "如需更換，請先將現任團長轉為其他角色。": " To replace them, change the current GSL to another role first.",
-  "目前未有團長。": "There is currently no GSL.",
-  "請用電郵登入": "Please log in with email",
-  "YMIS：": "YMIS: ",
-  "✅ 已批准並建立帳戶": "✅ Application approved and account created",
-  "開立角色：": "Opened as: ",
-  "預設密碼：": "Default password: ",
-  "首次登入須更改密碼": "Must change password at first login",
-  "批量開戶失敗：": "Bulk onboarding failed:\n",
-  "領袖可留空 YMIS（用電郵登入）": "Leaders may leave YMIS empty (log in with email)",
-  "YMIS（成員必填10位；領袖可留空）": "YMIS (required 10 digits for members; optional for leaders)",
-  "聯絡電郵（領袖必填）": "Contact email (required for leaders)",
-  "CSV 中沒有有效資料（成員 YMIS 須為10位數字；領袖可留空）": "No valid rows in CSV (member YMIS must be 10 digits; leaders may leave it empty)",
-  "JSON 中沒有有效資料（成員 YMIS 須為10位數字；領袖可留空）": "No valid rows in JSON (member YMIS must be 10 digits; leaders may leave it empty)",
   "提交申請": "Submit Application",
   "提交": "Submit",
   "提交中...": "Submitting...",
@@ -1028,10 +992,7 @@ const LANG_DICT={
   "成功": "ok",
   "略過": "skipped",
   "失敗詳情：": "Failure details: ",
-  " 筆，略過 ": " records, skipped ",
   "筆，略過": " records, skipped",
-  " 項未保存 (已暫存於瀏覽器)": " unsaved changes (staged in browser)",
-  " 項": " items",
   " 筆": " records",
   "，請看 console": ", see console",
   "批量開戶完成：成功": "Bulk onboarding complete: ok",
@@ -1216,7 +1177,7 @@ const LANG_DICT={
   "正在批量批准": "Batch-approving ",
   " 項...": " items...",
   "批量批准完成：成功": "Batch approval complete: ok",
-  "，失敗 ": ", failed ",
+  "，失敗": ", failed",
   "正在批准並寫入...": "Approving and writing...",
   "正在拒絕...": "Rejecting...",
   "操作失敗：": "Operation failed: ",
@@ -1260,9 +1221,6 @@ const LANG_DICT={
   "當前：": "Current: ",
   "已開啟 - 成員可看全團": "ON - members can view the whole Group",
   "已關閉 - 成員只看自己 (私隱)": "OFF - members only see themselves (privacy)",
-  "私隱：普通成員預設只看自己，能否看其他成員由團長開放。": "Privacy: members only see themselves by default; the Group Scout Leader decides whether they can view others.",
-  "本節點係進度系統（下游），唔設支部表。上下游接駁經 Google Sheet 選單「🔗 旅系統」操作（sig 係 GAS→GAS 直連，唔經本 proxy）：➕ 登記下游（URL + SHEET KEY）→ 📡 測試下游連線 → 📤 匯出 JSON（含 hash，Drive 私人檔）→ 📥 匯入 JSON → 🚪 閂下游直接入口 → 👤 為下游開戶。新節點接入：選單「🔑 顯示 BACKEND／APIKEY（交 ADMIN）」→ 收件匣 → ADMIN 登記 Vercel env。": "This node is a Progress System (downstream); it has no Branch sheet. Upstream/downstream linking is done via the Google Sheet menu \"🔗 Troop System\" (sig is a direct GAS→GAS connection, not via this proxy): ➕ Register downstream (URL + SHEET KEY) → 📡 Test downstream connection → 📤 Export JSON (with hash, private Drive file) → 📥 Import JSON → 🚪 Close downstream direct entry → 👤 Create accounts for downstream. New node onboarding: menu \"🔑 Show BACKEND/APIKEY (for the ADMIN)\" → inbox → ADMIN registers in Vercel env.",
-  "⚠️ 直接入口開關（ALLOW_LOCAL_LOGIN）只由上游（旅／支部系統）選單／sig 遠端操作，或在本節點 GAS Script Properties 手動設定；本 APP 屬下游系統，介面內不設此掣。誤閂而鎖死時：由上游選單「🚪 下游直接入口」重開。": "⚠️ The direct-entry switch (ALLOW_LOCAL_LOGIN) is operated only by the upstream (Troop/Branch system) menu via sig, or set manually in this node's GAS Script Properties. This app is a downstream system and does not offer this switch in its UI. If it is closed by mistake and locks everyone out: re-open it from the upstream menu \"🚪 Downstream direct entry\".",
   "說明：關閉時成員「我的進度」不能選其他人，全團總覽隱藏；開啟時成員可看全團但不能編輯。": "Note: when OFF, members cannot select others in My Progress and the Group Overview is hidden; when ON, members can view the whole Group but cannot edit.",
   "📥 批量開戶 (CSV/JSON)": "📥 Bulk Onboarding (CSV/JSON)",
   "➕ 新增成員": "➕ Add Member",
@@ -1457,12 +1415,9 @@ const LANG_DICT={
   "此旅團未在系統登記，請聯絡管理員": "This Group is not registered in the system; please contact the admin",
   "無法取得旅團設定": "Failed to get Group settings",
   "⚠️ 離線模式：顯示快取資料": "⚠️ Offline mode: showing cached data",
-  "⚠️ 雲端資料載入失敗，而家顯示嘅係本機快取": "⚠️ Cloud data failed to load; the view below is your local cache",
-  "⚠️ 雲端載入失敗，顯示緊上次快取（唔係你斷網）": "⚠️ Cloud load failed; showing the last cached copy (your connection is not the problem)",
-  "❌ 雲端載入失敗，本機亦冇快取可顯示": "❌ Cloud load failed and there is no local cache to show",
   "沒有需要保存的變更": "No changes to save",
   "正在寫入雲端...": "Writing to cloud...",
-  "準備寫入 ": "Preparing to write ",
+  "準備寫入": "Preparing to write ",
   "已處理": "Processed ",
   "✅ 寫入成功！": "✅ Write successful!",
   "❌ 寫入失敗": "❌ Write failed",
@@ -1482,10 +1437,6 @@ const LANG_DICT={
   "無法連接伺服器，請檢查網絡連線": "Cannot reach the server; please check your network",
   "無法連接伺服器": "Cannot reach the server",
   "伺服器回應格式異常 (HTTP": "Unexpected server response format (HTTP ",
-  "｜後端 API 未部署，請聯絡管理員重新部署": "| the backend API is not deployed; please ask your section admin to redeploy on Vercel",
-  "｜後端未登記任何旅團，請確認管理員已設定 Vercel 環境變數": "| no troop is registered in the backend; please make sure the admin has set the Vercel environment variables",
-  "\u26a0\ufe0f 後端 API 未部署（/api/* 無回應），登入一定失敗；請聯絡管理員喺 Vercel 重新部署": "\u26a0\ufe0f Backend API is not deployed (/api/* does not respond), so sign-in will always fail. Please ask your section admin to redeploy on Vercel",
-  "\u26a0\ufe0f 後端未登記任何旅團（Vercel 環境變數未設定），登入會失敗": "\u26a0\ufe0f No troop is registered in the backend (Vercel environment variables not set); sign-in will fail",
   "伺服器回應異常 (HTTP": "Unexpected server response (HTTP ",
   ")，請稍後重試": "), please try again later",
   "你沒有勾選權限，請使用申請功能": "You have no ticking permission; please use the request feature",
@@ -1496,23 +1447,6 @@ const LANG_DICT={
   "失敗": "failed",
   "：網絡錯誤": ": network error",
   "⚠️ Portal 模式：旅團未在 Registry 登記": "⚠️ Portal mode: Group not registered in the Registry",
-  "⚠️ 未有已登記旅團：請管理員在 Vercel 環境變數設定 TROOP_{編號}_BACKEND 等設定並重新部署（詳見 /api/troops）": "⚠️ No registered Groups yet: the admin needs to set TROOP_{ID}_BACKEND and related Vercel environment variables and redeploy (see /api/troops)",
-  "旅團清單載入失敗：": "Failed to load the Group list: ",
-  "請稍後重試；若持續失敗請聯絡管理員檢查 /api/troops": "Please try again later; if it keeps failing, ask the admin to check /api/troops",
-  "此旅團未開放 Portal 模式": "Portal mode is not enabled for this Group",
-  "來源不符，Portal 模式已拒絕": "Origin mismatch; Portal mode denied",
-  "🚫 未能以主系統身份進入": "🚫 Could not sign in with the main-system identity",
-  "為保障旅團資料，Portal 免登入身份必須由伺服器核實來源及角色。以下原因導致未能進入：": "To protect Group data, the Portal password-free identity must be verified by the server (origin and role). Sign-in was refused for this reason:",
-  "錯誤代碼：": "Error code: ",
-  "此旅團未在伺服器登記": "This Group is not registered on the server",
-  "，請聯絡管理員開通旅團": ". Please contact the admin to enable the Group",
-  "入口來源網址與登記不符，已被拒絕": "The entry source origin does not match the registered one; access denied",
-  "，請由主系統 Dashboard 卡片進入": ". Please enter via the main-system Dashboard card",
-  "未能確認入口來源": "Could not confirm the entry source",
-  "不支援的請求方式": "Unsupported request method",
-  "未能連接驗證服務，請重試或聯絡管理員": "Could not reach the verification service. Please retry or contact the admin",
-  "角色未被允許使用 Portal 模式": "This role is not allowed to use Portal mode",
-  "，請使用正常登入或聯絡管理員": ". Please sign in normally or contact the admin",
   "未在伺服器端環境變數 Registry 找到": "not found in the server-side environment-variable Registry",
   "請聯絡 roverbadge 管理員在 Vercel 環境變數登記旅團（主系統卡片只需傳 u 參數，不需再傳 backend/apikey）": "Please ask the roverbadge admin to register the Group in the Vercel environment variables (the main-system card only needs the u parameter, no backend/apikey needed)",
   "📍": "📍",
@@ -1577,9 +1511,8 @@ const LANG_DICT={
   "旅團後端未升級 v8.1：請通知管理員更新 Code.gs 並執行 initializeSheets()": "Group backend not upgraded to v8.1: ask the admin to update Code.gs and run initializeSheets()",
   "工作：": "Work: ",
   "角色已更新": "Role updated",
-  /* ---- v5.1 YMIS 批量開戶 ---- */
   "方法一（最推薦）：YMIS 報表匯入": "Method 1 (most recommended): YMIS report import",
-  "在 YMIS 匯出「自訂報表」PDF（欄位次序：": "Export a Custom Report PDF from YMIS (column order: ",
+  "在 YMIS 匯出「自訂報表」PDF（欄位次序：": "Export a \"Custom Report\" PDF from YMIS (column order: ",
   "童軍成員編號 → 中文姓名 → 電郵地址": "Scout Member No. → Chinese Name → Email Address",
   "），直接上載，系統會自動讀出成員資料，預覽確認後一次過開戶。": "); upload it directly and the system will read member data automatically, preview and onboard in one go.",
   "📘 如何在 YMIS 匯出指定格式報告？（點擊展開）": "📘 How to export a report in the required format from YMIS? (click to expand)",
@@ -1601,7 +1534,6 @@ const LANG_DICT={
   "☑️ 全選": "☑️ Select all",
   "⬜ 全不選": "⬜ Select none",
   "匯入": "Import",
-  "YMIS": "YMIS",
   "聯絡電郵": "Email",
   "狀態": "Status",
   "✅ 可匯入": "✅ Ready to import",
@@ -1620,11 +1552,7 @@ const LANG_DICT={
   "（共 ": " (total ",
   " 筆，已選 ": ", selected ",
   " 筆）": ")",
-  "團員 member": "Member",
   "管委 exec_committee": "CMC exec_committee",
-  "支部領袖 branch_leader": "Branch leader branch_leader",
-  "團長 group_leader": "Group leader group_leader",
-  "管理員 admin": "Admin admin",
   "請至少勾選一位有效成員（YMIS 須10位數字且有姓名）": "Select at least one valid member (10-digit YMIS with a name)",
   "此 PDF 有密碼保護，請輸入密碼：": "This PDF is password-protected. Enter the password:",
   "PDF 密碼不正確，請重新輸入": "Incorrect PDF password, please re-enter",
@@ -1632,7 +1560,7 @@ const LANG_DICT={
   "正在讀取 PDF": "Reading PDF",
   "正在讀取第 ": "Reading page ",
   "頁...": " of pages...",
-  "無法載入 PDF 解析元件（需要網絡），請改用「貼上文字」或先用瀏覽器另存為無密碼 PDF": "Cannot load the PDF parser (network required). Use paste-text instead, or re-save the PDF without a password first",
+  "無法載入 PDF 解析元件（需要網絡），請改用「貼上文字」或先用瀏覽器另存為無密碼 PDF": "Cannot load the PDF parser (network required). Use \"paste text\" instead, or re-save the PDF without a password first",
   "讀不到成員資料，請確認報表欄位次序為：": "No member data found. Check the column order: ",
   "assets/ymis-parse.js 未載入": "assets/ymis-parse.js not loaded",
   "✅ 已讀出 ": "✅ Parsed ",
@@ -1667,26 +1595,24 @@ const LANG_DICT={
   "暫無履歷待批": "No activity log approvals pending",
   "確定批准此活動履歷申報？": "Approve this activity log declaration?",
   "確定拒絕此活動履歷申報？": "Reject this activity log declaration?",
+  "確定": "Confirm ",
+  "此活動履歷申報？": "this activity log declaration?",
   "正在批准並寫入活動履歷...": "Approving and writing to Activity Log...",
   "項活動履歷申報？": "activity log declarations?",
   "✅ 已送交審批（": "✅ Submitted for approval (",
   "已送交審批": "Submitted for approval",
   "），待領袖確認": "), awaiting leader approval",
   "，可按上方「➕ 申報活動」自行申報": ", use \"➕ Declare Activity\" above to declare",
+  "只有領袖或成員可以申報活動履歷": "Only leaders or members can declare activity logs",
   "此紀錄已有待批的修改申請": "This record already has a pending modification request",
   "只能申報自己的活動履歷": "You can only declare your own activity logs",
   "只能申請修改自己的紀錄": "You can only request to modify your own records",
   "筆已送交審批": "submitted for approval",
+  "我已送出，待領袖確認": "Submitted; awaiting leader approval",
   "此申請已處理": "This request has already been processed",
   "已批准並寫入活動履歷": "Approved and written to Activity Log",
   "已拒絕申請": "Application rejected",
   "待批履歷": "Pending Activity Logs",
-  "，失敗": ", failed",
-  "準備寫入": "Preparing to write ",
-  "確定": "Confirm ",
-  "此活動履歷申報？": "this activity log declaration?",
-  "只有領袖或成員可以申報活動履歷": "Only leaders or members can declare activity logs",
-  "我已送出，待領袖確認": "Submitted; awaiting leader approval",
   "成員申報活動履歷在此審批，批准後寫入活動履歷。": "Member activity log declarations are approved here and written to the Activity Log after approval.",
   "同樣交 roverbadge 管理員（Vercel 環境變數登記）→ 管理員加設 PORTAL_DEFAULT_ORIGIN（主系統網址）+ PORTAL_DEFAULT_ROLES（可用角色）→ 主系統卡片只需設 u 參數（backend/apikey 不用）→ 用法：Dashboard 點卡片 → 自動帶入 from=portal&src=主系統網址&embed=1 → 伺服器驗證來源及角色後直接用（ymis 可省略）": "Also give the same to the roverbadge Admin (registered via Vercel environment variables) → the Admin also sets PORTAL_DEFAULT_ORIGIN (main-platform URL) + PORTAL_DEFAULT_ROLES (allowed roles) → the main-system card only needs the u parameter (no backend/apikey) → Usage: click the card on the Dashboard → identity is auto-carried from=portal&src=main-platform-origin&embed=1 → the server verifies the origin and role, then signs straight in (ymis is optional)",
   "建新試算表": "Create a new spreadsheet",
@@ -1744,6 +1670,13 @@ const LANG_DICT={
   "協助訓練班": "assisting a training course",
   "任教": "teaching",
   "必須": "Must",
+  "｜後端 API 未部署，請聯絡管理員重新部署": "| the backend API is not deployed; please ask your section admin to redeploy on Vercel",
+  "｜後端未登記任何旅團，請確認管理員已設定 Vercel 環境變數": "| no troop is registered in the backend; please make sure the admin has set the Vercel environment variables",
+  "⚠️ 後端 API 未部署（/api/* 無回應），登入一定失敗；請聯絡管理員喺 Vercel 重新部署": "⚠️ Backend API is not deployed (/api/* does not respond), so sign-in will always fail. Please ask your section admin to redeploy on Vercel",
+  "⚠️ 後端未登記任何旅團（Vercel 環境變數未設定），登入會失敗": "⚠️ No troop is registered in the backend (Vercel environment variables not set); sign-in will fail",
+  "⚠️ 雲端資料載入失敗，而家顯示嘅係本機快取": "⚠️ Cloud data failed to load; the view below is your local cache",
+  "⚠️ 雲端載入失敗，顯示緊上次快取（唔係你斷網）": "⚠️ Cloud load failed; showing the last cached copy (your connection is not the problem)",
+  "❌ 雲端載入失敗，本機亦冇快取可顯示": "❌ Cloud load failed and there is no local cache to show",
   "🔑 忘記密碼": "🔑 Forgot password",
   "忘記密碼": "Forgot password",
   "🔑 找回密碼": "🔑 Recover password",
@@ -1778,6 +1711,106 @@ const LANG_DICT={
   "暫無（所有名單成員都已有登入帳號）": "None (all roster members already have login accounts)",
   "只在成員名單，未開登入帳號": "Roster only, no login account yet",
   "停用中仍佔用 YMIS／Email，不可重複開戶；可恢復或徹底刪除": "Deactivated accounts still occupy their YMIS/email and cannot be re-registered; reactivate or delete them permanently",
+  "⚠️ 未有已登記旅團：請管理員在 Vercel 環境變數設定 TROOP_{編號}_BACKEND 等設定並重新部署（詳見 /api/troops）": "⚠️ No registered Groups yet: the admin needs to set TROOP_{ID}_BACKEND and related Vercel environment variables and redeploy (see /api/troops)",
+  "旅團清單載入失敗：": "Failed to load the Group list: ",
+  "請稍後重試；若持續失敗請聯絡管理員檢查 /api/troops": "Please try again later; if it keeps failing, ask the admin to check /api/troops",
+  "此旅團未開放 Portal 模式": "Portal mode is not enabled for this Group",
+  "來源不符，Portal 模式已拒絕": "Origin mismatch; Portal mode denied",
+  "角色未被允許使用 Portal 模式": "This role is not allowed to use Portal mode",
+  "，請使用正常登入或聯絡管理員": ". Please sign in normally or contact the admin",
+  "🚫 未能以主系統身份進入": "🚫 Could not sign in with the main-system identity",
+  "為保障旅團資料，Portal 免登入身份必須由伺服器核實來源及角色。以下原因導致未能進入：": "To protect Group data, the Portal password-free identity must be verified by the server (origin and role). Sign-in was refused for this reason:",
+  "錯誤代碼：": "Error code: ",
+  "此旅團未在伺服器登記": "This Group is not registered on the server",
+  "，請聯絡管理員開通旅團": ". Please contact the admin to enable the Group",
+  "入口來源網址與登記不符，已被拒絕": "The entry source origin does not match the registered one; access denied",
+  "，請由主系統 Dashboard 卡片進入": ". Please enter via the main-system Dashboard card",
+  "未能確認入口來源": "Could not confirm the entry source",
+  "不支援的請求方式": "Unsupported request method",
+  "未能連接驗證服務，請重試或聯絡管理員": "Could not reach the verification service. Please retry or contact the admin",
+  "最新：v5.1": "Latest: v5.1",
+  "YMIS PDF 批量開戶、🐛💬 回報 · 意見按鈕（Scout Admin 統一回報）、非官方聲明、手機頂部按鈕排列整齊化、全 APP 版號統一 v5.1": "YMIS PDF bulk onboarding, 🐛💬 Report · Feedback buttons (Scout Admin unified reporting), unofficial notice, tidier mobile top buttons, app-wide version aligned to v5.1",
+  "🐛💬 回報 · 意見": "🐛💬 Report · Feedback",
+  "問題回報 / 意見回饋（經 Scout Admin 統一回收，可匿名）": "Report an issue / send feedback (via Scout Admin, anonymous welcome)",
+  "⚠️ 非官方聲明：本系統為獨立開發的非官方工具，並非香港童軍總會官方產品，與總會並無隸屬或贊助關係。": "⚠️ Unofficial notice: this system is an independently developed unofficial tool. It is NOT an official product of the Scout Association of Hong Kong and has no affiliation with or sponsorship from the Association.",
+  "私隱：普通成員預設只看自己，能否看其他成員由團長開放。": "Privacy: members only see themselves by default; the Group Scout Leader decides whether they can view others.",
+  "本節點係進度系統（下游），唔設支部表。上下游接駁經 Google Sheet 選單「🔗 旅系統」操作（sig 係 GAS→GAS 直連，唔經本 proxy）：➕ 登記下游（URL + SHEET KEY）→ 📡 測試下游連線 → 📤 匯出 JSON（含 hash，Drive 私人檔）→ 📥 匯入 JSON → 🚪 閂下游直接入口 → 👤 為下游開戶。新節點接入：選單「🔑 顯示 BACKEND／APIKEY（交 ADMIN）」→ 收件匣 → ADMIN 登記 Vercel env。": "This node is a Progress System (downstream); it has no Branch sheet. Upstream/downstream linking is done via the Google Sheet menu \"🔗 Troop System\" (sig is a direct GAS→GAS connection, not via this proxy): ➕ Register downstream (URL + SHEET KEY) → 📡 Test downstream connection → 📤 Export JSON (with hash, private Drive file) → 📥 Import JSON → 🚪 Close downstream direct entry → 👤 Create accounts for downstream. New node onboarding: menu \"🔑 Show BACKEND/APIKEY (for the ADMIN)\" → inbox → ADMIN registers in Vercel env.",
+  "⚠️ 直接入口開關（ALLOW_LOCAL_LOGIN）只由上游（旅／支部系統）選單／sig 遠端操作，或在本節點 GAS Script Properties 手動設定；本 APP 屬下游系統，介面內不設此掣。誤閂而鎖死時：由上游選單「🚪 下游直接入口」重開。": "⚠️ The direct-entry switch (ALLOW_LOCAL_LOGIN) is operated only by the upstream (Troop/Branch system) menu via sig, or set manually in this node's GAS Script Properties. This app is a downstream system and does not offer this switch in its UI. If it is closed by mistake and locks everyone out: re-open it from the upstream menu \"🚪 Downstream direct entry\".",
+  "問題回報 / 意見回饋（經 Scout Admin 統一回收；可匿名，留聯絡方式可收通知）": "Report an issue / send feedback (via Scout Admin; anonymous submissions are welcome, add contact details for a reply)",
+  "🐛💬 回報問題／意見": "🐛💬 Report a problem / feedback",
+  "填寫後按送出，畫面會顯示傳送狀態；只有收件系統確認接收後才會顯示成功。": "After you submit, the delivery status is shown here. Success is displayed only after the receiving system confirms receipt.",
+  "回報類型": "Report type",
+  "問題／需要協助": "Problem / help needed",
+  "意見／建議": "Feedback / suggestion",
+  "意見類型": "Feedback category",
+  "你需要什麼協助？ *": "What help do you need? *",
+  "你想提供什麼意見？ *": "What feedback would you like to share? *",
+  "簡單描述問題或希望改善的地方": "Briefly describe the problem or suggested improvement",
+  "聯絡方式（電郵／電話，選填可匿名）": "Contact details (email / phone; optional, anonymous submissions welcome)",
+  "留下聯絡方式以便回覆；可留空匿名提交": "Leave contact details for a reply; leave blank to submit anonymously",
+  "建議": "Suggestion",
+  "讚": "Praise",
+  "批評": "Criticism",
+  "其他": "Other",
+  "送出": "Submit",
+  "提交後由旅團領袖在 APP 內審批，批准後預設密碼為 1234，首次登入須更改。": "After submission, the Group's leader approves it inside the APP; once approved, the default password is 1234 and must be changed at first login.",
+  "申請身份 *": "Apply as *",
+  "童軍成員": "Rover member",
+  "領袖（支部領袖）": "Leader (Rover Scout Leader)",
+  "成員、領袖都可自行申請；團長／管理員／管委須由現任管理層在「用戶管理」直接開立。": "Members and leaders may apply themselves; GSL / Admin / CMC accounts must be created by current management in User Management.",
+  "* 領袖必填": "* required for leaders",
+  "領袖申請必須填寫聯絡電郵": "Leaders must provide a contact email",
+  "Email 格式不正確": "Invalid email format",
+  "首次登入／密碼已重設，請設定新密碼（至少4位，不可與原密碼相同）": "First login / password reset — set a new password (min 4 characters, not the same as the old one)",
+  "必須先更改密碼才能進入系統": "You must change your password before entering the system",
+  "新密碼至少4位": "New password must be at least 4 characters",
+  "新密碼不可與原密碼相同": "New password cannot be the same as the old password",
+  "更改密碼失敗": "Password change failed",
+  "密碼已更新": "Password updated",
+  "團長只能有一位，全團已有現任團長。如需更換，請先將現任團長轉為其他角色。": "There can only be one GSL. To replace them, change the current GSL to another role first.",
+  "此人是全團唯一的團長，轉走後全團將暫時沒有團長。確定繼續嗎？": "This person is the only GSL. The troop will temporarily have no GSL. Continue?",
+  "此人是全團唯一的團長，停用後全團將暫時沒有團長。確定繼續嗎？": "This person is the only GSL. Deactivating them leaves the troop with no GSL. Continue?",
+  "團長全團只可有一位。": "There can only be one GSL in the troop. ",
+  "現任：": "Current: ",
+  "如需更換，請先將現任團長轉為其他角色。": " To replace them, change the current GSL to another role first.",
+  "目前未有團長。": "There is currently no GSL.",
+  "請用電郵登入": "Please log in with email",
+  "YMIS：": "YMIS: ",
+  "✅ 已批准並建立帳戶": "✅ Application approved and account created",
+  "開立角色：": "Opened as: ",
+  "預設密碼：": "Default password: ",
+  "首次登入須更改密碼": "Must change password at first login",
+  "批量開戶失敗：": "Bulk onboarding failed:\n",
+  "領袖可留空 YMIS（用電郵登入）": "Leaders may leave YMIS empty (log in with email)",
+  "YMIS（成員必填10位；領袖可留空）": "YMIS (required 10 digits for members; optional for leaders)",
+  "聯絡電郵（領袖必填）": "Contact email (required for leaders)",
+  "CSV 中沒有有效資料（成員 YMIS 須為10位數字；領袖可留空）": "No valid rows in CSV (member YMIS must be 10 digits; leaders may leave it empty)",
+  "JSON 中沒有有效資料（成員 YMIS 須為10位數字；領袖可留空）": "No valid rows in JSON (member YMIS must be 10 digits; leaders may leave it empty)",
+  " 筆，略過 ": " records, skipped ",
+  " 項未保存 (已暫存於瀏覽器)": " unsaved changes (staged in browser)",
+  " 項": " items",
+  "，失敗 ": ", failed ",
+  "準備寫入 ": "Preparing to write ",
+  "YMIS": "YMIS",
+  "📋 新旅團部署指南 (10分鐘)": "📋 New Group Deployment Guide (10 min)",
+  "提交給 roverbadge 管理員": "Submit to the roverbadge admin",
+  "首次登入（預設管理員帳號）": "First sign-in (default admin account)",
+  "initializeSheets 跑完會自動建立預設管理員。登記完成後首頁揀該旅團卡片 → 用「👤 成員」分頁登入（YMIS 登入，唔好用「👨‍💼 領袖」＝Email 分頁）：": "initializeSheets automatically creates a default admin. Once registration is complete, pick the Group card on the home page → sign in via the \"👤 Member\" tab (YMIS sign-in, not the \"👨‍💼 Leader\" = Email tab):",
+  "首次登入會強制改密碼（最少 4 位）。之後喺「用戶管理」開返各領袖自己嘅帳號並設角色／權限，喺「審批中心」批成員申請。": "The first sign-in forces a password change (min 4 characters). Then create each leader's own account with roles/permissions in \"User Management\", and approve member applications in the \"Approval Centre\".",
+  "若旅團重私隱，成員預設只看自己；若想互相鼓勵，團長可在用戶管理→系統設定開啟「允許成員互相查看進度」": "For privacy-focused Groups, members see only themselves by default; for mutual encouragement, the Group Scout Leader can enable \"Allow members to view each other's progress\" in User Management → System Settings",
+  "將旅團編號、名稱、URL、API Key 交 roverbadge 管理員登記": "Send the Group ID, name, URL and API Key to the roverbadge admin for registration",
+  "登記完成後首頁會出現旅團卡片，選團即可登入": "Once registered, the Group card appears on the home page — pick the Group and sign in",
+  "成員可直接 bookmark 本系統連結使用": "Members can bookmark the link to this system and use it directly",
+  "🔒 請設定新密碼": "🔒 Set a New Password",
+  "首次登入／密碼已重設，必須先設定新密碼才能進入系統（至少4位，不可與原密碼相同）": "First sign-in or password reset: you must set a new password before entering the system (min 4 characters, must differ from the old password)",
+  "新密碼": "New Password",
+  "再次輸入新密碼": "Re-enter New Password",
+  "至少4位": "at least 4 characters",
+  "再輸入一次": "enter again",
+  "取消（返回登入）": "Cancel (back to sign-in)",
+  "確認更改": "Confirm Change",
+  "兩次輸入的新密碼不一致": "The two passwords entered do not match",
+  "更改中...": "Changing...",
 };
 const LANG_KEYS=Object.keys(LANG_DICT).sort(function(a,b){ return b.length-a.length; });
 const LANG_RE=new RegExp('('+LANG_KEYS.map(function(k){ return k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }).join('|')+')','g');
@@ -2154,14 +2187,11 @@ async function doLogin(){
     if(d.success){
       currentUser=d.user; currentToken=d.token;
       if(d.force_change_password){
-        while(true){
-          const np=prompt(tr('首次登入／密碼已重設，請設定新密碼（至少4位，不可與原密碼相同）'));
-          if(!np){ msg.textContent=tr('必須先更改密碼才能進入系統'); msg.className='login-msg error'; return; }
-          if(np.length<4){ alert(tr('新密碼至少4位')); continue; }
-          if(np===pw){ alert(tr('新密碼不可與原密碼相同')); continue; }
-          const cd=await apiRequest('changePassword',{token:currentToken,old_password:pw,new_password:np});
-          if(!cd.success){ alert(cd.error||tr('更改密碼失敗')); continue; }
-          break;
+        // 2026-10：強制改密由 window.prompt() 改為 modal（見 forceChangeModal），手機體驗較好兼二次確認
+        const changed=await showForceChangeModal(pw);
+        if(!changed){
+          currentUser=null; currentToken='';
+          msg.textContent=tr('必須先更改密碼才能進入系統'); msg.className='login-msg error'; return;
         }
         showToast(tr('密碼已更新'),'success');
       }
@@ -2180,6 +2210,45 @@ async function doLogin(){
     }else{ msg.textContent=d.error||'登入失敗'; msg.className='login-msg error'; }
   }catch(e){ console.error(e); msg.textContent=e.message||'無法連接伺服器'; msg.className='login-msg error'; }
   finally{ btn.disabled=false; btn.textContent='登入'; }
+}
+// ===== 首次登入／密碼重設後強制改密 modal（2026-10 加入，取代 window.prompt） =====
+let __fcResolve=null, __fcOldPw='';
+function showForceChangeModal(oldPw){
+  return new Promise((resolve)=>{
+    __fcResolve=resolve; __fcOldPw=oldPw;
+    document.getElementById('fcNew1').value='';
+    document.getElementById('fcNew2').value='';
+    const m=document.getElementById('fcMsg'); m.textContent=''; m.className='login-msg';
+    const b=document.getElementById('btnForceChange'); b.disabled=false; b.textContent=tr('確認更改');
+    document.getElementById('forceChangeModal').classList.add('active');
+    setTimeout(()=>{ const i=document.getElementById('fcNew1'); if(i) i.focus(); },60);
+  });
+}
+function closeForceChangeModal(result){
+  document.getElementById('forceChangeModal').classList.remove('active');
+  const r=__fcResolve; __fcResolve=null;
+  if(r) r(result);
+}
+function cancelForceChange(){ closeForceChangeModal(false); }
+async function submitForceChange(){
+  const n1=document.getElementById('fcNew1').value;
+  const n2=document.getElementById('fcNew2').value;
+  const m=document.getElementById('fcMsg');
+  m.className='login-msg';
+  if(n1.length<4){ m.textContent=tr('新密碼至少4位'); m.className='login-msg error'; return; }
+  if(n1===__fcOldPw){ m.textContent=tr('新密碼不可與原密碼相同'); m.className='login-msg error'; return; }
+  if(n1!==n2){ m.textContent=tr('兩次輸入的新密碼不一致'); m.className='login-msg error'; return; }
+  const b=document.getElementById('btnForceChange');
+  b.disabled=true; b.textContent=tr('更改中...');
+  try{
+    const cd=await apiRequest('changePassword',{token:currentToken,old_password:__fcOldPw,new_password:n1});
+    if(!cd.success){ m.textContent=(cd.error||'')||tr('更改密碼失敗'); m.className='login-msg error'; return; }
+    closeForceChangeModal(true);
+  }catch(e){
+    console.error(e); m.textContent=e.message||tr('無法連接伺服器'); m.className='login-msg error';
+  }finally{
+    b.disabled=false; b.textContent=tr('確認更改');
+  }
 }
 function doLogout(){
   clearStaleBanner();

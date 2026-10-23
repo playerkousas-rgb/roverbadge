@@ -107,6 +107,44 @@ console.log('\n【2】執行真實 initializeSheets()：setup 小視窗唔提保
   check('initializeSheets() 回傳值冇保留帳號資訊', !/超管|super_admin/i.test(JSON.stringify(initResult)));
 }
 
+// ================== 2b. ensureAdminSeed（2026-10 對齊 vsbadge）：重跑補回、預設密碼重標強制改密 ==================
+console.log('\n【2b】initializeSheets() 可重跑：ensureAdminSeed 補回被刪管理員、預設密碼重標強制改密');
+{
+  const users = env.ss.getSheetByName('Users');
+  const adminCount = () => users.rows.filter(r => String(r[0]) === '1111111111').length;
+
+  // 1) 管理員喺度：重跑唔會重複建立
+  const before = users.rows.length;
+  env.api.initializeSheets();
+  check('重跑初始化唔會重複建立預設管理員', adminCount() === 1 && users.rows.length === before,
+    `rows=${users.rows.length} admin=${adminCount()}`);
+
+  // 2) 已改密碼嘅管理員（模擬）：重跑唔會被重標強制改密、唔會被覆蓋
+  users.getRange(2, 5).setValue('HASH_ALREADY_CHANGED');
+  users.getRange(2, 14).setValue(false);
+  env.api.initializeSheets();
+  check('已改密碼嘅管理員重跑後唔會被重標強制改密', users.getRange(2, 14).getValue() === false);
+  check('已改密碼嘅管理員 password_hash 唔會被覆蓋', users.getRange(2, 5).getValue() === 'HASH_ALREADY_CHANGED');
+  check('管理員喺度時唔會額外補行', adminCount() === 1 && users.rows.length === before);
+
+  // 3) 管理員被刪：重跑會補返（補喺最底），預設密碼＋強制改密
+  users.deleteRow(2);
+  env.api.initializeSheets();
+  check('刪走管理員後重跑會補返一個（唔多唔少）', adminCount() === 1, `admin=${adminCount()}`);
+  const adminIdx = users.rows.findIndex(r => String(r[0]) === '1111111111');
+  check('補返嘅管理員係 admin 兼 force_change_password=true',
+    adminIdx > 0 && users.rows[adminIdx][3] === 'admin' && users.rows[adminIdx][13] === true,
+    JSON.stringify(users.rows[adminIdx]));
+  const relogin = env.call({ action: 'login', login_id: '1111111111', password: 'changeme' });
+  check('補返嘅管理員可用 1111111111／changeme 登入並被要求改密',
+    relogin.success === true && relogin.force_change_password === true, JSON.stringify(relogin));
+
+  // 4) 密碼仲係預設但 force 俾人改咗做 false：重跑會重標返 true（對齊 vs L349-351）
+  users.getRange(adminIdx + 1, 14).setValue(false);
+  env.api.initializeSheets();
+  check('仲用緊預設密碼嘅帳號重跑後重標強制改密', users.getRange(adminIdx + 1, 14).getValue() === true);
+}
+
 // ================== 3. 登入：舊密碼入口已封閉；回打驗票先有 session（vs 同構） ==================
 console.log('\n【3】super_ticket 回打驗票（vs 同構）');
 {
