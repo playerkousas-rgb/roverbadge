@@ -144,7 +144,7 @@
             {
               "id": "L2-INTRO-01",
               "name": "Complete a Rover Scout Introductory Course recognised by the Association Headquarters / Regions / District, or complete equivalent items.",
-              "detail": "A Rover Scout Introductory Course completed before becoming a Rover Scout can fulfil this requirement. Please refer to the Appendix \"Overview of the Rover Scout Introductory Courses\" for equivalent items. Rover Scouts who have completed the Rover Scout Link Badge upon being invested into the Rover Scout Section are regarded as having completed the Epaulettes assessment.",
+              "detail": "Appendix: Overview of the Rover Scout Introductory Course. Target: Rover Scouts; Venture Scouts aged 18 or above (English edition); non-Scouts aged 18 or above interested in Rover Scouting. Contents: history and evolution of Rover Scouting, training aims, Crew organisation and administration, Award scheme, Rover Scout skills, activity experiences, and reading and sharing a Scout Movement book. An overnight activity is suggested. A Rover Scout Introductory Course completed before becoming a Rover Scout can fulfil this requirement. Rover Scouts who have completed the Rover Scout Link Badge upon being invested into the Rover Scout Section are regarded as having completed the Epaulettes assessment.",
               "assessment": "Certificate"
             }
           ]
@@ -158,7 +158,7 @@
       "en": "Rover Scout Award",
       "color": "#FF8F00",
       "purpose": "The Rover Scout Award is awarded when the member completes 4 of the 7 assessment components. All seven components can be conducted simultaneously",
-      "description": "The seven components — Dedication, Scoutcraft, Volunteerism, Global Vision, Tenacity, Mental and Physical Wellness, and Intrepidity — are closely aligned with the educational goal of \"Service-Mindedness and Global Vision\". Rover Scouts must plan their personal progress and gain approval from the affiliated Headquarters Commissioner (Rover Scouts) by submitting the \"Application for Assessment of the Rover Scout Award and Baden-Powell Award\" before the initiation of the assessment. Average completion time: 12-18 months.",
+      "description": "The seven components — Dedication, Scoutcraft, Volunteerism, Global Vision, Tenacity, Mental and Physical Wellness, and Intrepidity — are closely aligned with the educational goal of \"Service-Mindedness and Global Vision\". Rover Scouts must plan their personal progress and gain approval from the affiliated Headquarters Commissioner (Rover Scouts) by submitting the \"Application for Assessment of the Rover Scout Award and Baden-Powell Award\" before the initiation of the assessment. Average completion time: 12-18 months. Rover Scout Award: after completing four components, confirmed and recommended by the District, endorsed and issued by the Region, and confirmed and issued by the Association Headquarters (Scheme p.19).",
       "requirements": "Complete 4 of the 7 components",
       "segments": [
         {
@@ -355,106 +355,106 @@
       "id": "OT-WOSM-SW",
       "name": "Scouts of the World Award",
       "icon": "🌍",
-      "desc": "Complete the WOSM Scouts of the World Award: Discovery + Voluntary Service",
-      "detail": "Full attendance in the Discovery Workshop + organise and complete a period of voluntary service of at least 14 days in group"
+      "desc": "Complete the WOSM Scouts of the World Award: Discovery course and Voluntary Service.",
+      "detail": "Attend the Discovery course recognised by the Programme Branch throughout; the action group organises and completes voluntary service equal to at least 14 full-time days of work, after the assessment has started. Issued by: Association Headquarters (Hong Kong Commissioner). Purchase: Scout Shop, with the original certificate issued by the authorised issuing authority."
     },
     {
       "id": "OT-WOSM-ET",
       "name": "Earth Tribe Programme",
       "icon": "🌏",
-      "desc": "Complete one of the three Earth Tribe challenges: Plastic Tide Turners / Champions for Nature / Scouts Go Solar",
-      "detail": "Completing any one challenge makes you a member of the Earth Tribe; wear the Earth Tribe Badge plus at least one challenge badge"
+      "desc": "Complete any one of the three Earth Tribe challenges: Plastic Tide Turners, Champions for Nature or Scouts Go Solar.",
+      "detail": "Completing any one challenge makes you a member of the Earth Tribe. Wear the Earth Tribe Badge together with at least one challenge badge. When progressing to the next section, members must re-complete the relevant challenge(s), except Rover Scouts. Issued by: Programme Branch (Programme Commissioner)."
     },
     {
       "id": "OT-WOSM-WH",
       "name": "Patrimonito Scout Badge",
       "icon": "🏛️",
-      "desc": "WOSM World Heritage related badge",
-      "detail": "Patrimonito is the WOSM World Heritage mascot; badge issued under the World Scout Heritage programme"
+      "desc": "Rover Scouts who complete the volunteer service of the Scouts of the World Award at UNESCO-recognised World Heritage Sites receive this badge together with the Scouts of the World Award.",
+      "detail": "May be worn on the uniform. See the WOSM webpage for the Patrimonito Scout Badge. Issued by: Association Headquarters (Hong Kong Commissioner)."
     },
     {
       "id": "OT-FA",
       "name": "First Aid Badge",
       "icon": "🩺",
-      "desc": "Hold a valid 30-hour First Aid certificate",
-      "detail": "Recognised by the Labour Department (Occupational Safety and Health Ordinance, Cap. 509)"
+      "desc": "Hold a valid 30-hour First Aid certificate.",
+      "detail": "Upon attaining the First Aid Certificate issued by the Scout Association of Hong Kong, or a 30-hour First Aid course certificate recognised by the Labour Department under the Occupational Safety and Health Ordinance (Cap. 509), the badge may be worn within the certificate validity period. Purchase: Scout Shop, with the original First Aid Certificate and the Rover Scout Record Book."
     },
     {
       "id": "OT-RESCUE",
       "name": "Scout Lifesaving Badge",
       "icon": "🏊",
-      "desc": "Lifesaving related qualification",
-      "detail": "Issued under the Scout Lifesaving scheme"
+      "desc": "Attain the lifesaving qualification of the Hong Kong China Life Saving Society.",
+      "detail": "May be worn within the validity period of the certificate. Course content is subject to Association Headquarters announcements. Purchase: Scout Shop, with the original Bronze Medallion (or higher) certificate and the Rover Scout Record Book."
     },
     {
       "id": "OT-AIR-SENIOR",
       "name": "Advance Aircrew Badge",
       "icon": "✈️",
-      "desc": "Advanced aviation activities",
-      "detail": "Advanced level of the air activity scheme"
+      "desc": "Upon attaining the Advance Aircrew Badge, Rover Scouts can wear this badge.",
+      "detail": "May be worn together with the Coxswain Badge. Course content is subject to Association Headquarters announcements. Issued by the District, Region or Programme Branch officers listed in Chapter 5."
     },
     {
       "id": "OT-SEA-HELM",
       "name": "Coxswain Badge",
       "icon": "⛵",
-      "desc": "Sea activity coxswain",
-      "detail": "Coxswain qualification for sea activities"
+      "desc": "Upon attaining the Coxswain Badge, Rover Scouts can wear this badge.",
+      "detail": "May be worn together with the Advance Aircrew Badge. Course content is subject to Association Headquarters announcements. Issued by the District, Region or Programme Branch officers listed in Chapter 5."
     },
     {
       "id": "OT-FLY",
       "name": "Scout Wings",
       "icon": "🛩️",
-      "desc": "Attain the Scout Wings",
-      "detail": "Scout Wings / Scout Canopy Wings can be attained through the flying scheme"
+      "desc": "Upon attaining Scout Wings, Rover Scouts can wear the corresponding badge.",
+      "detail": "Members can only wear either Scout Wings or Scout Canopy Wings. Course content is subject to Association Headquarters announcements. Issued by the Region or Programme Branch officers listed in Chapter 5."
     },
     {
       "id": "OT-PARA",
       "name": "Scout Canopy Wings",
       "icon": "🪂",
-      "desc": "Attain the Scout Canopy Wings (parachuting)",
-      "detail": "Parachuting wings issued under the Scout flying scheme"
+      "desc": "Upon attaining Scout Canopy Wings, Rover Scouts can wear the corresponding badge.",
+      "detail": "Members can only wear either Scout Wings or Scout Canopy Wings. Course content is subject to Association Headquarters announcements. Issued by the Region or Programme Branch officers listed in Chapter 5."
     },
     {
       "id": "OT-ACTIVE",
       "name": "Active Citizenship Badge Series",
       "icon": "🗳️",
-      "desc": "Active Citizenship Badge Series",
-      "detail": "A series of badges on active citizenship issued by WOSM"
+      "desc": "A series of challenges to encourage youth to participate actively in social affairs and develop leadership and teamwork.",
+      "detail": "The series includes: Anti-Deception Badge, Child Protection Badge, Anti-Drug Badge, Community Emergency Responder Badge and Green Pioneer Badge. See the Active Citizenship Badge Series webpage. Issued by: Rover Scout Leader, District, Region or Programme Branch officers listed in Chapter 5."
     },
     {
       "id": "OT-COMM",
       "name": "Rover Scout Community Involvement Badge",
       "icon": "🤝",
-      "desc": "Rover Scout Community Involvement Badge programme",
-      "detail": "Community involvement badge programme for Rover Scouts"
+      "desc": "Complete a thematic workshop and a practical session on community involvement within 6 months.",
+      "detail": "Part (A): complete a recognised thematic workshop (one or more of seven themes: Environmental Hygiene and Cleanliness; Anti-corruption; Fight Against Crime; Drug Education; Equal Opportunities; AIDS Prevention Education; Respect for Intellectual Property Rights). Part (B): practical session, including a personal logbook of the chosen theme, a group research study presented and reported, and a social service activity (assisting an HKSAR Government or registered social service organisation activity, or organising one) with proposal and report submitted to the assessor."
     },
     {
       "id": "OT-REL",
       "name": "Rover Scout Religious Badge",
       "icon": "🙏",
-      "desc": "Religious Badge",
-      "detail": "Religious badge issued under the Rover Scout Section scheme"
+      "desc": "Choose one syllabus: Catholic, Christianity, Muslim, Confucianism, Buddhism or Taoism.",
+      "detail": "The Rover Scout Leader may arrange a suitable person (such as a priest, chaplain or clergy) to assist with the assessments. Holders of the Venture Scout Religious Badge only need to complete the items specified in the syllabus. Wear in the same position as the Kiro Badge; only one of the two may be worn. Syllabus details are in Chapter 4 of the Scheme."
     },
     {
       "id": "OT-CATH",
       "name": "Kiro Badge",
       "icon": "✝️",
-      "desc": "Kiro Badge",
-      "detail": "The Kiro Badge is the Catholic Scout badge programme"
+      "desc": "Available only to baptised Catholic Scout members.",
+      "detail": "For details, contact the Catholic Girl Guides and Scout Guild (info@catholicscout.org.hk). Wear in the same position as the Rover Scout Religious Badge; only one of the two may be worn."
     },
     {
       "id": "OT-AYP-G",
       "name": "HKAYP Gold Award",
       "icon": "🥇",
-      "desc": "The Hong Kong Award for Young People - Gold Award",
-      "detail": "Gold Award of the Hong Kong Award for Young People"
+      "desc": "Upon completing the Gold Award of The Hong Kong Award for Young People, you may wear it on the left sleeve of the uniform.",
+      "detail": "If both Gold and Silver awards are held, only the Gold Award can be worn. When doing the Rover Scout Award and Baden-Powell Award assessments, the nature of the items can be considered to complete relevant HKAYP sections at the same time. Collection: gifted by the Programme Branch and distributed by the Scout Shop; present the original congratulation letter issued by the Region and the Rover Scout Record Book."
     },
     {
       "id": "OT-AYP-S",
       "name": "HKAYP Silver Award",
       "icon": "🥈",
-      "desc": "The Hong Kong Award for Young People - Silver Award",
-      "detail": "Silver Award of the Hong Kong Award for Young People"
+      "desc": "Upon completing the Silver Award of The Hong Kong Award for Young People, you may wear it on the left sleeve of the uniform.",
+      "detail": "If both Gold and Silver awards are held, only the Gold Award can be worn. Collection: gifted by the Programme Branch and distributed by the Scout Shop; present the original congratulation letter issued by the Region and the Rover Scout Record Book."
     }
   ],
   "trainingPlan": {
@@ -1188,7 +1188,7 @@
         "Items",
         "Summary of Activities",
         "Date Completed",
-        "Name of Assessor",
+        "Assessor",
         "Remarks"
       ],
       "stages": [
@@ -1198,17 +1198,17 @@
           "stamp": "Group Stamp"
         },
         {
-          "title": "District (Recommendation)",
+          "title": "Recommendation",
           "signer": "ADC (RS) / DRSL / District Assigned Person",
           "stamp": "District Stamp"
         },
         {
-          "title": "Regional Headquarters",
+          "title": "Approval",
           "signer": "Regional Headquarters Commissioner (RS)",
           "stamp": "Regional Stamp"
         },
         {
-          "title": "Programme Commissioner",
+          "title": "Confirmation",
           "signer": "Programme Commissioner",
           "stamp": "Programme Branch Stamp"
         }
@@ -1376,7 +1376,7 @@
           "items": [
             "S4-AWARD-ELECT-03"
           ],
-          "label": "Horizons Broadening",
+          "label": "Horizons Broadening (☐ Overseas Experience / ☐ Local Exchange)",
           "hint": "☐ Overseas Experience ☐ Local Exchange"
         },
         {
@@ -1384,7 +1384,7 @@
           "items": [
             "S4-BP-CORE-03"
           ],
-          "label": "Challenge",
+          "label": "Challenge (☐ Personal Challenge / ☐ Wilderness Challenge)",
           "hint": "☐ Personal Challenge ☐ Wilderness Challenge"
         }
       ],
@@ -1397,22 +1397,22 @@
       ],
       "stages": [
         {
-          "title": "Applicant",
+          "title": "Signature of Applicant",
           "signer": "Applicant signature",
           "stamp": ""
         },
         {
-          "title": "Nomination",
+          "title": "Agreement",
           "signer": "Rover Scout Leader (RSL)",
           "stamp": "Group Stamp"
         },
         {
-          "title": "District (RS)",
+          "title": "Acknowledged by District",
           "signer": "ADC (RS) / DRSL / District Assigned Person (Countersign)",
           "stamp": "District Stamp"
         },
         {
-          "title": "Regional Headquarters",
+          "title": "Approval",
           "signer": "Regional Headquarters Commissioner (RS)",
           "stamp": "Regional Stamp"
         }
