@@ -52,10 +52,10 @@ const loginH2 = doc.querySelector('#loginPage h2')?.textContent.trim();
 check('login title translated', loginH2 === '🔐 Login', loginH2);
 const tabs = [...doc.querySelectorAll('#mainNavTabs .nav-tab')].map(b => b.textContent.trim());
 check('main tabs translated', tabs[0] === '📊 My Progress' && tabs[1] === '👥 Group Overview', tabs.join('|'));
-check('footer translated', doc.querySelector('footer').textContent.includes('Rover Scout Progress Tracker v5.1'));
+check('footer translated', doc.querySelector('footer').textContent.includes('Rover Scout Progress Tracker v5.2'));
 check('footer unofficial notice translated', doc.querySelector('footer').textContent.includes('Unofficial notice'), doc.querySelector('footer').textContent.slice(0, 200));
-check('home subtitle version translated', doc.querySelector('.logo-row p').textContent.trim().startsWith('Rover Scout Progress Tracker v5.1'), doc.querySelector('.logo-row p').textContent);
-check('login header version translated', doc.querySelector('#loginPage h1').textContent.trim() === 'Rover Scout Progress Tracker v5.1', doc.querySelector('#loginPage h1').textContent);
+check('home subtitle version translated', doc.querySelector('.logo-row p').textContent.trim().startsWith('Rover Scout Progress Tracker v5.2'), doc.querySelector('.logo-row p').textContent);
+check('login header version translated', doc.querySelector('#loginPage h1').textContent.trim() === 'Rover Scout Progress Tracker v5.2', doc.querySelector('#loginPage h1').textContent);
 check('login 回報 link translated', [...doc.querySelectorAll('#loginPage a')].some(a => a.textContent.trim() === '🐛💬 Report · Feedback'));
 check('itemsDataUrl() = en json', domEn.window.itemsDataUrl() === 'data/items_en.json');
 

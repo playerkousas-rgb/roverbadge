@@ -44,6 +44,10 @@ async function renderUsers(currentUser) {
   const dom = makeDom();
   await sleep(250);
   const w = dom.window;
+  // 注入 items.json（與 index.html 啟動時相同的資料來源；測試樁 fetch 不會回傳資料）
+  w.eval(`itemsData = ${JSON.stringify(JSON.parse(fs.readFileSync(new URL('../data/items.json', import.meta.url), 'utf8')))};`);
+  // 載入共用權限模組（index.html 以 <script src> 引入；測試樁 fetch 不會載入外部檔案）
+  for (const a of ['assets/ymis-parse.js', 'assets/rover-scope.js', 'assets/forms.js']) w.eval(fs.readFileSync(new URL('../' + a, import.meta.url), 'utf8'));
   w.eval(`apiRequest = async () => ({ success: true, users: ${JSON.stringify(LEAKED_USERS)} });`);
   w.eval(`currentUser = ${JSON.stringify(currentUser)}; currentToken = 'tok_test';`);
   await w.loadUsers();

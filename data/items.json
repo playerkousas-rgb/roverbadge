@@ -1,8 +1,8 @@
 {
   "meta": {
-    "version": "5.0 Rover",
+    "version": "5.2 Rover",
     "base": "2026年2月第5版《樂行童軍訓練綱要》 + 2025保護兒童",
-    "updated": "2026-07-10 Rover v1.0"
+    "updated": "2026-10-23 全面稽核（見 docs/OTHER_SECTION_RESIDUE_AUDIT_2026-10.md）"
   },
   "badges": [
     {
@@ -23,8 +23,7 @@
               "id": "L1-ACT-01",
               "name": "參與最少3次團活動，其中至少1次是團或旅部安排之活動及1次戶外或海上活動",
               "detail": "團或旅部活動包括綜合晚會、聯合活動、開放日。海上活動包括游泳、划艇、獨木舟等訓練。",
-              "assessment": "出席紀錄",
-              "tip": "入團首月完成"
+              "assessment": "出席紀錄"
             }
           ]
         },
@@ -136,7 +135,7 @@
       "en": "Rover Scout Epaulettes",
       "color": "#2E7D32",
       "purpose": "提供階梯，讓剛獲會員章的樂行童軍對支部活動及童軍技能有基本認識",
-      "description": "須經團長批核推薦，由區長/助理區總監(樂行)/總部總監確認簽發。完成先修章者視作已完成。",
+      "description": "須經團長批核及推薦，由樂行童軍區長／助理區總監（樂行童軍）／助理總部總監（樂行童軍）／總部總監（樂行童軍）確認及簽發。完成先修章者視作已完成。",
       "segments": [
         {
           "code": "L2-INTRO",
@@ -145,9 +144,8 @@
             {
               "id": "L2-INTRO-01",
               "name": "完成總會/地域/區認許之樂行童軍啟導班，或完成同等項目",
-              "detail": "啟導班課程概要見附錄。於成為樂行童軍前已完成的啟導班可追認。完成先修章者晉團獲會員章後視作已完成肩章。",
-              "assessment": "證書",
-              "tip": "新成員應6個月內完成"
+              "detail": "啟導班課程概要見附錄。對象：樂行童軍；17歲或以上之深資童軍；18歲或以上對樂行童軍有興趣之外界人士。內容：樂行童軍之歷史和沿革、訓練目標、團的組織架構和行政管理、獎章制度、樂行童軍技能學習、活動體驗，以及閱讀童軍書籍並與其他樂行童軍分享。建議安排一次渡宿活動。於成為樂行童軍前已完成的啟導班可追認。完成先修章者晉團獲會員章後視作已完成肩章。",
+              "assessment": "證書"
             }
           ]
         }
@@ -160,7 +158,7 @@
       "en": "Rover Scout Award",
       "color": "#FF8F00",
       "purpose": "完成7項考驗中其中4項即獲頒，7項可同時進行",
-      "description": "7項考驗緊扣「服務為本，國際視野」教育目標。需自行計劃考驗內容，提交考驗申請予總部總監批核後才開始，平均12-18個月完成。",
+      "description": "7項考驗緊扣「服務為本，國際視野」教育目標。需自行計劃考驗內容，提交考驗申請予總部總監批核後才開始，平均12-18個月完成。 樂行童軍獎章：完成4項後，經區會確認及推薦，地域審批，總會確認及簽發（綱要 p.19）。",
       "requirements": "7項中完成4項",
       "segments": [
         {
@@ -179,7 +177,9 @@
               "detail": "12個月52小時旅服務可代替，完成第2階段可佩戴基維爾巾圈",
               "tip": "保存服務紀錄"
             }
-          ]
+          ],
+          "formLabel": "準領袖培訓 Dedication",
+          "completion": "all"
         },
         {
           "code": "L3-SCOUT",
@@ -201,7 +201,9 @@
               "name": "完成隊列訓練工作坊及以下其中一個：基本禮儀及步操訓練班 / 步操基本訓練班",
               "detail": "若已完成童軍步操基本訓練班可視作已完成步操基本訓練班"
             }
-          ]
+          ],
+          "formLabel": "童軍技能 Scoutcraft",
+          "completion": "all"
         },
         {
           "code": "L3-SERVICE",
@@ -210,7 +212,7 @@
           "items": [
             {
               "id": "L3-SERVICE-01",
-              "name": "持有有效30小時急救證書 (勞工處認可)，遞交貝登堡獎章申請時仍有效",
+              "name": "持有有效急救證書（本會發出，或勞工處認可之30小時急救課程證書），遞交貝登堡獎章申請時仍須有效",
               "detail": "聖約翰、紅十字會等30小時急救"
             },
             {
@@ -224,7 +226,9 @@
               "detail": "行動小組進行至少相等於14天全職工作之服務，必須於考驗後完成",
               "tip": "探索+自願服務為WOSM兩個階段"
             }
-          ]
+          ],
+          "formLabel": "服務 Volunteerism",
+          "completion": "all"
         },
         {
           "code": "L3-INTL",
@@ -232,17 +236,20 @@
           "desc": "日常交流/國際交流二選一",
           "items": [
             {
-              "id": "L3-INTL-A",
+              "id": "L3-INTL-01",
               "name": "甲：日常交流 - 與不同國籍人士交流合作不少於6個月並作一次分享",
               "detail": "在校園/辦公室/團體活動中，與不同國籍種族人士交流探討，6個月並作分享，分享形式與總部總監商定"
             },
             {
-              "id": "L3-INTL-B",
+              "id": "L3-INTL-02",
               "name": "乙：國際交流活動 - 參與不少於五日四夜國際交流活動並作一次分享",
               "detail": "例如世界大露營、世界樂行大會、亞太區青年論壇等，地點建議境外，需含國際交流元素，非純旅遊。分享形式與總監商定",
               "tip": "建議境外，含國際交流元素"
             }
-          ]
+          ],
+          "formLabel": "國際視野 Global Vision",
+          "completion": "one",
+          "formSummary": "☐ 甲：日常交流　☐ 乙：國際交流"
         },
         {
           "code": "L3-INT",
@@ -255,7 +262,9 @@
               "detail": "例如無人機駕駛、繩索技術、生成式AI設計、機器人、電競、賽車、越野電單車、占星、化妝、歌劇、業餘無線電、三維列印、咖啡拉花、品酒、文化/經濟/歷史/科技研究等",
               "tip": "52小時+進步證明"
             }
-          ]
+          ],
+          "formLabel": "興趣及技能 Tenacity",
+          "completion": "all"
         },
         {
           "code": "L3-HEALTH",
@@ -272,7 +281,9 @@
               "name": "學習/參與一項體育運動，持續12個月累積52小時並有持續進步",
               "detail": "例如特技直排輪、花式單車、滑板、街舞、衝浪、滑雪、溜冰、健美、拯溺(沙灘救生/獨木舟拯救)等"
             }
-          ]
+          ],
+          "formLabel": "身心健康 Mental and Physical Wellness",
+          "completion": "all"
         },
         {
           "code": "L3-CHALLENGE",
@@ -280,20 +291,28 @@
           "desc": "野外挑戰/個人挑戰二選一",
           "items": [
             {
-              "id": "L3-CHAL-A",
+              "id": "L3-CHALLENGE-01",
               "name": "甲：野外挑戰 - 與其他樂行童軍進行3日2夜或以上徒步遠足，需提交計劃書、報告書、事工報告書",
               "detail": "3-6人一隊，如男女混合需各至少2名，從未進行過3日2夜遠足考核，最少21小時相關活動(行進、營藝、煮食、事工)，擔任重要工作，共同完成2項事工，由認可遠足審核員負責。需先完成認可遠足訓練。",
               "tip": "需認可遠足審核員"
             },
             {
-              "id": "L3-CHAL-B",
+              "id": "L3-CHALLENGE-02",
               "name": "乙：個人挑戰 - 完成一些從未完成過具挑戰性活動挑戰自我",
               "detail": "例如渡海泳、三項鐵人、馬拉松、單車遠足、海外遠足、考取AYP金章野外鍛鍊、飛行章、跳傘章、毅行者等。內容因人而異。若從未完成與野外挑戰程度一致或更高挑戰，必須選野外挑戰；反之若已完成野外挑戰程度，則必須選個人挑戰以鼓勵新挑戰。合理原因未能以野外挑戰完成，可經總部總監向青少年活動署申請以個人挑戰完成。",
               "tip": "需從未完成過"
             }
-          ]
+          ],
+          "formLabel": "挑戰 Intrepidity",
+          "completion": "one",
+          "formSummary": "☐ 甲：野外挑戰　☐ 乙：個人挑戰"
         }
-      ]
+      ],
+      "awardRule": {
+        "segmentsRequired": 4,
+        "segmentsTotal": 7,
+        "note": "7個考驗範疇中完成4個，即可申請樂行童軍獎章（綱要 p.19）"
+      }
     },
     {
       "id": "L4",
@@ -302,7 +321,7 @@
       "en": "Baden-Powell Award",
       "color": "#FFD700",
       "purpose": "完成全部7項考驗，經區總監及地域總監接見推薦，總會審批簽發，最高榮譽",
-      "description": "完成樂行童軍獎章後繼續完成餘下3項，共7項全部完成。需12-18個月，平均18個月以上。",
+      "description": "完成樂行童軍獎章後繼續完成餘下3項，共7項全部完成。平均於12至18個月內完成。",
       "requirements": "7項全部完成",
       "segments": [
         {
@@ -336,94 +355,106 @@
       "id": "OT-WOSM-SW",
       "name": "寰宇童軍章 Scouts of the World Award",
       "icon": "🌍",
-      "desc": "完成WOSM寰宇童軍計劃探索+自願服務",
-      "detail": "探索課程+行動小組14天全職服務"
+      "desc": "完成世界童軍組織寰宇童軍計劃之「探索」及「自願服務」。",
+      "detail": "1）全期出席總會青少年活動署認可的寰宇童軍計劃「探索」課程；2）由參加者組成行動小組，自行協商進行最少相等於14天全職工作的「自願服務」（須於展開此項考驗後完成）。簽發：總會香港總監。購買：童軍物品供應社，須出示相關證書正本。"
     },
     {
       "id": "OT-WOSM-ET",
       "name": "地球部落徽章 Earth Tribe",
       "icon": "🌏",
-      "desc": "完成地球部落三項挑戰之一：走塑達人/自然守護者/日光善用者",
-      "detail": "完成任一挑戰即成為地球部落一員，需佩戴部落徽章+至少一項挑戰徽章"
+      "desc": "完成地球部落三項挑戰（走塑達人／自然守護者／日光善用者）其中任何一項。",
+      "detail": "考獲任一挑戰即成為地球部落一員。成員應佩戴地球部落徽章及最少一項挑戰徽章；晉升至下一支部時須重新完成相關挑戰（樂行童軍除外）。簽發：青少年活動署，青少年活動總監。"
     },
     {
       "id": "OT-WOSM-WH",
-      "name": "童軍世界遺產章 World Scout Heritage",
+      "name": "童軍世界遺產章 Patrimonito Scout Badge",
       "icon": "🏛️",
-      "desc": "WOSM世界遺產相關徽章"
+      "desc": "於聯合國教科文組織認可的世界遺產內完成寰宇童軍章「自願服務」者，考獲寰宇童軍章時同時獲頒。",
+      "detail": "可佩戴於制服上。詳情可參閱世界童軍組織「童軍世界遺產章」網頁。簽發：總會香港總監。"
     },
     {
       "id": "OT-FA",
       "name": "急救章 First Aid Badge",
       "icon": "🩺",
-      "desc": "持有有效30小時急救證書",
-      "detail": "勞工處認可"
+      "desc": "持有本會急救證書，或勞工處認可的30小時急救課程證書。",
+      "detail": "依香港法例第509章職業安全及健康條例，勞工處認可之課程。證書有效期內可佩戴。購買：童軍物品供應社，須出示有效急救課程證書及有效樂行童軍紀錄冊。"
     },
     {
       "id": "OT-RESCUE",
-      "name": "童軍拯溺布章 Life Saving",
+      "name": "童軍拯溺布章 Scout Lifesaving Badge",
       "icon": "🏊",
-      "desc": "拯溺相關資格"
+      "desc": "考獲中國香港拯溺總會拯溺資格的樂行童軍支部成員，可佩戴於制服上。",
+      "detail": "證書有效期內可佩戴。課程內容以總會公佈為準。購買：童軍物品供應社，須出示由香港拯溺總會發出之有效拯溺銅章或以上級別證書正本及樂行童軍紀錄冊。"
     },
     {
       "id": "OT-AIR-SENIOR",
-      "name": "高級空勤員章 Senior Airman",
+      "name": "高級空勤員章 Advance Aircrew Badge",
       "icon": "✈️",
-      "desc": "航空活動高級"
+      "desc": "完成高級空勤員章的樂行童軍可佩戴相對的活動徽章。",
+      "detail": "可與舵手章分別或同時佩戴。課程內容以總會公佈為準。簽發：童軍區（區總監／助理區總監（樂行童軍））、地域或青少年活動署之相應人員（見綱要第五章）。"
     },
     {
       "id": "OT-SEA-HELM",
-      "name": "舵手章 Helmsman",
+      "name": "舵手章 Coxswain Badge",
       "icon": "⛵",
-      "desc": "海上活動舵手"
+      "desc": "完成舵手章的樂行童軍可佩戴相對的活動徽章。",
+      "detail": "可與高級空勤員章分別或同時佩戴。課程內容以總會公佈為準。簽發：童軍區（區總監／助理區總監（樂行童軍））、地域或青少年活動署之相應人員（見綱要第五章）。"
     },
     {
       "id": "OT-FLY",
-      "name": "飛行章 Flying Badge",
+      "name": "飛行章 Scout Wings",
       "icon": "🛩️",
-      "desc": "考取飛行章"
+      "desc": "完成飛行章的樂行童軍可佩戴飛行章。",
+      "detail": "飛行章與跳傘章不可同時佩戴於制服上。課程內容以總會公佈為準。簽發：地域或青少年活動署之相應人員（見綱要第五章）。"
     },
     {
       "id": "OT-PARA",
-      "name": "跳傘章 Parachuting Badge",
+      "name": "跳傘章 Scout Canopy Wings",
       "icon": "🪂",
-      "desc": "考取跳傘章"
+      "desc": "完成跳傘章的樂行童軍可佩戴跳傘章。",
+      "detail": "飛行章與跳傘章不可同時佩戴於制服上。課程內容以總會公佈為準。簽發：地域或青少年活動署之相應人員（見綱要第五章）。"
     },
     {
       "id": "OT-ACTIVE",
-      "name": "積極公民獎章系列 Active Citizenship Badge Series",
+      "name": "「積極公民」獎章系列 Active Citizenship Badge Series",
       "icon": "🗳️",
-      "desc": "積極公民獎章系列"
+      "desc": "透過一系列挑戰，積極參與社會事務，發展領導能力及團隊合作。",
+      "detail": "系列包括：防騙先鋒章、保護兒童章、禁毒章、社區應急先鋒章、環保先鋒章。詳情可參閱「積極公民獎章系列」網頁。簽發：樂行童軍團長、童軍區（區總監／助理區總監（樂行童軍））、地域或青少年活動署之相應人員（見綱要第五章）。"
     },
     {
       "id": "OT-COMM",
-      "name": "樂行童軍社區參與章 Community Involvement Badge",
+      "name": "樂行童軍社區參與章 Rover Scout Community Involvement Badge",
       "icon": "🤝",
-      "desc": "社區參與章計劃"
+      "desc": "於6個月內完成專題研習班及實習部分，參與社區事務，培養公民責任感。",
+      "detail": "（甲）完成總會認許的專題研習班（可選一項或多項課題：環境清潔及衛生、肅貪倡廉、撲滅罪行、藥物教育、平等機會、愛滋病預防教育、尊重知識產權）；（乙）實習部分：1）所選課題的個人紀錄冊，附個人評論；2）以小組形式完成專題研習並作發佈，呈交研究報告書；3）在班領導人同意下，協助推行由香港特別行政區政府（或政府註冊的社會服務機構）舉辦的活動，或自行組織、策劃及推行社會服務，並呈交活動計劃書及報告書予審核員。"
     },
     {
       "id": "OT-REL",
-      "name": "樂行童軍宗教章 Religious Badge",
+      "name": "樂行童軍宗教章 Rover Scout Religious Badge",
       "icon": "🙏",
-      "desc": "宗教章"
+      "desc": "選擇一項宗教課程（天主教、基督教、伊斯蘭教、孔教、佛教或道教）完成研習及考核。",
+      "detail": "考核可由樂行童軍團長安排適合人士（如法師、牧師、神職人員、主日學導師等）協助。持深資童軍宗教章者只須補回綱要指定項目。佩戴位置與公教章相同，二者只可選擇其一佩戴。各宗教課程詳見綱要第四章。"
     },
     {
       "id": "OT-CATH",
-      "name": "公教章 Catholic Badge",
+      "name": "公教章 Kiro Badge",
       "icon": "✝️",
-      "desc": "公教章"
+      "desc": "只供已領洗之天主教童軍成員在制服上佩戴。",
+      "detail": "詳情請與公教童軍及女童軍協會查詢（info@catholicscout.org.hk）。佩戴位置與樂行童軍宗教章相同，二者只可選擇其一佩戴。"
     },
     {
       "id": "OT-AYP-G",
-      "name": "香港青年獎勵計劃金章 AYP Gold",
+      "name": "香港青年獎勵計劃金章 HKAYP Gold Award",
       "icon": "🥇",
-      "desc": "AYP金章"
+      "desc": "完成香港青年獎勵計劃金章，可於制服上佩戴。",
+      "detail": "同時持有金章及銀章時，只可佩戴金章。樂行童軍進行樂行童軍獎章及貝登堡獎章考驗時，可考慮項目性質，同時簽發香港青年獎勵計劃相關科目。領取：由青少年活動署送贈，童軍物品供應社代為派發，須出示地域發出之恭賀信正本及有效樂行童軍紀錄冊。"
     },
     {
       "id": "OT-AYP-S",
-      "name": "香港青年獎勵計劃銀章 AYP Silver",
+      "name": "香港青年獎勵計劃銀章 HKAYP Silver Award",
       "icon": "🥈",
-      "desc": "AYP銀章"
+      "desc": "完成香港青年獎勵計劃銀章，可於制服上佩戴。",
+      "detail": "同時持有金章及銀章時，只可佩戴金章。領取：由青少年活動署送贈，童軍物品供應社代為派發，須出示地域發出之恭賀信正本及有效樂行童軍紀錄冊。"
     }
   ],
   "trainingPlan": {
@@ -441,7 +472,7 @@
       "童軍技能傳承：掌握傳統技能及教練員訓練，能傳授他人",
       "服務精神：急救能力 + 寰宇童軍計劃服務，改善社區",
       "國際視野：6個月日常跨文化交流或5日4夜國際交流+分享",
-      "個人興趣：12個月52小時非體育興趣持續進步",
+      "興趣及技能：12個月52小時非體育興趣持續進步",
       "身心健康：精神健康培訓+服務50小時 + 體育12個月52小時",
       "挑戰精神：3日2夜野外遠足或從未做過的個人挑戰"
     ],
@@ -449,8 +480,8 @@
     "assessmentPrinciples": "7項可同時進行，自行計劃考驗內容，提交考驗申請予總部總監批核後才開始。已完成部分可追認。",
     "links": [
       {
-        "title": "樂行童軍訓練綱要 第5版 2026 (Google Drive)",
-        "url": "https://drive.google.com/file/d/1MYSUEqMgIoDtaU_3od92A-2T2wTQXYZu/view",
+        "title": "樂行童軍訓練綱要 第5版 2026（中文，Google Drive）",
+        "url": "https://drive.google.com/file/d/16DQ-MhjRp3LU5Im3IoeJQGqi0Rhgx0iw/view",
         "desc": "2026年2月發布，2026-08-15實施"
       },
       {
@@ -506,6 +537,10 @@
     ],
     "hotlines": [
       {
+        "name": "童軍總會 青少年活動署（查詢，P022/2026 通告所列）",
+        "tel": "2957 6411 / 2957 6417"
+      },
+      {
         "name": "童軍總會 青少年活動署",
         "tel": "2957 6414",
         "email": "progse@scout.org.hk"
@@ -518,19 +553,187 @@
   },
   "forms": {
     "PT21": {
-      "name": "樂行童軍獎章及證書申請表 (PT/21)",
       "code": "PT/21",
-      "description": "完成4項考驗後申請"
+      "name": "樂行童軍獎章及證書申請表",
+      "edition": "第五版（新制）",
+      "officialUrl": "https://www.scout.org.hk/uploads/tc/forms/25998/PT21.pdf",
+      "description": "7個考驗範疇中完成4個，即可申請樂行童軍獎章",
+      "rows": "L3-SEGMENTS",
+      "rule": {
+        "count": 4,
+        "of": 7,
+        "text": "7個範疇中完成4個（領袖於綱要規定之考驗完成後勾選）"
+      },
+      "columns": [
+        "項目 Items",
+        "活動簡述 Summary",
+        "完成日期 Date",
+        "審核員 Assessor",
+        "備註 Remarks"
+      ],
+      "stages": [
+        {
+          "no": "3",
+          "title": "提名 Nomination",
+          "signer": "團長 Rover Scout Leader（RSL）",
+          "stamp": "旅印 Group Stamp"
+        },
+        {
+          "no": "4",
+          "title": "推薦 Recommendation",
+          "signer": "助理區總監（樂行童軍）ADC(RS) ／ 區指定人士",
+          "stamp": "區印 District Stamp"
+        },
+        {
+          "no": "5",
+          "title": "批核 Approval",
+          "signer": "地域總部總監（樂行童軍）RHQC(RS)",
+          "stamp": "地域印 Regional Stamp"
+        },
+        {
+          "no": "6",
+          "title": "確認 Confirmation",
+          "signer": "青少年活動總監 Programme Commissioner",
+          "stamp": "青少年活動署印 Programme Branch Stamp"
+        }
+      ]
     },
     "PT22": {
-      "name": "貝登堡獎章及證書申請表 (PT/22)",
       "code": "PT/22",
-      "description": "完成7項全部，最高榮譽，經區總監及地域總監接見"
+      "name": "貝登堡獎章及證書申請表",
+      "edition": "第五版（新制）",
+      "officialUrl": "https://www.scout.org.hk/uploads/tc/forms/26001/PT22.pdf",
+      "description": "完成全部7項（樂行童軍獎章4項＋餘下3項），經區總監及地域總監接見推薦",
+      "rows": [
+        {
+          "segment": "L3-LEADER"
+        },
+        {
+          "segment": "L3-SCOUT"
+        },
+        {
+          "segment": "L3-SERVICE",
+          "items": [
+            "L3-SERVICE-01"
+          ],
+          "label": "服務 Volunteerism",
+          "hint": "有效急救證書編號 Valid First Aid Certificate Number（必填 REQUIRED）"
+        },
+        {
+          "segment": "L3-SERVICE",
+          "items": [
+            "L3-SERVICE-02",
+            "L3-SERVICE-03"
+          ],
+          "label": "服務 Volunteerism"
+        },
+        {
+          "segment": "L3-INTL"
+        },
+        {
+          "segment": "L3-INT"
+        },
+        {
+          "segment": "L3-HEALTH"
+        },
+        {
+          "segment": "L3-CHALLENGE"
+        }
+      ],
+      "rule": {
+        "count": 3,
+        "of": 7,
+        "text": "於7個範疇中挑選3個（其餘4個由樂行童軍獎章證書承接）"
+      },
+      "certField": {
+        "label": "樂行童軍獎章證書編號 Rover Scout Award Certificate No.",
+        "required": true
+      },
+      "columns": [
+        "項目 Items",
+        "活動簡述 Summary",
+        "完成日期 Date",
+        "審核員 Assessor",
+        "備註 Remarks"
+      ],
+      "stages": [
+        {
+          "no": "3",
+          "title": "提名 Nomination",
+          "signer": "團長 Rover Scout Leader（RSL）",
+          "stamp": "旅印 Group Stamp"
+        },
+        {
+          "no": "4",
+          "title": "推薦 Recommendation",
+          "signer": "區總監 District Commissioner",
+          "stamp": "區印 District Stamp"
+        },
+        {
+          "no": "5",
+          "title": "批核 Approval",
+          "signer": "青少年活動總監 Programme Commissioner",
+          "stamp": "青少年活動署印 Programme Branch Stamp"
+        },
+        {
+          "no": "6",
+          "title": "推薦 Recommendation",
+          "signer": "地域總監 Regional Commissioner",
+          "stamp": "地域印 Regional Stamp"
+        }
+      ]
     },
     "PT69": {
-      "name": "樂行童軍獎章及貝登堡獎章考驗申請",
       "code": "PT/69",
-      "description": "開展考驗前提交申請予總部總監批核"
+      "name": "樂行童軍獎章及貝登堡獎章考驗申請",
+      "edition": "第五版（新制）",
+      "officialUrl": "https://www.scout.org.hk/uploads/tc/forms/15033/PT69.pdf",
+      "description": "開始任何考驗前提交，經總部總監批核後才可開始（綱要規定）",
+      "rows": "L3-SEGMENTS",
+      "rule": null,
+      "columns": [
+        "項目 Items",
+        "計劃簡述 Plan",
+        "預計完成日期 Target Date"
+      ],
+      "stages": [
+        {
+          "no": "1",
+          "title": "申請人 Applicant",
+          "signer": "申請人簽署 Signature",
+          "stamp": ""
+        },
+        {
+          "no": "2",
+          "title": "同意 Agreement",
+          "signer": "團長 Rover Scout Leader（RSL）",
+          "stamp": "旅印 Group Stamp"
+        },
+        {
+          "no": "3",
+          "title": "知會區會 Acknowledged",
+          "signer": "助理區總監（樂行童軍）ADC(RS)",
+          "stamp": "區印 District Stamp"
+        },
+        {
+          "no": "4",
+          "title": "批核 Approval",
+          "signer": "地域總部總監（樂行童軍）RHQC(RS)",
+          "stamp": "地域印 Regional Stamp"
+        }
+      ],
+      "prefillDates": false,
+      "awardChoice": true,
+      "progressTicks": false
+    }
+  },
+  "relatedForms": {
+    "PT75": {
+      "code": "PT/75",
+      "name": "延長考取支部最高獎章期限申請表",
+      "officialUrl": "https://www.scout.org.hk/uploads/tc/forms/12470/PT75.pdf",
+      "appliesTo": "幼童軍、童軍、深資童軍、樂行童軍（官方表格索引所列）",
+      "note": "如未能於期限內完成支部最高獎章，可申請延長。"
     }
   },
   "legacyTransition": {
@@ -640,5 +843,648 @@
         "en": "Use the prescribed forms whichever scheme is followed. Refer to the Association circular and latest training scheme for full eligibility and arrangements."
       }
     ]
+  },
+  "permissionDefaults": {
+    "leader": "*",
+    "exec_committee": "L1,OTHER",
+    "member": ""
+  },
+  "legacy": {
+    "label": "舊版紀錄／不計完成度",
+    "policy": "以下 ID 不屬於現行《樂行童軍訓練綱要》第五版。紀錄原樣保留（不刪除），不計入完成度，不出現在新制表格，權限代碼中亦不會放行。",
+    "ids": [
+      {
+        "id": "L1-UND-05",
+        "name": "會員章「理解」第5項（舊版）",
+        "reason": "第五版「理解」只有 L1-UND-01 至 L1-UND-04"
+      },
+      {
+        "id": "L1-01",
+        "name": "舊版 ID（童軍知識）",
+        "reason": "舊版表格程式使用；現行 L1 段章為 ACT／UND／ETQ／PRM／CP"
+      },
+      {
+        "id": "L1-02",
+        "name": "舊版 ID（童軍知識）",
+        "reason": "同上"
+      },
+      {
+        "id": "L2-SKILL-01",
+        "name": "舊版 ID（童軍技能（I））",
+        "reason": "現行 L2 只有 L2-INTRO-01"
+      },
+      {
+        "id": "L3-SELF",
+        "name": "活動策劃段章（他支部結構）",
+        "reason": "非本段章代碼"
+      },
+      {
+        "id": "L3-RESP",
+        "name": "社會服務段章（他支部結構）",
+        "reason": "非本段章代碼"
+      },
+      {
+        "id": "L3-EXP",
+        "name": "戶外探險段章（他支部結構）",
+        "reason": "非本段章代碼"
+      },
+      {
+        "id": "L3-ACT-SCOUT",
+        "name": "多元技能-範疇一 童軍技能（他支部結構）",
+        "reason": "非本段章代碼"
+      },
+      {
+        "id": "L3-ACT-SP",
+        "name": "多元技能-範疇二 康樂體育（他支部結構）",
+        "reason": "非本段章代碼"
+      },
+      {
+        "id": "L3-ACT-INT",
+        "name": "多元技能-範疇三 新體驗（他支部結構）",
+        "reason": "非本段章代碼"
+      },
+      {
+        "id": "L4-ACT",
+        "name": "活動策劃金帶／多元技能金帶（他支部結構）",
+        "reason": "第五版貝登堡獎章無金帶"
+      },
+      {
+        "id": "L6",
+        "name": "個人發展（舊版獎章 ID）",
+        "reason": "第五版無 L6 獎章"
+      }
+    ]
+  },
+  "oldBadges": [
+    {
+      "id": "S4-AWARD",
+      "icon": "📜",
+      "name": "樂行童軍獎章（舊制・第四版）",
+      "en": "Rover Scout Award (4th Edition)",
+      "color": "#8B5A2B",
+      "purpose": "第四版（舊制）樂行童軍獎章，依舊制 PT/21 表格",
+      "description": "僅供選擇沿用第四版的成員。須於 2029-08-14 或以前完成，逾期須按第五版考核。",
+      "requirements": "必修4項＋選修1項（三選一）",
+      "segments": [
+        {
+          "code": "S4-AWARD-CORE",
+          "name": "必修項目",
+          "desc": "第四版必修項目",
+          "completion": "all",
+          "formLabel": "必修項目 Compulsory Items",
+          "items": [
+            {
+              "id": "S4-AWARD-CORE-01",
+              "name": "童軍知識 Scouting Knowledge",
+              "transition": {
+                "mode": "none",
+                "to": [
+                  "L2-INTRO-01"
+                ],
+                "note": "對應第五版「樂行童軍肩章」之相應部分，須按肩章要求核實，不可整章視作完成。"
+              }
+            },
+            {
+              "id": "S4-AWARD-CORE-02",
+              "name": "社區服務(I)－童軍服務 Scout Service",
+              "transition": {
+                "mode": "none",
+                "to": [],
+                "note": "P022 對照表未列此項。"
+              }
+            },
+            {
+              "id": "S4-AWARD-CORE-03",
+              "name": "社區服務(I)－社區服務 Community Service",
+              "transition": {
+                "mode": "none",
+                "to": [],
+                "note": "P022 對照表未列此項。"
+              }
+            },
+            {
+              "id": "S4-AWARD-CORE-04",
+              "name": "童軍技能(I) Scoutcraft (I)",
+              "transition": {
+                "mode": "none",
+                "to": [],
+                "note": "P022：甲部→「服務」(1)；乙部（船藝除外）→「童軍技能」(1)；丙部→「童軍技能」(2)。本系統不分部記錄，請核實。"
+              }
+            }
+          ]
+        },
+        {
+          "code": "S4-AWARD-ELECT",
+          "name": "選修項目（三選一）",
+          "desc": "第四版選修項目",
+          "completion": "pick",
+          "pick": 1,
+          "formLabel": "選修項目（三選一）",
+          "items": [
+            {
+              "id": "S4-AWARD-ELECT-01",
+              "name": "個人發展 Personal Development",
+              "transition": {
+                "mode": "none",
+                "to": [],
+                "note": "P022 對照表未列此項。"
+              }
+            },
+            {
+              "id": "S4-AWARD-ELECT-02",
+              "name": "個人興趣 Personal Pursuits",
+              "transition": {
+                "mode": "none",
+                "to": [
+                  "L3-INT-01",
+                  "L3-HEALTH-01",
+                  "L3-HEALTH-02"
+                ],
+                "note": "按該項個人興趣的性質對應「興趣及技能」或「身心健康」，不能一概而論。"
+              }
+            },
+            {
+              "id": "S4-AWARD-ELECT-03",
+              "name": "認識世界 Horizons Broadening",
+              "transition": {
+                "mode": "none",
+                "to": [
+                  "L3-INTL-01",
+                  "L3-INTL-02"
+                ],
+                "note": "對應「國際視野」，按通告所列範疇對照。"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "S4-BP",
+      "icon": "🏆",
+      "name": "貝登堡獎章（舊制・第四版）",
+      "en": "Baden-Powell Award (4th Edition)",
+      "color": "#B8860B",
+      "purpose": "第四版（舊制）貝登堡獎章，依舊制 PT/22 表格",
+      "description": "僅供選擇沿用第四版的成員。",
+      "requirements": "必修3項＋選修2項（三選二）",
+      "segments": [
+        {
+          "code": "S4-BP-CORE",
+          "name": "必修項目",
+          "desc": "第四版必修項目",
+          "completion": "all",
+          "formLabel": "必修項目 Compulsory Items",
+          "items": [
+            {
+              "id": "S4-BP-CORE-01",
+              "name": "社區服務(II) Community Service (II)",
+              "transition": {
+                "mode": "all",
+                "to": [
+                  "L3-SERVICE-02",
+                  "L3-SERVICE-03"
+                ],
+                "note": "對應「服務」(2)及(3)，須按新綱要項目備註核對服務要求。"
+              }
+            },
+            {
+              "id": "S4-BP-CORE-02",
+              "name": "童軍技能(II) Scoutcraft (II)",
+              "transition": {
+                "mode": "none",
+                "to": [],
+                "note": "P022 對照表未列此項。"
+              }
+            },
+            {
+              "id": "S4-BP-CORE-03",
+              "name": "挑戰項目 Challenge",
+              "transition": {
+                "mode": "none",
+                "to": [
+                  "L3-CHALLENGE-01",
+                  "L3-CHALLENGE-02"
+                ],
+                "note": "按第五版「挑戰」項目的內容及備註核實。"
+              }
+            }
+          ]
+        },
+        {
+          "code": "S4-BP-ELECT",
+          "name": "選修項目（三選二）",
+          "desc": "第四版選修項目",
+          "completion": "pick",
+          "pick": 2,
+          "formLabel": "選修項目（三選二）",
+          "items": [
+            {
+              "id": "S4-BP-ELECT-01",
+              "name": "個人發展 Personal Development",
+              "transition": {
+                "mode": "none",
+                "to": [],
+                "note": "P022 對照表未列此項。"
+              }
+            },
+            {
+              "id": "S4-BP-ELECT-02",
+              "name": "個人興趣 Personal Pursuits",
+              "transition": {
+                "mode": "none",
+                "to": [
+                  "L3-INT-01",
+                  "L3-HEALTH-01",
+                  "L3-HEALTH-02"
+                ],
+                "note": "按該項個人興趣的性質對應，不能一概而論。"
+              }
+            },
+            {
+              "id": "S4-BP-ELECT-03",
+              "name": "認識世界 Horizons Broadening",
+              "transition": {
+                "mode": "none",
+                "to": [
+                  "L3-INTL-01",
+                  "L3-INTL-02"
+                ],
+                "note": "對應「國際視野」。"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "oldForms": {
+    "PT21_OLD": {
+      "code": "PT/21（舊制）",
+      "name": "樂行童軍獎章及證書申請表（舊制，第四版）",
+      "edition": "第四版（舊制）",
+      "officialUrl": "https://www.scout.org.hk/article_attach/23724/PT21.pdf",
+      "description": "必修項目＋選修一項（第四版）",
+      "rows": [
+        {
+          "segment": "S4-AWARD-CORE",
+          "items": [
+            "S4-AWARD-CORE-01"
+          ],
+          "label": "童軍知識 Scouting Knowledge"
+        },
+        {
+          "segment": "S4-AWARD-CORE",
+          "items": [
+            "S4-AWARD-CORE-02"
+          ],
+          "label": "社區服務(I) 童軍服務 Scout Service"
+        },
+        {
+          "segment": "S4-AWARD-CORE",
+          "items": [
+            "S4-AWARD-CORE-03"
+          ],
+          "label": "社區服務(I) 社區服務 Community Service"
+        },
+        {
+          "segment": "S4-AWARD-CORE",
+          "items": [
+            "S4-AWARD-CORE-04"
+          ],
+          "label": "童軍技能(I) Scoutcraft (I)"
+        },
+        {
+          "segment": "S4-AWARD-ELECT",
+          "items": [
+            "S4-AWARD-ELECT-01"
+          ],
+          "label": "☐ 選修 個人發展 Personal Development"
+        },
+        {
+          "segment": "S4-AWARD-ELECT",
+          "items": [
+            "S4-AWARD-ELECT-02"
+          ],
+          "label": "☐ 選修 個人興趣 Personal Pursuits"
+        },
+        {
+          "segment": "S4-AWARD-ELECT",
+          "items": [
+            "S4-AWARD-ELECT-03"
+          ],
+          "label": "☐ 選修 認識世界 Horizons Broadening"
+        }
+      ],
+      "rule": {
+        "text": "必修項目全部完成，並於三個選修項目中完成一項。"
+      },
+      "columns": [
+        "項目 Items",
+        "活動簡述 Summary of Activities",
+        "完成日期 Date Completed",
+        "審核員 Assessor",
+        "備註 Remarks"
+      ],
+      "stages": [
+        {
+          "title": "團長提名",
+          "signer": "團長 RSL",
+          "stamp": "旅印"
+        },
+        {
+          "title": "推薦 Recommendation",
+          "signer": "助理區總監（樂行童軍）／樂行童軍區長／區代表",
+          "stamp": "區印"
+        },
+        {
+          "title": "批核 Approval",
+          "signer": "地域總部總監（樂行童軍）RHQC(RS)",
+          "stamp": "地域印"
+        },
+        {
+          "title": "確認 Confirmation",
+          "signer": "青少年活動總監",
+          "stamp": "青少年活動署印"
+        }
+      ],
+      "prefillDates": true,
+      "progressTicks": true,
+      "extraFields": []
+    },
+    "PT22_OLD": {
+      "code": "PT/22（舊制）",
+      "name": "貝登堡獎章及證書申請表（舊制，第四版）",
+      "edition": "第四版（舊制）",
+      "officialUrl": "https://www.scout.org.hk/article_attach/23723/PT22.pdf",
+      "description": "必修項目＋選修兩項（第四版）",
+      "rows": [
+        {
+          "segment": "S4-BP-CORE",
+          "items": [
+            "S4-BP-CORE-01"
+          ],
+          "label": "社區服務(II) Community Service (II)"
+        },
+        {
+          "segment": "S4-BP-CORE",
+          "items": [
+            "S4-BP-CORE-02"
+          ],
+          "label": "童軍技能(II) Scoutcraft (II)"
+        },
+        {
+          "segment": "S4-BP-CORE",
+          "items": [
+            "S4-BP-CORE-03"
+          ],
+          "label": "挑戰項目 Challenge"
+        },
+        {
+          "segment": "S4-BP-ELECT",
+          "items": [
+            "S4-BP-ELECT-01"
+          ],
+          "label": "☐ 選修 個人發展 Personal Development"
+        },
+        {
+          "segment": "S4-BP-ELECT",
+          "items": [
+            "S4-BP-ELECT-02"
+          ],
+          "label": "☐ 選修 個人興趣 Personal Pursuits"
+        },
+        {
+          "segment": "S4-BP-ELECT",
+          "items": [
+            "S4-BP-ELECT-03"
+          ],
+          "label": "☐ 選修 認識世界 Horizons Broadening"
+        }
+      ],
+      "rule": {
+        "text": "必修項目全部完成，並於三個選修項目中完成兩項。9 月 15 日或以前呈交者，依當年處理。"
+      },
+      "columns": [
+        "項目 Items",
+        "活動簡述 Summary of Activities",
+        "完成日期 Date Completed",
+        "審核員姓名 Name of Assessor",
+        "備註 Remarks"
+      ],
+      "stages": [
+        {
+          "title": "團長提名",
+          "signer": "團長 RSL",
+          "stamp": "旅印"
+        },
+        {
+          "title": "區總監",
+          "signer": "區總監",
+          "stamp": "區印"
+        },
+        {
+          "title": "地域總監",
+          "signer": "地域總監",
+          "stamp": "地域印"
+        },
+        {
+          "title": "青少年活動總監",
+          "signer": "青少年活動總監",
+          "stamp": "青少年活動署印"
+        }
+      ],
+      "prefillDates": true,
+      "progressTicks": true,
+      "extraFields": [
+        {
+          "label": "樂行童軍獎章證書編號 Certificate No.",
+          "required": false
+        }
+      ]
+    },
+    "PT69_OLD": {
+      "code": "PT/69（舊制）",
+      "name": "樂行童軍獎章及貝登堡獎章考驗申請（舊制，第四版，2024版）",
+      "edition": "第四版（舊制，2024版）",
+      "officialUrl": "https://www.scout.org.hk/uploads/tc/forms/26139/PT69_2024.pdf",
+      "description": "開始任何考驗前提交計劃簡述",
+      "rows": [
+        {
+          "segment": "S4-AWARD-CORE",
+          "items": [
+            "S4-AWARD-CORE-01"
+          ],
+          "label": "童軍知識 Scouting Knowledge"
+        },
+        {
+          "segment": "S4-AWARD-CORE",
+          "items": [
+            "S4-AWARD-CORE-02"
+          ],
+          "label": "社區服務(I) 童軍服務 Scout Service"
+        },
+        {
+          "segment": "S4-AWARD-CORE",
+          "items": [
+            "S4-AWARD-CORE-03"
+          ],
+          "label": "社區服務(I) 社區服務 Community Service"
+        },
+        {
+          "segment": "S4-BP-CORE",
+          "items": [
+            "S4-BP-CORE-01"
+          ],
+          "label": "社區服務(II) Community Service (II)"
+        },
+        {
+          "segment": "S4-AWARD-CORE",
+          "items": [
+            "S4-AWARD-CORE-04"
+          ],
+          "label": "童軍技能(I) Scoutcraft (I)"
+        },
+        {
+          "segment": "S4-BP-CORE",
+          "items": [
+            "S4-BP-CORE-02"
+          ],
+          "label": "童軍技能(II) Scoutcraft (II)"
+        },
+        {
+          "segment": "S4-AWARD-ELECT",
+          "items": [
+            "S4-AWARD-ELECT-02"
+          ],
+          "label": "個人興趣 Personal Pursuits"
+        },
+        {
+          "segment": "S4-AWARD-ELECT",
+          "items": [
+            "S4-AWARD-ELECT-01"
+          ],
+          "label": "個人發展 Personal Development"
+        },
+        {
+          "segment": "S4-AWARD-ELECT",
+          "items": [
+            "S4-AWARD-ELECT-03"
+          ],
+          "label": "認識世界 Horizons Broadening（☐ 境外體驗 Overseas Experience ／ ☐ 本地交流 Local Exchange）",
+          "hint": "☐ 境外體驗 ☐ 本地交流"
+        },
+        {
+          "segment": "S4-BP-CORE",
+          "items": [
+            "S4-BP-CORE-03"
+          ],
+          "label": "挑戰項目 Challenge（☐ 個人挑戰 Personal Challenge ／ ☐ 野外挑戰 Wilderness Challenge）",
+          "hint": "☐ 個人挑戰 ☐ 野外挑戰"
+        }
+      ],
+      "rule": null,
+      "columns": [
+        "項目 Items",
+        "計劃簡述 Summary of Planning",
+        "由 From",
+        "至 To"
+      ],
+      "stages": [
+        {
+          "title": "申請人簽署 Signature of Applicant",
+          "signer": "申請人簽署",
+          "stamp": ""
+        },
+        {
+          "title": "同意 Agreement",
+          "signer": "團長 RSL",
+          "stamp": "旅印"
+        },
+        {
+          "title": "知會區會 Acknowledged by District",
+          "signer": "助理區總監（樂行童軍）／樂行童軍區長／區指定人士（副署）",
+          "stamp": "區印"
+        },
+        {
+          "title": "批核 Approval",
+          "signer": "地域總部總監（樂行童軍）RHQC(RS)",
+          "stamp": "地域印"
+        }
+      ],
+      "prefillDates": false,
+      "progressTicks": false,
+      "awardChoice": [
+        "S4-AWARD",
+        "S4-BP"
+      ],
+      "extraFields": [
+        {
+          "label": "編號 No.",
+          "required": false
+        },
+        {
+          "label": "樂行童軍肩章簽發日期 Date of Rover Scout Epaulettes Issued",
+          "required": false
+        }
+      ]
+    }
+  },
+  "schemes": {
+    "default": "new",
+    "list": {
+      "new": {
+        "label": "新制（第五版）",
+        "en": "5th Edition (new)",
+        "desc": "2026-08-15 或之後宣誓的成員，或選擇按第五版考核的成員。",
+        "forms": [
+          "PT21",
+          "PT22",
+          "PT69"
+        ],
+        "catalogBadges": [
+          "L1",
+          "L2",
+          "L3",
+          "L4"
+        ]
+      },
+      "old": {
+        "label": "舊制（第四版）",
+        "en": "4th Edition (legacy)",
+        "desc": "2026-08-15 前宣誓、選擇沿用第四版的成員。須於 2029-08-14 或以前完成，逾期須按第五版考核。",
+        "forms": [
+          "PT21_OLD",
+          "PT22_OLD",
+          "PT69_OLD"
+        ],
+        "catalogBadges": [
+          "L1",
+          "L2",
+          "S4-AWARD",
+          "S4-BP"
+        ]
+      },
+      "transition": {
+        "label": "舊制過渡新制",
+        "en": "Transition (4th → 5th)",
+        "desc": "沿用第四版紀錄，對照第五版綱要核實後，於第五版項目勾選。第四版紀錄保留於「舊制版紀錄」，不自動計入第五版完成度。",
+        "forms": [
+          "PT21",
+          "PT22",
+          "PT69"
+        ],
+        "catalogBadges": [
+          "L1",
+          "L2",
+          "L3",
+          "L4"
+        ],
+        "referenceBadges": [
+          "S4-AWARD",
+          "S4-BP"
+        ]
+      }
+    }
   }
 }

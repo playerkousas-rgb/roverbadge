@@ -206,7 +206,9 @@ export function loadCodeGs({ promptAnswers = [], urlFetchHandler = null } = {}) 
   initializeSheets, removeSuperAdminRows, handleLogin, getUser, getAllUsers,
   getMembers, getApiKey, doPost, doGet, isSuperAdminId, verifySuperTicket, authorizeConnection,
   // 測試內省用：保留帳號識別字（唯一宣告在 Code.gs），用以驗證名單過濾與防護邏輯
-  SUPER_ADMIN_ID
+  SUPER_ADMIN_ID,
+  // 學制／allowed_badges 測試用：發 token、讀取生成的項目目錄與角色預設
+  createToken, ITEM_CATALOG_, DEFAULT_PERMS_
 };`;
   vm.runInContext(code + exported, ctx, { filename: 'Code.gs' });
 

@@ -66,7 +66,7 @@
 - `items.json` `safeFromHarm` 含 sfh.scout.org.hk, elearning.scout.org.hk, 政策通告，教學套包，前端資料庫頁一鍵直達
 
 ### 表格自動填寫官方格式
-- `generatePrintableForm()` 已重寫為官方 PT/19 / PT/20 格式，雙面列印，完全模仿總會 PDF（個人摘要+完成項目+提名/推薦/批核簽署欄）
+- `generatePrintableForm()` 依 `assets/forms.js` 按樂行官方表格（新制及舊制 PT/21、PT/22、PT/69）排版，列印 `.print-area`，含個人摘要、考驗項目及簽署欄
 - 自動填入姓名、YMIS、旅團、段章完成日期，可編輯後 `window.print()`，只列印 `.print-area`
 
 ### 其他獎章併入進度
@@ -156,7 +156,7 @@
 - otherBadges：該支部可考的其他獎章（興趣組、技能組等）
 - trainingPlan：該支部的目的、方法、預期成果、流程
 - safeFromHarm：共用，但連結相同
-- forms：該支部的 PT 表格，例如幼童軍 PT/68 金紫荊，童軍 PT/18 總領袖章，樂行 PT/21/22
+- forms：該支部的 PT 表格。樂行：新制 PT/21、PT/22、PT/69；舊制（第四版）PT/21、PT/22、PT/69；見 `forms` 與 `oldForms`
 
 ### B. Logo / 制服色
 - 樂行用棗紅色 #8B0000 + 金色 #FFD700 + 火炬
@@ -164,7 +164,7 @@
 - 變更 :root --maroon 色碼為該支部主色
 
 ### C. 表格
-- 樂行是 PT/19 + PT/20，幼童軍是 PT/68，童軍是 PT/18，樂行是 PT/21/PT/22
+- 表格代碼（僅樂行已核對）：新制 PT/21／PT/22／PT/69，舊制 PT/21／PT/22／PT/69，依 `docs/OTHER_SECTION_RESIDUE_AUDIT_2026-10.md`。其他章節的表格代碼不在本檔核對範圍，請各章節自行對照其綱要後填寫
 - 參考 `generatePrintableForm()` 已模仿官方格式的寫法，照抄結構改表格欄位
 
 ### D. 保護兒童

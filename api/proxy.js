@@ -37,7 +37,7 @@ const LINK_SIG_SUPPORTED = new Set([
   'upsertUser', 'importUsers', 'resetPassword', 'deactivateUser', 'reactivateUser',
   'updateUserProfile', 'deleteMember', 'deleteUser', 'updateUserRole', 'updatePermissions',
   'updateConfig', 'saveLogRecord', 'deleteLogRecord', 'submitLogRequest', 'reviewLogRequest',
-  'reviewApplication', 'setLocalLogin'
+  'reviewApplication', 'setLocalLogin', 'setScheme'
 ]);
 
 function buildSuperInnerToken(apikey) {
@@ -87,7 +87,7 @@ const PUBLIC_ACTIONS = new Set(['login', 'apply', 'forgotPassword', 'getLoginMod
 // 需要登入 token 的旅團內操作
 const TOKEN_ACTIONS = new Set([
   'logout', 'load', 'getConfig', 'getMembers', 'getOtherBadges',
-  'save', 'saveOtherBadge', 'requestComplete',
+  'save', 'saveOtherBadge', 'requestComplete', 'setScheme',
   'getPendingRequests', 'reviewRequest',
   'getLogRecords', 'saveLogRecord', 'deleteLogRecord',
   'getPendingLogRequests', 'submitLogRequest', 'reviewLogRequest',

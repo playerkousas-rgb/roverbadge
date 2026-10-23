@@ -71,7 +71,7 @@ function safeSheetText(v,maxLen){
 //   - 邊個支部系統想用本節點（Rover），就由「嗰個支部系統自己」將本節點的
 //     GAS /exec URL（B）+ SHEET KEY（D）登記入佢自己 Sheet 的 Script Properties：
 //     DOWNSTREAM_<id>_URL / DOWNSTREAM_<id>_KEY（有地域有鎖匙先入到）；
-//     登記後上游可經 sig 讀寫下游（進了上游就等於進了下游）。掛錯（如掛去深資），
+//     登記後上游可經 sig 讀寫下游（進了上游就等於進了下游）。掛錯（如掛去其他支部），
 //     對方一測 sig／一睇結構就會發現，會改返。
 //   - 本節點 Script Properties 的 ALLOW_LOCAL_LOGIN 係「直接入口」掣：
 //     未設定＝開啟（現有旅團零影響）；任何唔係 1/true/yes/on/open 的值
@@ -92,7 +92,7 @@ const LINK_RESERVED_BODY_KEYS = ['sig', 'sig_ts', 'sig_nonce'];
 // 上游以 sig 可以在下游執行的 action。login／apply／logout／changePassword／
 // superTicketLogin／forgotPassword 等本地憑證操作永不接受（即使有 sig）。
 const LINK_SIG_READ_ACTIONS = ['load', 'getLoginMode', 'getLinkState', 'getMembers', 'getConfig', 'getAllUsers', 'getOtherBadges', 'getPendingRequests', 'getApplications', 'getLogRecords', 'getPendingLogRequests', 'exportUsers'];
-const LINK_SIG_WRITE_ACTIONS = ['save', 'saveOtherBadge', 'requestComplete', 'reviewRequest', 'addMember', 'addUser', 'upsertUser', 'importUsers', 'resetPassword', 'deactivateUser', 'reactivateUser', 'updateUserProfile', 'deleteMember', 'deleteUser', 'updateUserRole', 'updatePermissions', 'updateConfig', 'saveLogRecord', 'deleteLogRecord', 'submitLogRequest', 'reviewLogRequest', 'reviewApplication', 'setLocalLogin'];
+const LINK_SIG_WRITE_ACTIONS = ['save', 'saveOtherBadge', 'requestComplete', 'reviewRequest', 'addMember', 'addUser', 'upsertUser', 'importUsers', 'resetPassword', 'deactivateUser', 'reactivateUser', 'updateUserProfile', 'deleteMember', 'deleteUser', 'updateUserRole', 'updatePermissions', 'updateConfig', 'saveLogRecord', 'deleteLogRecord', 'submitLogRequest', 'reviewLogRequest', 'reviewApplication', 'setLocalLogin', 'setScheme'];
 const USER_EXPORT_FORMAT = 'roverbadge-users-export';
 
 function linkProps() { return PropertiesService.getScriptProperties(); }
@@ -463,7 +463,7 @@ function upsertUser(raw, actor) {
       setCol(9, now());
       setCol(12, status);
       if (allowed !== '') setCol(13, allowed);
-      else if (!String(data[row - 1][12] || '') && sheet.getLastColumn() >= 13) setCol(13, role === 'member' ? '' : (role === 'exec_committee' ? 'L1,活動段章,OTHER' : '*'));
+      else if (!String(data[row - 1][12] || '') && sheet.getLastColumn() >= 13) setCol(13, role === 'member' ? '' : (role === 'exec_committee' ? 'L1,OTHER' : '*'));
       setCol(FORCE_CHANGE_COL, force);
       syncMemberRow_(ymis, name, branch, email, status);
       writeAudit(actor, 'link_upsert_update', ymis, '上游／匯入更新帳戶' + (hash ? '（直插 hash）' : '（保留原密碼）'));
@@ -471,7 +471,7 @@ function upsertUser(raw, actor) {
     }
     const nowStr = now();
     const canTickNew = raw.can_tick === true || String(raw.can_tick).toUpperCase() === 'TRUE';
-    const defAllowed = allowed !== '' ? allowed : (role === 'member' ? '' : (role === 'exec_committee' ? 'L1,活動段章,OTHER' : '*'));
+    const defAllowed = allowed !== '' ? allowed : (role === 'member' ? '' : (role === 'exec_committee' ? 'L1,OTHER' : '*'));
     sheet.appendRow([ymis, name, email, role, hash, branch, canTickNew, sheetActor(actor), nowStr, String(raw.created_at || '') || nowStr, String(raw.last_login || ''), status, defAllowed, force]);
     syncMemberRow_(ymis, name, branch, email, status);
     writeAudit(actor, 'link_upsert_create', ymis, '上游／匯入新增帳戶（直插 hash，保留舊密碼）');
@@ -541,10 +541,11 @@ function handleSignedRequest(action, body) {
   if (action === 'getLogRecords') return handleGetLogRecords();
   if (action === 'getPendingLogRequests') return handleGetPendingLogRequests(manager);
   if (action === 'exportUsers') return handleExportUsers();
-  if (action === 'save') return handleSave(body.changes || [], String(body.confirmer || actor));
-  if (action === 'saveOtherBadge') return handleSaveOtherBadge(body.records || []);
+  if (action === 'save') return handleSave(body.changes || [], String(body.confirmer || actor), manager);
+  if (action === 'saveOtherBadge') return handleSaveOtherBadge(body.records || [], manager);
   if (action === 'requestComplete') return handleRequestComplete(body, actor);
-  if (action === 'reviewRequest') return handleReviewRequest(body.request_id, body.decision, body.review_note, actor, body.confirmed_date);
+  if (action === 'reviewRequest') return handleReviewRequest(body.request_id, body.decision, body.review_note, manager, body.confirmed_date);
+  if (action === 'setScheme') return handleSetScheme(body, manager, actor);
   if (action === 'addMember') return handleAddMember(body.ymis, body.name, body.squad || '', body.squad_role || 'member');
   if (action === 'addUser') return handleAddUser(body, manager);
   if (action === 'upsertUser') return handleUpsertUser(body.user || body, actor);
@@ -634,6 +635,164 @@ const CAN_MANAGE_ROLES = {
   'branch_leader': ['exec_committee','member'] 
 };
 function canUserTick(r){ return CAN_TICK_ROLES.indexOf(r)>=0; }
+// 勾選權限 = 角色屬勾選角色 且 「可勾選」開關（users 第 7 欄 can_tick）為 true。
+// 收回權限即時生效：團長收回副團長的可勾選後，即使角色是領袖也不可勾選或審批。
+function canTickUser_(u){ return !!u && canUserTick(u.role) && u.can_tick===true; }
+
+// ===== 學制（新制／舊制／舊制過渡新制）與 allowed_badges 後端強制 =====
+// 項目目錄（ITEM_CATALOG_）與角色預設（DEFAULT_PERMS_）由 scripts/gen-backend-catalog.mjs 產生，勿手改。
+// >>> GENERATED:ITEM_CATALOG（scripts/gen-backend-catalog.mjs 由 data/items.json 產生，勿手改）
+// 學制字母：n=新制 o=舊制 t=舊制過渡新制。字母只表示「該學制可勾選」。
+var ITEM_CATALOG_ = {
+  "L1-ACT-01": { t: "not", s: "L1-ACT", b: "L1", o: 0 },
+  "L1-UND-01": { t: "not", s: "L1-UND", b: "L1", o: 0 },
+  "L1-UND-02": { t: "not", s: "L1-UND", b: "L1", o: 0 },
+  "L1-UND-03": { t: "not", s: "L1-UND", b: "L1", o: 0 },
+  "L1-UND-04": { t: "not", s: "L1-UND", b: "L1", o: 0 },
+  "L1-ETQ-01": { t: "not", s: "L1-ETQ", b: "L1", o: 0 },
+  "L1-ETQ-02": { t: "not", s: "L1-ETQ", b: "L1", o: 0 },
+  "L1-ETQ-03": { t: "not", s: "L1-ETQ", b: "L1", o: 0 },
+  "L1-ETQ-04": { t: "not", s: "L1-ETQ", b: "L1", o: 0 },
+  "L1-ETQ-05": { t: "not", s: "L1-ETQ", b: "L1", o: 0 },
+  "L1-ETQ-06": { t: "not", s: "L1-ETQ", b: "L1", o: 0 },
+  "L1-PRM-01": { t: "not", s: "L1-PRM", b: "L1", o: 0 },
+  "L1-CP-01": { t: "not", s: "L1-CP", b: "L1", o: 0 },
+  "L2-INTRO-01": { t: "not", s: "L2-INTRO", b: "L2", o: 0 },
+  "L3-LEADER-01": { t: "nt", s: "L3-LEADER", b: "L3", o: 0 },
+  "L3-LEADER-02": { t: "nt", s: "L3-LEADER", b: "L3", o: 0 },
+  "L3-SCOUT-01": { t: "nt", s: "L3-SCOUT", b: "L3", o: 0 },
+  "L3-SCOUT-02": { t: "nt", s: "L3-SCOUT", b: "L3", o: 0 },
+  "L3-SCOUT-03": { t: "nt", s: "L3-SCOUT", b: "L3", o: 0 },
+  "L3-SERVICE-01": { t: "nt", s: "L3-SERVICE", b: "L3", o: 0 },
+  "L3-SERVICE-02": { t: "nt", s: "L3-SERVICE", b: "L3", o: 0 },
+  "L3-SERVICE-03": { t: "nt", s: "L3-SERVICE", b: "L3", o: 0 },
+  "L3-INTL-01": { t: "nt", s: "L3-INTL", b: "L3", o: 0 },
+  "L3-INTL-02": { t: "nt", s: "L3-INTL", b: "L3", o: 0 },
+  "L3-INT-01": { t: "nt", s: "L3-INT", b: "L3", o: 0 },
+  "L3-HEALTH-01": { t: "nt", s: "L3-HEALTH", b: "L3", o: 0 },
+  "L3-HEALTH-02": { t: "nt", s: "L3-HEALTH", b: "L3", o: 0 },
+  "L3-CHALLENGE-01": { t: "nt", s: "L3-CHALLENGE", b: "L3", o: 0 },
+  "L3-CHALLENGE-02": { t: "nt", s: "L3-CHALLENGE", b: "L3", o: 0 },
+  "L4-ALL-01": { t: "nt", s: "L4-ALL", b: "L4", o: 0 },
+  "L4-ALL-02": { t: "nt", s: "L4-ALL", b: "L4", o: 0 },
+  "L4-ALL-03": { t: "nt", s: "L4-ALL", b: "L4", o: 0 },
+  "S4-AWARD-CORE-01": { t: "o", s: "S4-AWARD-CORE", b: "S4-AWARD", o: 0 },
+  "S4-AWARD-CORE-02": { t: "o", s: "S4-AWARD-CORE", b: "S4-AWARD", o: 0 },
+  "S4-AWARD-CORE-03": { t: "o", s: "S4-AWARD-CORE", b: "S4-AWARD", o: 0 },
+  "S4-AWARD-CORE-04": { t: "o", s: "S4-AWARD-CORE", b: "S4-AWARD", o: 0 },
+  "S4-AWARD-ELECT-01": { t: "o", s: "S4-AWARD-ELECT", b: "S4-AWARD", o: 0 },
+  "S4-AWARD-ELECT-02": { t: "o", s: "S4-AWARD-ELECT", b: "S4-AWARD", o: 0 },
+  "S4-AWARD-ELECT-03": { t: "o", s: "S4-AWARD-ELECT", b: "S4-AWARD", o: 0 },
+  "S4-BP-CORE-01": { t: "o", s: "S4-BP-CORE", b: "S4-BP", o: 0 },
+  "S4-BP-CORE-02": { t: "o", s: "S4-BP-CORE", b: "S4-BP", o: 0 },
+  "S4-BP-CORE-03": { t: "o", s: "S4-BP-CORE", b: "S4-BP", o: 0 },
+  "S4-BP-ELECT-01": { t: "o", s: "S4-BP-ELECT", b: "S4-BP", o: 0 },
+  "S4-BP-ELECT-02": { t: "o", s: "S4-BP-ELECT", b: "S4-BP", o: 0 },
+  "S4-BP-ELECT-03": { t: "o", s: "S4-BP-ELECT", b: "S4-BP", o: 0 },
+  "OT-WOSM-SW": { t: "not", s: "", b: "", o: 1 },
+  "OT-WOSM-ET": { t: "not", s: "", b: "", o: 1 },
+  "OT-WOSM-WH": { t: "not", s: "", b: "", o: 1 },
+  "OT-FA": { t: "not", s: "", b: "", o: 1 },
+  "OT-RESCUE": { t: "not", s: "", b: "", o: 1 },
+  "OT-AIR-SENIOR": { t: "not", s: "", b: "", o: 1 },
+  "OT-SEA-HELM": { t: "not", s: "", b: "", o: 1 },
+  "OT-FLY": { t: "not", s: "", b: "", o: 1 },
+  "OT-PARA": { t: "not", s: "", b: "", o: 1 },
+  "OT-ACTIVE": { t: "not", s: "", b: "", o: 1 },
+  "OT-COMM": { t: "not", s: "", b: "", o: 1 },
+  "OT-REL": { t: "not", s: "", b: "", o: 1 },
+  "OT-CATH": { t: "not", s: "", b: "", o: 1 },
+  "OT-AYP-G": { t: "not", s: "", b: "", o: 1 },
+  "OT-AYP-S": { t: "not", s: "", b: "", o: 1 },
+};
+// 角色預設 allowed_badges（與 items.json permissionDefaults 相同；空白 allowed_badges 時使用）
+var DEFAULT_PERMS_ = {
+  leader: "*",
+  exec_committee: "L1,OTHER",
+  member: ""
+};
+// <<< GENERATED:ITEM_CATALOG
+const SCHEME_SHEET_NAME='學制設定';
+const SCHEME_KEYS_=['new','old','transition'];
+const SCHEME_DEFAULT_='new';
+const SCHEME_LABELS_={new:'新制（第五版）',old:'舊制（第四版）',transition:'舊制過渡新制'};
+const SCHEME_LETTER_={new:'n',old:'o',transition:'t'};
+function normalizeScheme_(s){ s=String(s===undefined||s===null?'':s).trim(); return SCHEME_KEYS_.indexOf(s)>=0 ? s : SCHEME_DEFAULT_; }
+function schemeSheet_(create){
+  const ss=getSheet(); let sh=ss.getSheetByName(SCHEME_SHEET_NAME);
+  if(!sh && create){ sh=ss.insertSheet(SCHEME_SHEET_NAME); sh.appendRow(['ymis','scheme','updated_at','updated_by']); }
+  return sh;
+}
+// 全部成員學制 {ymis: scheme}；無紀錄 = 預設新制
+function schemeMap_(){
+  const map={}; const sh=schemeSheet_(false); if(!sh) return map;
+  const data=sh.getDataRange().getValues();
+  for(let i=1;i<data.length;i++){ const y=String(data[i][0]||'').trim(); if(y) map[y]=normalizeScheme_(data[i][1]); }
+  return map;
+}
+function schemeOf_(ymis, map){ return (map||schemeMap_())[String(ymis||'').trim()] || SCHEME_DEFAULT_; }
+function catalogEntry_(itemId){
+  const k=String(itemId===undefined||itemId===null?'':itemId);
+  return Object.prototype.hasOwnProperty.call(ITEM_CATALOG_, k) ? ITEM_CATALOG_[k] : null;
+}
+function itemInScheme_(itemId, scheme){ const c=catalogEntry_(itemId); return !!c && c.t.indexOf(SCHEME_LETTER_[scheme]||'_')>=0; }
+// 權限字串：allowed_badges 空白 = 角色預設（與前端 canCurrentUserTickItem 相同）
+function permissionStringOf_(user){
+  const stored=String((user&&user.allowed_badges)||'').trim();
+  if(stored!=='') return stored;
+  const key=user.role==='exec_committee'?'exec_committee':(user.role==='member'?'member':'leader');
+  return String(DEFAULT_PERMS_[key]||'');
+}
+// 與 assets/rover-scope.js canTickItem 相同規則：* ／ 項目 ID ／ 段章 ／ 獎章 ／ OTHER
+function tokenAllowsItem_(allowed, itemId){
+  const tokens=String(allowed||'').split(/[,，]/).map(function(s){ return s.trim(); }).filter(Boolean);
+  if(tokens.indexOf('*')>=0) return true;
+  if(tokens.indexOf(itemId)>=0) return true;
+  const c=catalogEntry_(itemId); if(!c) return false;
+  if(c.s && tokens.indexOf(c.s)>=0) return true;
+  if(c.b && tokens.indexOf(c.b)>=0) return true;
+  if(c.o && tokens.indexOf('OTHER')>=0) return true;
+  return false;
+}
+// 操作者能否勾選此項（不含學制）。actor 為 null ＝ 有效 API Key（系統）全權
+function actorCanTickItem_(actor, itemId){
+  if(!actor) return true;
+  if(!canTickUser_(actor)) return false;
+  if(actor.role==='super_admin') return true;
+  return tokenAllowsItem_(permissionStringOf_(actor), itemId);
+}
+// 整批檢查：任一筆違反即整批拒絕（呼叫端不得寫入）。pairs: [{ymis,itemId}]。回傳 null＝通過，字串＝錯誤
+function checkTickBatch_(pairs, actor){
+  const map=schemeMap_();
+  for(let i=0;i<pairs.length;i++){
+    const p=pairs[i]||{};
+    const id=String(p.itemId===undefined||p.itemId===null?'':p.itemId);
+    if(!catalogEntry_(id)) return '未知或已停用的項目 ID：'+id+'（舊版紀錄不可再勾選或申請）';
+    const ym=String(p.ymis||'').trim();
+    const sch=schemeOf_(ym, map);
+    if(!itemInScheme_(id, sch)) return '項目 '+id+' 不屬於 '+(ym||'（未指定成員）')+' 所選學制（'+SCHEME_LABELS_[sch]+'）';
+    if(actor && !actorCanTickItem_(actor, id)) return '權限不足：無權勾選 '+id+'（請管理員調整 allowed_badges）';
+  }
+  return null;
+}
+// 設定學制：本人可改自己；他人需為可勾選的領袖（或超管）。整列 upsert，寫入審計
+function handleSetScheme(body, actor, actorYmis){
+  const me=String(actorYmis||'').trim();
+  const target=String((body&&body.target_ymis)||me).trim();
+  const scheme=String((body&&body.scheme)||'').trim();
+  if(!target) return jsonResponse({success:false,error:'缺少成員 YMIS'});
+  if(SCHEME_KEYS_.indexOf(scheme)<0) return jsonResponse({success:false,error:'學制須為 new（新制）／old（舊制）／transition（舊制過渡新制）'});
+  if(target!==me && !(actor && canTickUser_(actor)))
+    return jsonResponse({success:false,error:'只可由可勾選的領袖為他人設定學制'});
+  const sh=schemeSheet_(true);
+  const data=sh.getDataRange().getValues(); let row=-1;
+  for(let i=1;i<data.length;i++){ if(String(data[i][0]||'').trim()===target){ row=i+1; break; } }
+  const ts=now(); const by=sheetActor(me);
+  if(row>0){ sh.getRange(row,2).setValue(scheme); sh.getRange(row,3).setValue(ts); sh.getRange(row,4).setValue(by); }
+  else sh.appendRow([target,scheme,ts,by]);
+  writeAudit(me,'set_scheme',target,scheme);
+  return jsonResponse({success:true,ymis:target,scheme:scheme,schemes:schemeMap_()});
+}
 function getRoleLevel(r){ return ROLE_HIERARCHY[r]||0; }
 function canManageRole(m,t){ return (CAN_MANAGE_ROLES[m]||[]).indexOf(t)>=0; }
 function canManageUser(manager,targetRole){ return manager && (manager.role==='super_admin' || canManageRole(manager.role,targetRole)); }
@@ -765,6 +924,7 @@ function maskEmail_(email){
 // ===== 初始化 =====
 function initializeSheets() {
   const ss = getSheet();
+  schemeSheet_(true); // 學制設定（ymis／scheme／updated_at／updated_by）；無紀錄 = 預設新制
   let pSheet = ss.getSheetByName('進度追蹤');
   if(!pSheet){
     pSheet = ss.insertSheet('進度追蹤');
@@ -1069,33 +1229,45 @@ function doPost(e){
     if(action==='save' || action==='addMember' || action==='addUser' || action==='saveOtherBadge'){
       const reqKey=body.apikey;
       if(reqKey && reqKey!==getApiKey()) return jsonResponse({success:false,error:'Invalid API Key'});
-      // 若無 apikey，嘗試 token 驗證作為後備
-      if(!reqKey && body.token){
+      // 操作者身分以 token 為準（api/proxy.js 會替每個請求附上旅團 APIKEY，所以 APIKEY 本身唔可以代表使用者）：
+      //   · 帶 token：必須有效，操作者＝該使用者（檢查角色＋allowed_badges），即使同時帶 APIKEY
+      //   · 帶無效 token：一律拒絕
+      //   · 只有有效 APIKEY、冇 token：系統操作（actor=null，只檢查學制）
+      //   · 冇 token 冇 APIKEY：拒絕（舊版會照樣寫入，已修正）
+      const keyOk=!!reqKey;
+      let tokenUser=null;
+      if(body.token){
         const tk=validateToken(body.token);
-        if(!tk && action!=='addMember') return jsonResponse({success:false,error:'未授權 - 需 API Key 或有效 Token'});
+        if(!tk) return jsonResponse({success:false,error:'Token 無效或過期'});
+        if(tk) tokenUser=getUser(tk);
+        if(tk && !tokenUser) return jsonResponse({success:false,error:'找不到用戶'});
       }
-      if(action==='save') return handleSave(body.changes, body.confirmer||'');
+      if(!keyOk && !tokenUser) return jsonResponse({success:false,error:'未授權 - 需 API Key 或有效 Token'});
+      const actor=tokenUser||null;
+      if(action==='save') return handleSave(body.changes||[], body.confirmer||'', actor);
       if(action==='addMember'){
         const my=body.token?validateToken(body.token):null;
-        const mgr=my?getUser(my):null;
-        if(!mgr && body.apikey && body.apikey===getApiKey()) mgr={role:'admin'};
+        let mgr=my?getUser(my):null;
+        // 系統路徑：無 token ＋ 有效 APIKEY（批量開戶工具）。帶任何 token 則只以 token 判斷
+        if(!mgr && !body.token && body.apikey && body.apikey===getApiKey()) mgr={role:'admin',ymis:'system'};
         if(!mgr || getRoleLevel(mgr.role)<40) return jsonResponse({success:false,error:'只有領袖可以新增成員'});
         return handleAddMember(body.ymis, body.name, body.squad||'', body.squad_role||'member');
       }
       if(action==='addUser'){
         const my=body.token?validateToken(body.token):null;
-        const mgr=my?getUser(my):null;
-        if(!mgr && body.apikey && body.apikey===getApiKey()) mgr={role:'admin'};
+        let mgr=my?getUser(my):null;
+        // 系統路徑：無 token ＋ 有效 APIKEY（批量開戶工具）。帶任何 token 則只以 token 判斷
+        if(!mgr && !body.token && body.apikey && body.apikey===getApiKey()) mgr={role:'admin',ymis:'system'};
         if(!mgr || getRoleLevel(mgr.role)<40) return jsonResponse({success:false,error:'只有領袖可以開新帳號'});
         return handleAddUser(body,mgr);
       }
-      if(action==='saveOtherBadge') return handleSaveOtherBadge(body.records, body.apikey);
+      if(action==='saveOtherBadge') return handleSaveOtherBadge(body.records||[], actor);
     }
     // member request - needs token but also allow apikey for member self
     if(action==='requestComplete'){
       // allow token or apikey
-      let ymis=null; if(body.token){ ymis=validateToken(body.token); }
-      if(!ymis && body.apikey && body.apikey===getApiKey()){ ymis=body.ymis; } // standalone mode
+      let ymis=null; if(body.token){ ymis=validateToken(body.token); if(!ymis) return jsonResponse({success:false,error:'Token 無效或過期'}); }
+      if(!ymis && body.apikey && body.apikey===getApiKey()){ ymis=body.ymis; } // 無 token 時才以 APIKEY 代表 body.ymis（standalone）
       if(!ymis) return jsonResponse({success:false,error:'未授權'});
       return handleRequestComplete(body, ymis);
     }
@@ -1132,7 +1304,8 @@ function doPost(e){
     }
     if(action==='getMembers'){ return jsonResponse({success:true,members:getMembers()}); }
     if(action==='getPendingRequests'){ if(getRoleLevel(user.role)<0) return jsonResponse({success:false,error:'權限不足'}); return handleGetPendingRequests(); }
-    if(action==='reviewRequest'){ if(!canUserTick(user.role)) return jsonResponse({success:false,error:'權限不足，需領袖權限'}); return handleReviewRequest(body.request_id, body.decision, body.review_note, ymis, body.confirmed_date); }
+    if(action==='reviewRequest'){ if(!canTickUser_(user)) return jsonResponse({success:false,error:'權限不足，需領袖權限'}); return handleReviewRequest(body.request_id, body.decision, body.review_note, user, body.confirmed_date); }
+    if(action==='setScheme') return handleSetScheme(body, user, ymis);
     if(action==='getOtherBadges'){ return handleGetOtherBadges(body.target_ymis||ymis); }
     if(action==='getApplications'){ if(getRoleLevel(user.role)<40) return jsonResponse({success:false,error:'權限不足，需團長/支部領袖'}); return handleGetApplications(); }
     if(action==='reviewApplication'){ if(getRoleLevel(user.role)<40) return jsonResponse({success:false,error:'權限不足'}); return handleReviewApplication(body.app_id,body.decision,body.review_note,user); }
@@ -1142,17 +1315,17 @@ function doPost(e){
     }
     if(action==='getLogRecords') return handleGetLogRecords();
     if(action==='saveLogRecord'){
-      if(!canUserTick(user.role) || user.can_tick!==true) return jsonResponse({success:false,error:'權限不足，需已獲勾選權限的領袖'});
+      if(!canTickUser_(user)) return jsonResponse({success:false,error:'權限不足，需已獲勾選權限的領袖'});
       return handleSaveLogRecord(body.records||(body.record?[body.record]:[]), ymis, body.recorder_name||'');
     }
     if(action==='deleteLogRecord'){
-      if(!canUserTick(user.role) || user.can_tick!==true) return jsonResponse({success:false,error:'權限不足，需已獲勾選權限的領袖'});
+      if(!canTickUser_(user)) return jsonResponse({success:false,error:'權限不足，需已獲勾選權限的領袖'});
       return handleDeleteLogRecord(body.record_id, ymis);
     }
     if(action==='getPendingLogRequests') return handleGetPendingLogRequests(user);
     if(action==='submitLogRequest') return handleSubmitLogRequest(body, ymis, user);
     if(action==='reviewLogRequest'){
-      if(!canUserTick(user.role)) return jsonResponse({success:false,error:'權限不足，需領袖權限'});
+      if(!canTickUser_(user)) return jsonResponse({success:false,error:'權限不足，需領袖權限'});
       return handleReviewLogRequest(body.request_id, body.decision, ymis, body.review_note);
     }
 
@@ -1308,7 +1481,7 @@ function handleReviewApplication(appId,decision,note,manager,tempPassword){
   if(appEmail && emailTakenAnyStatus_(appEmail,'')) return jsonResponse({success:false,error:'此 Email 已有帳號紀錄（可能已開戶或已停用），請先處理現有帳號再審批'});
   const password=DEFAULT_PASS;
   const isLeaderFinal=(finalRole!=='member');
-  const allowedBadges = finalRole==='member' ? '' : (finalRole==='exec_committee' ? 'L1,活動段章,OTHER' : '*');
+  const allowedBadges = finalRole==='member' ? '' : (finalRole==='exec_committee' ? 'L1,OTHER' : '*');
   const uSheet=getSheet().getSheetByName('Users');
   if(!uSheet) return jsonResponse({success:false,error:'找不到 Users 工作表'});
   ensureForceChangeCol(uSheet);
@@ -1349,11 +1522,11 @@ function handleUpdateUserRole(targetYmis,newRole,canTick,managerYmis, allowedBad
         if(allowedBadges!==undefined && allowedBadges!==null){
           sheet.getRange(i+1,13).setValue(allowedBadges);
         } else {
-          // 默認：領袖全部 (*)，成員無，執委默認 L1, L3-ACT, OTHER部分
+          // 默認：領袖全部 (*)，成員無，執委默認 L1,OTHER（與 data/items.json permissionDefaults 一致）
           if(!data[i][12]){
             let def='*';
             if(newRole==='member') def='';
-            else if(newRole==='exec_committee') def='L1,L3-ACT,OTHER';
+            else if(newRole==='exec_committee') def='L1,OTHER';
             else def='*';
             sheet.getRange(i+1,13).setValue(def);
           }
@@ -1402,13 +1575,17 @@ function handleLoad(){
   const oSheet=ss.getSheetByName('其他獎章'); const other={};
   if(oSheet){ const data=oSheet.getDataRange().getValues(); for(let i=1;i<data.length;i++){ const y=data[i][0].toString(); if(!y) continue; if(!other[y]) other[y]={}; other[y][data[i][1].toString()]={name:data[i][2]?data[i][2].toString():'',date:data[i][3]?formatDate(data[i][3]):'',cert:data[i][4]?data[i][4].toString():''}; } }
   const lSheet=ss.getSheetByName(LOG_SHEET_NAME);
-  return jsonResponse({success:true,members:members,progress:progress,flatProgress:flat,pendingRequests:pending,otherBadges:other,logs:getLogRecordsList(),logsSupported:!!lSheet});
+  return jsonResponse({success:true,members:members,progress:progress,flatProgress:flat,pendingRequests:pending,otherBadges:other,logs:getLogRecordsList(),logsSupported:!!lSheet,schemes:schemeMap_(),schemeDefault:SCHEME_DEFAULT_});
 }
-function handleSave(changes, confirmer){
+// 進度寫入（整批檢查後才寫）。actor：token 使用者（檢查角色＋allowed_badges）；null ＝ API Key 系統
+function handleSave(changes, confirmer, actor){
   confirmer=sheetActor(confirmer);
+  const list=Array.isArray(changes)?changes:[];
+  const err=checkTickBatch_(list.map(function(c){ return {ymis:c&&c.ymis, itemId:c&&c.itemId}; }), actor||null);
+  if(err) return jsonResponse({success:false,error:err,processed:0});
   const sheet=getSheet().getSheetByName('進度追蹤'); if(!sheet) return jsonResponse({success:false,error:'Sheet not found'});
   let processed=0;
-  changes.forEach(function(c){
+  list.forEach(function(c){
     const data=sheet.getDataRange().getValues(); let found=false;
     for(let i=1;i<data.length;i++){
       if(data[i][0].toString()===c.ymis && data[i][1].toString()===c.itemId){
@@ -1443,6 +1620,9 @@ function handleAddMember(ymis,name,squad,squadRole){
 // 待批完成
 function handleRequestComplete(body, requesterYmis){
   const sheet=getSheet().getSheetByName('待批完成'); if(!sheet) return jsonResponse({success:false,error:'Sheet not found'});
+  // 申請只限本人學制範圍內的現行項目（舊版 ID／他學制項目一律拒絕）
+  const err=checkTickBatch_([{ymis:requesterYmis, itemId:body&&body.itemId}], null);
+  if(err) return jsonResponse({success:false,error:err});
   const reqId='REQ_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);
   const user=getUser(requesterYmis)||{name:body.name||requesterYmis};
   sheet.appendRow([reqId,requesterYmis,user.name||body.name,body.itemId,body.itemName||body.itemId,body.requested_date||formatDate(new Date()),body.evidence||'','pending',now(),'','','', '']);
@@ -1453,14 +1633,19 @@ function handleGetPendingRequests(){
   if(sheet){ const data=sheet.getDataRange().getValues(); for(let i=1;i<data.length;i++){ if(data[i][7].toString()==='pending'){ list.push({request_id:data[i][0].toString(),ymis:data[i][1].toString(),name:data[i][2].toString(),item_id:data[i][3].toString(),item_name:data[i][4].toString(),requested_date:data[i][5]?formatDate(data[i][5]):'',evidence:data[i][6]?data[i][6].toString():'',status:'pending',created_at:data[i][8]?formatDate(data[i][8]):''}); } } }
   return jsonResponse({success:true,requests:list});
 }
+// reviewer 必須是操作者物件（role／allowed_badges）；審批等同勾選，須通過同一套範圍檢查
 function handleReviewRequest(reqId,decision,note,reviewer,confirmed_date){
+  if(!reviewer || typeof reviewer!=='object') return jsonResponse({success:false,error:'審批需領袖身分'});
   const sheet=getSheet().getSheetByName('待批完成'); if(!sheet) return jsonResponse({success:false,error:'Sheet not found'});
-  const data=sheet.getDataRange().getValues(); let row=null;
-  for(let i=1;i<data.length;i++){ if(data[i][0].toString()===reqId){ row=data[i]; sheet.getRange(i+1,8).setValue(decision); sheet.getRange(i+1,10).setValue(sheetActor(reviewer)); sheet.getRange(i+1,11).setValue(now()); sheet.getRange(i+1,12).setValue(note||''); sheet.getRange(i+1,13).setValue(confirmed_date||formatDate(new Date())); break; } }
+  const data=sheet.getDataRange().getValues(); let row=null, rowIdx=-1;
+  for(let i=1;i<data.length;i++){ if(data[i][0].toString()===reqId){ row=data[i]; rowIdx=i; break; } }
   if(!row) return jsonResponse({success:false,error:'找不到申請'});
+  const err=checkTickBatch_([{ymis:row[1].toString(), itemId:row[3].toString()}], reviewer);
+  if(err) return jsonResponse({success:false,error:err});
+  sheet.getRange(rowIdx+1,8).setValue(decision); sheet.getRange(rowIdx+1,10).setValue(sheetActor(reviewer.ymis)); sheet.getRange(rowIdx+1,11).setValue(now()); sheet.getRange(rowIdx+1,12).setValue(note||''); sheet.getRange(rowIdx+1,13).setValue(confirmed_date||formatDate(new Date()));
   if(decision==='approved'){
     const pSheet=getSheet().getSheetByName('進度追蹤');
-    pSheet.appendRow([row[1],row[3],confirmed_date||row[5],new Date(),sheetActor(reviewer), '由申請轉入：'+(note||'')]);
+    pSheet.appendRow([row[1],row[3],confirmed_date||row[5],new Date(),sheetActor(reviewer.ymis), '由申請轉入：'+(note||'')]);
     return jsonResponse({success:true,message:'已批准並寫入進度'});
   }
   return jsonResponse({success:true,message:'已拒絕'});
@@ -1470,10 +1655,17 @@ function handleGetOtherBadges(ymis){
   if(sheet){ const data=sheet.getDataRange().getValues(); for(let i=1;i<data.length;i++){ if(data[i][0].toString()===ymis){ list.push({id:data[i][1].toString(),name:data[i][2].toString(),date:data[i][3]?formatDate(data[i][3]):'',cert:data[i][4]?data[i][4].toString():''}); } } }
   return jsonResponse({success:true,other:list});
 }
-function handleSaveOtherBadge(records){
+function handleSaveOtherBadge(records, actor){
+  const list=Array.isArray(records)?records:[];
+  for(let i=0;i<list.length;i++){
+    const cat=catalogEntry_(list[i]&&list[i].badgeId);
+    if(!cat || !cat.o) return jsonResponse({success:false,error:'不是其他獎章（OT-*）ID：'+((list[i]&&list[i].badgeId)||'')});
+  }
+  const err=checkTickBatch_(list.map(function(r){ return {ymis:r&&r.ymis, itemId:r&&r.badgeId}; }), actor||null);
+  if(err) return jsonResponse({success:false,error:err,processed:0});
   const sheet=getSheet().getSheetByName('其他獎章'); if(!sheet) return jsonResponse({success:false,error:'Sheet missing'});
   let c=0;
-  records.forEach(function(r){
+  list.forEach(function(r){
     const data=sheet.getDataRange().getValues(); let found=false;
     for(let i=1;i<data.length;i++){ if(data[i][0].toString()===r.ymis && data[i][1].toString()===r.badgeId){ sheet.getRange(i+1,3).setValue(r.date); sheet.getRange(i+1,4).setValue(r.cert||''); sheet.getRange(i+1,5).setValue(r.note||''); sheet.getRange(i+1,6).setValue(new Date()); found=true; c++; break; } }
     if(!found){ sheet.appendRow([r.ymis,r.badgeId,r.name||r.badgeId,r.date,r.cert||'',r.note||'',new Date()]); c++; }
@@ -1613,7 +1805,7 @@ function addUser_(body,mgr){
     const nowStr=now();
     const usedDefault=!password || password===DEFAULT_PASS;
     const pwdHash = hashPassword(password||DEFAULT_PASS);
-    const allowedBadges = role==='member' ? '' : (role==='exec_committee' ? 'L1,活動段章,OTHER' : '*');
+    const allowedBadges = role==='member' ? '' : (role==='exec_committee' ? 'L1,OTHER' : '*');
     uSheet.appendRow([
       ymis,
       name,
@@ -1965,7 +2157,7 @@ function getPendingLogRequestsList(viewYmis, isLeader){
 }
 function handleGetPendingLogRequests(user){
   if(!getSheet().getSheetByName(LOG_PENDING_SHEET_NAME)) return jsonResponse({success:false,error:'「'+LOG_PENDING_SHEET_NAME+'」工作表不存在：請在 Apps Script 執行 initializeSheets() 補建'});
-  const isLeader=canUserTick(user.role);
+  const isLeader=canTickUser_(user);
   return jsonResponse({success:true,requests:getPendingLogRequestsList(user.ymis, isLeader),canApprove:isLeader});
 }
 function handleSubmitLogRequest(body, requesterYmis, user){

@@ -1,11 +1,11 @@
 樂行童軍進度追蹤系統	Rover Scout Progress Tracker
 樂行童軍進度追蹤	Rover Scout Progress Tracker
-樂行童軍進度追蹤系統 v5.1 - 手機友善・批量開戶・全前端控制	Rover Scout Progress Tracker v5.1 - Mobile friendly · Bulk onboarding · Full front-end control
-樂行童軍進度追蹤 v5.1	Rover Scout Progress Tracker v5.1
-Rover Scout Progress Tracker v5.1 • 樂行童軍徽章 + 2026年第5版綱要	Rover Scout Progress Tracker v5.1 • Rover Scout emblem + 2026 5th Edition Scheme
+樂行童軍進度追蹤系統 v5.2 - 手機友善・批量開戶・全前端控制	Rover Scout Progress Tracker v5.2 - Mobile friendly · Bulk onboarding · Full front-end control
+樂行童軍進度追蹤 v5.2	Rover Scout Progress Tracker v5.2
+Rover Scout Progress Tracker v5.2 • 樂行童軍徽章 + 2026年第5版綱要	Rover Scout Progress Tracker v5.2 • Rover Scout emblem + 2026 5th Edition Scheme
 基於 2026年第5版《樂行童軍訓練綱要》 | 支援離線暫存 • 批量寫入 • 批量開戶 • 全前端控制 • 保護兒童 Safe from Harm	Based on the 5th Edition of the Rover Scout Training Scheme (2026) | Offline staging • Batch writing • Bulk onboarding • Full front-end control • Safe from Harm
 基於 2026年第5版《樂行童軍訓練綱要》• 支援離線暫存•批量寫入•成員申請確認•表格自動填寫	Based on the 5th Edition of the Rover Scout Training Scheme (2026) • Offline staging • batch writing • member request confirmation • form auto-fill
-COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 v5.1	COPYRIGHT 2026 Scout System • Rover Scout Progress Tracker v5.1
+COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 v5.2	COPYRIGHT 2026 Scout System • Rover Scout Progress Tracker v5.2
 香港童軍總會	Scout Association of Hong Kong
 🏠 進入系統	🏠 Enter System
 📋 新旅團部署	📋 New Group Deployment
@@ -30,10 +30,6 @@ PNG LOGO 256px、防卡死、批量、官方表格、細緻權限、MOCK測試�
 未登入試用：	Try without logging in:
 你而家用緊嘅	You are currently using
 四級勾選架構 + 級聯自動完成	4-level ticking structure + auto cascade
-12項 • 含保護兒童	12 items • incl. Safe from Harm
-23項基礎技能	23 basic skills
-4段章 100+選項	4 segments, 100+ options
-4金帶 • 最高榮譽	4 Gold Bands • Highest honour
 進度性獎章 (段章層級)	Progressive badges (segment level)
 其他獎章 (逐個勾)	Other badges (tick individually)
 🎖️ 管理委員會 管委	🎖️ Crew Management Committee (CMC)
@@ -108,7 +104,6 @@ YMIS 提供的密碼	YMIS export password
 例: 電話號碼 / 9月新入團	e.g. phone number / joining in September
 提交後由旅團領袖在 APP 內審批，批准後會建立帳戶並設置臨時密碼。	After submission, the Group's leader approves it inside the APP; once approved, an account is created with a temporary password.
 提交申請	Submit Application
-提交申請	Submit
 提交	Submit
 提交中...	Submitting...
 取消	Cancel
@@ -135,7 +130,6 @@ YMIS 提供的密碼	YMIS export password
 角色：member / exec_committee / branch_leader / group_leader / admin	Role: member / exec_committee / branch_leader / group_leader / admin
 true / false 是否可勾選	true / false - can tick
 留空＝預設密碼 1234；有填＝用自訂密碼	Empty = default password 1234; filled = custom password
-備註（聯絡方式/特殊需要等）	Notes (contact method / special needs etc.)
 ⬇️ 下載成員範本 CSV	⬇️ Download Member Template CSV
 📤 上傳填好的 CSV	📤 Upload the filled CSV
 或直接貼上 JSON 陣列：	Or paste a JSON array directly:
@@ -215,21 +209,11 @@ CSV 解析失敗：	CSV parse failed:
 ⚙️ 設定可勾選權限 - 	⚙️ Set tickable permissions - 
 全選	Select all
 全不選	Select none
-設為管委默認 (會員章+活動段章+其他部分)	Set CMC default (Membership Badge + Activities segments + Other parts)
+設為管委默認 (L1＋OTHER)	Set CMC default (L1 + OTHER)
 設為領袖全部 (*)	Set leader all (*)
 💾 儲存權限	💾 Save permissions
 💾 儲存	💾 Save
-會員章 (全部12項)	Membership Badge (all 12 items)
 會員章-保護兒童 (必修)	Membership Badge - Safe from Harm (mandatory)
-肩章 (基礎技能23項)	Epaulettes (23 basic skills)
-活動策劃段章 (舊自立)	Activity Planning segment (old: Self-Reliance)
-社會服務段章 (舊責任)	Community Service segment (old: Responsibility)
-多元技能-範疇一 童軍技能	Diverse Skills - Area 1 Scoutcraft
-多元技能-範疇二 康樂體育	Diverse Skills - Area 2 Recreation & Sports
-多元技能-範疇三 新體驗 (個人興趣)	Diverse Skills - Area 3 New Experiences (personal interest)
-戶外探險段章	Outdoor Adventure segment
-貝登堡獎章 全部金帶	Baden-Powell Award - all Gold Bands
-活動策劃金帶/多元技能金帶	Activity Planning Gold Band / Diverse Skills Gold Band
 ➕ 新增活動履歷紀錄	➕ Add Activity Log Record
 ✏️ 編輯紀錄	✏️ Edit Record
 成員 *	Member *
@@ -348,7 +332,6 @@ CSV 解析失敗：	CSV parse failed:
 請先選中要批准的項目	Please select the items to approve first
 待審批帳號申請	Pending account applications
 目前沒有待審批的申請	No pending applications
-載入中...	Loading...
 已完成	Completed
 ✅ 其他獎章已儲存	✅ Other badges saved
 更新其他獎章失敗：	Failed to update other badges: 
@@ -370,7 +353,6 @@ USER (系統使用者)	USER (system user)
 團長	Group Scout Leader
 管理員 admin	Admin
 管理員	Admin
-= 領袖	= leader
 超管	System Admin
 ，可勾選及管理。	, can tick and manage.
 USER 總數	Total USERs
@@ -422,7 +404,6 @@ USER 總數	Total USERs
 成員 YMIS（10位數字）	Member YMIS (10 digits)
 成員姓名	Member name
 備註（可留空）	Notes (optional)
-聯絡電郵（可留空）	Contact email (optional)
 密碼（留空＝預設密碼 1234）	Password (leave empty = default password 1234)
 是否可勾選進度？	Can this user tick progress?
 備註（留空代表未填）	Notes (blank = not filled)
@@ -464,11 +445,11 @@ USER 總數	Total USERs
 不能直接剔，只能按「📝申請完成」提交日期+證據	Cannot tick directly; use "📝 Request" to submit the date + evidence
 可在「📝待批」查看自己申請是否已批	Can check whether their requests have been approved in "📝 Pending"
 可查看「⭐其他獎章」中自己的其他獎章	Can view their own Other Badges in "⭐ Other Badges"
-可使用「🖨️表格列印」自動填PT/21/PT/22後列印	Can use "🖨️ Print Forms" to auto-fill PT/21 / PT/22 and print
+可使用「🖨️表格列印」自動填PT/21／PT/22／PT/69後列印	Can use "🖨️ Print Forms" to auto-fill PT/21 / PT/22 / PT/69 and print
 可查看「📚資料庫」內綱要、保護兒童、安全指引	Can view the Training Scheme, Safe from Harm and safety guides in "📚 Library"
 成員的所有功能	All member functions
 可勾選進度（需領袖授權可勾選範圍）	Can tick progress (within the scope authorised by leaders)
-默認可考核：會員章、活動段章(細項不用打勾，勾段章即可)、其他獎章逐個勾	Default assessable scope: Membership Badge, Activities segments (no need to tick sub-items — ticking the segment suffices), Other badges individually
+默認可考核：會員章（L1）、其他獎章（OTHER）；其餘獎章可逐個勾選	Default assessable scope: Membership Badge (L1) and other badges (OTHER); others can be ticked one by one
 可在「我的進度」選其他成員查看其紀錄	Can select other members in My Progress to view their records
 可在「👥全團總覽」使用批量剔選（若被授權）	Can use batch ticking in the Group Overview (if authorised)
 可在「📝待批」批准成員的申請（若被授權）	Can approve member requests in "📝 Pending" (if authorised)
@@ -478,7 +459,7 @@ USER 總數	Total USERs
 可使用「🚀考驗營批量完成」：選成員+選項目+日期，一鍵幫全團剔，不用逐個跳轉	Can use "🚀 Camp batch completion": select members + items + date, and tick the whole Group in one click without switching pages
 可直接勾選+輸入日期，離線暫存按確認批量寫入，過程有提示	Can tick directly + enter dates; changes are staged offline and written in batch on confirmation, with prompts throughout
 可在「📝待批」批量批准/拒絕成員申請	Can approve/reject member requests in batch in "📝 Pending"
-可在「👥用戶管理」將成員改為管理委員會，並按個別成員設定可考核什麼（會員章/活動段章/其他獎章逐個勾）	Can change members to the Crew Management Committee in User Management and set each member's assessable scope (Membership Badge / Activities segments / Other badges individually)
+可在「👥用戶管理」將成員改為管理委員會，並按個別成員設定可考核範圍（獎章、段章或項目）	In User Management you can change a member to CMC and set their assessable scope (badges, segments or items)
 領袖默認全部權限，團長/管理員可更改低層級可勾選範圍	Leaders have full permissions by default; the Group Scout Leader/Admin can change lower-level tick scopes
 團長/管理員可在「👥用戶管理」授權/收回勾選權限，設定細緻權限	The Group Scout Leader/Admin can grant/revoke tick permissions and set fine-grained permissions in User Management
 團長/管理員可在「📋審批申請」審批新帳號	The Group Scout Leader/Admin can approve new accounts in the Approval Centre
@@ -497,42 +478,18 @@ USER 總數	Total USERs
 參考段章說明	Refer to the segment description
 📄 表格下載及佩戴指引 (樂行童軍支部專用)	📄 Form Downloads & Badge Wearing Guide (Rover Scout Section)
 樂行支部官方表格 (PDF)	Official Rover Section form (PDF)
-徽章佩戴指引 (2024-04-01起)	Badge Wearing Guide (from 2024-04-01)
 樂行支部官網	Rover Section official website
 樂行童軍訓練綱要 第5版 (2026)	Rover Scout Training Scheme 5th Edition (2026)
-青少年活動署最新綱要	Latest scheme from the Programme Branch
 新修訂支部訓練綱要通告 P022-26	Circular P022-26 - Revised Sectional Training Schemes
 2026.02 樂行支部通告	Rover Section circular, Feb 2026
-佩戴重點（2024新指引）：	Wearing key points (2024 new guide): 
-• 和平使者章佩戴左胸袋中央，取代會員章	• Messengers of Peace Badge worn on the centre of the left chest pocket, replacing the Membership Badge
-• 急救章統一左袖上方AYP下方	• First Aid Badge on the upper left sleeve, below the AYP badge
-• 拯溺布章佩戴左袖上方中央	• Scout Lifesaving Badge worn on the centre of the upper left sleeve
-• 世界童軍獎章最多右袖平行4枚	• Up to 4 WOSM badges in parallel on the right sleeve
-• 貝登堡獎章可終身佩戴	• The Baden-Powell Award can be worn for life
 🖨️ 樂行童軍表格自動填寫 (已更新最新官方)	🖨️ Rover Scout Form Auto-fill (updated to the latest official)
-PT/21 樂行童軍獎章、PT/22 貝登堡獎章、PT/69 考驗申請 2024最新版。	PT/21 Rover Scout Award, PT/22 Baden-Powell Award, PT/69 Assessment Application - latest 2024 versions.
 自動帶入姓名、YMIS、旅團、證書號碼、完成日期	Auto-fills name, YMIS, Group, certificate numbers and completion dates
-PT/21 需完成4項 (童軍知識、社區服務I、童軍技能I + 選修1)	PT/21 requires 4 completed items (Scouting Knowledge, Community Service I, Scoutcraft I + 1 elective)
-PT/22 需先有PT/21證書，再完成社區服務II、童軍技能II、挑戰 + 選修2	PT/22 requires the PT/21 certificate first, then Community Service II, Scoutcraft II, Challenge + 2 electives
 一鍵列印官方格式	Print the official format in one click
 📋 表格說明 (樂行專用)	📋 Form Notes (Rover Section)
-PT/69 考驗申請	PT/69 Assessment Application
 ：開始樂行/貝登堡考驗前提交計劃簡述。	: submit a summary of the plan before starting the Rover/B-P assessment.
-PT/21 樂行童軍獎章	PT/21 Rover Scout Award
 ：完成4項申請。	: apply after completing 4 items.
-PT/22 貝登堡獎章	PT/22 Baden-Powell Award
-：完成全部7項 (4必修+3選修其中2)，需區總監及地域總監推薦，每年9月15日前交總會，大會操頒發。	: complete all 7 items (4 core + 2 of 3 electives); requires recommendation by the District Commissioner and Regional Commissioner; submit to Headquarters before 15 September each year; presented at the Grand Rally.
+：完成全部7項（樂行童軍獎章4項＋餘下3項），需區總監及地域總監接見推薦，每年9月15日前交總會，大會操頒發。	: complete all 7 items (4 Rover Award items + remaining 3); requires interview and recommendation by the District Commissioner and Regional Commissioner, submitted to the Association by 15 September each year, presented at the Scout Rally.
 選擇成員：	Select member: 
-📝 產生 PT/69 考驗申請	📝 Generate PT/69 Assessment Application
-🏅 產生 PT/21 樂行獎章 (最新)	🏅 Generate PT/21 Rover Scout Award (latest)
-🏆 產生 PT/22 貝登堡獎章 (最新)	🏆 Generate PT/22 Baden-Powell Award (latest)
-(必須先完成PT/21)	(must complete PT/21 first)
-🖨️ 列印 PT/69	🖨️ Print PT/69
-🖨️ 列印 PT/21 (最新官方格式)	🖨️ Print PT/21 (latest official format)
-🖨️ 列印 PT/22 (最新)	🖨️ Print PT/22 (latest)
-📄 下載官方空白PT/69	📄 Download blank official PT/69
-📄 下載官方空白PT/21	📄 Download blank official PT/21
-📄 下載官方空白PT/22	📄 Download blank official PT/22
 男	Male
 女	Female
 姓名	Name
@@ -541,35 +498,18 @@ PT/22 貝登堡獎章	PT/22 Baden-Powell Award
 近照	Photo
 近照 x3	Photos x3
 回郵地址用正楷BLOCK LETTERS	Return address in BLOCK LETTERS
-三選一剔號	Tick one of three
-三選二	Tick two of three
 申請人簽署 Applicant	Applicant's Signature
 申請者簽署 Applicant	Applicant's Signature
-同意 Agreement 團長 RSL 批准開始考驗	Agreement - Rover Scout Leader approves starting the assessment
 旅印 Group Stamp	Group Stamp
 知會區會 Acknowledged by District	District acknowledgement
-批核 Approval 地域總部總監(樂行童軍) RHQC(RS)	Approval - Regional Headquarters Commissioner (Rover Scouts) RHQC(RS)
 地域印 Regional Stamp	Regional Stamp
-備註：個人資料用途自願，不足無法處理。PT/69 官方最新 2018版，開始考驗前提交。	Note: provision of personal data is voluntary; incomplete data cannot be processed. Official PT/69 2018 version; submit before commencing the assessment.
-文件：紀錄冊個人資料、有效日期、貝登堡頁次及證書影印本，經地域交總會。PT/22 2022最新版。	Documents: record book personal data, validity dates, Baden-Powell page numbers and certificate copies, submitted through the Region to Headquarters. PT/22 2022 latest version.
 選修	Elective
-必修	Core
-個人發展 Personal Development	Personal Development
-個人興趣 Personal Pursuits	Personal Pursuits
-認識世界 Horizons Broadening	Horizons Broadening
-挑戰項目 Challenge	Challenge
-社區服務(I) Community Service I	Community Service (I)
-社區服務(II) Community Service II	Community Service (II)
-童軍技能(I) Scoutcraft I	Scoutcraft (I)
-童軍技能(II) Scoutcraft II	Scoutcraft (II)
-童軍知識 Scouting Knowledge	Scouting Knowledge
 由 From	From
 至 To	To
 項目 Items	Items
 計劃簡述 Summary of Planning	Summary of Planning
 活動簡述 Summary	Summary
 完成日期 Date	Completion Date
-審核員 Assessor	Assessor
 ✅ 已下載範本 CSV（含 4 個範例）	✅ Template CSV downloaded (with 4 examples)
 📧 完成後提交	📧 Submit when done
 📧 一鍵提交接入申請給 roverbadge 管理員	📧 Submit the integration request to the roverbadge admin in one click
@@ -663,7 +603,6 @@ DEMO 範例資料	DEMO sample data
 資料庫看綱要及安全指引	Library: scheme and safety guides
 可選成員查看紀錄	Select members to view records
 全團批量剔（若授權）	Whole-Group batch ticking (if authorised)
-進度性獎章 (段章層級)	Progressive badges (segment level)
 ✅ 已儲存	✅ Saved 
 已儲存	Saved 
  筆活動履歷	 activity log entries
@@ -674,16 +613,12 @@ DEMO 範例資料	DEMO sample data
 例如 6	e.g. 6
 地點、主辦單位、內容摘要……（選填）	Venue, organiser, content summary... (optional)
 類型 *	Type *
-類型	Type
 例如：2026-05-01 區際露營相片3張，團長可參閱共享相簿...	e.g. 3 photos from the inter-district camp on 2026-05-01; the Group Scout Leader can view the shared album...
 ⚠️ 此旅團後端尚未升級到	⚠️ This Group's backend has not been upgraded to 
 ，暫未能使用活動履歷。進度、審批、用戶管理等現有功能完全不受影響。	; the Activity Log is unavailable. Existing features (progress, approvals, user management) are not affected.
 旅團後端未升級 v8.1：請通知管理員更新 Code.gs 並執行 initializeSheets()	Group backend not upgraded to v8.1: ask the admin to update Code.gs and run initializeSheets()
- 的密碼？	?
 工作：	Work: 
 角色已更新	Role updated
-，可勾選及管理。	, can tick and manage.
-進度性獎章 (段章層級)	Progressive badges (segment level)
 方法一（最推薦）：YMIS 報表匯入	Method 1 (most recommended): YMIS report import
 在 YMIS 匯出「自訂報表」PDF（欄位次序：	Export a "Custom Report" PDF from YMIS (column order: 
 童軍成員編號 → 中文姓名 → 電郵地址	Scout Member No. → Chinese Name → Email Address
@@ -725,7 +660,6 @@ PDF 密碼（如有）	PDF password (if any)
 （共 	 (total 
  筆，已選 	, selected 
  筆）	)
-團員 member	Member
 管委 exec_committee	CMC exec_committee
 請至少勾選一位有效成員（YMIS 須10位數字且有姓名）	Select at least one valid member (10-digit YMIS with a name)
 此 PDF 有密碼保護，請輸入密碼：	This PDF is password-protected. Enter the password:
@@ -777,7 +711,6 @@ assets/ymis-parse.js 未載入	assets/ymis-parse.js not loaded
 已送交審批	Submitted for approval
 ），待領袖確認	), awaiting leader approval
 ，可按上方「➕ 申報活動」自行申報	, use "➕ Declare Activity" above to declare
-，可按上方「➕ 新增紀錄」補登	, use "➕ Add Record" above
 只有領袖或成員可以申報活動履歷	Only leaders or members can declare activity logs
 此紀錄已有待批的修改申請	This record already has a pending modification request
 只能申報自己的活動履歷	You can only declare your own activity logs
@@ -798,7 +731,7 @@ assets/ymis-parse.js 未載入	assets/ymis-parse.js not loaded
 只能看自己進度	Can only view own progress
 不能直接剔，按📝申請	Cannot tick directly; use 📝 Request
 成員全部功能	All member functions
-默認：會員章+活動段章(細項不用)+其他逐個勾	Default: Membership Badge + Activities segments (no need to tick each sub-item) + Other Badges individually
+默認：會員章（L1）＋其他獎章（OTHER）	Default: Membership Badge (L1) + other badges (OTHER)
 全部功能	All features
 我的進度選任何成員看紀錄	My Progress: select any member to see records
 待批批量批准	Approve requests in batch in Pending
@@ -807,7 +740,7 @@ assets/ymis-parse.js 未載入	assets/ymis-parse.js not loaded
 審批新帳號	Approve new accounts
 ⚙️ 設定可勾選權限 -	⚙️ Set assessable permissions -
 領袖默認全部 (*)，團長/管理員可更改。管委可按個別成員勾選可考核範圍。	Leaders default to all (*); the Group Scout Leader/Admin can change it. CMC members can have their assessable scope ticked individually.
-成員改為管理委員會後，可設定其可考核：會員章、活動段章(細項不用)、其他獎章逐個勾。	After changing a member to the Crew Management Committee, you can set what they can assess: Membership Badge, Activities segments (no need to tick each sub-item), and Other Badges individually.
+成員改為管理委員會後，可設定其可考核範圍（獎章、段章或項目）。	After a member becomes a CMC member, set their assessable scope (badges, segments or items).
 📝 申請完成 -	📝 Request completion -
 若成員為協助訓練班（如擔任助教、導師、工作人員等），請直接選擇上方「	If a member is assisting a training course (e.g. as assistant, instructor, staff, etc.), please choose above: "
 」填寫。	" to fill in.
@@ -832,16 +765,12 @@ assets/ymis-parse.js 未載入	assets/ymis-parse.js not loaded
 YMIS 匯出的 PDF 多數帶密碼保護。本 APP 支援直接輸入密碼解鎖讀取；若仍讀不到，可用 Chrome／Edge 開啟 PDF（輸入密碼）→ 列印 → 目的地選「另存為 PDF」，儲存出來的新檔案就沒有密碼。詳見	Most PDFs exported from YMIS are password-protected. This APP supports unlocking by entering the password directly; if it still cannot be read, open the PDF in Chrome/Edge (enter the password) → Print → destination "Save as PDF", and the saved new file has no password. See
 YMIS 匯出教學	YMIS export guide
 ）轉 JSON 並直接寫入旅團主資料表。詳見	) to JSON and write directly into the Group's main data sheet. See
-服務員	Server
 統籌	Coordinator
 助教	Teaching assistant
 導師	Instructor
 班領導人	Course leader
 工作人員	Staff
 領隊	Team leader
-參加者	Participant
-籌委	Organising committee
-學員	Trainee
 服務紀錄	Service Record
 活動紀錄	Activity Record
 訓練班紀錄	Training Course Record
@@ -908,8 +837,9 @@ YMIS 或登記電郵	YMIS or registered email
 不支援的請求方式	Unsupported request method
 未能連接驗證服務，請重試或聯絡管理員	Could not reach the verification service. Please retry or contact the admin
 
-最新：v5.1	Latest: v5.1
-YMIS PDF 批量開戶、🐛💬 回報 · 意見按鈕（Scout Admin 統一回報）、非官方聲明、手機頂部按鈕排列整齊化、全 APP 版號統一 v5.1	YMIS PDF bulk onboarding, 🐛💬 Report · Feedback buttons (Scout Admin unified reporting), unofficial notice, tidier mobile top buttons, app-wide version aligned to v5.1
+最新：v5.2	Latest: v5.2
+v5.2：第五版綱要核對（L2 簽發人、L4 時限、L3 段章獲頒狀態、PT/75 延長表格連結）；學制（新制／舊制／舊制過渡新制）；後端強制 allowed_badges；撤銷「可勾選」全面生效	v5.2: 5th-edition scheme check (L2 signatory, L4 timeframe, L3 award status, PT/75 extension form link); per-member scheme (new / old / transition); server-enforced allowed_badges; revoking "can tick" now applies to all ticking, approvals and edits
+v5.1 更新：YMIS PDF 批量開戶、🐛💬 回報 · 意見按鈕（Scout Admin 統一回報）、非官方聲明、手機頂部按鈕排列整齊化、全 APP 版號統一 v5.1	v5.1 update: YMIS PDF bulk onboarding, 🐛💬 Report · Feedback buttons (Scout Admin unified reporting), unofficial notice, tidier mobile top buttons, app-wide version aligned to v5.1
 🐛💬 回報 · 意見	🐛💬 Report · Feedback
 問題回報 / 意見回饋（經 Scout Admin 統一回收，可匿名）	Report an issue / send feedback (via Scout Admin, anonymous welcome)
 ⚠️ 非官方聲明：本系統為獨立開發的非官方工具，並非香港童軍總會官方產品，與總會並無隸屬或贊助關係。	⚠️ Unofficial notice: this system is an independently developed unofficial tool. It is NOT an official product of the Scout Association of Hong Kong and has no affiliation with or sponsorship from the Association.
@@ -992,3 +922,22 @@ initializeSheets 跑完會自動建立預設管理員。登記完成後首頁揀
 確認更改	Confirm Change
 兩次輸入的新密碼不一致	The two passwords entered do not match
 更改中...	Changing...
+🖨️ 樂行童軍表格（第五版新制）	Rover Scout Forms (5th Edition, new scheme)
+依 HKSA 新制官方表格排版；項目與簽署程序取自 data/items.json。	Laid out per the HKSA new-scheme forms; items and endorsement stages come from data/items.json.
+自動帶入姓名、YMIS、旅團及已完成項目的日期	Auto-fill name, YMIS, Group and completion dates
+PT/21：7個範疇中完成4個	PT/21: complete 4 of the 7 components
+PT/22：7項中挑選3項，並填寫樂行童軍獎章證書編號（急救證書編號必填）	PT/22: choose 3 of the 7 components and enter the Rover Scout Award certificate number (first aid certificate number required)
+PT/69：開始考驗前提交，不預填日期	PT/69: submit before starting; dates are not pre-filled
+📋 舊制表格	📋 Legacy forms
+第四版（舊制）表格只提供官方連結，本系統不會產生舊制表格，亦不會以舊制項目計算完成度。	Legacy (4th Edition) forms are provided as official links only. This system does not generate them and does not count legacy items towards completion.
+🖨️ 列印此表格	🖨️ Print this form
+課程結構載入失敗，請重新整理	Failed to load the course structure; please refresh
+13項 • 含必修「保護兒童」	13 items • mandatory: Safe from Harm
+1項 • 啟導	1 item • Introductory course
+7段考驗 • 7項中完成4項	7 segments • complete 4 of 7
+7項全部完成	Complete all 7
+舊版紀錄／不計完成度	Legacy record / not counted
+全部（所有現行獎章與項目）	All (all current badges and items)
+其他獎章 全部（OT-*）	All other badges (OT-*)
+審核員 Assessor	Assessor
+徽章佩戴指引	Badge Wearing Guide

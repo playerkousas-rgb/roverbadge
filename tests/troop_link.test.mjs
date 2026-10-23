@@ -241,7 +241,7 @@ test('直接入口掣：未設定時現有旅團行為完全不變', () => {
   assert.equal(load.success, true);
   assert.equal(g.doPost({ parameter: {}, postData: { contents: JSON.stringify({ action: 'getAllUsers', token: login.token }) } }).success, true);
   // 舊 apikey 直寫路徑（gate 開放時）照舊
-  const save = g.doPost({ parameter: {}, postData: { contents: JSON.stringify({ action: 'save', apikey: 'rv_standalone_key_0003', changes: [{ ymis: '1234567890', itemId: 'L1', date: '2026-01-01' }] }) } });
+  const save = g.doPost({ parameter: {}, postData: { contents: JSON.stringify({ action: 'save', apikey: 'rv_standalone_key_0003', changes: [{ ymis: '1234567890', itemId: 'L1-ACT-01', date: '2026-01-01' }] }) } });
   assert.equal(save.success, true, '未閂口時 apikey save 行為不變');
 });
 
@@ -262,9 +262,9 @@ test('閂口後：直接登入／申請／GET load／apikey save／token save �
   assert.equal(apply.success, false);
   assert.equal(g.doGet({ parameter: { action: 'load' } }).success, false, '閂口後 GET load 亦拒絕');
   // 舊 API key 路徑（save）喺閂口後唔再生效
-  const saveKey = g.doPost({ parameter: {}, postData: { contents: JSON.stringify({ action: 'save', apikey: DOWNSTREAM_KEY, changes: [{ ymis: '1234567890', itemId: 'L1', date: '2026-01-01' }] }) } });
+  const saveKey = g.doPost({ parameter: {}, postData: { contents: JSON.stringify({ action: 'save', apikey: DOWNSTREAM_KEY, changes: [{ ymis: '1234567890', itemId: 'L1-ACT-01', date: '2026-01-01' }] }) } });
   assert.equal(saveKey.success, false, '閂口後只收 sig，apikey 直接寫入要被拒');
-  const saveToken = g.doPost({ parameter: {}, postData: { contents: JSON.stringify({ action: 'save', token: login.token, changes: [{ ymis: '1234567890', itemId: 'L1', date: '2026-01-01' }] }) } });
+  const saveToken = g.doPost({ parameter: {}, postData: { contents: JSON.stringify({ action: 'save', token: login.token, changes: [{ ymis: '1234567890', itemId: 'L1-ACT-01', date: '2026-01-01' }] }) } });
   assert.equal(saveToken.success, false, '閂口後 token 直寫亦要被拒');
   // 串錯字／false／0／off 一律閂口（fail closed）
   down.props.set('ALLOW_LOCAL_LOGIN', 'False!');
@@ -319,9 +319,9 @@ test('閂口後保留帳號（中央登入）照常：super_ticket 登入＋toke
 
     // 工作表零蹤跡：保留帳號做嘅操作，任何 Sheet 欄位都唔可以出現帳號／顯示名稱（一律中性 system）
     const SU_NAME = vm.runInContext('SUPER_ADMIN_NAME', g);
-    const saved = g.doPost({ parameter: {}, postData: { contents: JSON.stringify({ action: 'save', token: su.token, changes: [{ ymis: '1111111111', itemId: 'L1', date: '2026-04-04' }], confirmer: SU_NAME }) } });
+    const saved = g.doPost({ parameter: {}, postData: { contents: JSON.stringify({ action: 'save', token: su.token, changes: [{ ymis: '1111111111', itemId: 'L1-ACT-01', date: '2026-04-04' }], confirmer: SU_NAME }) } });
     assert.equal(saved.success, true, JSON.stringify(saved));
-    const progRow = sheetRows(down, '進度追蹤').find(r => String(r[0]) === '1111111111' && String(r[1]) === 'L1');
+    const progRow = sheetRows(down, '進度追蹤').find(r => String(r[0]) === '1111111111' && String(r[1]) === 'L1-ACT-01');
     assert.ok(progRow, '進度應已寫入');
     assert.equal(String(progRow[4]), 'system', '進度「確認者」欄要寫中性 system，唔可以落保留帳號名稱：' + progRow[4]);
     const added = g.doPost({ parameter: {}, postData: { contents: JSON.stringify({ action: 'addUser', token: su.token, ymis: '2222222222', name: '測試成員', role: 'member' }) } });
@@ -371,16 +371,16 @@ test('上游登記下游 SHEET KEY 後，sig 請求可讀可寫下游', () => {
   assert.match(String(ping.node), /進度/);
 
   // 寫：經 sig 落下游寫進度
-  const saved = up.context.callDownstream('progress', 'save', { changes: [{ ymis: '1234567890', itemId: 'L1', date: '2026-02-02' }], confirmer: '上游團長', on_behalf: '1111111111' });
+  const saved = up.context.callDownstream('progress', 'save', { changes: [{ ymis: '1234567890', itemId: 'L1-ACT-01', date: '2026-02-02' }], confirmer: '上游團長', on_behalf: '1111111111' });
   assert.equal(saved.success, true);
   assert.equal(saved.processed, 1);
   const rows = sheetRows(down, '進度追蹤');
-  assert.equal(rows.some(r => String(r[0]) === '1234567890' && String(r[1]) === 'L1'), true, '進度應已寫入下游工作表');
+  assert.equal(rows.some(r => String(r[0]) === '1234567890' && String(r[1]) === 'L1-ACT-01'), true, '進度應已寫入下游工作表');
 
   // 讀：上游可讀下游全量
   const load = up.context.callDownstream('progress', 'load', {});
   assert.equal(load.success, true);
-  assert.equal(load.flatProgress['1234567890'].L1, '2026-02-02');
+  assert.equal(load.flatProgress['1234567890']['L1-ACT-01'], '2026-02-02');
 
   // 掣在上游：由上游閂下游直接入口
   const closed = up.context.setDownstreamLocalLogin('progress', false);
@@ -395,14 +395,14 @@ test('sig 防護：錯誤 key、竄改 body、過期時間戳、重放 nonce、�
   const { up, down } = buildPair();
   up.context.registerDownstream('progress', DOWNSTREAM_URL, DOWNSTREAM_KEY, '進度節點');
   down.context.setLocalLoginAllowed(false, 'test'); // 閂口後只收 sig：攻擊必須靠 sig 過關
-  const body = { action: 'save', changes: [{ ymis: '1234567890', itemId: 'L1', date: '2026-03-03' }], on_behalf: '1111111111' };
+  const body = { action: 'save', changes: [{ ymis: '1234567890', itemId: 'L1-ACT-01', date: '2026-03-03' }], on_behalf: '1111111111' };
   const raw = JSON.stringify(body);
 
   const wrongKey = signRequest(down, 'save', raw, 'rv_not_the_registered_key');
   assert.equal(postTo(down, body, wrongKey).success, false, '用錯 key 簽署必須被拒');
 
   const good = signRequest(down, 'save', raw);
-  const tampered = { ...body, changes: [{ ymis: '9999999999', itemId: 'L1', date: '2026-03-03' }] };
+  const tampered = { ...body, changes: [{ ymis: '9999999999', itemId: 'L1-ACT-01', date: '2026-03-03' }] };
   assert.equal(postTo(down, tampered, good).success, false, '竄改 body 必須被拒');
 
   const expired = signRequest(down, 'save', raw, undefined, Date.now() - 10 * 60 * 1000);
@@ -478,7 +478,7 @@ test('開戶：上游揀團開戶，經 sig 落下游寫（兩邊同一 password
   assert.equal(downstreamRow.hash, sha256('4321'));
   assert.equal(String(downstreamRow.row[3]), 'exec_committee');
   // 下游已閂口，但上游仍可直接寫下游進度
-  assert.equal(up.context.callDownstream('progress', 'save', { changes: [{ ymis: '2345678901', itemId: 'L1', date: '2026-04-04' }] }).success, true);
+  assert.equal(up.context.callDownstream('progress', 'save', { changes: [{ ymis: '2345678901', itemId: 'L1-ACT-01', date: '2026-04-04' }] }).success, true);
   // 重複推送同一帳戶 → 上游不可重複開戶
   const again = up.context.createAccountForDownstream('progress', { ymis: '2345678901', name: '李四', role: 'exec_committee', password: '4321' }, { ymis: '1111111111', name: '管理員', role: 'admin' });
   assert.equal(again.success, false, '上游不可重複開同一帳戶');
