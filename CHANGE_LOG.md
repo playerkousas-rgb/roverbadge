@@ -22,6 +22,7 @@
 - **樂行配套核對（第二輪）**：依綱要逐章比對，修正 L4 時限文字（平均於 12 至 18 個月內完成）、L2 簽發人（補助理總部總監）；進度頁 L3 獎章顯示「7 段中 4 段」達標狀態（`awardRule`，`RoverScope.badgeAwardStatus`）；官方連結新增相關表格 PT/75（延長考取期限）。詳見 `docs/OTHER_SECTION_RESIDUE_AUDIT_2026-10.md` §7。
 - **測試**：新增 `tests/allowed-badges.test.mjs`、`tests/catalog-sync.test.mjs`、`tests/proxy-actions.test.mjs`、`tests/scheme-dom-test.mjs`（jsdom，可選）；`troop_link`／`security` 夾具改用真實項目 ID `L1-ACT-01`（後端現在驗證項目 ID）。`npm run check` 73/0；`npm test` 結束碼 0。
 - **安全（APIKEY）**：移除 GAS addUser／addMember 的「APIKEY 即管理員」後備（原為 const 錯誤而失敗關閉，批量開戶方法 A 同時壞掉）。現行規則：無 token＋有效 APIKEY ＝ 系統操作；帶任何 token 以 token 判斷。見稽核 §2 第 39 項、`tests/apikey-admin.test.mjs`。
+- **第八輪**：依用戶決定，移除資料頁「佩戴重點」整段（中英文，字典已同步）。
 - **第七輪（佩戴重點核對）**：佩戴重點標籤由「2024新指引」改為「通告 13/2023」；刪除查不到來源的「貝登堡獎章可終身佩戴」（中英文同步，字典已同步）。
 - **第五輪（上傳 PDF 全文核對）**：以使用者上傳的綱要中英文（第 1–64 頁）與 PT/21（4/2019）、PT/22、PT/69（1/2024）重新核對。修正：PT/21 審核員欄（撤回第四輪的錯誤）、推薦欄與各階段標題；PT/69 階段標題與預印選項；15 項其他獎章的名稱、說明、佩戴規則、簽發及購買資料；L2 啟導班對象與內容；L3 樂行童軍獎章簽發流程。兩項綱要內部不一致留待決定（見稽核 §4）。
 - **舊制表格逐字核對**：`oldForms` 的 PT/21、PT/22、PT/69 舊制文字依官方 PDF 修正（推薦欄、欄位名稱、PT/69 提示）。中英文資料檔同步。見稽核 §4。
