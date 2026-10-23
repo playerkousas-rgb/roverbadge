@@ -22,6 +22,7 @@
 - **樂行配套核對（第二輪）**：依綱要逐章比對，修正 L4 時限文字（平均於 12 至 18 個月內完成）、L2 簽發人（補助理總部總監）；進度頁 L3 獎章顯示「7 段中 4 段」達標狀態（`awardRule`，`RoverScope.badgeAwardStatus`）；官方連結新增相關表格 PT/75（延長考取期限）。詳見 `docs/OTHER_SECTION_RESIDUE_AUDIT_2026-10.md` §7。
 - **測試**：新增 `tests/allowed-badges.test.mjs`、`tests/catalog-sync.test.mjs`、`tests/proxy-actions.test.mjs`、`tests/scheme-dom-test.mjs`（jsdom，可選）；`troop_link`／`security` 夾具改用真實項目 ID `L1-ACT-01`（後端現在驗證項目 ID）。`npm run check` 73/0；`npm test` 結束碼 0。
 - **安全（APIKEY）**：移除 GAS addUser／addMember 的「APIKEY 即管理員」後備（原為 const 錯誤而失敗關閉，批量開戶方法 A 同時壞掉）。現行規則：無 token＋有效 APIKEY ＝ 系統操作；帶任何 token 以 token 判斷。見稽核 §2 第 39 項、`tests/apikey-admin.test.mjs`。
+- **舊制表格逐字核對**：`oldForms` 的 PT/21、PT/22、PT/69 舊制文字依官方 PDF 修正（推薦欄、欄位名稱、PT/69 提示）。中英文資料檔同步。見稽核 §4。
 - **版號**：用戶選擇 v5.2（遞增）。標題、頁首、副標、頁尾、「最新」卡片、i18n 字典、`items.json`／`items_en.json` meta、`package.json`／`package-lock.json` 統一為 5.2；v5.1 更新說明保留為歷史段。
 - **可勾選（`can_tick`）**：團長決定撤銷後不可勾選、審批或直接編輯（即使角色為領袖）。後端 `canTickUser_` 統一檢查（進度 save、其他獎章、審批、日誌、待審清單、學制為他人）；前端 `canTickNow()` 統一判斷。撤銷後仍可查看。見稽核文件 §2 第 38 項。
 

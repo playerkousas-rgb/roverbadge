@@ -1186,9 +1186,9 @@
       },
       "columns": [
         "Items",
-        "Summary",
-        "Date",
-        "Assessor",
+        "Summary of Activities",
+        "Date Completed",
+        "Name of Assessor",
         "Remarks"
       ],
       "stages": [
@@ -1198,8 +1198,8 @@
           "stamp": "Group Stamp"
         },
         {
-          "title": "District",
-          "signer": "District",
+          "title": "District (Recommendation)",
+          "signer": "ADC (RS) / DRSL / District Assigned Person",
           "stamp": "District Stamp"
         },
         {
@@ -1272,9 +1272,9 @@
       },
       "columns": [
         "Items",
-        "Summary",
-        "Date",
-        "Assessor",
+        "Summary of Activities",
+        "Date Completed",
+        "Name of Assessor",
         "Remarks"
       ],
       "stages": [
@@ -1362,8 +1362,7 @@
           "items": [
             "S4-AWARD-ELECT-02"
           ],
-          "label": "Personal Pursuits",
-          "hint": "Plan once; applies to both awards"
+          "label": "Personal Pursuits"
         },
         {
           "segment": "S4-AWARD-ELECT",
@@ -1409,7 +1408,7 @@
         },
         {
           "title": "District (RS)",
-          "signer": "ADC (RS) / DRSL / District Assigned Person",
+          "signer": "ADC (RS) / DRSL / District Assigned Person (Countersign)",
           "stamp": "District Stamp"
         },
         {

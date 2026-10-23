@@ -1169,9 +1169,9 @@
       },
       "columns": [
         "項目 Items",
-        "活動簡述 Summary",
-        "完成日期 Date",
-        "審核員 Assessor",
+        "活動簡述 Summary of Activities",
+        "完成日期 Date Completed",
+        "審核員姓名 Name of Assessor",
         "備註 Remarks"
       ],
       "stages": [
@@ -1181,8 +1181,8 @@
           "stamp": "旅印"
         },
         {
-          "title": "區會",
-          "signer": "區會",
+          "title": "區會（推薦）",
+          "signer": "助理區總監（樂行童軍）／樂行童軍區長／區指定人士",
           "stamp": "區印"
         },
         {
@@ -1255,9 +1255,9 @@
       },
       "columns": [
         "項目 Items",
-        "活動簡述 Summary",
-        "完成日期 Date",
-        "審核員 Assessor",
+        "活動簡述 Summary of Activities",
+        "完成日期 Date Completed",
+        "審核員姓名 Name of Assessor",
         "備註 Remarks"
       ],
       "stages": [
@@ -1345,8 +1345,7 @@
           "items": [
             "S4-AWARD-ELECT-02"
           ],
-          "label": "個人興趣 Personal Pursuits",
-          "hint": "計劃一次，適用於兩個獎章"
+          "label": "個人興趣 Personal Pursuits"
         },
         {
           "segment": "S4-AWARD-ELECT",
@@ -1392,7 +1391,7 @@
         },
         {
           "title": "區會（樂行）",
-          "signer": "助理區總監（樂行童軍）／區指定人士 ADC(RS)/DRSL",
+          "signer": "助理區總監（樂行童軍）／樂行童軍區長／區指定人士（副署）",
           "stamp": "區印"
         },
         {
