@@ -71,7 +71,7 @@ function safeSheetText(v,maxLen){
 //   - 邊個支部系統想用本節點（Rover），就由「嗰個支部系統自己」將本節點的
 //     GAS /exec URL（B）+ SHEET KEY（D）登記入佢自己 Sheet 的 Script Properties：
 //     DOWNSTREAM_<id>_URL / DOWNSTREAM_<id>_KEY（有地域有鎖匙先入到）；
-//     登記後上游可經 sig 讀寫下游（進了上游就等於進了下游）。掛錯（如掛去深資），
+//     登記後上游可經 sig 讀寫下游（進了上游就等於進了下游）。掛錯（如掛去其他支部），
 //     對方一測 sig／一睇結構就會發現，會改返。
 //   - 本節點 Script Properties 的 ALLOW_LOCAL_LOGIN 係「直接入口」掣：
 //     未設定＝開啟（現有旅團零影響）；任何唔係 1/true/yes/on/open 的值
@@ -463,7 +463,7 @@ function upsertUser(raw, actor) {
       setCol(9, now());
       setCol(12, status);
       if (allowed !== '') setCol(13, allowed);
-      else if (!String(data[row - 1][12] || '') && sheet.getLastColumn() >= 13) setCol(13, role === 'member' ? '' : (role === 'exec_committee' ? 'L1,活動段章,OTHER' : '*'));
+      else if (!String(data[row - 1][12] || '') && sheet.getLastColumn() >= 13) setCol(13, role === 'member' ? '' : (role === 'exec_committee' ? 'L1,OTHER' : '*'));
       setCol(FORCE_CHANGE_COL, force);
       syncMemberRow_(ymis, name, branch, email, status);
       writeAudit(actor, 'link_upsert_update', ymis, '上游／匯入更新帳戶' + (hash ? '（直插 hash）' : '（保留原密碼）'));
@@ -471,7 +471,7 @@ function upsertUser(raw, actor) {
     }
     const nowStr = now();
     const canTickNew = raw.can_tick === true || String(raw.can_tick).toUpperCase() === 'TRUE';
-    const defAllowed = allowed !== '' ? allowed : (role === 'member' ? '' : (role === 'exec_committee' ? 'L1,活動段章,OTHER' : '*'));
+    const defAllowed = allowed !== '' ? allowed : (role === 'member' ? '' : (role === 'exec_committee' ? 'L1,OTHER' : '*'));
     sheet.appendRow([ymis, name, email, role, hash, branch, canTickNew, sheetActor(actor), nowStr, String(raw.created_at || '') || nowStr, String(raw.last_login || ''), status, defAllowed, force]);
     syncMemberRow_(ymis, name, branch, email, status);
     writeAudit(actor, 'link_upsert_create', ymis, '上游／匯入新增帳戶（直插 hash，保留舊密碼）');
@@ -1308,7 +1308,7 @@ function handleReviewApplication(appId,decision,note,manager,tempPassword){
   if(appEmail && emailTakenAnyStatus_(appEmail,'')) return jsonResponse({success:false,error:'此 Email 已有帳號紀錄（可能已開戶或已停用），請先處理現有帳號再審批'});
   const password=DEFAULT_PASS;
   const isLeaderFinal=(finalRole!=='member');
-  const allowedBadges = finalRole==='member' ? '' : (finalRole==='exec_committee' ? 'L1,活動段章,OTHER' : '*');
+  const allowedBadges = finalRole==='member' ? '' : (finalRole==='exec_committee' ? 'L1,OTHER' : '*');
   const uSheet=getSheet().getSheetByName('Users');
   if(!uSheet) return jsonResponse({success:false,error:'找不到 Users 工作表'});
   ensureForceChangeCol(uSheet);
@@ -1349,11 +1349,11 @@ function handleUpdateUserRole(targetYmis,newRole,canTick,managerYmis, allowedBad
         if(allowedBadges!==undefined && allowedBadges!==null){
           sheet.getRange(i+1,13).setValue(allowedBadges);
         } else {
-          // 默認：領袖全部 (*)，成員無，執委默認 L1, L3-ACT, OTHER部分
+          // 默認：領袖全部 (*)，成員無，執委默認 L1,OTHER（與 data/items.json permissionDefaults 一致）
           if(!data[i][12]){
             let def='*';
             if(newRole==='member') def='';
-            else if(newRole==='exec_committee') def='L1,L3-ACT,OTHER';
+            else if(newRole==='exec_committee') def='L1,OTHER';
             else def='*';
             sheet.getRange(i+1,13).setValue(def);
           }
@@ -1613,7 +1613,7 @@ function addUser_(body,mgr){
     const nowStr=now();
     const usedDefault=!password || password===DEFAULT_PASS;
     const pwdHash = hashPassword(password||DEFAULT_PASS);
-    const allowedBadges = role==='member' ? '' : (role==='exec_committee' ? 'L1,活動段章,OTHER' : '*');
+    const allowedBadges = role==='member' ? '' : (role==='exec_committee' ? 'L1,OTHER' : '*');
     uSheet.appendRow([
       ymis,
       name,

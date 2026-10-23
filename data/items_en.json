@@ -2,7 +2,7 @@
   "meta": {
     "version": "5.0 Rover (EN)",
     "base": "Rover Scout Training Scheme, 5th Edition (February 2026) - English version + Safe from Harm (from 1 July 2025)",
-    "updated": "2026-07-10 Rover v1.0 (EN)"
+    "updated": "2026-10-23 Full residue audit (see docs/OTHER_SECTION_RESIDUE_AUDIT_2026-10.md)"
   },
   "badges": [
     {
@@ -23,8 +23,7 @@
               "id": "L1-ACT-01",
               "name": "Take part in the Crew activities for at least 3 times. One of which should be an activity organised by the Crew or the Group and one of which should be an outdoor or sea activity.",
               "detail": "Activities organised by the Crew or the Group include variety show, joint-group activity, open day etc. Outdoor activities include trip, camping, campfire, outdoor Crew meeting etc. Sea activities include swimming, rowing, canoeing training or activities etc.",
-              "assessment": "Attendance record",
-              "tip": "Complete within the first month"
+              "assessment": "Attendance record"
             }
           ]
         },
@@ -146,8 +145,7 @@
               "id": "L2-INTRO-01",
               "name": "Complete a Rover Scout Introductory Course recognised by the Association Headquarters / Regions / District, or complete equivalent items.",
               "detail": "A Rover Scout Introductory Course completed before becoming a Rover Scout can fulfil this requirement. Please refer to the Appendix \"Overview of the Rover Scout Introductory Courses\" for equivalent items. Rover Scouts who have completed the Rover Scout Link Badge upon being invested into the Rover Scout Section are regarded as having completed the Epaulettes assessment.",
-              "assessment": "Certificate",
-              "tip": "New members should complete within 6 months"
+              "assessment": "Certificate"
             }
           ]
         }
@@ -179,7 +177,9 @@
               "detail": "Rover Scouts can wear the Gilwell Woggle after completing the Wood Badge Framework Stage 2 or equivalent items.",
               "tip": "Keep service records"
             }
-          ]
+          ],
+          "formLabel": "Dedication 準領袖培訓",
+          "completion": "all"
         },
         {
           "code": "L3-SCOUT",
@@ -201,7 +201,9 @@
               "name": "Complete the Chinese Foot Drill Workshop and one of the following courses: (i) Basic Etiquette and Foot Drill Course; or (ii) Foot Drill Basic Course.",
               "detail": "If a Rover Scout has already completed the \"Scout Foot Drill Basic Course\", it is regarded as having fulfilled the Foot Drill Basic Course listed in item (ii)."
             }
-          ]
+          ],
+          "formLabel": "Scoutcraft 童軍技能",
+          "completion": "all"
         },
         {
           "code": "L3-SERVICE",
@@ -224,7 +226,9 @@
               "detail": "Organise and complete a period of voluntary service of at least 14 days in group. This item must be completed after the commencement of this assessment.",
               "tip": "Discovery + Voluntary Service are the two parts of the Scouts of the World Award"
             }
-          ]
+          ],
+          "formLabel": "Volunteerism 服務",
+          "completion": "all"
         },
         {
           "code": "L3-INTL",
@@ -242,7 +246,10 @@
               "detail": "Examples: World Scout Jamboree, World Scout Moot, World Scout Conference, APR Scout Conference, Scout Group Exchange Tour, international or Asia youth exchange programme, or an exchange tour in the Belt and Road Initiative Countries. The location is recommended to be outside Hong Kong and the activity must comprise international exchange; activities that are purely for tourism purposes cannot be regarded as an international exchange. The method of sharing can be formulated after discussion with the corresponding Headquarters Commissioner (Rover Scouts).",
               "tip": "Recommended outside Hong Kong; must include international exchange elements"
             }
-          ]
+          ],
+          "formLabel": "Global Vision 國際視野",
+          "completion": "one",
+          "formSummary": "☐ A: Daily Interactions　☐ B: International Exchange"
         },
         {
           "code": "L3-INT",
@@ -255,7 +262,9 @@
               "detail": "Examples: Drone Piloting, Rope Access/Rescue Techniques, Generative AI Application, Robotics application, eSports, Motorsport, Dirt bike, Astrology, Cosmetics, Opera, Amateur Radio, 3D printing, Card games, Coffee Brewing or foaming, Wine Tasting or Cocktail Mixing, research on culture/economics/history/science, etc.",
               "tip": "52 hours + evidence of progress"
             }
-          ]
+          ],
+          "formLabel": "Tenacity 興趣及技能",
+          "completion": "all"
         },
         {
           "code": "L3-HEALTH",
@@ -272,7 +281,9 @@
               "name": "Learn or participate in one physical activity, further developing or participating in it for no less than 52 hours within no less than 12 months, demonstrating sustained progress.",
               "detail": "Examples: Inline skating, Artistic Cycling, Skateboarding, Street dance, Surfing, Skiing, Ice-skating, Rock climbing, Bodybuilding, Lifesaving (e.g. beach rescue, canoe rescue, rescue diver), etc."
             }
-          ]
+          ],
+          "formLabel": "Mental and Physical Wellness 身心健康",
+          "completion": "all"
         },
         {
           "code": "L3-CHALLENGE",
@@ -291,7 +302,10 @@
               "detail": "Examples: Cross Harbour Race, triathlon, marathon, cycling expedition journey, overseas expedition journey, HKAYP Gold Award Adventurous Journey, Scout Wings, Scout Canopy Wings, completing 1 challenging charity activity e.g. Oxfam Trailwalker, etc. If a member has never completed a challenge of the same content or a higher level than the Wilderness Challenge, they must complete Item (A); conversely, if they have already completed such a challenge, they must complete Item (B) to embrace new challenges.",
               "tip": "Must be something never done before"
             }
-          ]
+          ],
+          "formLabel": "Intrepidity 挑戰",
+          "completion": "one",
+          "formSummary": "☐ A: Wilderness Challenge　☐ B: Personal Challenge"
         }
       ]
     },
@@ -453,7 +467,7 @@
       "Passing on Scoutcraft: master traditional skills and instructor training, able to teach others",
       "Spirit of service: first aid capability + Scouts of the World Award service, improving the community",
       "Global vision: 6 months of daily cross-cultural interactions or a 5-day-4-night international exchange with sharing",
-      "Personal interest: 12 months / 52 hours of sustained progress in a non-sports interest",
+      "Interest and skill (Tenacity): 12 months / 52 hours of sustained progress in a non-sports interest or skill",
       "Mental and physical wellness: mental health training + 50 hours of service + 12 months / 52 hours of physical activity",
       "Spirit of challenge: a 3-day-2-night wilderness expedition or a personal challenge never done before"
     ],
@@ -461,8 +475,8 @@
     "assessmentPrinciples": "The 7 components can be conducted simultaneously. Rover Scouts must plan their personal progress and gain approval from the affiliated Headquarters Commissioner (Rover Scouts) by submitting the \"Application for Assessment of the Rover Scout Award and Baden-Powell Award\" before the initiation of the assessment. Parts completed beforehand can be recognised retrospectively.",
     "links": [
       {
-        "title": "Rover Scout Training Scheme 5th Edition 2026 - English version (Google Drive)",
-        "url": "https://drive.google.com/file/d/1l-TVstxy94F526DEFN8M7BIYBFhL2p-A/view",
+        "title": "Rover Scout Training Scheme 5th Edition 2026 - Chinese version (Google Drive)",
+        "url": "https://drive.google.com/file/d/16DQ-MhjRp3LU5Im3IoeJQGqi0Rhgx0iw/view",
         "desc": "Official English version, published February 2026, effective 15 August 2026"
       },
       {
@@ -523,6 +537,10 @@
     ],
     "hotlines": [
       {
+        "name": "Scout Association of Hong Kong - Programme Branch (enquiries, as listed in circular P022/2026)",
+        "tel": "2957 6411 / 2957 6417"
+      },
+      {
         "name": "Scout Association of Hong Kong - Programme Branch",
         "tel": "2957 6414",
         "email": "progse@scout.org.hk"
@@ -535,19 +553,178 @@
   },
   "forms": {
     "PT21": {
-      "name": "Application Form for the Rover Scout Award and Certificate (PT/21)",
       "code": "PT/21",
-      "description": "Apply after completing 4 assessment components"
+      "name": "Application Form for the Rover Scout Award and Certificate (PT/21)",
+      "edition": "5th Edition (new scheme)",
+      "officialUrl": "https://www.scout.org.hk/uploads/tc/forms/25998/PT21.pdf",
+      "description": "Apply after completing 4 of the 7 components of the Rover Scout Award",
+      "rows": "L3-SEGMENTS",
+      "rule": {
+        "count": 4,
+        "of": 7,
+        "text": "Complete 4 of the 7 components"
+      },
+      "columns": [
+        "Items",
+        "Summary",
+        "Date Completed",
+        "Assessor",
+        "Remarks"
+      ],
+      "stages": [
+        {
+          "no": "3",
+          "title": "Nomination",
+          "signer": "Rover Scout Leader (RSL)",
+          "stamp": "Group Stamp"
+        },
+        {
+          "no": "4",
+          "title": "Recommendation",
+          "signer": "Assistant District Commissioner (Rover Scouts) ADC(RS) / District Assigned Person",
+          "stamp": "District Stamp"
+        },
+        {
+          "no": "5",
+          "title": "Approval",
+          "signer": "Regional Headquarters Commissioner (Rover Scouts) RHQC(RS)",
+          "stamp": "Regional Stamp"
+        },
+        {
+          "no": "6",
+          "title": "Confirmation",
+          "signer": "Programme Commissioner",
+          "stamp": "Programme Branch Stamp"
+        }
+      ]
     },
     "PT22": {
-      "name": "Application Form for the Baden-Powell Award and Certificate (PT/22)",
       "code": "PT/22",
-      "description": "Complete all 7 components - the highest honour; interview by the District Commissioner and Regional Commissioner"
+      "name": "Application Form for the Baden-Powell Award and Certificate (PT/22)",
+      "edition": "5th Edition (new scheme)",
+      "officialUrl": "https://www.scout.org.hk/uploads/tc/forms/26001/PT22.pdf",
+      "description": "Complete all 7 components (4 from the Rover Scout Award plus the remaining 3); interview and recommendation by the District and Regional Commissioners",
+      "rows": [
+        {
+          "segment": "L3-LEADER"
+        },
+        {
+          "segment": "L3-SCOUT"
+        },
+        {
+          "segment": "L3-SERVICE",
+          "items": [
+            "L3-SERVICE-01"
+          ],
+          "label": "Volunteerism 服務",
+          "hint": "Valid First Aid Certificate Number (REQUIRED)"
+        },
+        {
+          "segment": "L3-SERVICE",
+          "items": [
+            "L3-SERVICE-02",
+            "L3-SERVICE-03"
+          ],
+          "label": "Volunteerism 服務"
+        },
+        {
+          "segment": "L3-INTL"
+        },
+        {
+          "segment": "L3-INT"
+        },
+        {
+          "segment": "L3-HEALTH"
+        },
+        {
+          "segment": "L3-CHALLENGE"
+        }
+      ],
+      "rule": {
+        "count": 3,
+        "of": 7,
+        "text": "Choose 3 of the 7 components (the other 4 are carried by the Rover Scout Award certificate)"
+      },
+      "certField": {
+        "label": "Rover Scout Award Certificate No.",
+        "required": true
+      },
+      "columns": [
+        "Items",
+        "Summary",
+        "Date Completed",
+        "Assessor",
+        "Remarks"
+      ],
+      "stages": [
+        {
+          "no": "3",
+          "title": "Nomination",
+          "signer": "Rover Scout Leader (RSL)",
+          "stamp": "Group Stamp"
+        },
+        {
+          "no": "4",
+          "title": "Recommendation",
+          "signer": "District Commissioner",
+          "stamp": "District Stamp"
+        },
+        {
+          "no": "5",
+          "title": "Approval",
+          "signer": "Programme Commissioner",
+          "stamp": "Programme Branch Stamp"
+        },
+        {
+          "no": "6",
+          "title": "Recommendation",
+          "signer": "Regional Commissioner",
+          "stamp": "Regional Stamp"
+        }
+      ]
     },
     "PT69": {
-      "name": "Application for Assessment of the Rover Scout Award and Baden-Powell Award (PT/69)",
       "code": "PT/69",
-      "description": "Submit the assessment plan to the Headquarters Commissioner (Rover Scouts) for approval before commencing the assessment"
+      "name": "Application for Assessment of the Rover Scout Award and Baden-Powell Award (PT/69)",
+      "edition": "5th Edition (new scheme)",
+      "officialUrl": "https://www.scout.org.hk/uploads/tc/forms/15033/PT69.pdf",
+      "description": "Submit before starting any assessment; approved by the Headquarters Commissioner before starting (per the Scheme)",
+      "rows": "L3-SEGMENTS",
+      "rule": null,
+      "columns": [
+        "Items",
+        "Plan",
+        "Target Date"
+      ],
+      "stages": [
+        {
+          "no": "1",
+          "title": "Applicant",
+          "signer": "Applicant signature",
+          "stamp": ""
+        },
+        {
+          "no": "2",
+          "title": "Agreement",
+          "signer": "Rover Scout Leader (RSL)",
+          "stamp": "Group Stamp"
+        },
+        {
+          "no": "3",
+          "title": "Acknowledged",
+          "signer": "Assistant District Commissioner (Rover Scouts) ADC(RS)",
+          "stamp": "District Stamp"
+        },
+        {
+          "no": "4",
+          "title": "Approval",
+          "signer": "Regional Headquarters Commissioner (Rover Scouts) RHQC(RS)",
+          "stamp": "Regional Stamp"
+        }
+      ],
+      "prefillDates": false,
+      "awardChoice": true,
+      "progressTicks": false
     }
   },
   "legacyTransition": {
@@ -655,6 +832,94 @@
       {
         "zh": "無論採用新或舊制度，申請進度性獎章均須使用指定表格。詳細資格與安排以總會通告及最新綱要為準。",
         "en": "Use the prescribed forms whichever scheme is followed. Refer to the Association circular and latest training scheme for full eligibility and arrangements."
+      }
+    ]
+  },
+  "legacyForms": {
+    "PT21": {
+      "code": "PT/21 (4th Edition)",
+      "name": "Rover Scout Award and Certificate application (4th Edition, legacy)",
+      "officialUrl": "https://www.scout.org.hk/article_attach/23724/PT21.pdf"
+    },
+    "PT22": {
+      "code": "PT/22 (4th Edition)",
+      "name": "Baden-Powell Award and Certificate application (4th Edition, legacy)",
+      "officialUrl": "https://www.scout.org.hk/article_attach/23723/PT22.pdf"
+    },
+    "PT69": {
+      "code": "PT/69 (4th Edition)",
+      "name": "Assessment application (4th Edition, 2024 version, legacy)",
+      "officialUrl": "https://www.scout.org.hk/uploads/tc/forms/26139/PT69_2024.pdf"
+    }
+  },
+  "permissionDefaults": {
+    "leader": "*",
+    "exec_committee": "L1,OTHER",
+    "member": ""
+  },
+  "legacy": {
+    "label": "Legacy record / not counted",
+    "policy": "The IDs below are not part of the 5th Edition Rover Scout Training Scheme. Records are kept unchanged (not deleted), are excluded from completion, do not appear on new-scheme forms, and do not grant permission.",
+    "ids": [
+      {
+        "id": "L1-UND-05",
+        "name": "Membership Badge, Understanding item 5 (legacy)",
+        "reason": "5th Edition Understanding has only L1-UND-01 to L1-UND-04"
+      },
+      {
+        "id": "L1-01",
+        "name": "Legacy ID (Scouting Knowledge)",
+        "reason": "Used by the old form generator; current L1 segments are ACT / UND / ETQ / PRM / CP"
+      },
+      {
+        "id": "L1-02",
+        "name": "Legacy ID (Scouting Knowledge)",
+        "reason": "Same as above"
+      },
+      {
+        "id": "L2-SKILL-01",
+        "name": "Legacy ID (Scoutcraft (I))",
+        "reason": "Current L2 has only L2-INTRO-01"
+      },
+      {
+        "id": "L3-SELF",
+        "name": "Activity Planning segment (other Section structure)",
+        "reason": "Not a segment code of this Section"
+      },
+      {
+        "id": "L3-RESP",
+        "name": "Community Service segment (other Section structure)",
+        "reason": "Not a segment code of this Section"
+      },
+      {
+        "id": "L3-EXP",
+        "name": "Outdoor Adventure segment (other Section structure)",
+        "reason": "Not a segment code of this Section"
+      },
+      {
+        "id": "L3-ACT-SCOUT",
+        "name": "Diverse Skills Area 1 Scoutcraft (other Section structure)",
+        "reason": "Not a segment code of this Section"
+      },
+      {
+        "id": "L3-ACT-SP",
+        "name": "Diverse Skills Area 2 Recreation & Sport (other Section structure)",
+        "reason": "Not a segment code of this Section"
+      },
+      {
+        "id": "L3-ACT-INT",
+        "name": "Diverse Skills Area 3 New Experience (other Section structure)",
+        "reason": "Not a segment code of this Section"
+      },
+      {
+        "id": "L4-ACT",
+        "name": "Activity Planning / Diverse Skills Gold Band (other Section structure)",
+        "reason": "The 5th Edition Baden-Powell Award has no Gold Bands"
+      },
+      {
+        "id": "L6",
+        "name": "Personal Development (legacy badge ID)",
+        "reason": "The 5th Edition has no L6 badge"
       }
     ]
   }

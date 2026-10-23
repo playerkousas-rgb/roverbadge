@@ -142,7 +142,7 @@ function ensureUsersSheet(ss) {
 // 允許的角色（與後端 handleAddUser 一致）
 function defaultAllowedBadges(role) {
   if (role === 'member') return '';
-  if (role === 'exec_committee') return 'L1,活動段章,OTHER';
+  if (role === 'exec_committee') return 'L1,OTHER';
   return '*';
 }
 

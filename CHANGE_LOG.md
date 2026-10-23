@@ -1,5 +1,21 @@
 # CHANGE_LOG
 
+## 2026-10-23 — 其他章節殘留審計（VSBADGE 骨架混入）＋ 新制表格重建
+
+詳細修正清單、修正前→修正後對照、官方連結見 `docs/OTHER_SECTION_RESIDUE_AUDIT_2026-10.md`。
+
+- **首頁四級方塊**：由 `items.json` 即時產生（`RoverScope.levelSummaries`），取代硬寫的「12項／23項基礎技能／4段章 100+／4金帶」。
+- **表格列印**：PT/21、PT/22、PT/69 改為第五版新制結構（`assets/forms.js`），依官方 PDF 逐列核對；PT/22 八列、急救證書編號必填、樂行獎章證書編號必填；PT/69 為計劃申請，不勾已完成狀態、不預填日期。舊制（第四版）表格只提供連結，不由系統產生。
+- **權限**：`assets/rover-scope.js` 統一判斷（`*`／獎章／段章／項目／`OTHER`），修正前綴誤判（`L3-INT` 不再放行 `L3-INTL-*`）；未知代碼不放行、原樣保留。執委預設統一為 `L1,OTHER`（來源 `items.json → permissionDefaults`）。
+- **舊版紀錄**：12 個舊 ID 保留，標示「舊版紀錄／不計完成度」，不計完成度、不出現於新表格，進度頁以卡片顯示。
+- **資料**：`items.json` 與 `items_en.json` 結構對齊；熱線首位加入 P022 列出的 `2957 6411 / 2957 6417`（`2957 6414` 保留待核）；撤回 `items_en` 中未經綱要核對的兩條時限提示。
+- **字典**：`i18n_dict.tsv` 改名 6 鍵、刪除 46 列孤兒列、補入 17 鍵；刪除未引用的「三選二」「三選一剔號」；同步 index.html（946 筆）。
+- **後端**：Code.gs 與 `assets/batch-onboard/Code.gs` 執委預設改為 `L1,OTHER`；示例與註解去除「深資」。
+- **文件**：`AGENT_TEMPLATE_FOR_OTHER_SECTIONS.md` 第 167 行（PT 代碼錯配）、`EXEC_GUIDE.md`、`LEADER_GUIDE.md`、`MEMBER_GUIDE.md`、`MAIN_SYSTEM_INTEGRATION.md` 第 121 行。
+- **測試**：新增 `tests/rover-scope.test.mjs`、`tests/forms-generator.test.mjs`（Node harness 實際執行產生器）、`tests/residue-audit.test.mjs`；已加入 `npm test`。`npm run check` 65/0。
+
+**未完成／待決**：熱線 `2957 6414` 未核實；`L1-01`／`L1-02` 舊名未核對；佩戴指引日期標籤未核對；後端未強制 `allowed_badges`（另開 PR）；新制／舊制過渡選擇待用戶決定。
+
 ## 2026-10-23 — 首次登入教學（App＋文件）＋ 主系統介紹暫時隱藏 ＋ 兩項對齊改善
 
 對齊 scoutbadge PR #42/#43、cubsbadge PR #30。

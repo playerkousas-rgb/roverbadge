@@ -118,7 +118,7 @@ A: 預設不能，只看自己。若團長在「用戶管理 → 系統設定」
 A: 成員看到自己申請狀態，領袖看到兩類：🏅獎章審批 + 👤用戶審批，均在同一「✅審批中心」分頁，內有子切換。
 
 **Q: 表格列印在 iframe 內能否正常列印？**
-A: 可以，`window.print()` 會只列印 `.print-area`，隱藏按鈕，官方 PT/19/PT/20 格式，雙面列印符合總會要求。
+A: 可以，`window.print()` 會只列印 `.print-area`，隱藏按鈕，新制官方 PT/21／PT/22／PT/69 格式，雙面列印符合總會要求。
 
 **Q: 若主系統未傳 backend/apikey，會怎樣？**
 A: 冇問題——backend/apikey 由伺服器端 Registry（Vercel 環境變數）解析，卡片只需帶 `u`（加埋 `src` 做來源驗證）。若該 `u` 未登記，錯誤頁會顯示「此旅團未在伺服器登記（錯誤代碼：unknown_troop）」，請 roverbadge 管理員喺 Vercel 加 `TROOP_{ID}_NAME/_BACKEND/_APIKEY` 環境變數再 Redeploy。
