@@ -83,7 +83,8 @@ const MAX_DATA_BYTES = 2 * 1024 * 1024; // 單次請求 data 上限 (2MB)
 
 // ---- action 白名單（對照 Code.gs doGet/doPost）----
 // 公開（無需 token）
-const PUBLIC_ACTIONS = new Set(['login', 'apply', 'forgotPassword', 'getLoginMode']);
+// ecStatus：只回 GS 版本與初始化標記（不含用戶資料），供「最新版本公告」核對
+const PUBLIC_ACTIONS = new Set(['login', 'apply', 'forgotPassword', 'getLoginMode', 'ecStatus']);
 // 需要登入 token 的旅團內操作
 const TOKEN_ACTIONS = new Set([
   'logout', 'load', 'getConfig', 'getMembers', 'getOtherBadges',
@@ -107,7 +108,7 @@ const SIG_ACTIONS = new Set(['addUser','upsertUser','addMember','exportUsers','g
 // Proxy 內部特殊 action（不轉發去旅團 GAS）
 const LOCAL_ACTIONS = new Set(['submitRegistration', 'submitFeedback']);
 // GAS 端以 doGet 處理的 action（其餘一律 POST 去 doPost）
-const GET_ACTIONS = new Set(['load', 'getLoginMode']);
+const GET_ACTIONS = new Set(['load', 'getLoginMode', 'ecStatus']);
 
 function sendJson(res, status, obj) {
   res.setHeader('Cache-Control', 'no-store');

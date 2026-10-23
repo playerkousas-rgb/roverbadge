@@ -941,3 +941,25 @@ PT/69：開始考驗前提交，不預填日期	PT/69: submit before starting; d
 其他獎章 全部（OT-*）	All other badges (OT-*)
 審核員 Assessor	Assessor
 徽章佩戴指引	Badge Wearing Guide
+📢 最新版本公告	📢 Latest Version Notice
+GS 最新版本	Latest GS version
+本旅團 GS 版本	This troop's GS version
+初始化標記	Initialization marker
+請先選擇旅團並登入，即可核對本旅團 GS 版本	Select a troop and log in to check this troop's GS version
+尚未核對，請按「重新檢查」	Not checked yet. Press "Re-check"
+核對中…	Checking…
+無法連線核對，請稍後按「重新檢查」	Could not check. Please press "Re-check" later
+⚠️ GS 未更新：本旅團 Apps Script 仍是舊版，請先更新 Code.gs	⚠️ GS not updated: this troop's Apps Script is still an old version. Please update Code.gs first
+⚠️ GS 已更新但未初始化：必須執行一次 initializeSheets()	⚠️ GS updated but not initialized: you must run initializeSheets() once
+✅ 已核對：GS 已是最新版本，初始化已完成	✅ Checked: GS is up to date and initialization is complete
+必須執行一次 initializeSheets()	You must run initializeSheets() once
+🛡️ 資料保全：更新 Code.gs 不會清除既有資料；initializeSheets() 只補缺少的表格與欄位標題，不刪除、不改寫用戶、進度、紀錄或金鑰。	🛡️ Data safety: updating Code.gs does not delete existing data. initializeSheets() only adds missing sheets and column headers; it does not delete or change any users, progress, records or keys.
+⬇️ 下載 Code.gs	⬇️ Download Code.gs
+🔄 重新檢查	🔄 Re-check
+更新步驟	Update steps
+下載 Code.gs（按下方按鈕）	Download Code.gs (use the button below)
+開啟旅團試算表 →「擴充功能」→「Apps Script」，全選刪除舊碼，貼上新 Code.gs 並儲存	Open the troop's spreadsheet → "Extensions" → "Apps Script". Select all, delete the old code, paste the new Code.gs and save
+「部署」→「管理部署作業」→ 編輯 ✏️ →「版本」選「新版本」→「部署」（沿用原有 Web App 網址，不要另建）	"Deploy" → "Manage deployments" → Edit ✏️ → "Version": "New version" → "Deploy" (keep the existing Web App URL; do not create a new one)
+若需要初始化：在 Apps Script 函式選單選 initializeSheets，執行一次（首次需授權）	If initialization is needed: choose initializeSheets in the Apps Script function menu and run it once (authorise on first run)
+回到本頁按「重新檢查」，出現綠色「已核對」即完成	Come back here and press "Re-check"; the green "Checked" badge means done
+請先選擇旅團並登入	Please select a troop and log in first

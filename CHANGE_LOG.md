@@ -1,5 +1,20 @@
 # CHANGE_LOG
 
+## 2026-10-23 — GS 5.2.1：最新版本公告、GS 初始化核對、資料保全規則
+
+- **最新版本公告**：首頁、登入頁、登入後主頁頂部顯示公告（最新 GS 版本 v5.2.1、2026-10-23），附 Code.gs 下載、更新步驟、「🔄 重新檢查」按鈕（`index.html`、`assets/gs-release.js`）。
+- **GS 版本核對**：`Code.gs` 新增 `GS_VERSION`／`GS_RELEASE_DATE`／`GS_INIT_REQUIRED` 與 `ecStatus` action（位於閂口之前，只回版本與標記）；`load` 同時回傳 `gsVersion`、`initializedGsVersion`。前端三種狀態：GS 未更新／GS 已更新但未初始化（顯示「必須執行一次 initializeSheets()」）／全部完成（綠色「✅ 已核對」）。`api/proxy.js` 加入 `ecStatus` 白名單。
+- **初始化標記**：Script Property `INITIALIZED_GS_VERSION` 只在 `initializeSheets()` 全部步驟成功後最後寫入；中途失敗不寫入（測試覆蓋）。
+- **資料保全（硬性規則）**：
+  - `initializeSheets()` 不再自動刪除 Users 內的 super_admin 殘留列，也不再刪除 Tokens 內的舊版保留帳號 session；兩個 `remove*Rows()` 函式保留給人手執行。
+  - 殘留 super_admin 列讀取時略過（`isLegacySuperRow_`），不能作為登入身分。
+  - 不再於每次初始化時逐列改寫 `force_change_password`；預設密碼（changeme）的強制改密改為登入時判斷（`isDefaultPasswordHash_`），效果不變、不寫入資料。
+  - 表頭補寫只寫空白格，不覆蓋既有欄名。
+- **文件**：`docs/LEADER_GUIDE.md` 新增「最新版本公告、GS 更新與資料保全（必讀）」；`APP_ADMIN_WORKFLOW.md` 新增 GS 版本核對規格與發佈檢查清單。
+- **字典**：`i18n_dict.tsv` 新增 22 組中英字串，同步 `index.html`（963 筆）。
+- **測試**：新增 `tests/release-version.test.mjs`（12 項：版本一致、三狀態、閂口下 ecStatus、標記時機、舊結構升級、完整 before/after 快照、前端接線與翻譯覆蓋、proxy 白名單），已加入 `npm test`；`tests/code-gs.test.mjs` 2b 與殘留列斷言改為新規則。
+- **部署提醒**：Vercel 重新部署後，各旅團須在 Apps Script 貼上新 `Code.gs` 並在既有部署上選**新版本**（沿用原 Web App 網址，不要新建部署），再執行一次 `initializeSheets()`。
+
 ## 2026-10-23 — 其他章節殘留審計（VSBADGE 骨架混入）＋ 新制表格重建
 
 詳細修正清單、修正前→修正後對照、官方連結見 `docs/OTHER_SECTION_RESIDUE_AUDIT_2026-10.md`。
