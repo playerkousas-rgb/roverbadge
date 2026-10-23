@@ -299,7 +299,7 @@ test('Super admin bypasses Sheet ALLOW_LOCAL_LOGIN=false gate on both login and 
     assert.equal(usersRes.code, 200);
     assert.equal(usersRes.body.success, true);
 
-    const saveRes = await call(proxy, request('save', { token: sessionToken, changes: [{ ymis: '1234567890', itemId: 'L1', date: '2026-10-01' }], confirmer: '系統管理員' }));
+    const saveRes = await call(proxy, request('save', { token: sessionToken, changes: [{ ymis: '1234567890', itemId: 'L1-ACT-01', date: '2026-10-01' }], confirmer: '系統管理員' }));
     assert.equal(saveRes.code, 200);
     assert.equal(saveRes.body.success, true);
     assert.equal(saveRes.body.confirmer, 'system');

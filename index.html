@@ -1865,6 +1865,8 @@ async function apiRequest(action, data={}, opts={}){
 }
 let currentUser=null,currentToken='',loginType='member';
 let itemsData=null,progressFlat={},progressRich={},members=[],pendingChanges=[],pendingRequestsQueue=[],otherBadgesMap={},currentRequestItem=null;
+// 學制：每位成員的學制（後端 load 回傳 schemes；未設定 = schemeDefault）
+let schemeMap={},schemeDefault='new';
 let logRecords=[],logRecordsSupported=false,logFilterType='all'; // v8.1 活動履歷
 let pendingLogRequests=[],pendingLogRequestsSupported=false; // v8.2 活動履歷申報 → 審批
 let selectedProgressYmis=null; // 領袖查看他人進度
@@ -2332,6 +2334,57 @@ function getScopeIndex(){
   if(!itemsData) return null;
   if(_scopeIdxSrc!==itemsData){ _scopeIdx=RoverScope.buildIndex(itemsData); _scopeIdxSrc=itemsData; }
   return _scopeIdx;
+}
+// ===== 學制（新制／舊制／舊制過渡新制）— 判斷在 assets/rover-scope.js，後端同步強制 =====
+function schemeFor(ymis){ return (schemeMap&&schemeMap[ymis])||schemeDefault||'new'; }
+function schemeBadgesFor(ymis){ return itemsData ? RoverScope.schemeBadges(itemsData, schemeFor(ymis)) : []; }
+function scopeIndexFor(ymis){ return RoverScope.buildIndex(itemsData, schemeFor(ymis)); }
+function schemeSelectorHtml(targetYmis){
+  if(!itemsData||!itemsData.schemes) return '';
+  const sk=schemeFor(targetYmis); const list=itemsData.schemes.list;
+  const can=targetYmis===currentUser.ymis || canUserTickRole(currentUser.role);
+  const opts=Object.keys(list).map(k=>`<option value="${k}" ${k===sk?'selected':''}>${escapeHtmlText(list[k].label)}</option>`).join('');
+  return `<div class="info-section" style="padding:10px 12px"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><label style="font-size:12px;font-weight:600">學制：</label><select id="schemeSelect" ${can?'':'disabled'} onchange="onSchemeChange('${escapeAttr(targetYmis)}',this.value)">${opts}</select><small style="color:var(--text-light)">${escapeHtmlText(list[sk].desc||'')}</small></div></div>`;
+}
+async function onSchemeChange(ymis, scheme){
+  try{
+    const d=await apiRequest('setScheme',{token:currentToken,target_ymis:ymis,scheme});
+    if(!d.success) throw new Error(d.error||'設定失敗');
+    schemeMap=Object.assign({},d.schemes||schemeMap); schemeMap[ymis]=scheme;
+    showToast('已更新學制：'+itemsData.schemes.list[scheme].label,'success');
+  }catch(e){ showToast('設定學制失敗：'+e.message,'error'); }
+  renderProgressTab();
+  renderFormsTab();
+}
+// 過渡對照：舊制紀錄只提供核實後的過渡，不自動計入完成度
+function renderTransitionPanel(targetYmis, flat, isLeader){
+  if(schemeFor(targetYmis)!=='transition' || !itemsData.oldBadges) return '';
+  const idx=scopeIndexFor(targetYmis);
+  const canTick=isLeader && canUserTickRole(currentUser.role);
+  const rows=[];
+  itemsData.oldBadges.forEach(b=>b.segments.forEach(s=>s.items.forEach(it=>{
+    const rec=flat[it.id]; const t=it.transition||{mode:'none',to:[],note:''}; const tg=t.to||[];
+    const pendingTargets=tg.filter(id=>!flat[id]);
+    const canAdd=canTick && rec && pendingTargets.length && (t.mode==='all' || tg.length===1);
+    rows.push(`<div class="item-row" style="flex-direction:column;align-items:flex-start;gap:4px">
+      <div><b>${escapeHtmlText(it.name)}</b> <small style="color:var(--text-light)">(${escapeHtmlText(it.id)})</small> · ${rec?'📅 '+escapeHtmlText(rec)+'（舊制紀錄）':'（無舊制紀錄）'}</div>
+      <div style="font-size:11px;color:var(--text-light)">對應：${tg.length?tg.map(id=>escapeHtmlText(idx.itemNames[id]||id)+' ('+escapeHtmlText(id)+')').join('、'):'未列於對照表'}</div>
+      <div style="font-size:11px;color:#856404">${escapeHtmlText(t.note||'')}</div>
+      ${canAdd?`<button class="btn btn-sm btn-secondary" onclick="addTransitionPending('${escapeAttr(it.id)}','${escapeAttr(targetYmis)}')">➕ 加入待儲存（${t.mode==='all'?'全部對應項目':'單一對應項目'}；儲存前請核實）</button>`:''}
+    </div>`);
+  })));
+  return `<div class="badge-card" style="border:1px dashed var(--gold-dark)"><div class="badge-header" style="background:#856404" onclick="toggleBadgeBody(this)"><h3>🔁 舊制 → 新制過渡對照 <small style="font-weight:400;opacity:.9">- 僅供核實，不自動計入完成度</small></h3><div style="display:flex;align-items:center;gap:8px"><span class="progress-chip">不自動計入</span><span>▶</span></div></div><div class="badge-body"><div style="padding:8px 16px;font-size:11px;line-height:1.6">${rows.join('')}</div></div></div>`;
+}
+function addTransitionPending(s4Id, ymis){
+  const flat=progressFlat[ymis]||{};
+  const date=flat[s4Id];
+  if(!date){ showToast('此舊制項目沒有紀錄，無法過渡','warning'); return; }
+  const it=(itemsData.oldBadges||[]).flatMap(b=>b.segments.flatMap(s=>s.items)).find(i=>i.id===s4Id);
+  const targets=(it&&it.transition&&it.transition.to)||[];
+  let n=0;
+  targets.forEach(id=>{ if(!flat[id]){ addOrUpdatePending(ymis,id,date,false); n++; } });
+  renderProgressTab();
+  showToast(`已加入 ${n} 項待儲存（沿用舊制日期；請核實後按「保存」）`,'warning');
 }
 function canCurrentUserTickItem(itemId){
   if(!currentUser) return false;
@@ -2939,6 +2992,7 @@ async function loadItemsAndProgress(){
     if(backendData.success){
       clearStaleBanner();
       members=backendData.members||[];
+      schemeMap=backendData.schemes||{}; schemeDefault=backendData.schemeDefault||'new';
       // compat: progress may be flat or rich
       if(backendData.flatProgress){ progressFlat=backendData.flatProgress; }
       else if(backendData.progress){ // old or new rich?
@@ -3079,12 +3133,12 @@ function renderProgressTab(){
     memberSelectorHtml=`<div class="filter-bar"><label style="font-size:12px;font-weight:600">檢視成員：</label><select id="progressMemberSelect" onchange="onProgressMemberChange(this.value)"><option value="">-- 選擇成員 --</option>${opts}</select><button class="btn btn-sm btn-secondary" onclick="resetProgressMember()">看自己</button><span style="font-size:11px;color:var(--text-light)">目前：${members.find(m=>m.ymis===targetYmis)?.name||targetYmis}</span></div>`;
   }
   // overall stats
-  const allItemIds=getAllItemIds(); // flat list of all item ids (including sub)
+  const allItemIds=getAllItemIds(schemeBadgesFor(targetYmis)); // 依該成員學制計算
   const completedCount=allItemIds.filter(id=>flat[id]).length;
   const totalCount=allItemIds.length;
   const pct= totalCount ? Math.round(completedCount/totalCount*100):0;
 
-  let html=`${memberSelectorHtml}
+  let html=`${memberSelectorHtml}${schemeSelectorHtml(targetYmis)}
     <div class="info-section" style="padding:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
         <div><b>${members.find(m=>m.ymis===targetYmis)?.name||currentUser.name}</b> <small style="color:var(--text-light)">(${targetYmis})</small> ${targetYmis===currentUser.ymis?'<span style="background:var(--green-light);color:var(--green);padding:2px 6px;border-radius:999px;font-size:10px">自己</span>':''}</div>
@@ -3095,7 +3149,7 @@ function renderProgressTab(){
       ${!isLeader && targetYmis!==currentUser.ymis ? '<div style="font-size:11px;color:var(--red);background:#FFF5F5;padding:6px 10px;border-radius:6px;margin-top:8px">只能查看他人進度，不能編輯</div>' : ''}
     </div>`;
 
-  itemsData.badges.forEach(badge=>{
+  schemeBadgesFor(targetYmis).forEach(badge=>{
     const badgeIds=getBadgeItemIds(badge);
     const badgeDone=badgeIds.filter(id=>flat[id]).length;
     const badgePct=badgeIds.length?Math.round(badgeDone/badgeIds.length*100):0;
@@ -3111,7 +3165,7 @@ function renderProgressTab(){
           const segDone=segIds.filter(id=>flat[id]).length;
           return `<div class="segment">
             <div class="segment-header" onclick="toggleSegment(this)">
-              <h4>${seg.name} <span style="font-weight:400;font-size:11px;color:var(--text-light)">(${segDone}/${segIds.length})</span> ${seg.desc?` - <small style="font-weight:400;color:var(--text-light)">${seg.desc}</small>`:''}</h4>
+              <h4>${seg.name} <span style="font-weight:400;font-size:11px;color:var(--text-light)">(${segDone}/${segIds.length})</span>${seg.completion==='pick'?` <small style="color:#856404">須選 ${seg.pick} 項</small>`:''} ${seg.desc?` - <small style="font-weight:400;color:var(--text-light)">${seg.desc}</small>`:''}</h4>
               <span style="font-size:10px;color:var(--text-light)">▶ ${seg.requirement?` | ${seg.requirement}`:''}</span>
             </div>
             <div class="items-container">
@@ -3154,11 +3208,12 @@ function renderProgressTab(){
       </div>
     </div>`;
   }
-  // 舊版紀錄（不屬於現行綱要的 ID）：只顯示，不計完成度，不刪除
+  html+=renderTransitionPanel(targetYmis, flat, isLeader);
+  // 舊版紀錄（不屬於本學制計完成度的 ID）：只顯示，不計完成度，不刪除
   const otherRec=otherBadgesMap[targetYmis]||{};
   const mergedFlat=Object.assign({}, flat);
   Object.keys(otherRec).forEach(k=>{ mergedFlat[k]=otherRec[k]; });
-  const legacyRows=RoverScope.legacyEntries(mergedFlat, getScopeIndex());
+  const legacyRows=RoverScope.legacyEntries(mergedFlat, scopeIndexFor(targetYmis), schemeFor(targetYmis));
   if(legacyRows.length){
     html+=`<div class="badge-card" style="border:1px dashed #6c757d">
       <div class="badge-header" style="background:#6c757d" onclick="toggleBadgeBody(this)">
@@ -3178,9 +3233,9 @@ function renderProgressTab(){
   if(firstBody) firstBody.classList.add('expanded');
 }
 
-function getAllItemIds(){
+function getAllItemIds(badgeList){
   const ids=[];
-  itemsData.badges.forEach(b=>b.segments.forEach(s=>s.items.forEach(it=>{
+  (badgeList||itemsData.badges).forEach(b=>b.segments.forEach(s=>s.items.forEach(it=>{
     if(it.subItems&&it.subItems.length){ it.subItems.forEach(sub=>ids.push(sub.id)); }
     else ids.push(it.id);
   })));
@@ -4475,14 +4530,24 @@ function renderFormsTab(){
   if(!itemsData){ c.innerHTML='<p>資料未載入</p>'; return; }
   const isLeader=canUserTickRole(currentUser.role);
   const targetYmis=isLeader? (selectedProgressYmis||currentUser.ymis) : currentUser.ymis;
+  const sk=schemeFor(targetYmis);
+  const sl=(itemsData.schemes&&itemsData.schemes.list&&itemsData.schemes.list[sk])||{label:sk,desc:''};
+  const oldNote = sk==='old'
+    ? '本成員學制為<b>舊制（第四版）</b>，下方可產生舊制表格；舊制項目不計入新制完成度。'
+    : '本成員學制為<b>'+escapeHtmlText(sl.label)+'</b>。如需產生舊制（第四版）表格，請先在「進度」頁將學制改為「舊制」。';
   c.innerHTML=`<div class="info-grid">
-    <div class="info-card"><h3>🖨️ 樂行童軍表格（第五版新制）</h3><p>依 HKSA 新制官方表格排版；項目與簽署程序取自 data/items.json。</p><ul><li>自動帶入姓名、YMIS、旅團及已完成項目的日期</li><li>PT/21：7個範疇中完成4個</li><li>PT/22：7項中挑選3項，並填寫樂行童軍獎章證書編號（急救證書編號必填）</li><li>PT/69：開始考驗前提交，不預填日期</li></ul></div>
-    <div class="info-card" style="border-color:var(--blue)"><h3 style="color:var(--blue)">📋 舊制表格</h3><p>第四版（舊制）表格只提供官方連結，本系統不會產生舊制表格，亦不會以舊制項目計算完成度。</p></div>
+    <div class="info-card"><h3>🖨️ 樂行童軍表格（${escapeHtmlText(sl.label)}）</h3><p>依官方表格排版；項目與簽署程序取自 data/items.json。</p><ul>
+      <li>自動帶入姓名、YMIS、旅團及已完成項目的日期（PT/69 為考驗計劃，不預填日期）</li>
+      <li>新制 PT/21：7 個範疇中完成 4 個</li>
+      <li>新制 PT/22：7 項中挑選 3 項，並填寫樂行童軍獎章證書編號（急救證書編號必填）</li>
+      <li>新制 PT/69：考驗計劃（開始考驗前提交）</li></ul></div>
+    <div class="info-card" style="border-color:var(--blue)"><h3 style="color:var(--blue)">📋 舊制（第四版）表格</h3><p>${oldNote}</p><p style="font-size:11px">舊制 PT/21、PT/22、PT/69 按第四版官方表格生成；如遇差異，以官方 PDF 為準。</p></div>
   </div>
-  <div class="filter-bar"><label>選擇成員：</label><select id="formMemberSelect" onchange="renderFormsTab()">${members.map(m=>`<option value="${escapeHtmlText(m.ymis)}" ${m.ymis===targetYmis?'selected':''}>${escapeHtmlText(m.name)} (${escapeHtmlText(m.ymis)})</option>`).join('')}</select></div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:14px">${RoverForms.formButtonsHtml(itemsData)}</div>
+  <div class="filter-bar"><label>選擇成員：</label><select id="formMemberSelect" onchange="onFormMemberChange(this.value)">${members.map(m=>`<option value="${escapeHtmlText(m.ymis)}" ${m.ymis===targetYmis?'selected':''}>${escapeHtmlText(m.name)} (${escapeHtmlText(m.ymis)})</option>`).join('')}</select></div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:14px">${RoverForms.formButtonsHtml(itemsData, sk)}</div>
   <div id="printableArea" class="print-area"></div>`;
 }
+function onFormMemberChange(ymis){ selectedProgressYmis=ymis; renderFormsTab(); }
 function generatePrintableForm(type){
   if(!itemsData){ showToast('資料未載入','error'); return; }
   const targetYmis=document.getElementById('formMemberSelect')?.value||selectedProgressYmis||currentUser.ymis;

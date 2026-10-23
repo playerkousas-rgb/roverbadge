@@ -21,10 +21,10 @@ test('permission tokens: badge / segment / item / OTHER granularity', () => {
   assert.equal(S.canTickItem('L1', 'L3-SCOUT-01', idx), false);
   // 段章代碼（不可被前綴誤判：L3-INT 不應放行 L3-INTL-*）
   assert.equal(S.canTickItem('L3-INT', 'L3-INT-01', idx), true);
-  assert.equal(S.canTickItem('L3-INT', 'L3-INTL-A', idx), false);
+  assert.equal(S.canTickItem('L3-INT', 'L3-INTL-01', idx), false);
   // 段章代碼放行段內所有項目
-  assert.equal(S.canTickItem('L3-CHALLENGE', 'L3-CHAL-A', idx), true);
-  assert.equal(S.canTickItem('L3-CHALLENGE', 'L3-CHAL-B', idx), true);
+  assert.equal(S.canTickItem('L3-CHALLENGE', 'L3-CHALLENGE-01', idx), true);
+  assert.equal(S.canTickItem('L3-CHALLENGE', 'L3-CHALLENGE-02', idx), true);
   assert.equal(S.canTickItem('L3-CHALLENGE', 'L3-SCOUT-01', idx), false);
   // 單一項目
   assert.equal(S.canTickItem('L3-SCOUT-02', 'L3-SCOUT-02', idx), true);
@@ -105,7 +105,7 @@ test('segment completion honours completion:"one" (國際視野 甲/乙 任選�
   const chal = L3.segments.find(s => s.code === 'L3-CHALLENGE');
   assert.equal(intl.completion, 'one');
   assert.equal(chal.completion, 'one');
-  assert.equal(S.segmentDone(intl, { 'L3-INTL-B': '2026-01-01' }), true);
+  assert.equal(S.segmentDone(intl, { 'L3-INTL-02': '2026-01-01' }), true);
   assert.equal(S.segmentDone(chal, {}), false);
   const health = L3.segments.find(s => s.code === 'L3-HEALTH');
   assert.equal(S.segmentDone(health, { 'L3-HEALTH-01': '2026-01-01' }), false, '身心健康 needs both parts');
@@ -117,4 +117,73 @@ test('home summaries are generated from items.json', () => {
   assert.match(sum.L3, /7段考驗/);
   assert.match(sum.L3, /7項中完成4項/);
   assert.equal(Object.keys(sum).join(','), items.badges.map(b => b.id).join(','));
+});
+
+// ── 學制（新制／舊制／舊制過渡新制）與選修（pick）完成規則 ──
+const S4AWARD = items.oldBadges.find(b => b.id === 'S4-AWARD');
+const S4ELECT = S4AWARD.segments.find(s => s.code === 'S4-AWARD-ELECT');
+
+test('學制目錄：新制＝L1–L4；舊制＝L1/L2＋S4；過渡＝L1–L4（S4 只作對照）', () => {
+  const ids = scheme => S.schemeBadges(items, scheme).map(b => b.id);
+  assert.deepEqual(ids('new'), ['L1', 'L2', 'L3', 'L4']);
+  assert.deepEqual(ids('old'), ['L1', 'L2', 'S4-AWARD', 'S4-BP']);
+  assert.deepEqual(ids('transition'), ['L1', 'L2', 'L3', 'L4']);
+  assert.equal(S.schemeKey(items, 'bogus'), 'new', '未知學制回退為預設新制');
+  assert.equal(S.schemeKey(items, undefined), items.schemes.default);
+});
+
+test('學制可勾選範圍：舊制成員不可勾新制 L3；過渡成員不可勾 S4', () => {
+  const oldIds = S.schemeItemIds(items, 'old');
+  const trIds = S.schemeItemIds(items, 'transition');
+  assert.ok(oldIds[S4AWARD.segments[0].items[0].id]);
+  assert.ok(!oldIds[L3.segments[0].items[0].id], 'old scheme cannot tick new L3');
+  const s4Id = S4AWARD.segments[0].items[0].id;
+  assert.ok(!trIds[s4Id], 'transition cannot tick S4 directly');
+  assert.ok(trIds[L3.segments[0].items[0].id]);
+  // OT 三種學制都可勾
+  for (const ob of items.otherBadges) {
+    assert.ok(oldIds[ob.id] && trIds[ob.id] && S.schemeItemIds(items, 'new')[ob.id]);
+  }
+});
+
+test('舊版紀錄依學制顯示：S4 紀錄在新制下為舊版（不計完成度）；在過渡下為可核實的對照', () => {
+  const s4Id = S4AWARD.segments[0].items[0].id;
+  const flat = { [s4Id]: '2026-01-02', 'L3-SCOUT-01': '2026-03-01' };
+  const newIdx = S.buildIndex(items, 'new');
+  const newRows = S.legacyEntries(flat, newIdx);
+  assert.deepEqual(newRows.map(r => r.id), [s4Id]);
+  assert.match(newRows[0].reason, /不計入本學制/);
+  const trRows = S.legacyEntries(flat, S.buildIndex(items, 'transition'));
+  assert.match(trRows[0].reason, /對照過渡/);
+  // 舊制成員：L3 紀錄是「第五版項目，不計入」
+  const oldRows = S.legacyEntries(flat, S.buildIndex(items, 'old'));
+  assert.ok(oldRows.some(r => r.id === 'L3-SCOUT-01' && /第五版/.test(r.reason)));
+  assert.ok(!oldRows.some(r => r.id === s4Id), 'S4 is active for old scheme');
+});
+
+test('選修段章（pick）：舊制三選一、三選二按數量計算完成', () => {
+  assert.equal(S4ELECT.completion, 'pick');
+  assert.equal(S4ELECT.pick, 1);
+  assert.equal(S.segmentDone(S4ELECT, {}), false);
+  assert.equal(S.segmentDone(S4ELECT, { [S4ELECT.items[0].id]: '2026-01-01' }), true);
+  const bpElect = items.oldBadges.find(b => b.id === 'S4-BP').segments.find(s => s.code === 'S4-BP-ELECT');
+  assert.equal(bpElect.pick, 2);
+  const two = bpElect.items.slice(0, 2).reduce((m, it) => (m[it.id] = '2026-01-01', m), {});
+  assert.equal(S.segmentDone(bpElect, { [bpElect.items[0].id]: '2026-01-01' }), false, 'one of two is not enough');
+  assert.equal(S.segmentDone(bpElect, two), true);
+});
+
+test('舊制項目 ID 皆以段章代碼為前綴，且可被權限代碼放行（S4-AWARD、段章、項目）', () => {
+  const oldIdx = S.buildIndex(items, 'old');
+  const id = S4AWARD.segments[0].items[0].id;
+  assert.ok(id.startsWith(S4AWARD.segments[0].code + '-'));
+  assert.equal(S.canTickItem('S4-AWARD', id, oldIdx), true);
+  assert.equal(S.canTickItem(S4AWARD.segments[0].code, id, oldIdx), true);
+  assert.equal(S.canTickItem('L1', id, oldIdx), false);
+});
+
+test('權限選單包含舊制獎章（group=old），且不影響現行獎章', () => {
+  const opts = S.permissionOptions(items);
+  assert.ok(opts.some(o => o.value === 'S4-AWARD' && o.group === 'old'));
+  assert.ok(opts.some(o => o.value === 'L3' && o.group === 'badge'));
 });

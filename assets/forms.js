@@ -1,5 +1,5 @@
 /*
- * forms.js — 樂行童軍表格產生器（依 data/items.json 的 forms／legacyForms 定義）
+ * forms.js — 樂行童軍表格產生器（依 data/items.json 的 forms（新制）／oldForms（舊制）定義）
  *
  * 表格結構、考驗範疇、簽署程序全部來自 items.json；本檔只負責排版與帶入資料。
  * 依賴 assets/rover-scope.js（先載入）。
@@ -19,22 +19,42 @@
   }
 
   function esc(s) {
-    return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function (c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    return String(s === null || s === undefined ? '' : s).replace(/[&<>\"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', "'": '&#39;' }[c];
     });
   }
 
-  // 把 form.rows 展開成列（每列對應一個段章或段章內的部分項目）
+  // 新制表格（forms）與舊制表格（oldForms）合併查找
+  function allForms(items) {
+    var out = {};
+    Object.keys(items.forms || {}).forEach(function (k) { out[k] = items.forms[k]; });
+    Object.keys(items.oldForms || {}).forEach(function (k) { out[k] = items.oldForms[k]; });
+    return out;
+  }
+
+  function formsForScheme(items, scheme) {
+    var S = scope();
+    var def = (items.schemes && items.schemes.list && items.schemes.list[S.schemeKey(items, scheme)]) || {};
+    var all = allForms(items);
+    return (def.forms || Object.keys(items.forms || {})).filter(function (k) { return !!all[k]; });
+  }
+
+  // 把 form.rows 展開成列。段章可在所有獎章（現行＋舊制）中查找；
+  // 列可指定 items 子集（舊制選修：每個選修一列）。
   function resolveRows(form, items) {
     var S = scope();
-    var l3 = S.findBadge(items, 'L3');
-    if (!l3) throw new Error('forms: badge L3 not found');
-    var defs = form.rows === 'L3-SEGMENTS'
-      ? l3.segments.map(function (s) { return { segment: s.code }; })
-      : form.rows;
+    var defs;
+    if (form.rows === 'L3-SEGMENTS') {
+      var l3 = S.findBadge(items, 'L3');
+      if (!l3) throw new Error('forms: badge L3 not found');
+      defs = l3.segments.map(function (s) { return { segment: s.code }; });
+    } else {
+      defs = form.rows;
+    }
     return defs.map(function (r) {
-      var seg = l3.segments.find(function (s) { return s.code === r.segment; });
-      if (!seg) throw new Error('forms: unknown segment ' + r.segment);
+      var hit = S.findSegment(items, r.segment);
+      if (!hit) throw new Error('forms: unknown segment ' + r.segment);
+      var seg = hit.segment;
       var segIds = S.segmentItemIds(seg);
       var ids = r.items ? r.items.slice() : segIds.slice();
       ids.forEach(function (id) {
@@ -46,14 +66,25 @@
         hint: r.hint || '',
         summary: seg.formSummary || '',
         itemIds: ids,
-        completion: r.items ? 'all' : (seg.completion || 'all')
+        isSub: !!r.items,
+        segItemIds: segIds,
+        segCompletion: seg.completion || 'all',
+        pick: seg.pick || 1
       };
     });
   }
 
+  // 列是否已完成：子集列 = 其項目全部完成；整段列 = 依段章規則（all／one／pick）
   function rowDone(row, flat) {
-    if (row.completion === 'one') return row.itemIds.some(function (id) { return !!flat[id]; });
-    return row.itemIds.every(function (id) { return !!flat[id]; });
+    if (row.isSub || row.segCompletion === 'all') return row.itemIds.every(function (id) { return !!flat[id]; });
+    return segDone(row, flat);
+  }
+
+  function segDone(row, flat) {
+    var n = row.segItemIds.filter(function (id) { return !!flat[id]; }).length;
+    if (row.segCompletion === 'one') return n >= 1;
+    if (row.segCompletion === 'pick') return n >= row.pick;
+    return n === row.segItemIds.length;
   }
 
   function rowDate(row, flat) {
@@ -61,10 +92,10 @@
     return ds.length ? ds[ds.length - 1] : '';
   }
 
-  // 已完成的段章數（同一段章的多列只計一次）
+  // 已完成的段章數（依段章本身的完成規則；同一段章的多列只計一次）
   function doneSegmentCount(rows, flat) {
     var seen = {};
-    rows.forEach(function (r) { if (rowDone(r, flat)) seen[r.segment] = true; });
+    rows.forEach(function (r) { if (!seen[r.segment] && segDone(r, flat)) seen[r.segment] = true; });
     return Object.keys(seen).length;
   }
 
@@ -72,14 +103,16 @@
     return form.name + '（' + form.code + '）';
   }
 
-  function awardNames(items) {
-    return (items.badges || []).filter(function (b) { return b.id === 'L3' || b.id === 'L4'; })
-      .map(function (b) { return b.name; });
+  // awardChoice：true = 現行 L3／L4；陣列 = 指定獎章 ID（舊制 PT/69）
+  function awardNames(items, choice) {
+    var ids = Array.isArray(choice) ? choice : ['L3', 'L4'];
+    var S = scope();
+    return ids.map(function (id) { return S.findBadge(items, id); }).filter(Boolean).map(function (b) { return b.name; });
   }
 
   function buildForm(type, ctx) {
     var items = ctx.items;
-    var form = (items.forms || {})[type];
+    var form = allForms(items)[type];
     if (!form) throw new Error('forms: unknown form ' + type);
     var flat = ctx.flat || {};
     var member = ctx.member || {};
@@ -105,11 +138,11 @@
 
     if (form.awardChoice) {
       h.push('<div style="font-size:11px;margin:6px 0">申請獎章 Award applied for：' +
-        awardNames(items).map(function (n) { return '☐ ' + esc(n); }).join('　') + '</div>');
+        awardNames(items, form.awardChoice).map(function (n) { return '☐ ' + esc(n); }).join('　') + '</div>');
     }
 
     // (2) 考驗項目
-    var secTitle = type === 'PT69' ? '(2) 考驗計劃 Assessment Plan' : '(2) 考驗項目 Components';
+    var secTitle = type.indexOf('PT69') === 0 ? '(2) 考驗計劃 Assessment Plan' : '(2) 考驗項目 Components';
     h.push('<div class="form-section" style="font-size:12px;font-weight:700;background:#F0F0F0;padding:4px 8px;border:1px solid #000;margin-top:10px">' + secTitle + '</div>');
     var doneN = doneSegmentCount(rows, flat);
     if (form.rule) {
@@ -124,24 +157,33 @@
         (r.summary ? '<br><small>' + esc(r.summary) + '</small>' : '') +
         (r.hint ? '<br><small style="color:#B00020">' + esc(r.hint) + '</small>' : '');
       var date = prefill ? rowDate(r, flat) : '';
-      if (form.columns && form.columns.length === 3 && type === 'PT69') {
+      if (cols.length === 3) {
         h.push('<tr><td>' + label + '</td><td><input style="width:95%"></td><td><input type="date" style="width:100%"></td></tr>');
+      } else if (cols.length === 4) {
+        h.push('<tr><td>' + label + '</td><td><input style="width:95%"></td><td><input style="width:95%"></td><td><input style="width:95%"></td></tr>');
       } else {
         h.push('<tr><td>' + label + '</td><td><input style="width:95%"></td><td><input type="date" value="' + esc(date) + '" style="width:100%"></td><td><input style="width:95%"></td><td><input style="width:95%"></td></tr>');
       }
     });
     h.push('</table>');
 
-    if (form.certField) {
-      h.push('<table class="print-table" style="font-size:11px;margin-top:8px"><tr><td style="width:50%">' + esc(form.certField.label) +
-        (form.certField.required ? ' <b style="color:#B00020">（必填）</b>' : '') + '</td><td><input style="width:95%"></td></tr></table>');
+    var extra = [];
+    if (form.certField) extra.push(form.certField);
+    (form.extraFields || []).forEach(function (f) { extra.push(f); });
+    if (extra.length) {
+      h.push('<table class="print-table" style="font-size:11px;margin-top:8px">');
+      extra.forEach(function (f) {
+        h.push('<tr><td style="width:50%">' + esc(f.label) +
+          (f.required ? ' <b style="color:#B00020">（必填）</b>' : '') + '</td><td><input style="width:95%"></td></tr>');
+      });
+      h.push('</table>');
     }
 
     // (3) 簽署程序
     h.push('<div class="form-section" style="font-size:12px;font-weight:700;background:#F0F0F0;padding:4px 8px;border:1px solid #000;margin-top:10px">(3) 簽署及批核 Endorsement</div>');
     h.push('<table class="print-table" style="font-size:11px"><tr><th>程序 Stage</th><th>簽署人 Signer</th><th>簽署 Signature</th><th>日期 Date</th><th>印章 Stamp</th></tr>');
     (form.stages || []).forEach(function (st) {
-      h.push('<tr><td>' + esc(st.no + '. ' + st.title) + '</td><td>' + esc(st.signer) + '</td><td></td><td></td><td>' + esc(st.stamp || '') + '</td></tr>');
+      h.push('<tr><td>' + esc((st.no ? st.no + '. ' : '') + st.title) + '</td><td>' + esc(st.signer) + '</td><td></td><td></td><td>' + esc(st.stamp || '') + '</td></tr>');
     });
     h.push('</table>');
 
@@ -152,29 +194,34 @@
     return h.join('');
   }
 
-  // 生成按鈕（依 items.forms 逐個產生）
-  function formButtonsHtml(items) {
-    return Object.keys(items.forms || {}).map(function (key) {
-      var f = items.forms[key];
+  // 生成按鈕（依學制逐個產生）
+  function formButtonsHtml(items, scheme) {
+    var all = allForms(items);
+    return formsForScheme(items, scheme).map(function (key) {
+      var f = all[key];
       return '<button class="btn btn-primary" onclick="generatePrintableForm(\'' + esc(key) + '\')">🖨️ ' + esc(f.code) + ' ' + esc(f.name) + '</button>';
     }).join('');
   }
 
-  // 官方表格連結卡（新制＋舊制；舊制標明不由本系統產生）
+  // 官方表格連結卡（新制＋舊制，標明版本）
   function officialLinksHtml(items) {
     var out = [];
-    Object.keys(items.forms || {}).forEach(function (key) {
-      var f = items.forms[key];
-      out.push('<a href="' + esc(f.officialUrl) + '" target="_blank" rel="noopener" class="link-card"><div class="link-icon">📄</div><div class="link-text"><div class="title">' + esc(f.code) + ' ' + esc(f.name) + '</div><div class="url">新制（第五版）官方表格 (PDF)</div></div></a>');
-    });
-    Object.keys(items.legacyForms || {}).forEach(function (key) {
-      var f = items.legacyForms[key];
-      out.push('<a href="' + esc(f.officialUrl) + '" target="_blank" rel="noopener" class="link-card" style="opacity:.75"><div class="link-icon">🗃️</div><div class="link-text"><div class="title">' + esc(f.code) + ' ' + esc(f.name) + '</div><div class="url">舊制（第四版）· 僅供已依舊制考驗者參考</div></div></a>');
+    var groups = [
+      { forms: items.forms || {}, icon: '📄', tag: '新制（第五版）官方表格 (PDF)' },
+      { forms: items.oldForms || {}, icon: '🗃️', tag: '舊制（第四版）官方表格 (PDF)・僅供沿用第四版者' }
+    ];
+    groups.forEach(function (g) {
+      Object.keys(g.forms).forEach(function (key) {
+        var f = g.forms[key];
+        out.push('<a href="' + esc(f.officialUrl) + '" target="_blank" rel="noopener" class="link-card"><div class="link-icon">' + g.icon + '</div><div class="link-text"><div class="title">' + esc(f.code) + ' ' + esc(f.name) + '</div><div class="url">' + esc(g.tag) + '</div></div></a>');
+      });
     });
     return out.join('');
   }
 
   return {
+    allForms: allForms,
+    formsForScheme: formsForScheme,
     resolveRows: resolveRows,
     rowDone: rowDone,
     rowDate: rowDate,

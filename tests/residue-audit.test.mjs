@@ -1,5 +1,5 @@
 // 殘留掃描（其他章節／VSBADGE 深資結構是否混入本支部）與跨檔一致性。
-// 允許的例外只限於：舊版對照（legacyTransition）、舊版紀錄（legacy）、舊制連結（legacyForms），
+// 允許的例外只限於：舊版對照（legacyTransition）、舊版紀錄（legacy）、舊制目錄（oldBadges／oldForms，第四版 S4-*），
 // 以及架構性註解（api/*.js、Code.gs 的 VSBADGE／深資 說明）。
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -27,7 +27,7 @@ const RESIDUE = [
 ];
 
 // 允許出現的 JSON 子樹（舊版對照／舊版紀錄／舊制連結）
-const ALLOWED_SUBTREES = new Set(['legacyTransition', 'legacy', 'legacyForms']);
+const ALLOWED_SUBTREES = new Set(['legacyTransition', 'legacy', 'oldBadges', 'oldForms']);
 
 function strings(node, out = []) {
   if (typeof node === 'string') out.push(node);
@@ -55,13 +55,14 @@ test('items_en.json: no residue from other sections outside the legacy subtrees'
 });
 
 test('items.json / items_en.json: same structure, IDs and form codes', () => {
-  const ids = doc => doc.badges.flatMap(b => b.segments.flatMap(s => S.segmentItemIds(s)))
+  const ids = doc => [...doc.badges, ...doc.oldBadges].flatMap(b => b.segments.flatMap(s => S.segmentItemIds(s)))
     .concat(doc.otherBadges.map(o => o.id));
   assert.deepEqual(ids(itemsEn), ids(items));
   assert.deepEqual(itemsEn.badges.map(b => b.id), items.badges.map(b => b.id));
   assert.deepEqual(itemsEn.badges.map(b => b.segments.map(s => s.code)), items.badges.map(b => b.segments.map(s => s.code)));
   assert.deepEqual(Object.keys(itemsEn.forms), Object.keys(items.forms));
-  assert.deepEqual(Object.keys(itemsEn.legacyForms), Object.keys(items.legacyForms));
+  assert.deepEqual(Object.keys(itemsEn.oldForms), Object.keys(items.oldForms));
+  assert.deepEqual(itemsEn.oldBadges.map(b => b.segments.map(s => s.code)), items.oldBadges.map(b => b.segments.map(s => s.code)));
   assert.deepEqual(itemsEn.legacyTransition, items.legacyTransition);
   assert.deepEqual(itemsEn.legacy.ids.map(l => l.id), items.legacy.ids.map(l => l.id));
   for (const k of Object.keys(items.forms)) {
@@ -80,9 +81,9 @@ test('legacy IDs are kept (not deleted) and labelled 舊版紀錄／不計完成
 test('generated text (levels, permissions, forms, links) contains no residue', () => {
   const generated = [
     ...S.levelSummaries(items).flatMap(x => [x.name, x.desc]),
-    ...S.permissionOptions(items).map(o => o.label),
-    F.formButtonsHtml(items),
-    F.officialLinksHtml(items),
+    // 舊制（old）選項與連結是刻意保留的第四版內容，此處只檢查新制輸出
+    ...S.permissionOptions(items).filter(o => !/^old/.test(o.group)).map(o => o.label),
+    F.formButtonsHtml(items, 'new'),
     F.buildForm('PT21', { items, flat: {}, member: { name: 'X', ymis: '1' }, today: '2026-01-01' }),
     F.buildForm('PT22', { items, flat: {}, member: { name: 'X', ymis: '1' }, today: '2026-01-01' }),
     F.buildForm('PT69', { items, flat: {}, member: { name: 'X', ymis: '1' }, today: '2026-01-01' }),

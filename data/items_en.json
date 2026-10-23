@@ -236,12 +236,12 @@
           "desc": "Daily Interactions or International Exchange (complete Item A or B)",
           "items": [
             {
-              "id": "L3-INTL-A",
+              "id": "L3-INTL-01",
               "name": "A) Daily Interactions - choose an exchange or cooperation task with people of different nationalities during group activities held on campus, office and/or workplace. Carry out a research regarding the experience for not less than 6 months, and share the experience and research with others.",
               "detail": "The method of sharing can be formulated after discussion with the corresponding Headquarters Commissioner (Rover Scouts)."
             },
             {
-              "id": "L3-INTL-B",
+              "id": "L3-INTL-02",
               "name": "B) International Exchange - participate in one international exchange programme that lasts for at least \"5 days and 4 nights\", and share your experience upon completion of the programme.",
               "detail": "Examples: World Scout Jamboree, World Scout Moot, World Scout Conference, APR Scout Conference, Scout Group Exchange Tour, international or Asia youth exchange programme, or an exchange tour in the Belt and Road Initiative Countries. The location is recommended to be outside Hong Kong and the activity must comprise international exchange; activities that are purely for tourism purposes cannot be regarded as an international exchange. The method of sharing can be formulated after discussion with the corresponding Headquarters Commissioner (Rover Scouts).",
               "tip": "Recommended outside Hong Kong; must include international exchange elements"
@@ -291,13 +291,13 @@
           "desc": "Wilderness Challenge or Personal Challenge (complete Item A or B)",
           "items": [
             {
-              "id": "L3-CHAL-A",
+              "id": "L3-CHALLENGE-01",
               "name": "A) Wilderness Challenge - conduct an expedition journey of \"3 days and 2 nights\" or more with other Rover Scouts and/or Venture Scouts. Submit an expedition plan before the journey, and an expedition log and project log after the journey. Complete recognised expedition training before starting.",
               "detail": "The journey should be done as a team of 3 to 6 members (mixed-gender teams need at least two members of each gender); all participating members must never have conducted a \"3 days and 2 nights\" expedition assessment; at least 21 hours of related activities including the expedition journey process, achieving the purpose of the journey, campcraft, cooking and expedition projects; each member should take up some important roles and complete 2 projects together with the teammates. The assessment must be conducted by Senior Expedition Assessors or Expedition Assessors recognised by the Association Headquarters.",
               "tip": "Requires a recognised Expedition Assessor"
             },
             {
-              "id": "L3-CHAL-B",
+              "id": "L3-CHALLENGE-02",
               "name": "B) Personal Challenge - complete a challenge that has never been done before, to challenge oneself.",
               "detail": "Examples: Cross Harbour Race, triathlon, marathon, cycling expedition journey, overseas expedition journey, HKAYP Gold Award Adventurous Journey, Scout Wings, Scout Canopy Wings, completing 1 challenging charity activity e.g. Oxfam Trailwalker, etc. If a member has never completed a challenge of the same content or a higher level than the Wilderness Challenge, they must complete Item (A); conversely, if they have already completed such a challenge, they must complete Item (B) to embrace new challenges.",
               "tip": "Must be something never done before"
@@ -835,23 +835,6 @@
       }
     ]
   },
-  "legacyForms": {
-    "PT21": {
-      "code": "PT/21 (4th Edition)",
-      "name": "Rover Scout Award and Certificate application (4th Edition, legacy)",
-      "officialUrl": "https://www.scout.org.hk/article_attach/23724/PT21.pdf"
-    },
-    "PT22": {
-      "code": "PT/22 (4th Edition)",
-      "name": "Baden-Powell Award and Certificate application (4th Edition, legacy)",
-      "officialUrl": "https://www.scout.org.hk/article_attach/23723/PT22.pdf"
-    },
-    "PT69": {
-      "code": "PT/69 (4th Edition)",
-      "name": "Assessment application (4th Edition, 2024 version, legacy)",
-      "officialUrl": "https://www.scout.org.hk/uploads/tc/forms/26139/PT69_2024.pdf"
-    }
-  },
   "permissionDefaults": {
     "leader": "*",
     "exec_committee": "L1,OTHER",
@@ -922,5 +905,578 @@
         "reason": "The 5th Edition has no L6 badge"
       }
     ]
+  },
+  "oldBadges": [
+    {
+      "id": "S4-AWARD",
+      "icon": "📜",
+      "name": "Rover Scout Award (4th Edition)",
+      "en": "Rover Scout Award (4th Edition)",
+      "color": "#8B5A2B",
+      "purpose": "Rover Scout Award under the 4th Edition (PT/21 old form)",
+      "description": "For members who continue under the 4th Edition. Complete by 14 August 2029.",
+      "requirements": "4 compulsory items + 1 of 3 electives",
+      "segments": [
+        {
+          "code": "S4-AWARD-CORE",
+          "name": "Compulsory Items",
+          "desc": "4th Edition compulsory items",
+          "completion": "all",
+          "formLabel": "Compulsory Items",
+          "items": [
+            {
+              "id": "S4-AWARD-CORE-01",
+              "name": "Scouting Knowledge",
+              "transition": {
+                "mode": "none",
+                "to": [
+                  "L2-INTRO-01"
+                ],
+                "note": "Verify against the 5th Edition Rover Scout Epaulettes; do not treat the whole badge as complete."
+              }
+            },
+            {
+              "id": "S4-AWARD-CORE-02",
+              "name": "Community Service (I) – Scout Service",
+              "transition": {
+                "mode": "none",
+                "to": [],
+                "note": "Not listed in the P022 mapping table."
+              }
+            },
+            {
+              "id": "S4-AWARD-CORE-03",
+              "name": "Community Service (I) – Community Service",
+              "transition": {
+                "mode": "none",
+                "to": [],
+                "note": "Not listed in the P022 mapping table."
+              }
+            },
+            {
+              "id": "S4-AWARD-CORE-04",
+              "name": "Scoutcraft (I)",
+              "transition": {
+                "mode": "none",
+                "to": [],
+                "note": "P022: Part A → Service (1); Part B (excluding seamanship) → Scoutcraft (1); Part C → Scoutcraft (2). Parts are not recorded separately here; verify."
+              }
+            }
+          ]
+        },
+        {
+          "code": "S4-AWARD-ELECT",
+          "name": "Electives (choose 1 of 3)",
+          "desc": "4th Edition electives",
+          "completion": "pick",
+          "pick": 1,
+          "formLabel": "Elective Items (choose one)",
+          "items": [
+            {
+              "id": "S4-AWARD-ELECT-01",
+              "name": "Personal Development",
+              "transition": {
+                "mode": "none",
+                "to": [],
+                "note": "Not listed in the P022 mapping table."
+              }
+            },
+            {
+              "id": "S4-AWARD-ELECT-02",
+              "name": "Personal Pursuits",
+              "transition": {
+                "mode": "none",
+                "to": [
+                  "L3-INT-01",
+                  "L3-HEALTH-01",
+                  "L3-HEALTH-02"
+                ],
+                "note": "Depends on the nature of the interest: Interests and Skills or Physical and Mental Wellbeing. No blanket mapping."
+              }
+            },
+            {
+              "id": "S4-AWARD-ELECT-03",
+              "name": "Horizons Broadening",
+              "transition": {
+                "mode": "none",
+                "to": [
+                  "L3-INTL-01",
+                  "L3-INTL-02"
+                ],
+                "note": "Maps to International Outlook; check against the circular."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "S4-BP",
+      "icon": "🏆",
+      "name": "Baden-Powell Award (4th Edition)",
+      "en": "Baden-Powell Award (4th Edition)",
+      "color": "#B8860B",
+      "purpose": "Baden-Powell Award under the 4th Edition (PT/22 old form)",
+      "description": "For members who continue under the 4th Edition.",
+      "requirements": "3 compulsory items + 2 of 3 electives",
+      "segments": [
+        {
+          "code": "S4-BP-CORE",
+          "name": "Compulsory Items",
+          "desc": "4th Edition compulsory items",
+          "completion": "all",
+          "formLabel": "Compulsory Items",
+          "items": [
+            {
+              "id": "S4-BP-CORE-01",
+              "name": "Community Service (II)",
+              "transition": {
+                "mode": "all",
+                "to": [
+                  "L3-SERVICE-02",
+                  "L3-SERVICE-03"
+                ],
+                "note": "Corresponds to Service (2) and (3); check the service requirements in the 5th Edition notes."
+              }
+            },
+            {
+              "id": "S4-BP-CORE-02",
+              "name": "Scoutcraft (II)",
+              "transition": {
+                "mode": "none",
+                "to": [],
+                "note": "Not listed in the P022 mapping table."
+              }
+            },
+            {
+              "id": "S4-BP-CORE-03",
+              "name": "Challenge",
+              "transition": {
+                "mode": "none",
+                "to": [
+                  "L3-CHALLENGE-01",
+                  "L3-CHALLENGE-02"
+                ],
+                "note": "Verify against the 5th Edition Challenge requirements and notes."
+              }
+            }
+          ]
+        },
+        {
+          "code": "S4-BP-ELECT",
+          "name": "Electives (choose 2 of 3)",
+          "desc": "4th Edition electives",
+          "completion": "pick",
+          "pick": 2,
+          "formLabel": "Elective Items (choose two)",
+          "items": [
+            {
+              "id": "S4-BP-ELECT-01",
+              "name": "Personal Development",
+              "transition": {
+                "mode": "none",
+                "to": [],
+                "note": "Not listed in the P022 mapping table."
+              }
+            },
+            {
+              "id": "S4-BP-ELECT-02",
+              "name": "Personal Pursuits",
+              "transition": {
+                "mode": "none",
+                "to": [
+                  "L3-INT-01",
+                  "L3-HEALTH-01",
+                  "L3-HEALTH-02"
+                ],
+                "note": "Depends on the nature of the interest."
+              }
+            },
+            {
+              "id": "S4-BP-ELECT-03",
+              "name": "Horizons Broadening",
+              "transition": {
+                "mode": "none",
+                "to": [
+                  "L3-INTL-01",
+                  "L3-INTL-02"
+                ],
+                "note": "Maps to International Outlook."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "oldForms": {
+    "PT21_OLD": {
+      "code": "PT/21（舊制）",
+      "name": "Rover Scout Award and Certificate Application (4th Edition)",
+      "edition": "4th Edition (legacy)",
+      "officialUrl": "https://www.scout.org.hk/article_attach/23724/PT21.pdf",
+      "description": "Compulsory items plus one elective (4th Edition)",
+      "rows": [
+        {
+          "segment": "S4-AWARD-CORE",
+          "items": [
+            "S4-AWARD-CORE-01"
+          ],
+          "label": "Scouting Knowledge"
+        },
+        {
+          "segment": "S4-AWARD-CORE",
+          "items": [
+            "S4-AWARD-CORE-02"
+          ],
+          "label": "Community Service (I) – Scout Service"
+        },
+        {
+          "segment": "S4-AWARD-CORE",
+          "items": [
+            "S4-AWARD-CORE-03"
+          ],
+          "label": "Community Service (I) – Community Service"
+        },
+        {
+          "segment": "S4-AWARD-CORE",
+          "items": [
+            "S4-AWARD-CORE-04"
+          ],
+          "label": "Scoutcraft (I)"
+        },
+        {
+          "segment": "S4-AWARD-ELECT",
+          "items": [
+            "S4-AWARD-ELECT-01"
+          ],
+          "label": "☐ Personal Development (elective)"
+        },
+        {
+          "segment": "S4-AWARD-ELECT",
+          "items": [
+            "S4-AWARD-ELECT-02"
+          ],
+          "label": "☐ Personal Pursuits (elective)"
+        },
+        {
+          "segment": "S4-AWARD-ELECT",
+          "items": [
+            "S4-AWARD-ELECT-03"
+          ],
+          "label": "☐ Horizons Broadening (elective)"
+        }
+      ],
+      "rule": {
+        "text": "Complete all compulsory items and one of the three electives."
+      },
+      "columns": [
+        "Items",
+        "Summary",
+        "Date",
+        "Assessor",
+        "Remarks"
+      ],
+      "stages": [
+        {
+          "title": "Nomination",
+          "signer": "Rover Scout Leader (RSL)",
+          "stamp": "Group Stamp"
+        },
+        {
+          "title": "District",
+          "signer": "District",
+          "stamp": "District Stamp"
+        },
+        {
+          "title": "Regional Headquarters",
+          "signer": "Regional Headquarters Commissioner (RS)",
+          "stamp": "Regional Stamp"
+        },
+        {
+          "title": "Programme Commissioner",
+          "signer": "Programme Commissioner",
+          "stamp": "Programme Branch Stamp"
+        }
+      ],
+      "prefillDates": true,
+      "progressTicks": true,
+      "extraFields": []
+    },
+    "PT22_OLD": {
+      "code": "PT/22（舊制）",
+      "name": "Baden-Powell Award and Certificate Application (4th Edition)",
+      "edition": "4th Edition (legacy)",
+      "officialUrl": "https://www.scout.org.hk/article_attach/23723/PT22.pdf",
+      "description": "Compulsory items plus two electives (4th Edition)",
+      "rows": [
+        {
+          "segment": "S4-BP-CORE",
+          "items": [
+            "S4-BP-CORE-01"
+          ],
+          "label": "Community Service (II)"
+        },
+        {
+          "segment": "S4-BP-CORE",
+          "items": [
+            "S4-BP-CORE-02"
+          ],
+          "label": "Scoutcraft (II)"
+        },
+        {
+          "segment": "S4-BP-CORE",
+          "items": [
+            "S4-BP-CORE-03"
+          ],
+          "label": "Challenge"
+        },
+        {
+          "segment": "S4-BP-ELECT",
+          "items": [
+            "S4-BP-ELECT-01"
+          ],
+          "label": "☐ Personal Development (elective)"
+        },
+        {
+          "segment": "S4-BP-ELECT",
+          "items": [
+            "S4-BP-ELECT-02"
+          ],
+          "label": "☐ Personal Pursuits (elective)"
+        },
+        {
+          "segment": "S4-BP-ELECT",
+          "items": [
+            "S4-BP-ELECT-03"
+          ],
+          "label": "☐ Horizons Broadening (elective)"
+        }
+      ],
+      "rule": {
+        "text": "Complete all compulsory items and two of the three electives. Applications submitted by 15 September are processed in that year."
+      },
+      "columns": [
+        "Items",
+        "Summary",
+        "Date",
+        "Assessor",
+        "Remarks"
+      ],
+      "stages": [
+        {
+          "title": "Nomination",
+          "signer": "Rover Scout Leader (RSL)",
+          "stamp": "Group Stamp"
+        },
+        {
+          "title": "District Commissioner",
+          "signer": "District Commissioner",
+          "stamp": "District Stamp"
+        },
+        {
+          "title": "Regional",
+          "signer": "Regional Commissioner",
+          "stamp": "Regional Stamp"
+        },
+        {
+          "title": "Programme Commissioner",
+          "signer": "Programme Commissioner",
+          "stamp": "Programme Branch Stamp"
+        }
+      ],
+      "prefillDates": true,
+      "progressTicks": true,
+      "extraFields": [
+        {
+          "label": "Rover Scout Award Certificate No.",
+          "required": false
+        }
+      ]
+    },
+    "PT69_OLD": {
+      "code": "PT/69（舊制）",
+      "name": "Application for Assessment of the Rover Scout Award and Baden-Powell Award (4th Edition, 2024)",
+      "edition": "4th Edition (legacy, 2024 version)",
+      "officialUrl": "https://www.scout.org.hk/uploads/tc/forms/26139/PT69_2024.pdf",
+      "description": "Submit before starting any assessment",
+      "rows": [
+        {
+          "segment": "S4-AWARD-CORE",
+          "items": [
+            "S4-AWARD-CORE-01"
+          ],
+          "label": "Scouting Knowledge"
+        },
+        {
+          "segment": "S4-AWARD-CORE",
+          "items": [
+            "S4-AWARD-CORE-02"
+          ],
+          "label": "Community Service (I) – Scout Service"
+        },
+        {
+          "segment": "S4-AWARD-CORE",
+          "items": [
+            "S4-AWARD-CORE-03"
+          ],
+          "label": "Community Service (I) – Community Service"
+        },
+        {
+          "segment": "S4-BP-CORE",
+          "items": [
+            "S4-BP-CORE-01"
+          ],
+          "label": "Community Service (II)"
+        },
+        {
+          "segment": "S4-AWARD-CORE",
+          "items": [
+            "S4-AWARD-CORE-04"
+          ],
+          "label": "Scoutcraft (I)"
+        },
+        {
+          "segment": "S4-BP-CORE",
+          "items": [
+            "S4-BP-CORE-02"
+          ],
+          "label": "Scoutcraft (II)"
+        },
+        {
+          "segment": "S4-AWARD-ELECT",
+          "items": [
+            "S4-AWARD-ELECT-02"
+          ],
+          "label": "Personal Pursuits",
+          "hint": "Plan once; applies to both awards"
+        },
+        {
+          "segment": "S4-AWARD-ELECT",
+          "items": [
+            "S4-AWARD-ELECT-01"
+          ],
+          "label": "Personal Development"
+        },
+        {
+          "segment": "S4-AWARD-ELECT",
+          "items": [
+            "S4-AWARD-ELECT-03"
+          ],
+          "label": "Horizons Broadening",
+          "hint": "☐ Overseas Experience ☐ Local Exchange"
+        },
+        {
+          "segment": "S4-BP-CORE",
+          "items": [
+            "S4-BP-CORE-03"
+          ],
+          "label": "Challenge",
+          "hint": "☐ Personal Challenge ☐ Wilderness Challenge"
+        }
+      ],
+      "rule": null,
+      "columns": [
+        "Items",
+        "Summary of Planning",
+        "From",
+        "To"
+      ],
+      "stages": [
+        {
+          "title": "Applicant",
+          "signer": "Applicant signature",
+          "stamp": ""
+        },
+        {
+          "title": "Nomination",
+          "signer": "Rover Scout Leader (RSL)",
+          "stamp": "Group Stamp"
+        },
+        {
+          "title": "District (RS)",
+          "signer": "ADC (RS) / DRSL / District Assigned Person",
+          "stamp": "District Stamp"
+        },
+        {
+          "title": "Regional Headquarters",
+          "signer": "Regional Headquarters Commissioner (RS)",
+          "stamp": "Regional Stamp"
+        }
+      ],
+      "prefillDates": false,
+      "progressTicks": false,
+      "awardChoice": [
+        "S4-AWARD",
+        "S4-BP"
+      ],
+      "extraFields": [
+        {
+          "label": "No.",
+          "required": false
+        },
+        {
+          "label": "Date of Rover Scout Epaulettes Issued",
+          "required": false
+        }
+      ]
+    }
+  },
+  "schemes": {
+    "default": "new",
+    "list": {
+      "new": {
+        "label": "新制（第五版）",
+        "en": "5th Edition (new)",
+        "desc": "2026-08-15 或之後宣誓的成員，或選擇按第五版考核的成員。",
+        "forms": [
+          "PT21",
+          "PT22",
+          "PT69"
+        ],
+        "catalogBadges": [
+          "L1",
+          "L2",
+          "L3",
+          "L4"
+        ]
+      },
+      "old": {
+        "label": "舊制（第四版）",
+        "en": "4th Edition (legacy)",
+        "desc": "2026-08-15 前宣誓、選擇沿用第四版的成員。須於 2029-08-14 或以前完成，逾期須按第五版考核。",
+        "forms": [
+          "PT21_OLD",
+          "PT22_OLD",
+          "PT69_OLD"
+        ],
+        "catalogBadges": [
+          "L1",
+          "L2",
+          "S4-AWARD",
+          "S4-BP"
+        ]
+      },
+      "transition": {
+        "label": "舊制過渡新制",
+        "en": "Transition (4th → 5th)",
+        "desc": "沿用第四版紀錄，對照第五版綱要核實後，於第五版項目勾選。第四版紀錄保留於「舊制版紀錄」，不自動計入第五版完成度。",
+        "forms": [
+          "PT21",
+          "PT22",
+          "PT69"
+        ],
+        "catalogBadges": [
+          "L1",
+          "L2",
+          "L3",
+          "L4"
+        ],
+        "referenceBadges": [
+          "S4-AWARD",
+          "S4-BP"
+        ]
+      }
+    }
   }
 }

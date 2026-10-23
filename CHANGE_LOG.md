@@ -14,7 +14,14 @@
 - **文件**：`AGENT_TEMPLATE_FOR_OTHER_SECTIONS.md` 第 167 行（PT 代碼錯配）、`EXEC_GUIDE.md`、`LEADER_GUIDE.md`、`MEMBER_GUIDE.md`、`MAIN_SYSTEM_INTEGRATION.md` 第 121 行。
 - **測試**：新增 `tests/rover-scope.test.mjs`、`tests/forms-generator.test.mjs`（Node harness 實際執行產生器）、`tests/residue-audit.test.mjs`；已加入 `npm test`。`npm run check` 65/0。
 
-**未完成／待決**：熱線 `2957 6414` 未核實；`L1-01`／`L1-02` 舊名未核對；佩戴指引日期標籤未核對；後端未強制 `allowed_badges`（另開 PR）；新制／舊制過渡選擇待用戶決定。
+- **學制（第二批）**：每位成員可選「新制（`new`）／舊制（`old`）／舊制過渡新制（`transition`）」，預設新制。進度頁有學制選擇器（成員本人可改；領袖可為他人改）；表格頁依學制產生對應表格；過渡成員可見「舊制 → 新制過渡對照」面板，只提供待儲存、不自動計入完成度。
+- **後端權限（第二批）**：`apps-script/Code.gs` 的 save、saveOtherBadge、requestComplete、reviewRequest、setScheme 均以 token 識別操作者，強制角色、`allowed_badges` 與學制；整批任何一項違規則整批拒絕、零寫入。`ITEM_CATALOG_`／`DEFAULT_PERMS_` 由 `scripts/gen-backend-catalog.mjs` 從 `data/items.json` 生成（`--check` 驗證同步）。
+- **代理層安全修正**：`api/proxy.js` 會替每個轉發請求附上旅團 APIKEY，因此身分以 token 為準（帶無效 token 一律拒絕）；只有 APIKEY 而無 token 才視為系統操作。`setScheme` 加入代理層白名單（原本會回 400「不支援的操作」）。
+- **改名**：舊制 S4 ID 改為 `S4-AWARD-CORE-01…`、`S4-BP-ELECT-03` 等（前綴與段章代碼一致）；L3 `L3-INTL-A/B`、`L3-CHALLENGE-A/B` 改為 `-01／-02`（用戶授權，尚無用戶）。
+- **文件**：`docs/AGENT_TEMPLATE_FOR_OTHER_SECTIONS.md` 表格代碼只保留樂行（用戶指示）。
+- **測試**：新增 `tests/allowed-badges.test.mjs`、`tests/catalog-sync.test.mjs`、`tests/proxy-actions.test.mjs`、`tests/scheme-dom-test.mjs`（jsdom，可選）；`troop_link`／`security` 夾具改用真實項目 ID `L1-ACT-01`（後端現在驗證項目 ID）。`npm run check` 73/0；`npm test` 結束碼 0。
+
+**未完成／待決**：熱線 `2957 6414` 未核實；`L1-01`／`L1-02` 舊名未核對；佩戴指引日期標籤未核對；舊制 PT/21、22 項目未逐字對照舊制 PDF；`can_tick` 旗標前後端均未使用（待用戶決定）；Apps Script 上線前須實測。
 
 ## 2026-10-23 — 首次登入教學（App＋文件）＋ 主系統介紹暫時隱藏 ＋ 兩項對齊改善
 

@@ -10,7 +10,8 @@
 
 - **範圍**：整個 repo，包括 `index.html`、`apps-script/Code.gs`、`assets/`、`api/`、`data/`、`i18n_dict.tsv`、`docs/`、`tests/`、`CHANGE_LOG.md` 及其他根目錄文件。`.vercel/` 為 gitignored 的舊建置副本，不作為來源，已排除。
 - **關於「第 3 節 grep 清單」**：用戶訊息及 repo 內**都沒有**這份清單。已搜尋 `*.md`（`grep "grep"`），只有 `VERCEL_ENV_SETUP.md:231` 提及 grep 這個詞，並非清單。因此本次清單是**獨立建立**的（見 §1）。
-- **權威來源**：見 §5 官方連結。舊制（第四版）表格只用於對照，不用於產生新表格。
+- **權威來源**：見 §5 官方連結。舊制（第四版）表格現在**依學制**產生（見 §2 第 23 項），但其項目與簽署程序仍以官方舊制 PDF 為準。
+- **第二批（學制與後端權限）**：見 §2 第 23–33 項；待決事項的處理結果見 §4。
 
 ---
 
@@ -53,7 +54,7 @@ grep -rnE --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=.vercel \
 | 6 | 表格「說明」字典（index.html 1332 / TSV 497） | `：完成全部7項 (4必修+3選修其中2)，…` | `：完成全部7項（樂行童軍獎章4項＋餘下3項），需區總監及地域總監接見推薦，每年9月15日前交總會，大會操頒發。` | 綱要 L4；PT/22 說明；官方 PT/22 §6 |
 | 7 | i18n 字典 | `三選二`、`三選一剔號`（未被程式引用） | 已刪除；TSV 6 個舊鍵改名、46 列孤兒列刪除、17 鍵補入；以 `build_i18n.py --sync-dict` 同步（946 筆） | 殘留掃描 |
 | 8 | 執委預設權限（Code.gs 474、1311、1616、1356；batch-onboard 145；index.html 4103、5009、5159；`permSetExecDefault`） | `L1,活動段章,OTHER`／`L1,L3-ACT,OTHER` | `L1,OTHER`，單一來源 `items.json → permissionDefaults.exec_committee`。注意：舊字串中的「活動段章」本來就不是任何現行代碼，實際放行的只有 L1 與 OTHER，因此**有效權限未變，只是去除殘留並統一來源** | 第五版段章代碼；`permissionDefaults` |
-| 9 | 權限判斷（index.html HEAD 2361–2383 `canCurrentUserTickItem`） | `itemId.startsWith(a)` 前綴比對：權限 `L3-INT` 會錯誤放行 `L3-INTL-A／B` | `RoverScope.canTickItem`：精確比對 `*`／項目 ID／段章代碼／獎章 ID／`OTHER`；未知代碼不放行且原樣保留 | 修正真實缺陷（測試 `rover-scope.test.mjs` 覆蓋） |
+| 9 | 權限判斷（index.html HEAD 2361–2383 `canCurrentUserTickItem`） | `itemId.startsWith(a)` 前綴比對：權限 `L3-INT` 會錯誤放行 `L3-INTL-01／B` | `RoverScope.canTickItem`：精確比對 `*`／項目 ID／段章代碼／獎章 ID／`OTHER`；未知代碼不放行且原樣保留 | 修正真實缺陷（測試 `rover-scope.test.mjs` 覆蓋） |
 | 10 | 權限選單與預設（index.html 權限 modal 及 `permSetExecDefault`） | 硬寫選項與段章 | 由 `RoverScope.permissionOptions(items)` 產生；段章勾選時子項目自動勾，儲存時剔除已被父層涵蓋的子項 | items.json |
 | 11 | 表格與權限的 JS 實作 | 內嵌於 index.html（HEAD 4505 起的 `generatePrintableForm`，含三個深資分支） | 移至 `assets/rover-scope.js`、`assets/forms.js`（UMD，瀏覽器與 Node 共用）；index.html 以 `<script src>` 載入 | 可測試性（驗收 6） |
 | 12 | 舊版 ID（HEAD 無獨立分類） | 未分類 | 新增 `legacy.label = 舊版紀錄／不計完成度`，列出 12 個舊 ID（如 `L1-UND-05`、`L1-01`、`L1-02`、`L2-SKILL-01`、`L3-SELF`、`L3-RESP` 等）；保留不刪；不計完成度；不出現於新表格；進度頁以卡片顯示 | 驗收 5 |
@@ -63,11 +64,22 @@ grep -rnE --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=.vercel \
 | 16 | Code.gs 第 74 行示例、第 1352 行註解 | `深資` 示例；舊版註解 | `其他支部`；註解改為指向 items.json | 殘留 |
 | 17 | 表格連結（HEAD index.html 4849–4851） | PT/21、PT/22 連結指向舊制（第四版）PDF（`article_attach/23724`、`23723`），卻與 PT/69 新制連結並列為現行表格；HEAD 表格標題亦標示「最新」 | `RoverForms.officialLinksHtml`：新制三張表為主要連結；舊制三張以「舊制（第四版）· 僅供已依舊制考驗者參考」標示，**不由系統產生** | P022 過渡安排 |
 | 17a | 表格版本標示（HEAD index.html 4519、4562、4602 標題） | 「PT/69 08/2018 最新」「PT/21 08/2022最新」「PT/22 08/2022最新」 | 不再以「最新」標示年份；以「第五版（新制）」標示，版本來源為官方 PDF 與 P022/2026 | 新制 PDF 無版本日期（已逐份核對）；舊日期屬於舊版標示 |
-| 18 | docs/AGENT_TEMPLATE_FOR_OTHER_SECTIONS.md 第 167 行 | 「樂行是 PT/19 + PT/20，幼童軍是 PT/68，童軍是 PT/18，樂行是 PT/21/PT/22」（PT/19、PT/20 實為深資；PT/68、PT/18 未核對） | 「深資 PT/19 + PT/20（P022/2026 所列）；樂行 PT/21／PT/22／PT/69（新制）；幼童軍及童軍的表格代碼未於本次核對，請各章節自行對照綱要後填寫」 | P022/2026 |
+| 18 | docs/AGENT_TEMPLATE_FOR_OTHER_SECTIONS.md 第 167 行 | 「樂行是 PT/19 + PT/20，幼童軍是 PT/68，童軍是 PT/18，樂行是 PT/21/PT/22」（PT/19、PT/20 實為深資；PT/68、PT/18 未核對） | 「僅樂行已核對：新制 PT/21／PT/22／PT/69，舊制 PT/21／PT/22／PT/69；其他章節的表格代碼不在本檔核對範圍」（用戶指示：只核對樂行） | P022/2026；用戶指示 |
 | 19 | docs/EXEC_GUIDE.md 8–9 行 | 「默認可考核：會員章 + 活動段章(細項不用勾) + 其他獎章逐個勾」 | 「會員章（L1）＋ 其他獎章（OTHER）；其餘獎章由團長／管理員逐個授權」 | 同上 |
-| 20 | docs/LEADER_GUIDE.md 43–44、60–61 行 | 「管委默認 L1會員章 + L3活動段章 + OTHER部分」；「活動段章（細項不用）」；「段章完成日期、其他獎章」；只列 PT/21、PT/22 | 管委默認 L1 ＋ OTHER；可勾選範圍為獎章、段章或項目；列出 PT/21、PT/22、PT/69 新制格式，舊制只提供連結 | 同上 |
+| 20 | docs/LEADER_GUIDE.md 43–44、60–61 行 | 「管委默認 L1會員章 + L3活動段章 + OTHER部分」；「活動段章（細項不用）」；「段章完成日期、其他獎章」；只列 PT/21、PT/22 | 管委默認 L1 ＋ OTHER；可勾選範圍為獎章、段章或項目；列出 PT/21、PT/22、PT/69 新制格式；學制可按成員設定（新制／舊制／舊制過渡新制），舊制表格由系統產生（見第 23 項）| 同上 |
 | 21 | docs/MEMBER_GUIDE.md 14、20 行 | 「PT/21(樂行童軍獎章)及PT/22(貝登堡獎章)」；「（例如童軍技能）」 | 加入 PT/69；「（例如「童軍技能」段章下的項目）」。注意：「童軍技能」本身是第五版合法段章名（L3-SCOUT），**不是殘留** | 綱要 L3 |
 | 22 | docs/MAIN_SYSTEM_INTEGRATION.md 121 行 | 「官方 PT/19/PT/20 格式」 | 「新制官方 PT/21／PT/22／PT/69 格式」 | 同上 |
+| 23 | 學制（index.html 進度頁、表格頁；Code.gs「學制設定」工作表；api/proxy.js） | 無學制概念；舊制 PT/21、22、69 只提供連結；成員無法選擇 | 每位成員可選 **新制**（`new`）／**舊制**（`old`）／**舊制過渡新制**（`transition`），預設新制；領袖可為他人設定，成員可改自己的。學制決定可勾項目：新制＝L1–L4＋OT；舊制＝L1、L2、S4-AWARD、S4-BP＋OT；過渡＝L1–L4＋OT（S4 只作對照，不自動計入）。表格：新制 PT/21、22、69；舊制 PT/21_OLD、22_OLD、69_OLD 由系統產生 | 用戶回覆：每位成員自行選擇（見 §4） |
+| 24 | 後端權限（Code.gs `handleSave`、`handleSaveOtherBadge`、`handleRequestComplete`、`handleReviewRequest`） | 只檢查角色 `canUserTick(role)`；`allowed_badges` 只在前端判斷，直接呼叫 GAS 可繞過 | 後端以 token 識別操作者，檢查角色＋`allowed_badges`（與前端 `canCurrentUserTickItem` 同一規則，見 `ITEM_CATALOG_`）＋該成員學制；**整批任何一項違規則整批拒絕，零寫入**。審核員只可審核其範圍內的項目 | 用戶要求後端強制執行 |
+| 25 | 代理層 APIKEY（api/proxy.js 轉發每個請求時附上旅團 APIKEY） | （草稿若只看 APIKEY，會被代理層繞過：所有經代理的請求都會帶 APIKEY） | 身分**以 token 為準**：帶 token 必須有效且對應用戶存在（否則拒絕）；只有有效 APIKEY 而無 token 才視為系統操作（只檢查學制） | 本次自行發現並修正；測試見 `allowed-badges`「代理層情境」 |
+| 26 | 代理層動作白名單（api/proxy.js `TOKEN_ACTIONS`） | 沒有 `setScheme`；前端學制選擇會收到「不支援的操作」（400） | 加入 `setScheme`（需 token）；`LINK_SIG_SUPPORTED` 同步加入 | 測試 `proxy-actions`：前端每個 `apiRequest('…')` 都必須被代理層接受 |
+| 27 | 進度頁「舊制 → 新制過渡對照」（index.html `renderTransitionPanel`） | 無 | 只在過渡成員的進度頁出現；列出每項舊制紀錄與對應的新制項目（P022 對照表）；只有單一對應或「全部對應」時才提供「加入待儲存」按鈕，**不自動計入完成度**，儲存前須核實 | P022/2026 第四→五版對照表（`legacyTransition`） |
+| 28 | 選修段章（segment header） | 只顯示「完成數／總數」 | 選修段章顯示「須選 N 項」（舊制 S4-AWARD-ELECT 須選 1；S4-BP-ELECT 須選 2）；完成判斷按選取數量 | 舊制 PT/21 選 1、PT/22 選 2 |
+| 29 | 表格頁（index.html `renderFormsTab`） | 成員下拉選單會重置（呼叫 `renderFormsTab()` 時未更新 `selectedProgressYmis`）；舊制卡片寫「只提供連結」 | 選擇會保留（`onFormMemberChange`）；表格按鈕依成員學制產生；舊制卡片說明學制及產生方式 | 測試 `scheme-dom-test` |
+| 30 | 舊制 S4 ID（items.json `oldBadges`） | `S4-AW-KNOW`、`S4-AW-SVC1A`、`S4-BP-SVC2`、`S4-BP-CHAL` 等縮寫，與段章代碼不一致 | `S4-AWARD-CORE-01…04`、`S4-AWARD-ELECT-01…03`、`S4-BP-CORE-01…03`、`S4-BP-ELECT-01…03`；前綴與所屬段章代碼一致。全 repo 已無舊 S4 ID | 用戶允許改名（尚無用戶） |
+| 31 | L3 國際視野及挑戰 ID（items.json、測試） | `L3-INTL-A`／`L3-INTL-B`、`L3-CHALLENGE-A`／`L3-CHALLENGE-B` | `L3-INTL-01`／`-02`、`L3-CHALLENGE-01`／`-02` | 用戶授權改名；§4 原「未改名」項已解決 |
+| 32 | 測試夾具（tests/troop_link、tests/security 等） | 以 `itemId: 'L1'`（獎章 ID）寫入進度 | 改為真實項目 ID `L1-ACT-01` | 後端現在會驗證項目 ID，未知 ID 會被拒絕（這是**收緊**，不是放寬）；測試期望值同步更新 |
+| 33 | docs/AGENT_TEMPLATE_FOR_OTHER_SECTIONS.md 表格代碼（第 69、159、167 行）| 「幼童軍 PT/68」「童軍 PT/18」「PT/19 + PT/20」；PDF 生成器說明寫「PT/19／PT/20」 | 只保留樂行：新制及舊制 PT/21、PT/22、PT/69；註明其他章節不在本檔核對範圍 | 用戶指示：只核對樂行 |
 
 ---
 
@@ -89,22 +101,22 @@ grep -rnE --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=.vercel \
 
 ## 4. 未驗證／待決事項
 
-| 項目 | 狀態 | 建議 |
+| 項目 | 狀態 | 建議／處理 |
 |---|---|---|
 | 熱線 `2957 6414` | 未在 P022 找到，仍保留 | 向青少年活動署查證後刪除或保留 |
 | `L1-01`、`L1-02` 舊名「舊版 ID（童軍知識）」 | 名稱未與舊制 PT/21 逐項核對 | 核對舊制紀錄冊後修正名稱（ID 不變） |
 | 佩戴指引日期標籤「2024-04-01起」 | 未核對，維持原樣 | 對照通告 37/2024 |
 | `items.json` L4 描述「需12-18個月，平均18個月以上」 | 時限用語未在綱要 chunk 中核實 | 以第五版綱要原文核對 |
-| 首次登入後的過渡選擇（新制／舊制） | **待用戶決定**（見下） | — |
-| `L3-INTL-A／B`、`L3-CHAL-A／B` 的 ID 慣例與段章代碼不一致 | 已標記，未改名（改名會破壞既有儲存資料） | 另做資料遷移計劃 |
-| `allowed_badges` 只在前端判斷，後端 `canUserTick`（Code.gs 約 636 行）只看角色 | **安全缺口，未修**，屬後端改動 | 另開 PR 在後端強制執行 |
-| 瀏覽器測試 | 已用 jsdom 冒煙測試（見 §6）；未做有後端的端到端測試 | 上線前在 Apps Script 環境實測 |
-
-**待用戶決定**：P022/2026 容許 2026-08-15 前入會的成員，在 2029-08-14 前選擇舊制或新制。目前系統只產生新制表格，舊制只提供連結。請問需要：
-(a) 只支援新制；或
-(b) 依成員入會日期，同時支援新制與舊制（舊制需另建 PT/21／22／69 的產生器）。
-
----
+| 舊制 PT/21、PT/22 的項目描述（`oldForms`，`PT22_OLD` 規則文字為意譯） | 未逐字對照舊制 PDF；舊制 PT/21、PT/22 PDF 無版本日期 | 逐字核對舊制 PDF 後更新 `oldForms` |
+| 首次登入後的過渡選擇（新制／舊制） | **已解決**：用戶選擇「每位成員各自選擇新制／舊制／舊制過渡新制」，已實作（§2 第 23 項） | — |
+| `L3-INTL-*`、`L3-CHALLENGE-*` ID 與段章代碼不一致 | **已解決**：用戶授權改名，改為 `-01`／`-02`（§2 第 31 項） | — |
+| `allowed_badges` 只在前端判斷 | **已解決**：後端強制（§2 第 24 項） | — |
+| 學制的資格（宣誓日期） | P022：舊制只適用於 2026-08-15 前宣誓的成員，須於 2029-08-14 或以前完成。系統目前**不檢查宣誓日期**，任何成員都可選舊制；`members` 工作表亦無宣誓日期欄位 | **待用戶決定**：是否加入宣誓日期欄位並由後端限制舊制選擇 |
+| 後端 `can_tick` 旗標 | 前端與後端的勾選權限**都只看角色**，不看 `can_tick`（既有行為，本次未改） | **待用戶決定**：是否保留「`can_tick=false` 的領袖不可勾選」這條規則，並同時改前後端 |
+| Apps Script 語法 | `node --check` 無法解析 `.gs`；後端由 `tests/gas-harness.mjs` 實際執行驗證 | 上線前在 Apps Script 編輯器實測 |
+| 代理層 APIKEY | `api/proxy.js` 會附上旅團 APIKEY 於每個轉發請求（既有設計）。現在權限以 token 為準，但 APIKEY 本身仍具系統權限（只檢查學制） | 如要收窄，可改為只對無 token 的請求附 APIKEY |
+| 學制未套用於總覽、按項目、矩陣頁 | 這三頁仍使用新制獎章（L1–L4＋OT）計算；舊制成員在這三頁看不到 S4 獎章 | 待用戶決定是否擴展；進度頁與表格頁已依學制 |
+| 瀏覽器端到端 | jsdom 測試覆蓋學制 UI（`scheme-dom-test`）；未與真實 Apps Script 後端連線測試 | 上線前實測 |
 
 ## 5. 官方來源（連結）
 
@@ -128,11 +140,15 @@ grep -rnE --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=.vercel \
 
 | 驗證 | 結果 |
 |---|---|
-| `npm run check` | 65 通過 / 0 失敗（修正前 58 / 0） |
-| `npm test` | 結束碼 0；原有測試全部通過（未刪除任何既有測試），並新增三個測試檔並加入 `npm test` 指令鏈 |
-| 新增 `tests/rover-scope.test.mjs` | 權限精確比對、前綴誤判修正、舊版紀錄不計完成度、完成度「任選一」、首頁摘要 |
-| 新增 `tests/forms-generator.test.mjs` | 以 Node harness 實際執行 `assets/forms.js`：PT/21 七段、PT/22 八列與急救證書編號、PT/69 不勾選不預填、簽署人來自 items.json、舊制不可產生、非法段章／項目會拋錯 |
-| 新增 `tests/residue-audit.test.mjs` | 殘留掃描（排除舊版子樹）、items.json 與 items_en.json 結構一致、舊 ID 標示、Code.gs 與 index.html 無寫死清單 |
-| 瀏覽器冒煙測試（jsdom，/tmp，未加入 repo） | 首頁 4 個方塊由 items.json 產生；進度頁顯示舊版紀錄卡（含 L1-01）；表格頁 3 個按鈕；PT/21 依進度正確勾選 2 段（LEADER、SERVICE）；PT/69 無勾選 |
+| `npm run check` | 73 通過 / 0 失敗（修正前 58 / 0） |
+| `npm test` | 結束碼 0；所有既有測試通過；新增測試已加入指令鏈 |
+| `tests/rover-scope.test.mjs` | 15 項：權限精確比對、前綴誤判修正、舊版紀錄依學制、學制目錄、選修「須選 N 項」、權限選單 |
+| `tests/forms-generator.test.mjs` | 14 項：PT/21 七段、PT/22 八列與急救證書編號、PT/69 不勾選不預填、簽署人來自 items.json、舊制表格、非法段章／項目拋錯 |
+| `tests/residue-audit.test.mjs` | 10 項：殘留掃描、items.json 與 items_en.json 結構一致、舊 ID 標示、Code.gs 與 index.html 無寫死清單 |
+| `tests/catalog-sync.test.mjs` | 6 項：`ITEM_CATALOG_`／`DEFAULT_PERMS_` 與 items.json 一致（`scripts/gen-backend-catalog.mjs --check`） |
+| `tests/allowed-badges.test.mjs` | 15 項：後端 allowed_badges 強制、批次原子拒絕、審核範圍、學制強制、代理層情境（APIKEY＋token）、無效 token 拒絕 |
+| `tests/proxy-actions.test.mjs` | 2 項：前端每個 `apiRequest` 動作都被代理層接受；`setScheme` 需 token |
+| `tests/scheme-dom-test.mjs` | 8 項（需 jsdom，未安裝時跳過）：過渡／舊制／新制進度頁、學制選擇器、成員本人可改、表格按鈕、成員切換不重置、無腳本錯誤。已在 jsdom 24 下實際執行通過 |
+| `tests/troop_link.test.mjs`、`tests/security.test.mjs` | 夾具改為真實項目 ID（§2 第 32 項）；斷言與權限邏輯未放寬 |
 
-**Node harness 輸出樣本**（`/tmp/audit/forms-out/`，測試用假資料，非真實成員）：PT/21 4011 字元；PT/22 4480 字元；PT/69 3319 字元。
+**Node harness 輸出樣本**：`/tmp/audit/forms-out/`（測試用假資料，非真實成員）。
