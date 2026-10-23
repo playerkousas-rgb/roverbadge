@@ -1238,24 +1238,26 @@ function doPost(e){
       let tokenUser=null;
       if(body.token){
         const tk=validateToken(body.token);
-        if(!tk && action!=='addMember') return jsonResponse({success:false,error:'Token 無效或過期'});
+        if(!tk) return jsonResponse({success:false,error:'Token 無效或過期'});
         if(tk) tokenUser=getUser(tk);
-        if(tk && !tokenUser && action!=='addMember') return jsonResponse({success:false,error:'找不到用戶'});
+        if(tk && !tokenUser) return jsonResponse({success:false,error:'找不到用戶'});
       }
-      if(!keyOk && !tokenUser && action!=='addMember') return jsonResponse({success:false,error:'未授權 - 需 API Key 或有效 Token'});
+      if(!keyOk && !tokenUser) return jsonResponse({success:false,error:'未授權 - 需 API Key 或有效 Token'});
       const actor=tokenUser||null;
       if(action==='save') return handleSave(body.changes||[], body.confirmer||'', actor);
       if(action==='addMember'){
         const my=body.token?validateToken(body.token):null;
-        const mgr=my?getUser(my):null;
-        if(!mgr && body.apikey && body.apikey===getApiKey()) mgr={role:'admin'};
+        let mgr=my?getUser(my):null;
+        // 系統路徑：無 token ＋ 有效 APIKEY（批量開戶工具）。帶任何 token 則只以 token 判斷
+        if(!mgr && !body.token && body.apikey && body.apikey===getApiKey()) mgr={role:'admin',ymis:'system'};
         if(!mgr || getRoleLevel(mgr.role)<40) return jsonResponse({success:false,error:'只有領袖可以新增成員'});
         return handleAddMember(body.ymis, body.name, body.squad||'', body.squad_role||'member');
       }
       if(action==='addUser'){
         const my=body.token?validateToken(body.token):null;
-        const mgr=my?getUser(my):null;
-        if(!mgr && body.apikey && body.apikey===getApiKey()) mgr={role:'admin'};
+        let mgr=my?getUser(my):null;
+        // 系統路徑：無 token ＋ 有效 APIKEY（批量開戶工具）。帶任何 token 則只以 token 判斷
+        if(!mgr && !body.token && body.apikey && body.apikey===getApiKey()) mgr={role:'admin',ymis:'system'};
         if(!mgr || getRoleLevel(mgr.role)<40) return jsonResponse({success:false,error:'只有領袖可以開新帳號'});
         return handleAddUser(body,mgr);
       }
