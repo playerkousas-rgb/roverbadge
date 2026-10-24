@@ -1,5 +1,15 @@
 # CHANGE_LOG
 
+## 2026-10-24 — GS 5.2.2：API Key-only 接入顯示、系統介紹與安全的可選初始化
+
+- **接入顯示**：`initializeSheets()` 與旅系統選單只提供 API Key；不讀取或顯示自動／快取 URL，初始化回傳物件移除 `scriptUrl`，保留初始化結果及本旅團管理員首次登入提示。既有 URL 屬性保留原值。內部登入／簽名驗證未更改。
+- **新旅團流程**：不要求 GS 設定旅團編號、不新增貼 URL 設定；部署 URL 從 Google 部署視窗取得，用戶在原有 ADMIN FORM 填旅團編號、名稱、URL、API Key。
+- **系統介紹**：首頁加入「系統介紹」分頁，與新旅團部署教學雙向切換；部署通用繁中 WebP 架構圖並提供放大／下載。加入中英架構、Google 授權範圍、Sheet 分享、帳密與 API Key 區別及未認證 API 的安全界線說明。
+- **版本／初始化**：GS 版本升至 5.2.2（2026-10-24），`GS_INIT_REQUIRED=false`。既有 Sheet 的顯示修正不需重跑初始化；新 Sheet 仍需首次初始化。前端不偽造初始化標記。
+- **回歸測試**：新增 `tests/credential-display.test.mjs`，覆蓋多個可能回報 URL＋舊快取、所有 credential 顯示入口、無旅團 ID 新安裝、重跑資料與 Key 保全、介紹頁切換及安全文案；Build 測試確認圖片與 Code.gs 下載產物存在。
+- **預覽**：本機開發／Demo server 增加 `image/webp` MIME。
+- **部署狀態**：僅修改 roverbadge repository；未操作線上 Google Apps Script 部署。
+
 ## 2026-10-23 — GS 5.2.1：最新版本公告、GS 初始化核對、資料保全規則
 
 - **最新版本公告**：首頁、登入頁、登入後主頁頂部顯示公告（最新 GS 版本 v5.2.1、2026-10-23），附 Code.gs 下載、更新步驟、「🔄 重新檢查」按鈕（`index.html`、`assets/gs-release.js`）。

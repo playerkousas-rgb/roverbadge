@@ -55,18 +55,18 @@ scoutsystem-2.0 主系統平台	scoutsystem-2.0 main system platform
 軌道A 無主系統/有但想獨立用：	Track A - no main system, or has one but wants standalone:
 軌道B 有主系統並想接上：	Track B - has a main system and wants to connect:
 🗺️ 部署地圖 - 兩條路	🗺️ Deployment map - two tracks
-共通：下載 Code.gs → 建 Sheet → 執行 initializeSheets → 部署 → 複製 URL+API Key	Common: download Code.gs → create Sheet → run initializeSheets → deploy → copy URL + API Key
+共通：下載 Code.gs → 建 Sheet → 執行 initializeSheets（只顯示 API Key）→ 部署；正式 URL 從 Google 部署視窗取得，再在既有 ADMIN FORM 填旅團編號、名稱、URL、API Key	Common: download Code.gs → create a Sheet → run initializeSheets (API Key only) → deploy; get the official URL from the Google deployment dialog, then enter Group ID, name, URL and API Key in the existing ADMIN FORM
 共通：建立 Google Sheet 並部署	Common: create a Google Sheet and deploy
 共通：下載後端程式碼 (單一檔案版)	Common: download the backend code (single-file version)
 ⬇️ 下載 Code.gs (最新)	⬇️ Download Code.gs (latest)
 擴充功能→Apps Script，貼上 Code.gs	Extensions → Apps Script, paste Code.gs
 儲存→執行 initializeSheets，授權，複製 API Key	Save → run initializeSheets, authorise, copy the API Key
-部署為網頁應用程式 (執行身分我，存取權任何人)，複製 URL (/exec)	Deploy as a web app (execute as me, access: anyone), copy the URL (/exec)
-將旅團編號、名稱、URL、API Key 交 roverbadge 管理員，在 Vercel 環境變數登記（TROOP_{編號}_NAME / _BACKEND / _APIKEY），重新部署後獨立可用	Give the Group number, name, URL and API Key to the roverbadge admin to register in Vercel environment variables (TROOP_{ID}_NAME / _BACKEND / _APIKEY); after redeploying, it works standalone
+部署為網頁應用程式 (執行身分我，存取權任何人)，從 Google 部署視窗複製正式 URL	Deploy as a web app (execute as me, access: anyone), copy the official URL from the Google deployment dialog
+在原有 ADMIN FORM 填寫旅團編號、名稱、從 Google 部署視窗取得的 URL 和 API Key	Enter the Group ID, name, URL from the Google deployment dialog, and API Key in the existing ADMIN FORM
 獨立用：交 roverbadge 管理員	Standalone: submit to the roverbadge admin
 接入主系統：同時交主系統管理員（填 backend+apikey）	Connect to main system: also submit to the main system admin (fill in backend + apikey)
 兩條路可同時用，領袖從主系統入，成員 bookmark 獨立連結	Both tracks can be used at the same time: leaders enter via the main system, members bookmark the standalone link
-將 URL+Key 交 roverbadge 管理員 → 管理員在 Vercel 環境變數登記 → 完成 → 用法：roverbadge.vercel.app 選旅團登入	Give URL + Key to the roverbadge admin → the admin registers them in Vercel environment variables → done → how to use: go to roverbadge.vercel.app, select the Group and log in
+只從 initializeSheets／旅系統選單取得 API Key；URL 從 Google 部署視窗取得，再填入原有 ADMIN FORM	Get only the API Key from initializeSheets or the Rover System menu; get the URL from the Google deployment dialog and enter it in the existing ADMIN FORM
 告知主系統管理員旅團編號：旅團設定→元件設定 roverbadge 卡片只需設 u 參數（backend/apikey 不用；就算 URL 帶入亦會被忽略）。之後成員點 Dashboard 卡片自動帶入 ?u=0082&role=&from=portal&src=主系統網址&embed=1（ymis 可省略），經伺服器驗證來源及角色後免密碼進入	Tell the main-system admin the Group number: Group settings → component settings → the roverbadge card only needs the u parameter (no backend/apikey; any such URL parameters are ignored). Members then click the Dashboard card, which auto-fills ?u=0082&role=&from=portal&src=main-platform-origin&embed=1 (ymis is optional); the server verifies the origin and role, then signs them in with no password needed
 有主系統不等於一定要接，可自由選擇獨立用。若旅團重私隱，成員預設只看自己；若想互相鼓勵，團長可在用戶管理→系統設定開啟「允許成員互相查看進度」	Having a main system does not mean you must connect. For privacy-focused Groups, members see only themselves by default; for mutual encouragement, the Group Scout Leader can enable "Allow members to view each other's progress" in User Management → System Settings
 💡 提示：若您的旅團不在列表，請到「新旅團部署」查看10分鐘自助部署教學。	💡 Tip: if your Group is not in the list, see the 10-minute self-deployment guide in "New Group Deployment".
@@ -909,7 +909,7 @@ YMIS	YMIS
 initializeSheets 跑完會自動建立預設管理員。登記完成後首頁揀該旅團卡片 → 用「👤 成員」分頁登入（YMIS 登入，唔好用「👨‍💼 領袖」＝Email 分頁）：	initializeSheets automatically creates a default admin. Once registration is complete, pick the Group card on the home page → sign in via the "👤 Member" tab (YMIS sign-in, not the "👨‍💼 Leader" = Email tab):
 首次登入會強制改密碼（最少 4 位）。之後喺「用戶管理」開返各領袖自己嘅帳號並設角色／權限，喺「審批中心」批成員申請。	The first sign-in forces a password change (min 4 characters). Then create each leader's own account with roles/permissions in "User Management", and approve member applications in the "Approval Centre".
 若旅團重私隱，成員預設只看自己；若想互相鼓勵，團長可在用戶管理→系統設定開啟「允許成員互相查看進度」	For privacy-focused Groups, members see only themselves by default; for mutual encouragement, the Group Scout Leader can enable "Allow members to view each other's progress" in User Management → System Settings
-將旅團編號、名稱、URL、API Key 交 roverbadge 管理員登記	Send the Group ID, name, URL and API Key to the roverbadge admin for registration
+在原有 ADMIN FORM 填寫旅團編號、名稱、Google 部署視窗提供的 URL 及 API Key	Enter the Group ID, name, URL from the Google deployment dialog, and API Key in the existing ADMIN FORM
 登記完成後首頁會出現旅團卡片，選團即可登入	Once registered, the Group card appears on the home page — pick the Group and sign in
 成員可直接 bookmark 本系統連結使用	Members can bookmark the link to this system and use it directly
 🔒 請設定新密碼	🔒 Set a New Password
@@ -963,3 +963,26 @@ GS 最新版本	Latest GS version
 若需要初始化：在 Apps Script 函式選單選 initializeSheets，執行一次（首次需授權）	If initialization is needed: choose initializeSheets in the Apps Script function menu and run it once (authorise on first run)
 回到本頁按「重新檢查」，出現綠色「已核對」即完成	Come back here and press "Re-check"; the green "Checked" badge means done
 請先選擇旅團並登入	Please select a troop and log in first
+ℹ️ 系統介紹	ℹ️ System Introduction
+支部進度追蹤系統｜系統架構	Branch Progress Tracking System | System Architecture
+圖片語言：繁體中文	Image language: Traditional Chinese
+。圖片適用童軍、深資、樂行及幼童軍支部；可點擊放大，亦可下載原圖。	. This shared image is for Scout, Venture Scout, Rover Scout and Cub Scout sections. Click to enlarge or download the original.
+資料流程：	Data flow:
+使用者 → 網站／伺服器轉接 → 本團 Apps Script → 本團 Google Sheet。Apps Script 連接 Google Sheet 時會按 Google 授權執行，所需權限可能較廣；請只授權可信任的程式及帳戶。	User → website/server proxy → this Group’s Apps Script → this Group’s Google Sheet. Apps Script runs with Google-authorised permissions, which may be broad; grant access only to trusted code and accounts.
+權限說明：	Access:
+網頁應用程式設定「任何人」是讓系統入口可接收請求，不代表 Google Sheet 已公開分享。請在 Google Sheet 的分享設定維持適當限制。	Setting a web app entry to “Anyone” lets the system endpoint receive requests; it does not publicly share the Google Sheet. Keep the Sheet’s sharing permissions restricted.
+帳號安全：	Accounts:
+帳號密碼登入會於每次登入核實帳號及密碼；使用者自行設定系統密碼。首次登入後須更改臨時密碼。API Key 是系統與後端的接入憑證，不是個人登入驗證。	Account/password sign-in checks the account and password on every login. Users set their own system passwords and must change the temporary password at first sign-in. An API Key is for system-to-backend access, not personal sign-in.
+重要安全界線：	Important security boundary:
+私人 Google Sheet 不代表所有資料 API 自動安全。各支部仍須核實自己的讀取入口是否具備登入及權限驗證；本次系統介紹更新不修補或認證任何 API 安全狀態。此圖是架構說明，不是獨立安全認證，也不代表所有資料讀取都已受登入保護。	A private Google Sheet does not automatically secure every data API. Each section must verify whether its read endpoints enforce sign-in and permissions. This introduction update does not repair or certify API security. The diagram is an architecture overview, not a security certification, and does not claim every read is protected by sign-in.
+系統架構圖（繁體中文） / System architecture diagram (Traditional Chinese) ·	System architecture diagram (Traditional Chinese) ·
+下載圖片 / Download image	Download image
+ℹ️ 先了解系統架構	ℹ️ Understand the system architecture first
+了解資料流程、Google Sheet 分享設定及安全界線。	Learn about the data flow, Google Sheet sharing settings and security boundaries.
+查看「系統介紹」 / View system introduction	View system introduction
+✅ 已核對：本次更新毋須重跑初始化	✅ Checked: this update does not require initialization to be rerun
+儲存→執行 initializeSheets，授權並取得 API Key（初始化不要求旅團編號）	Save → run initializeSheets, authorise and get the API Key (no Group ID is required first)
+部署為網頁應用程式（執行身分：我；存取權：任何人）；從 Google 部署視窗複製正式 URL	Deploy as a web app (execute as me; access: anyone); copy the official URL from the Google deployment dialog
+共通：下載 Code.gs → 建 Sheet → 執行 initializeSheets → 部署；只從 initializeSheets／旅系統選單取得 API Key。URL 請由 Google 部署視窗取得，再填入原有 ADMIN FORM。	Common: download Code.gs → create a Sheet → run initializeSheets → deploy. Get only the API Key from initializeSheets or the Rover System menu. Get the URL from the Google deployment dialog and enter it in the existing ADMIN FORM.
+在原有 ADMIN FORM 自行填寫旅團編號、名稱、URL、API Key。不要把 URL 貼到 Apps Script 或 Sheet 的新設定。	Enter the Group ID, name, URL and API Key yourself in the existing ADMIN FORM. Do not paste the URL into a new Apps Script or Sheet setting.
+自行在原有 ADMIN FORM 填寫旅團編號、名稱、Google 部署視窗提供的 URL 及 API Key。	Enter the Group ID, name, URL from the Google deployment dialog, and API Key yourself in the existing ADMIN FORM.

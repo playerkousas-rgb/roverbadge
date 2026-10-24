@@ -29,7 +29,7 @@ DOWNSTREAM_<id>_KEY = <下游節點 API_KEY>
 （有地域有鎖匙先入到；掛錯對方一測 sig／一睇結構就會發現會改返。）
 
 - **每團補一張「支部 SHEET」，與現有「進度 SHEET」成對**：「支部 SHEET」係**成張全新 Google Sheet
-  部署**（新 Sheet → 貼同一份 `Code.gs` → `initializeSheets()` → 部署 → 抄 B/D）——
+  部署**（新 Sheet → 貼同一份 `Code.gs` → `initializeSheets()` → 部署 → Google 部署視窗取得 B、選單取得 D）——
   支部 SHEET 係上游節點、進度 SHEET 係下游節點，一對一配對。
 - 程式層面**冇「支部」工作表（tab）、冇支部登記表**：呢個「支部 SHEET」係部署單位，唔係工作表。
   v9 舊方案嘅 `BRANCH_SHEET_NAME='支部'`、`handleGetBranches/handleSaveBranch/handleDeleteBranch`、
@@ -44,12 +44,11 @@ DOWNSTREAM_<id>_KEY = <下游節點 API_KEY>
 | 代號 | 變數名 | 值 | 產生者 | 填寫 | 備註 |
 |---|---|---|---|---|---|
 | **A** | `SUPER_KEY` | 中央管理密碼 | Vercel env `SUPER_KEY` | **隱藏**，與旅系統無關 | 是次不改動、不顯示；中央管理帳號登入（`login` + `super_ticket` 回打固定端點 `/api/super` 驗票，vsbadge 同構）與旅系統閘門脫鉤，直接入口關閉後仍可用 |
-| **B** | 本節點 `/exec` URL | `https://script.google.com/macros/s/.../exec` | **GS 產生**（`ScriptApp.getService().getUrl()`，部署後生效） | 選單「🔑 顯示 BACKEND／APIKEY（交 ADMIN）」 | 交上游／ADMIN 登記 |
+| **B** | 本節點 `/exec` URL | Google 部署視窗提供 | **由部署者從 Google「部署」視窗複製**；GS 不自動推算或顯示 | 不在 API Key 選單顯示 | 按需要交上游／在既有 ADMIN FORM 登記 |
 | **C** | NAME | 節點顯示名稱 | **自行填寫** | 交 ADMIN 時一併提供 | 例如 `第 82 旅（進度）` |
-| **D** | APIKEY（SHEET KEY） | `rover_` + uuid24 | **GS 產生**（`getApiKey()`，initializeSheets 彈窗） | 選單「🔑 顯示 BACKEND／APIKEY（交 ADMIN）」 | 存本節點 Script Properties `API_KEY` |
+| **D** | APIKEY（SHEET KEY） | `rover_` + uuid24 | **GS 產生**（`getApiKey()`，initializeSheets 保留顯示） | 選單「🔑 顯示 API KEY（交 ADMIN）」 | 存本節點 Script Properties `API_KEY` |
 
-一次過流程：Sheet 選單 **🔗 旅系統 → 🔑 顯示 BACKEND／APIKEY（交 ADMIN）** →
-收件匣（前端 `submitRegistration` → `/api/proxy` → 固定中央收件端點）→ ADMIN 入 Vercel env。
+新旅團接入：先從 Google「部署」視窗取得 B，再由 initializeSheets／Sheet 選單 **🔗 旅系統 → 🔑 顯示 API KEY（交 ADMIN）** 取得 D；不要求在 GS 設定團號或貼 URL。部署者在原有 ADMIN FORM 填寫旅團編號、名稱、URL、API Key，然後按既有申請流程提交。
 伺服器端會固定送 `type: "apply"` + `appType: "roverbadge"`，並將前端 `scriptUrl` 映射為
 `backendUrl`（Scout Admin GS `FIELD_MAP["URL"]` 只認 `backendUrl`）；`troopName` 空白時補
 `第 {troopId} 旅`、`note` 自動加 `[roverbadge]` 標記，確保 Scout Admin「🏛️ 旅團登記」卡片必定顯示。
@@ -72,9 +71,9 @@ DOWNSTREAM_<id>_KEY = <下游節點 API_KEY>
 
 | 步驟 | 做乜 | 邊度做 |
 |---|---|---|
-| 1 | 部署 GS，抄 B 的 URL，生成 D | 每層 Sheet → Apps Script → 部署（執行身分「我」、存取權「任何人」）→ 選單「🔗 旅系統 → 🔑 顯示 BACKEND／APIKEY（交 ADMIN）」 |
-| 2 | 填 C，連 B/D 經收件匣交 ADMIN | 首頁「📋 新旅團部署」表單（旅團編號／名稱／Apps Script URL／API Key）→ `submitRegistration` → `/api/proxy` → 固定中央收件端點（`type=apply`、`appType=roverbadge`、`backendUrl`） |
-| 3 | 每團補一張支部 SHEET，與現有進度 SHEET 成對 | 新 Sheet → 貼同一份 `Code.gs` → `initializeSheets()` → 部署 → 抄 B/D |
+| 1 | 部署 GS，從 Google 視窗抄 B，取得 D | 每層 Sheet → Apps Script → 部署（執行身分「我」、存取權「任何人」），URL 從 Google 部署視窗取得；API Key 從 initializeSheets／「🔗 旅系統 → 🔑 顯示 API KEY（交 ADMIN）」取得 |
+| 2 | 填 C，連 B/D 經收件匣交 ADMIN | 既有 ADMIN FORM（旅團編號／名稱／Apps Script URL／API Key）→ `submitRegistration` → `/api/proxy` → 固定中央收件端點（`type=apply`、`appType=roverbadge`、`backendUrl`） |
+| 3 | 每團補一張支部 SHEET，與現有進度 SHEET 成對 | 新 Sheet → 貼同一份 `Code.gs` → `initializeSheets()` → 部署 → Google 部署視窗取得 B、選單取得 D |
 | 4 | 上游控下游寫：掣在上游（旅控團、團控進度） | 上游選單「➕ 登記下游（URL + SHEET KEY）」→「📡 測試下游連線（sig）」；「🚪 下游直接入口」經 sig 打下游 `setLocalLogin`，旗 `ALLOW_LOCAL_LOGIN` 寫在下游 Script Properties，閂後只收 sig |
 | 5 | 搬舊數（第 6 節） | 舊進度「📤 匯出 JSON（含 hash）」→ 新支部「📥 匯入 JSON」，逐個 `upsertUser` 直插 hash（保留舊密碼） |
 | 6 | 匯完核對無誤後閂下游直接入口 | 上游選單「🚪 下游直接入口 → 🔒 閂口（只收 sig）」（閂口前有確認彈窗，提醒先完成匯入及連線測試） |
@@ -281,3 +280,6 @@ curl -s https://roverbadge.vercel.app/api/troops | jq
 ---
 
 COPYRIGHT 2026 Scout System — v9.0 旅系統對齊版（進度系統節點：HMAC sig／fail-closed 直接入口掣／Drive 匯出匯入／ABCD 收件匣／支部 SHEET 成對）
+
+
+**2026-10-24 顯示調整：**上述 URL 來源規則適用本節點 onboarding；登記下游時仍可使用既有 URL/SHEET KEY 提示及 GAS-to-GAS 簽名連線，沒有改動內部登入或簽名協定。

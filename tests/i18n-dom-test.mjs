@@ -21,6 +21,7 @@ function makeDom(lang) {
     pretendToBeVisual: true,
     beforeParse(window) {
       window.localStorage.setItem('roverbadge_lang', lang);
+      window.GsRelease={GS_LATEST:{version:'5.2.2',releaseDate:'2026-10-24',initRequired:false,codeUrl:'apps-script/Code.gs'},statusOf:()=>({code:'unchecked',gsVersion:'',initializedGsVersion:''}),initNotice:()=>false};
       window.fetch = async (url) => {
         // minimal stub: fail gracefully (app catches errors)
         throw new Error('no network in test');
@@ -46,7 +47,7 @@ check('html lang = en', doc.documentElement.lang === 'en', doc.documentElement.l
 check('title translated', doc.title.startsWith('Rover Scout Progress Tracker'), doc.title);
 check('h1 translated', doc.querySelector('.logo-row h1').textContent.trim() === 'Rover Scout Progress Tracker');
 const nav = [...doc.querySelectorAll('.welcome-nav button')].map(b => b.textContent.trim());
-check('welcome nav translated', nav.join('|') === '🏠 Enter System|📋 New Group Deployment|📖 User Guide|🐛💬 Report · Feedback', nav.join('|'));
+check('welcome nav translated', nav.join('|') === '🏠 Enter System|ℹ️ System Introduction|📋 New Group Deployment|📖 User Guide|🐛💬 Report · Feedback', nav.join('|'));
 check('lang toggle shows 中文', doc.querySelector('.lang-toggle').textContent.trim() === '🌐 中文');
 const loginH2 = doc.querySelector('#loginPage h2')?.textContent.trim();
 check('login title translated', loginH2 === '🔐 Login', loginH2);

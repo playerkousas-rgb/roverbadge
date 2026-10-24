@@ -34,11 +34,12 @@
 **旅團負責人做 (3步)：**
 1. 去 Google Sheet 建新試算表
 2. 擴充功能 → Apps Script → 貼上 `apps-script/Code.gs` → 儲存
-3. 執行 `initializeSheets` → 授權 → 會彈 API Key + URL
+3. 執行 `initializeSheets` → 授權 → 顯示 API Key；正式 URL 從 Google 部署視窗取得
    - `showApiKey()` 隨時可再睇 KEY
-   - URL 係部署為網頁應用程式後 `/exec` 結尾嗰條
+   - 正式 URL 只從 Google「部署」視窗複製；初始化／旅系統選單不推算或顯示 URL。
+   - 不需先在 Apps Script 設定旅團編號，也不需新增 URL 貼上設定。
 
-**旅團提交俾管理員 (2樣嘢)：**
+**旅團負責人在原有 ADMIN FORM 填寫旅團編號、名稱、Google 部署視窗取得的 URL 和 API Key：**
 ```
 旅團編號：0082（保留前導 0）
 旅團名稱：第 82 旅
@@ -186,7 +187,7 @@ v8.9 起，系統管理員密碼改由 **Vercel 環境變數 `SUPER_KEY`** 驗�
 **Code.gs 已有：**
 - `getApiKey()`：若無就 `rover_` + uuid（存 `PropertiesService`）
 - `showApiKey()`：隨時查看
-- `initializeSheets()`：初始化完彈出 KEY + URL
+- `initializeSheets()`：顯示初始化結果及 API Key，不顯示自動取得的 URL
 
 - 第一次執行 `initializeSheets` 自動生成 `rover_` + 24 位 uuid
 - 之後任何地方 `getApiKey()` 都取同一個，除非手動清 `Script Properties`

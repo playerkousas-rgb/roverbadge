@@ -21,6 +21,8 @@ test('Build Output API contains only intended static files and four runnable fun
   assert(!files.some(f => /AGENT_TEMPLATE|DEPLOY_GUIDE|MAIN_SYSTEM_INTEGRATION|VERCEL_API_404|TROOP_UPGRADE_2026|VERCEL_ENV_SETUP|APP_ADMIN_WORKFLOW/.test(f)));
   assert.equal(files.filter(f => f.endsWith('.vc-config.json')).length, 4);
   assert(fs.existsSync(path.join(out, 'static/apps-script/Code.gs')));
+  assert(fs.existsSync(path.join(out, 'static/assets/system-introduction-zh-hant.webp')), 'system-introduction diagram must be included in deployed static assets');
+  assert(fs.readFileSync(path.join(out, 'static/assets/system-introduction-zh-hant.webp')).length > 100_000);
   assert(fs.existsSync(path.join(out, 'static/data/mock_members.json')));
   assert(!fs.existsSync(path.join(out, 'static/api')));
   // 公開靜態檔唔准出現保留帳號字串（Code.gs 只准一行宣告；.md 亦不例外）

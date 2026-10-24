@@ -822,9 +822,9 @@ const APPLY_ROLES = ['member','branch_leader'];
 // INITIALIZED_GS_VERSION（Script Property）只在 initializeSheets() 成功走完最後一步才寫入，
 // 表示「此 GS 版本的初始化已完成」。initializeSheets() 只做增補（缺表／缺欄位標題／缺預設管理員），
 // 不刪除、不改寫任何既有用戶、進度、紀錄或金鑰資料（見 docs/LEADER_GUIDE.md「資料保全規則」）。
-const GS_VERSION = '5.2.1';
-const GS_RELEASE_DATE = '2026-10-23';
-const GS_INIT_REQUIRED = true;
+const GS_VERSION = '5.2.2';
+const GS_RELEASE_DATE = '2026-10-24';
+const GS_INIT_REQUIRED = false;
 const GS_INIT_PROP = 'INITIALIZED_GS_VERSION';
 function gsVersionInfo_(){
   let initialized='';
@@ -1054,20 +1054,19 @@ function initializeSheets() {
   }
 
   const apiKey = getApiKey();
-  let scriptUrl=''; try{ scriptUrl=ScriptApp.getService().getUrl(); }catch(e){ scriptUrl='請部署為網頁應用程式後查看';}
   // 資料保全：初始化不再自動刪除任何列（舊版殘留 super_admin 列、Tokens 殘留 session 皆保留；
   // 這些列已由 isLegacySuperRow_() 在登入時略過，不能作為身分）。如需清理，須由管理員手動執行
   // removeSuperAdminRows()／removeSuperAdminTokenRows()，並先備份試算表。
   try{
     const ui=SpreadsheetApp.getUi();
     if(ui){
-      // 提示只顯示本旅團自己的 API Key、URL 與旅團管理員帳號
-      ui.alert('✅ 初始化完成！\n\nSheets：進度追蹤、成員名單、Users、Applications、Tokens、SystemConfig、待批完成、其他獎章、活動履歷、待批履歷\n\n🔗 旅系統：選單「🔗 旅系統」→「🔑 顯示 BACKEND／APIKEY（交 ADMIN）」一次過抄 B／D；上下游接駁（登記下游／sig／閂口／搬舊數）全部經該選單操作\n\n🔑 API Key:\n'+apiKey+'\n\n👤 旅團管理員 YMIS: '+ADMIN_YMIS+' 初始密碼: '+ADMIN_PASS+'（請立即登入後更改）\n\n🌐 URL:\n'+scriptUrl);
+      // 只顯示 API Key；正式部署 URL 以 Google 部署視窗為準，不自動推算或回傳。
+      ui.alert('✅ 初始化完成！\n\nSheets：進度追蹤、成員名單、Users、Applications、Tokens、SystemConfig、待批完成、其他獎章、活動履歷、待批履歷\n\n🔑 API Key = '+apiKey+'\n\n正式部署 URL 請從 Google「部署」視窗取得；請自行在原有 ADMIN FORM 填寫旅團編號、名稱、URL 和 API Key。\n\n👤 旅團管理員 YMIS: '+ADMIN_YMIS+' 初始密碼: '+ADMIN_PASS+'（請立即登入後更改）');
     }
   }catch(e){}
   // 最後一步：只有以上全部成功，才記下「此 GS 版本的初始化已完成」（前端據此顯示「全部完成」）
   PropertiesService.getScriptProperties().setProperty(GS_INIT_PROP, GS_VERSION);
-  return {success:true,apiKey:apiKey,scriptUrl:scriptUrl,gsVersion:GS_VERSION,initializedGsVersion:GS_VERSION};
+  return {success:true,apiKey:apiKey,gsVersion:GS_VERSION,initializedGsVersion:GS_VERSION};
 }
 
 // removeSuperAdminTokenRows()：清除 Tokens 表內舊版以 __sys__／帳號／rbs-super-v1- 寫入嘅
@@ -2298,7 +2297,7 @@ function onOpen() {
       .addItem('📥 匯入 JSON（upsertUser 直插 hash）', 'menuImportUsersJson')
       .addSeparator()
       .addItem('🧭 本機接駁狀態', 'menuShowLinkState')
-      .addItem('🔑 顯示 BACKEND／APIKEY（交 ADMIN）', 'menuShowLinkCredentials')
+      .addItem('🔑 顯示 API KEY（交 ADMIN）', 'menuShowLinkCredentials')
       .addSeparator()
       .addItem('➕ 登記下游（URL + SHEET KEY）', 'menuRegisterDownstream')
       .addItem('📡 測試下游連線（sig）', 'menuPingDownstream')
@@ -2370,21 +2369,10 @@ function menuShowLinkState() {
   return linkAlert('本機接駁狀態', lines.join('\n'));
 }
 function menuShowLinkCredentials() {
-  let url = '';
-  try { url = ScriptApp.getService().getUrl() || ''; } catch (e) { url = ''; }
-  const lines = [
-    '以下兩項由本節點 GS 產生，經收件匣交 ADMIN 登記；四項一律不寫入工作表。',
-    '',
-    'B　BACKEND（部署後抄此 URL）：',
-    url || '（尚未部署為網頁應用程式：部署 → 新增部署 → 網頁應用程式，再按一次本選單）',
-    '',
-    'D　APIKEY（SHEET KEY）：',
-    getApiKey(),
-    '',
-    'C　NAME：由你自行填寫（交 ADMIN 時一併提供）',
-    'A　隱藏管理鍵：與旅系統無關，不改動、不在此顯示'
-  ];
-  return linkAlert('BACKEND／APIKEY（交 ADMIN）', lines.join('\n'));
+  const key = getApiKey();
+  const message = 'API Key = ' + key +
+    '\n\n正式部署 URL 請從 Google「部署」視窗取得；請自行在原有 ADMIN FORM 填寫旅團編號、名稱、URL 和 API Key。';
+  return linkAlert('API KEY（交 ADMIN）', message);
 }
 function menuRegisterDownstream() {
   const id = linkPrompt('登記下游 1/4', '下游編號（例：團／進度節點識別，只可用英文、數字、底線、連字號）：');

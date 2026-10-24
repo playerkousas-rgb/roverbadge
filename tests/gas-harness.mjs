@@ -68,6 +68,17 @@ function makeSheet(name) {
   return sheet;
 }
 
+function makeMenu(title, allItems) {
+  const menu = {
+    title,
+    addItem(label, handler) { allItems.push({ title, label, handler }); return menu; },
+    addSeparator() { return menu; },
+    addSubMenu() { return menu; },
+    addToUi() { return menu; }
+  };
+  return menu;
+}
+
 function makeUi(promptAnswers) {
   const ui = {
     Button: { OK: 'ok', CANCEL: 'cancel', CLOSE: 'close' },
@@ -100,7 +111,7 @@ function formatDate(d, tz, fmt) {
     .replace('ss', p(dt.getUTCSeconds()));
 }
 
-export function loadCodeGs({ promptAnswers = [], urlFetchHandler = null } = {}) {
+export function loadCodeGs({ promptAnswers = [], urlFetchHandler = null, serviceUrls = ['https://script.google.com/macros/s/HARNESS/exec'] } = {}) {
   const code = fs.readFileSync(CODE_GS_PATH, 'utf8');
 
   const ss = {
@@ -112,6 +123,10 @@ export function loadCodeGs({ promptAnswers = [], urlFetchHandler = null } = {}) 
 
   const scriptProps = new Map();
   const ui = makeUi(promptAnswers);
+  const scriptServiceCalls = { getUrl: 0 };
+  let serviceUrlIndex = 0;
+  const menuItems = [];
+  ui.createMenu = (title) => makeMenu(title, menuItems);
   const mailOutbox = []; // v8.8：MailApp.sendEmail 寄出的郵件（測試觀測用）
   const scriptCache = new Map(); // v8.9.2：CacheService（票據一次性防重放）
   let scriptLockHeld = false; // v8.9.2：LockService（單執行緒測試環境簡化版）
@@ -168,7 +183,7 @@ export function loadCodeGs({ promptAnswers = [], urlFetchHandler = null } = {}) 
       },
       getRemainingDailyQuota() { return 100; }
     },
-    ScriptApp: { getService: () => ({ getUrl: () => 'https://script.google.com/macros/s/HARNESS/exec' }) },
+    ScriptApp: { getService: () => ({ getUrl: () => { scriptServiceCalls.getUrl++; const values = serviceUrls.length ? serviceUrls : ['']; return values[serviceUrlIndex++ % values.length]; } }) },
     // v8.9.2：LockService + CacheService（handleSuperTicketLogin 票據一次性保護）
     LockService: {
       getScriptLock: () => ({
@@ -203,7 +218,7 @@ export function loadCodeGs({ promptAnswers = [], urlFetchHandler = null } = {}) 
   const ctx = vm.createContext(sandbox);
   const exported = `
 ;globalThis.__api = {
-  initializeSheets, removeSuperAdminRows, handleLogin, getUser, getAllUsers,
+  initializeSheets, showApiKey, menuShowLinkCredentials, onOpen, removeSuperAdminRows, handleLogin, getUser, getAllUsers,
   getMembers, getApiKey, doPost, doGet, isSuperAdminId, verifySuperTicket, authorizeConnection,
   // 測試內省用：保留帳號識別字（唯一宣告在 Code.gs），用以驗證名單過濾與防護邏輯
   SUPER_ADMIN_ID,
@@ -220,6 +235,8 @@ export function loadCodeGs({ promptAnswers = [], urlFetchHandler = null } = {}) 
     ss,
     ui,
     scriptProps,
+    scriptServiceCalls,
+    menuItems,
     mailOutbox,
     urlFetchLog: sandbox.__urlFetchLog,
     // 走真實 doPost() 路由（與部署後的 /exec 相同路徑）
