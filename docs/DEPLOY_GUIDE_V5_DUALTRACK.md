@@ -47,10 +47,10 @@
 
 ## 兩條軌道
 
-**共通**：下載 Code.gs → 建 Sheet → 執行 initializeSheets → 部署 → 複製 URL+API Key
+**共通**：下載 Code.gs → 建 Sheet → 執行 initializeSheets（只顯示 API Key）→ 部署；正式 URL 從 Google 部署視窗取得，再在既有 ADMIN FORM 填旅團編號、名稱、URL、API Key。不需設定旅團編號或把 URL 貼入 Apps Script。
 
 **軌道A 無主系統/有但想獨立用**：
-- 將 URL+API Key 交 roverbadge 管理員 → 喺 Vercel 加 `TROOP_{ID}_NAME/_BACKEND/_APIKEY` 環境變數 → Redeploy → 完成
+- 在既有 ADMIN FORM 填入 Google 部署視窗提供的 URL 及 API Key → 喺 Vercel 加 `TROOP_{ID}_NAME/_BACKEND/_APIKEY` 環境變數 → Redeploy → 完成
 - 用法：roverbadge.vercel.app → 選旅團 → 登入
 - 優點：簡單
 
@@ -67,3 +67,8 @@
 讓只用 roverbadge 的旅團知道，原來有更大平台可同時使用，Dashboard、考勤、財務等更多功能。
 
 ## 詳細步驟見 DEPLOY_GUIDE_FOR_TROOPS.md
+
+
+## API Key 與部署 URL（2026-10-24 更新）
+
+`initializeSheets()` 及「🔗 旅系統 → 🔑 顯示 API KEY（交 ADMIN）」只提供 API Key；不會顯示 `getService().getUrl()` 或舊 URL 快取。正式 Web App URL 由 Google 部署視窗提供。旅團在現有 ADMIN FORM 填寫 ID、名稱、URL、API Key；不需要新增 GAS URL 設定。既有正常 Sheet 因本次顯示修正不必重跑初始化。

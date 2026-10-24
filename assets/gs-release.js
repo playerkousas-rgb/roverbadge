@@ -24,9 +24,9 @@
   else root.GsRelease = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   const GS_LATEST = Object.freeze({
-    version: '5.2.1',
-    releaseDate: '2026-10-23',
-    initRequired: true,
+    version: '5.2.2',
+    releaseDate: '2026-10-24',
+    initRequired: false,
     codeUrl: 'apps-script/Code.gs'
   });
 

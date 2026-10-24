@@ -99,7 +99,9 @@ console.log('\n【2】執行真實 initializeSheets()：setup 小視窗唔提保
   check('初始化只彈出一個小視窗', env.ui.alerts.length === 1, `(實際 ${env.ui.alerts.length})`);
   const alertText = env.ui.alerts.map(a => `${a.title}\n${a.msg}`).join('\n');
   check('小視窗仍有 API Key', alertText.includes(initResult.apiKey));
-  check('小視窗仍有部署 URL', alertText.includes('script.google.com'));
+  check('小視窗不顯示自動取得的部署 URL', !/https?:\/\//.test(alertText));
+  check('initializeSheets() 回傳值不含 scriptUrl/backend', !Object.hasOwn(initResult, 'scriptUrl') && !Object.hasOwn(initResult, 'backend'));
+  check('初始化顯示流程沒有呼叫 getService().getUrl()', env.scriptServiceCalls.getUrl === 0);
   check('小視窗仍有本旅團管理員帳號', alertText.includes('1111111111'));
   check('小視窗完全冇提保留帳號／系統管理帳號', !/超管|super[_ ]?admin|SUPER_ADMIN|系統管理/i.test(alertText));
   check('小視窗冇出現帳號識別字', !alertText.toLowerCase().includes(SU_USER));

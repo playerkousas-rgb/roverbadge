@@ -379,6 +379,7 @@ a:hover{text-decoration:underline}
     <div class="header-subtitle">基於 2026年第5版《樂行童軍訓練綱要》• 支援離線暫存•批量寫入•成員申請確認•表格自動填寫</div>
     <div class="welcome-nav">
       <button class="active" data-tab="enter" onclick="showWelcomeTab('enter', this)">🏠 進入系統</button>
+      <button data-tab="intro" onclick="showWelcomeTab('intro', this)">ℹ️ 系統介紹</button>
       <button data-tab="setup" onclick="showWelcomeTab('setup', this)">📋 新旅團部署</button>
       <button data-tab="guide" onclick="showWelcomeTab('guide', this)">📖 使用教學</button>
       <button class="welcome-feedback" onclick="openScoutReport()" title="問題回報 / 意見回饋（經 Scout Admin 統一回收；可匿名，留聯絡方式可收通知）">🐛💬 回報 · 意見</button>
@@ -418,8 +419,31 @@ a:hover{text-decoration:underline}
       </div>
     </div>
 
+    <div id="welcome-intro" class="welcome-section">
+      <h2 style="font-size:18px;color:var(--maroon);margin-bottom:12px">ℹ️ 系統介紹</h2>
+      <div class="info-card" style="margin-bottom:12px">
+        <h3>支部進度追蹤系統｜系統架構</h3>
+        <p><b>圖片語言：繁體中文</b>。圖片適用童軍、深資、樂行及幼童軍支部；可點擊放大，亦可下載原圖。</p>
+        <p><b>資料流程：</b>使用者 → 網站／伺服器轉接 → 本團 Apps Script → 本團 Google Sheet。Apps Script 連接 Google Sheet 時會按 Google 授權執行，所需權限可能較廣；請只授權可信任的程式及帳戶。</p>
+        <p><b>權限說明：</b>網頁應用程式設定「任何人」是讓系統入口可接收請求，不代表 Google Sheet 已公開分享。請在 Google Sheet 的分享設定維持適當限制。</p>
+        <p><b>帳號安全：</b>帳號密碼登入會於每次登入核實帳號及密碼；使用者自行設定系統密碼。首次登入後須更改臨時密碼。API Key 是系統與後端的接入憑證，不是個人登入驗證。</p>
+        <p style="background:#FFF3CD;border-radius:8px;padding:10px"><b>重要安全界線：</b>私人 Google Sheet 不代表所有資料 API 自動安全。各支部仍須核實自己的讀取入口是否具備登入及權限驗證；本次系統介紹更新不修補或認證任何 API 安全狀態。此圖是架構說明，不是獨立安全認證，也不代表所有資料讀取都已受登入保護。</p>
+        <p><b>Architecture (English):</b> User → website/server proxy → this Group’s Apps Script → this Group’s Google Sheet. Apps Script runs with Google-authorised permissions, which may be broad; grant access only to trusted code and accounts.</p>
+        <p><b>Access and accounts:</b> Setting a web app entry to “Anyone” lets the system endpoint receive requests; it does not publicly share the Google Sheet. Keep the Sheet’s sharing permissions restricted. Account/password sign-in checks the account and password on every login. Users set their own system passwords and must change the temporary password at first sign-in. An API Key is for system-to-backend access, not personal sign-in.</p>
+        <p><b>Security boundary:</b> A private Sheet does not automatically secure every data API. Each section must verify whether its read endpoints enforce sign-in and permissions. This introduction update does not repair or certify API security. The diagram is an architecture overview, not a security certification, and does not claim that every read is protected by sign-in.</p>
+      </div>
+      <figure style="margin:0 auto 12px;max-width:768px;text-align:center">
+        <a href="assets/system-introduction-zh-hant.webp" target="_blank" rel="noopener" aria-label="放大系統架構圖 / Open the system architecture image at full size">
+          <img src="assets/system-introduction-zh-hant.webp" width="768" height="1376" loading="lazy" alt="支部進度追蹤系統架構圖（繁體中文）｜Branch Progress Tracking System architecture diagram (Traditional Chinese)" style="display:block;width:100%;height:auto;border-radius:10px;box-shadow:var(--shadow)">
+        </a>
+        <figcaption style="font-size:12px;margin-top:8px">系統架構圖（繁體中文） / System architecture diagram (Traditional Chinese) ·<a style="margin-left:3px" href="assets/system-introduction-zh-hant.webp" download="system-introduction-zh-hant.webp">下載圖片 / Download image</a></figcaption>
+      </figure>
+      <button class="btn btn-primary" type="button" onclick="showWelcomeTab('setup')">📋 前往新旅團部署教學 / Go to new Group deployment guide</button>
+    </div>
+
     <div id="welcome-setup" class="welcome-section">
       <h2 style="font-size:18px;color:var(--maroon);margin-bottom:12px">📋 新旅團部署指南 (10分鐘)</h2>
+      <div class="info-card" style="background:var(--blue-light);margin-bottom:12px"><h3>ℹ️ 先了解系統架構</h3><p>了解資料流程、Google Sheet 分享設定及安全界線。</p><button class="btn btn-sm btn-outline" type="button" onclick="showWelcomeTab('intro')">查看「系統介紹」 / View system introduction</button></div>
 
       <!-- [主系統暫時隱藏 2026-10] 主系統（scoutsystem-2.0）未開發完成，暫停對外介紹；現階段只推廣進度追蹤系統。
            重啟方法：解除本註解（連同下面「軌道B」步驟註解）並重排步驟號；i18n_dict.tsv 內對應翻譯 key 全部保留未刪；詳見 CHANGE_LOG.md。
@@ -435,14 +459,14 @@ a:hover{text-decoration:underline}
         <p style="font-size:11px;margin-top:8px;background:#fff;padding:6px;border-radius:6px"><b>重點：有主系統 ≠ 一定要接上本系統</b>，可自由選擇獨立用或接上，兩條路並存不衝突。藉此告訴用家有更大平台可用。</p>
       </div>
 
-      <div class="info-card" style="background:var(--maroon-light);margin-bottom:12px"><h3>🗺️ 部署地圖 - 兩條路</h3><p style="font-size:11px">共通：下載 Code.gs → 建 Sheet → 執行 initializeSheets → 部署 → 複製 URL+API Key<br><b>軌道A 無主系統/有但想獨立用：</b> 將 URL+Key 交 roverbadge 管理員 → 管理員在 Vercel 環境變數登記 → 完成 → 用法：roverbadge.vercel.app 選旅團登入<br><b>軌道B 有主系統並想接上：</b> 同樣交 roverbadge 管理員（Vercel 環境變數登記）→ 管理員加設 PORTAL_DEFAULT_ORIGIN（主系統網址）+ PORTAL_DEFAULT_ROLES（可用角色）→ 主系統卡片只需設 u 參數（backend/apikey 不用）→ 用法：Dashboard 點卡片 → 自動帶入 from=portal&src=主系統網址&embed=1 → 伺服器驗證來源及角色後直接用（ymis 可省略）</p></div>
+      <div class="info-card"><h3>🗺️ 部署流程</h3><p>正式 URL 從 Google 部署視窗取得；initializeSheets 與旅系統選單只顯示 API Key。資料請填入原有 ADMIN FORM。</p></div>
       -->
 
       <div class="tutorial">
         <div class="steps">
           <div class="step"><div class="step-number">1</div><div class="step-content"><h4>共通：下載後端程式碼 (單一檔案版)</h4><p>包含待批、其他獎章、批量、PNG、私隱開關</p><a href="apps-script/Code.gs" download="Code.gs" class="btn btn-primary btn-sm" style="margin-top:6px">⬇️ 下載 Code.gs (最新)</a></div></div>
-          <div class="step"><div class="step-number">2</div><div class="step-content"><h4>共通：建立 Google Sheet 並部署</h4><p><b>2.1</b> 建新試算表<br><b>2.2</b> 擴充功能→Apps Script，貼上 Code.gs<br><b>2.3</b> 儲存→執行 initializeSheets，授權，複製 API Key<br><b>2.4</b> 部署為網頁應用程式 (執行身分我，存取權任何人)，複製 URL (/exec)</p></div></div>
-          <div class="step"><div class="step-number">3</div><div class="step-content"><h4>提交給 roverbadge 管理員</h4><p>將旅團編號、名稱、URL、API Key 交 roverbadge 管理員，在 Vercel 環境變數登記（TROOP_{編號}_NAME / _BACKEND / _APIKEY），重新部署後獨立可用</p></div></div>
+          <div class="step"><div class="step-number">2</div><div class="step-content"><h4>共通：建立 Google Sheet 並部署</h4><p><b>2.1</b> 建新試算表<br><b>2.2</b> 擴充功能→Apps Script，貼上 Code.gs<br><b>2.3</b> 儲存→執行 initializeSheets，授權並取得 API Key（初始化不要求旅團編號）<br><b>2.4</b> 部署為網頁應用程式（執行身分：我；存取權：任何人）；從 Google 部署視窗複製正式 URL</p></div></div>
+          <div class="step"><div class="step-number">3</div><div class="step-content"><h4>提交給 roverbadge 管理員</h4><p>在原有 ADMIN FORM 自行填寫旅團編號、名稱、從 Google 部署視窗複製的 URL，以及 API Key。不要把 URL 貼到 Apps Script 或 Sheet 的新設定。</p></div></div>
           <div class="step"><div class="step-number">4</div><div class="step-content"><h4>首次登入（預設管理員帳號）</h4><p>initializeSheets 跑完會自動建立預設管理員。登記完成後首頁揀該旅團卡片 → 用「👤 成員」分頁登入（YMIS 登入，唔好用「👨‍💼 領袖」＝Email 分頁）：<br><b style="font-size:13px">YMIS 1111111111　密碼 changeme</b><br>首次登入會強制改密碼（最少 4 位）。之後喺「用戶管理」開返各領袖自己嘅帳號並設角色／權限，喺「審批中心」批成員申請。</p></div></div>
           <!-- [主系統暫時隱藏 2026-10] 軌道B（接上主系統）未開放。重啟方法：解除本註解及上方介紹卡註解，重排步驟號（現時 4=首次登入、5=私隱選擇），詳見 CHANGE_LOG.md：
           <div class="step"><div class="step-number">4</div><div class="step-content"><h4>軌道B：有主系統並想接上 - 額外提交給主系統管理員</h4><p>告知主系統管理員旅團編號：旅團設定→元件設定 roverbadge 卡片只需設 u 參數（backend/apikey 不用；就算 URL 帶入亦會被忽略）。之後成員點 Dashboard 卡片自動帶入 ?u=0082&role=&from=portal&src=主系統網址&embed=1（ymis 可省略），經伺服器驗證來源及角色後免密碼進入</p></div></div>
@@ -450,7 +474,7 @@ a:hover{text-decoration:underline}
           <div class="step"><div class="step-number">5</div><div class="step-content"><h4>私隱選擇</h4><p>若旅團重私隱，成員預設只看自己；若想互相鼓勵，團長可在用戶管理→系統設定開啟「允許成員互相查看進度」</p></div></div>
         </div>
       </div>
-      <div class="info-card" style="border-color:var(--blue);background:var(--blue-light)"><h3 style="color:var(--blue)">📧 完成後提交</h3><p style="font-size:11px">將旅團編號、名稱、URL、API Key 交 roverbadge 管理員登記<br>登記完成後首頁會出現旅團卡片，選團即可登入<br>成員可直接 bookmark 本系統連結使用</p><button class="btn btn-blue" onclick="showContactModal()" style="width:100%">📧 一鍵提交接入申請給 roverbadge 管理員</button></div>
+      <div class="info-card" style="border-color:var(--blue);background:var(--blue-light)"><h3 style="color:var(--blue)">📧 完成後提交</h3><p style="font-size:11px">自行在原有 ADMIN FORM 填寫旅團編號、名稱、Google 部署視窗提供的 URL 及 API Key。<br>登記完成後首頁會出現旅團卡片，選團即可登入；成員可 bookmark 本系統連結使用。</p><button class="btn btn-blue" onclick="showContactModal()" style="width:100%">📧 一鍵提交接入申請給 roverbadge 管理員</button></div>
     </div>
 
     <div id="welcome-guide" class="welcome-section">
@@ -862,7 +886,32 @@ const LANG_DICT={
   "COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 v5.2": "COPYRIGHT 2026 Scout System • Rover Scout Progress Tracker v5.2",
   "香港童軍總會": "Scout Association of Hong Kong",
   "🏠 進入系統": "🏠 Enter System",
+  "ℹ️ 系統介紹": "ℹ️ System Introduction",
   "📋 新旅團部署": "📋 New Group Deployment",
+  "支部進度追蹤系統｜系統架構": "Branch Progress Tracking System | System Architecture",
+  "圖片語言：繁體中文": "Image language: Traditional Chinese",
+  "。圖片適用童軍、深資、樂行及幼童軍支部；可點擊放大，亦可下載原圖。": ". This shared image is for Scout, Venture Scout, Rover Scout and Cub Scout sections. Click to enlarge or download the original.",
+  "資料流程：": "Data flow:",
+  "使用者 → 網站／伺服器轉接 → 本團 Apps Script → 本團 Google Sheet。Apps Script 連接 Google Sheet 時會按 Google 授權執行，所需權限可能較廣；請只授權可信任的程式及帳戶。": "User → website/server proxy → this Group’s Apps Script → this Group’s Google Sheet. Apps Script runs with Google-authorised permissions, which may be broad; grant access only to trusted code and accounts.",
+  "權限說明：": "Access:",
+  "網頁應用程式設定「任何人」是讓系統入口可接收請求，不代表 Google Sheet 已公開分享。請在 Google Sheet 的分享設定維持適當限制。": "Setting a web app entry to “Anyone” lets the system endpoint receive requests; it does not publicly share the Google Sheet. Keep the Sheet’s sharing permissions restricted.",
+  "帳號安全：": "Accounts:",
+  "帳號密碼登入會於每次登入核實帳號及密碼；使用者自行設定系統密碼。首次登入後須更改臨時密碼。API Key 是系統與後端的接入憑證，不是個人登入驗證。": "Account/password sign-in checks the account and password on every login. Users set their own system passwords and must change the temporary password at first sign-in. An API Key is for system-to-backend access, not personal sign-in.",
+  "重要安全界線：": "Important security boundary:",
+  "私人 Google Sheet 不代表所有資料 API 自動安全。各支部仍須核實自己的讀取入口是否具備登入及權限驗證；本次系統介紹更新不修補或認證任何 API 安全狀態。此圖是架構說明，不是獨立安全認證，也不代表所有資料讀取都已受登入保護。": "A private Google Sheet does not automatically secure every data API. Each section must verify whether its read endpoints enforce sign-in and permissions. This introduction update does not repair or certify API security. The diagram is an architecture overview, not a security certification, and does not claim every read is protected by sign-in.",
+  "系統架構圖（繁體中文） / System architecture diagram (Traditional Chinese) · ": "System architecture diagram (Traditional Chinese) · ",
+  "下載圖片 / Download image": "Download image",
+  "📋 前往新旅團部署教學 / Go to new Group deployment guide": "📋 Go to new Group deployment guide",
+  "ℹ️ 先了解系統架構": "ℹ️ Understand the system architecture first",
+  "了解資料流程、Google Sheet 分享設定及安全界線。": "Learn about the data flow, Google Sheet sharing settings and security boundaries.",
+  "查看「系統介紹」 / View system introduction": "View system introduction",
+  "📋 前往新旅團部署教學 / Go to new Group deployment guide": "📋 Go to new Group deployment guide",
+  "✅ 已核對：本次更新毋須重跑初始化": "✅ Checked: this update does not require initialization to be rerun",
+  "正式部署 URL 請從 Google 部署視窗取得；請自行在原有 ADMIN FORM 填寫旅團編號、名稱、URL 和 API Key。": "Get the deployment URL from the Google deployment dialog. Enter the Group ID, name, URL and API Key yourself in the existing ADMIN FORM.",
+  "在原有 ADMIN FORM 自行填寫旅團編號、名稱、從 Google 部署視窗複製的 URL，以及 API Key。不要把 URL 貼到 Apps Script 或 Sheet 的新設定。": "Enter the Group ID, name, URL copied from the Google deployment dialog, and API Key in the existing ADMIN FORM. Do not paste the URL into a new Apps Script or Sheet setting.",
+  "自行在原有 ADMIN FORM 填寫旅團編號、名稱、Google 部署視窗提供的 URL 及 API Key。": "Enter the Group ID, name, URL from the Google deployment dialog, and API Key yourself in the existing ADMIN FORM.",
+  "登記完成後首頁會出現旅團卡片，選團即可登入；成員可 bookmark 本系統連結使用。": "Once registered, the Group card appears on the home page — select it to sign in. Members can bookmark this system link.",
+
   "📖 使用教學": "📖 User Guide",
   "📦 版本更新紀錄（未來用於新版本後端GS及功能改動）": "📦 Version History (for future backend GS versions and feature changes)",
   "最新：v5.0 FINAL": "Latest: v5.0 FINAL",
@@ -909,14 +958,16 @@ const LANG_DICT={
   "軌道A 無主系統/有但想獨立用：": "Track A - no main system, or has one but wants standalone:",
   "軌道B 有主系統並想接上：": "Track B - has a main system and wants to connect:",
   "🗺️ 部署地圖 - 兩條路": "🗺️ Deployment map - two tracks",
-  "共通：下載 Code.gs → 建 Sheet → 執行 initializeSheets → 部署 → 複製 URL+API Key": "Common: download Code.gs → create Sheet → run initializeSheets → deploy → copy URL + API Key",
   "共通：建立 Google Sheet 並部署": "Common: create a Google Sheet and deploy",
   "共通：下載後端程式碼 (單一檔案版)": "Common: download the backend code (single-file version)",
   "⬇️ 下載 Code.gs (最新)": "⬇️ Download Code.gs (latest)",
   "擴充功能→Apps Script，貼上 Code.gs": "Extensions → Apps Script, paste Code.gs",
   "儲存→執行 initializeSheets，授權，複製 API Key": "Save → run initializeSheets, authorise, copy the API Key",
+  "儲存→執行 initializeSheets，授權並取得 API Key（初始化不要求旅團編號）": "Save → run initializeSheets, authorise and get the API Key (no Group ID is required first)",
+  "部署為網頁應用程式（執行身分：我；存取權：任何人）；從 Google 部署視窗複製正式 URL": "Deploy as a web app (execute as me; access: anyone); copy the official URL from the Google deployment dialog",
+  "共通：下載 Code.gs → 建 Sheet → 執行 initializeSheets → 部署；只從 initializeSheets／旅系統選單取得 API Key。URL 請由 Google 部署視窗取得，再填入原有 ADMIN FORM。": "Common: download Code.gs → create a Sheet → run initializeSheets → deploy. Get only the API Key from initializeSheets or the Rover System menu. Get the URL from the Google deployment dialog and enter it in the existing ADMIN FORM.",
   "部署為網頁應用程式 (執行身分我，存取權任何人)，複製 URL (/exec)": "Deploy as a web app (execute as me, access: anyone), copy the URL (/exec)",
-  "將旅團編號、名稱、URL、API Key 交 roverbadge 管理員，在 Vercel 環境變數登記（TROOP_{編號}_NAME / _BACKEND / _APIKEY），重新部署後獨立可用": "Give the Group number, name, URL and API Key to the roverbadge admin to register in Vercel environment variables (TROOP_{ID}_NAME / _BACKEND / _APIKEY); after redeploying, it works standalone",
+  "在原有 ADMIN FORM 自行填寫旅團編號、名稱、URL、API Key。不要把 URL 貼到 Apps Script 或 Sheet 的新設定。": "Enter the Group ID, name, URL and API Key yourself in the existing ADMIN FORM. Do not paste the URL into a new Apps Script or Sheet setting.",
   "獨立用：交 roverbadge 管理員": "Standalone: submit to the roverbadge admin",
   "接入主系統：同時交主系統管理員（填 backend+apikey）": "Connect to main system: also submit to the main system admin (fill in backend + apikey)",
   "兩條路可同時用，領袖從主系統入，成員 bookmark 獨立連結": "Both tracks can be used at the same time: leaders enter via the main system, members bookmark the standalone link",
@@ -1697,7 +1748,7 @@ const LANG_DICT={
   "問題回報 / 意見回饋（經 Scout Admin 統一回收，可匿名）": "Report an issue / send feedback (via Scout Admin, anonymous welcome)",
   "⚠️ 非官方聲明：本系統為獨立開發的非官方工具，並非香港童軍總會官方產品，與總會並無隸屬或贊助關係。": "⚠️ Unofficial notice: this system is an independently developed unofficial tool. It is NOT an official product of the Scout Association of Hong Kong and has no affiliation with or sponsorship from the Association.",
   "私隱：普通成員預設只看自己，能否看其他成員由團長開放。": "Privacy: members only see themselves by default; the Group Scout Leader decides whether they can view others.",
-  "本節點係進度系統（下游），唔設支部表。上下游接駁經 Google Sheet 選單「🔗 旅系統」操作（sig 係 GAS→GAS 直連，唔經本 proxy）：➕ 登記下游（URL + SHEET KEY）→ 📡 測試下游連線 → 📤 匯出 JSON（含 hash，Drive 私人檔）→ 📥 匯入 JSON → 🚪 閂下游直接入口 → 👤 為下游開戶。新節點接入：選單「🔑 顯示 BACKEND／APIKEY（交 ADMIN）」→ 收件匣 → ADMIN 登記 Vercel env。": "This node is a Progress System (downstream); it has no Branch sheet. Upstream/downstream linking is done via the Google Sheet menu \"🔗 Troop System\" (sig is a direct GAS→GAS connection, not via this proxy): ➕ Register downstream (URL + SHEET KEY) → 📡 Test downstream connection → 📤 Export JSON (with hash, private Drive file) → 📥 Import JSON → 🚪 Close downstream direct entry → 👤 Create accounts for downstream. New node onboarding: menu \"🔑 Show BACKEND/APIKEY (for the ADMIN)\" → inbox → ADMIN registers in Vercel env.",
+  "本節點係進度系統（下游），唔設支部表。上下游接駁經 Google Sheet 選單「🔗 旅系統」操作（sig 係 GAS→GAS 直連，唔經本 proxy）：➕ 登記下游（URL + SHEET KEY）→ 📡 測試下游連線 → 📤 匯出 JSON（含 hash，Drive 私人檔）→ 📥 匯入 JSON → 🚪 閂下游直接入口 → 👤 為下游開戶。新節點接入：initializeSheets／選單「🔑 顯示 API KEY（交 ADMIN）」只提供 API Key；URL 由 Google 部署視窗取得，再填原有 ADMIN FORM。": "This node is a Progress System (downstream); it has no Branch sheet. Upstream/downstream linking is done via the Google Sheet menu \"🔗 Troop System\" (sig is a direct GAS→GAS connection, not via this proxy): ➕ Register downstream (URL + SHEET KEY) → 📡 Test downstream connection → 📤 Export JSON (with hash, private Drive file) → 📥 Import JSON → 🚪 Close downstream direct entry → 👤 Create accounts for downstream. New node onboarding: initializeSheets and menu \"🔑 Show API KEY (for the ADMIN)\" provide only the API Key; get the URL from the Google deployment dialog and enter it in the existing ADMIN FORM.",
   "⚠️ 直接入口開關（ALLOW_LOCAL_LOGIN）只由上游（旅／支部系統）選單／sig 遠端操作，或在本節點 GAS Script Properties 手動設定；本 APP 屬下游系統，介面內不設此掣。誤閂而鎖死時：由上游選單「🚪 下游直接入口」重開。": "⚠️ The direct-entry switch (ALLOW_LOCAL_LOGIN) is operated only by the upstream (Troop/Branch system) menu via sig, or set manually in this node's GAS Script Properties. This app is a downstream system and does not offer this switch in its UI. If it is closed by mistake and locks everyone out: re-open it from the upstream menu \"🚪 Downstream direct entry\".",
   "問題回報 / 意見回饋（經 Scout Admin 統一回收；可匿名，留聯絡方式可收通知）": "Report an issue / send feedback (via Scout Admin; anonymous submissions are welcome, add contact details for a reply)",
   "🐛💬 回報問題／意見": "🐛💬 Report a problem / feedback",
@@ -2107,7 +2158,8 @@ function showWelcomeTab(name, btn){
   document.querySelectorAll('.welcome-section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.welcome-nav button').forEach(b=>b.classList.remove('active'));
   document.getElementById('welcome-'+name).classList.add('active');
-  if(btn) btn.classList.add('active');
+  const selected=btn||document.querySelector('.welcome-nav button[data-tab="'+name+'"]');
+  if(selected) selected.classList.add('active');
 }
 function backToHome(){
   clearStaleBanner();
@@ -2131,7 +2183,7 @@ function gsNoticeHtml(where){
   else if(st.code==='unchecked') badge='<div class="gs-badge gs-info">'+tr(where==='home'?'請先選擇旅團並登入，即可核對本旅團 GS 版本':'尚未核對，請按「重新檢查」')+'</div>';
   else if(st.code==='outdated') badge='<div class="gs-badge gs-danger">'+tr('⚠️ GS 未更新：本旅團 Apps Script 仍是舊版，請先更新 Code.gs')+'</div>';
   else if(st.code==='needs_init') badge='<div class="gs-badge gs-warn">'+tr('⚠️ GS 已更新但未初始化：必須執行一次 initializeSheets()')+'</div>';
-  else badge='<div class="gs-badge gs-ok">'+tr('✅ 已核對：GS 已是最新版本，初始化已完成')+'</div>';
+  else badge='<div class="gs-badge gs-ok">'+tr(!L.initRequired?'✅ 已核對：本次更新毋須重跑初始化':'✅ 已核對：GS 已是最新版本，初始化已完成')+'</div>';
   const meta=(where!=='home' && gsCheckInfo && st.code!=='unchecked')
     ? '<div class="gs-meta">'+tr('本旅團 GS 版本')+'：v'+escapeHtmlText(st.gsVersion||'—')+'　'+tr('初始化標記')+'：'+escapeHtmlText(st.initializedGsVersion||'—')+'</div>' : '';
   const mustInit=needInit ? '<div class="gs-must-init">'+tr('必須執行一次 initializeSheets()')+'</div>' : '';
@@ -4967,7 +5019,7 @@ async function loadUsers(){
       let h=roleExplain+systemSettingHtml+mockTool+`<div class="info-section" style="font-size:11px;border-left-color:var(--orange);background:#FFF7ED;margin-bottom:8px">${tr('團長全團只可有一位。')}${gslHolder?tr('現任：')+gslHolder.name+'。'+tr('如需更換，請先將現任團長轉為其他角色。'):tr('目前未有團長。')}</div>
       <div class="info-section" style="border-left-color:var(--maroon);background:#FFF5F5">
         <h3 style="color:var(--maroon)">🔗 旅系統接駁（進度系統節點，上下游 sig 直連）</h3>
-        <p style="font-size:11px;color:var(--text-light)">本節點係進度系統（下游），唔設支部表。上下游接駁經 Google Sheet 選單「🔗 旅系統」操作（sig 係 GAS→GAS 直連，唔經本 proxy）：➕ 登記下游（URL + SHEET KEY）→ 📡 測試下游連線 → 📤 匯出 JSON（含 hash，Drive 私人檔）→ 📥 匯入 JSON → 🚪 閂下游直接入口 → 👤 為下游開戶。新節點接入：選單「🔑 顯示 BACKEND／APIKEY（交 ADMIN）」→ 收件匣 → ADMIN 登記 Vercel env。</p>
+        <p style="font-size:11px;color:var(--text-light)">本節點係進度系統（下游），唔設支部表。上下游接駁經 Google Sheet 選單「🔗 旅系統」操作（sig 係 GAS→GAS 直連，唔經本 proxy）：➕ 登記下游（URL + SHEET KEY）→ 📡 測試下游連線 → 📤 匯出 JSON（含 hash，Drive 私人檔）→ 📥 匯入 JSON → 🚪 閂下游直接入口 → 👤 為下游開戶。新節點接入：initializeSheets／選單「🔑 顯示 API KEY（交 ADMIN）」只提供 API Key；URL 由 Google 部署視窗取得，再填原有 ADMIN FORM。</p>
         <p style="font-size:11px;color:var(--text-light);margin-top:6px">⚠️ 直接入口開關（ALLOW_LOCAL_LOGIN）只由上游（旅／支部系統）選單／sig 遠端操作，或在本節點 GAS Script Properties 手動設定；本 APP 屬下游系統，介面內不設此掣。誤閂而鎖死時：由上游選單「🚪 下游直接入口」重開。</p>
       </div>
       <div class="info-section" style="border-left-color:var(--blue);background:var(--blue-light)">

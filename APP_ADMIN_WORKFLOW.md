@@ -18,11 +18,11 @@
 
 ```
 [旅團 A] --\
-            +--> 提交 URL + APIKEY --> [APP ADMIN] --> Vercel 加 TROOP_{ID}_NAME/_BACKEND/_APIKEY --> Redeploy
+            +--> 由 Google 部署視窗取得 URL，API Key 由 Apps Script 提供 --> [APP ADMIN] --> Vercel 加 TROOP_{ID}_NAME/_BACKEND/_APIKEY --> Redeploy
 [旅團 B] --/
 ```
 
-**旅團需提交：**
+**旅團負責人在原有 ADMIN FORM 填寫：**
 - 旅團編號 (如 0082)
 - 名稱 (第 82 旅)
 - Backend URL (/exec)
@@ -49,7 +49,8 @@
 
 - `getApiKey()`：若無就 `rover_` + uuid
 - `showApiKey()`：隨時查看
-- `initializeSheets()`：初始化完彈出 KEY + URL
+- `initializeSheets()`：保留初始化結果及首次登入提示，只顯示 API Key；不顯示或回傳自動取得的 URL
+- 正式部署 URL 只從 Google「部署」視窗取得；旅團負責人在既有 ADMIN FORM 填寫旅團編號、名稱、URL、API Key
 
 ## 中央管理帳號（super_admin）- v8.9：密碼只喺 Vercel 驗證
 
@@ -61,7 +62,7 @@
 | Vercel `SUPER_KEY` | ✅ 密碼唯一存放處（≥4 字元字串，前導 0 保留） |
 | Google Sheet（Users 表） | ❌ 冇這列；舊版殘留 super_admin 列會被忽略 |
 | Google Sheet（Tokens 表） | ❌ session 以中性代號 `__sys__` 儲存，唔會出現帳號 |
-| `initializeSheets()` 完成小視窗 | ❌ 只顯示 Sheets / API Key / URL / 本旅團管理員 |
+| `initializeSheets()` 完成小視窗 | ❌ 不會出現隱藏系統管理帳號；只顯示 Sheets / API Key / 本旅團管理員首次登入提示，不顯示 URL |
 | 用戶管理 / 成員名單 / load | ❌ 任何角色都睇唔到 |
 | 任何 API 回應 / 錯誤訊息 / log | ❌ 只有一般用語；密碼、token、apikey 一律唔會落 log |
 
@@ -93,7 +94,7 @@
 
 **如要換密碼：** 只改 Vercel `SUPER_KEY` → Redeploy → 完成（唔使碰 GAS／Sheet；舊加密 session 會失效，重新登入即可）。
 
-## GS 版本核對、初始化標記與資料保全（v5.2.1 起）
+## GS 版本核對、初始化標記與資料保全（v5.2.2 起）
 
 **規格**（對齊 CubBadge 機制，數據與版號為本 repo 自身）：
 
@@ -156,3 +157,10 @@
 **維護：** 接收端、工作表、欄位全部由 scout-admin 管（Google Sheet 四張表）；本 APP 只負責送 `sourceApp=進度追蹤`，之後 scout-admin 加新功能唔使改本 APP。
 
 COPYRIGHT 2026 Scout System
+
+
+## Rover onboarding display change (GS 5.2.2, 2026-10-24)
+
+- Apps Script initialization and the `🔗 旅系統 → 🔑 顯示 API KEY（交 ADMIN）` entry show only the API Key as connection credentials. The initialization alert still reports created sheets and the existing troop admin first-login/password-change notice.
+- No troop ID prompt or URL-paste setting was added. Obtain the deployment URL from the Google deployment dialog, then enter troop ID, name, URL and API Key in the existing ADMIN FORM.
+- Existing deployments do not need `initializeSheets()` for this display-only release (`GS_INIT_REQUIRED=false`). New Sheets still need their first initialization. Re-running initialization preserves the existing API Key, sheets and data.

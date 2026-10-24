@@ -53,7 +53,7 @@ await test('三個頁面都有公告區，並帶 Code.gs 下載與「重新檢�
     assert.match(h, /最新版本公告/, id);
     assert.match(h, /href="apps-script\/Code\.gs"/, id + ' 缺少 Code.gs 下載');
     assert.match(h, /onclick="gsRecheck\(\)"/, id + ' 缺少重新檢查');
-    assert.match(h, /v5\.2\.1/, id + ' 缺少最新版本號');
+    assert.match(h, /v5\.2\.2/, id + ' 缺少最新版本號');
   }
 });
 
@@ -63,29 +63,29 @@ await test('未核對：首頁提示先選擇旅團；登入頁提示按「重�
   assert.match(text('gsNoticeLogin'), /尚未核對，請按「重新檢查」/);
 });
 
-await test('GS 未更新（舊版無 gsVersion）：紅色提示，並要求初始化', () => {
+await test('GS 未更新（舊版無 gsVersion）：提示更新，但不要求本次可選初始化', () => {
   setInfo({ success: false, error: 'Unknown action' });
   assert.match(text('gsNoticeLogin'), /GS 未更新/);
-  assert.match(text('gsNoticeMain'), /必須執行一次 initializeSheets\(\)/);
+  assert.doesNotMatch(text('gsNoticeMain'), /必須執行一次 initializeSheets\(\)/);
   assert.doesNotMatch(html('gsNoticeMain'), /class="gs-badge gs-ok"/);
 });
 
-await test('GS 已更新但未初始化：顯示「必須執行一次 initializeSheets()」，不顯示已核對', () => {
-  setInfo({ success: true, gsVersion: '5.2.1', initRequired: true, initializedGsVersion: '' });
+await test('本版毋須初始化：無標記仍顯示已核對，不偽造初始化標記', () => {
+  setInfo({ success: true, gsVersion: '5.2.2', initRequired: false, initializedGsVersion: '' });
   const h = html('gsNoticeMain');
-  assert.match(text('gsNoticeMain'), /GS 已更新但未初始化/);
-  assert.match(h, /gs-must-init/);
-  assert.match(text('gsNoticeMain'), /必須執行一次 initializeSheets\(\)/);
-  assert.doesNotMatch(h, /gs-ok/);
-  assert.match(h, /本旅團 GS 版本：v5\.2\.1/);
+  assert.match(text('gsNoticeMain'), /本次更新毋須重跑初始化/);
+  assert.doesNotMatch(h, /gs-must-init|必須執行一次 initializeSheets/);
+  assert.match(h, /gs-ok/);
+  assert.match(h, /本旅團 GS 版本：v5\.2\.2/);
+  assert.match(h, /初始化標記：—/);
 });
 
-await test('全部完成：綠色「已核對」，不再要求初始化', () => {
-  setInfo({ success: true, gsVersion: '5.2.1', initRequired: true, initializedGsVersion: '5.2.1' });
+await test('已存在初始化標記仍原樣展示，不影響可選初始化狀態', () => {
+  setInfo({ success: true, gsVersion: '5.2.2', initRequired: false, initializedGsVersion: '5.2.2' });
   const h = html('gsNoticeLogin');
   assert.match(h, /class="gs-badge gs-ok"[^>]*>✅ 已核對/);
   assert.doesNotMatch(h, /gs-must-init/);
-  assert.match(h, /初始化標記：5\.2\.1/);
+  assert.match(h, /初始化標記：5\.2\.2/);
 });
 
 await test('資料保全說明出現在公告內（不刪除、不改寫）', () => {
@@ -96,7 +96,7 @@ await test('資料保全說明出現在公告內（不刪除、不改寫）', ()
 
 await test('「重新檢查」沒有選旅團時不發出請求；有旅團時只呼叫 ecStatus', async () => {
   const calls = [];
-  w.apiRequest = async (action, data, opts) => { calls.push({ action, data, opts }); return { success: true, gsVersion: '5.2.1', initRequired: true, initializedGsVersion: '5.2.1' }; };
+  w.apiRequest = async (action, data, opts) => { calls.push({ action, data, opts }); return { success: true, gsVersion: '5.2.2', initRequired: false, initializedGsVersion: '' }; };
   ev('currentTroopId = null');
   await w.gsRecheck();
   assert.equal(calls.length, 0, '未選旅團不應發出請求');
@@ -106,7 +106,7 @@ await test('「重新檢查」沒有選旅團時不發出請求；有旅團時�
   assert.equal(calls[0].action, 'ecStatus');
   assert.equal(JSON.stringify(calls[0].data), '{}');
   assert.equal(calls[0].opts.troopId, '1');
-  assert.match(text('gsNoticeLogin'), /已核對/);
+  assert.match(text('gsNoticeLogin'), /本次更新毋須重跑初始化/);
 });
 
 await test('「重新檢查」連線失敗：顯示錯誤提示，不崩潰', async () => {
