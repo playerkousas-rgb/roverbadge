@@ -5,7 +5,9 @@
 //   - 可用 /__control 切換故障模式：html-error / http500 / slow
 //   - 獨立 in-memory store，方便驗證多旅團隔離
 import http from 'http';
-import { createHmac } from 'crypto';
+import { createHash, createHmac } from 'crypto';
+
+const sha256Hex = (s) => createHash('sha256').update(String(s), 'utf8').digest('hex');
 
 // 測試專用：保留帳號識別字（與 apps-script/Code.gs 的 SUPER_ADMIN_ID 一致）。
 // 只在測試基礎設施保留一處，其他測試檔請 import 這個常量，不要各自寫死。
@@ -23,6 +25,8 @@ export function startMockGas({ port, name, users, apikey = '', verifyUrl = '' })
     roster: {},                   // v8.8 成員名單（純名單成員，無登入帳號）：ymis -> {ymis,name,squad}
     sentEmails: [],               // v8.8 forgotPassword 寄出的郵件（測試觀測用）
     forgotThrottle: {},           // v8.8 自助找回密碼節流：ymis -> 上次請求時間
+    pwdResets: [],                // 忘記密碼（電郵重設碼）：{reset_id,ymis,email,code_hash,created_ms,expires_ms,attempts,status,used_at}
+    pwdMailFlag: false,           // 全團發信故障旗標（模擬未授權 MailApp）→ delivery:'unavailable'
     logs: [],                      // v8.1 活動履歷
     config: { allow_member_view_others: 'false' },
     apikey,
@@ -188,17 +192,84 @@ export function startMockGas({ port, name, users, apikey = '', verifyUrl = '' })
         if (/^\d{10}$/.test(lid) || /^L\d+/i.test(lid)) user = state.users[lid] || null;
         else if (lid.indexOf('@') >= 0) user = Object.values(state.users).find(x => normEmail(x.email) === normEmail(lid)) || null;
         else user = state.users[lid] || Object.values(state.users).find(x => normEmail(x.email) === normEmail(lid)) || null;
-        if (!user || user.status === 'inactive' || isHiddenRow(user)) return { success: false, error: '找不到此帳號，請檢查 YMIS／電郵是否正確' };
+        // A17 防枚舉：與真實 Code.gs handleForgotPassword 一致，所有情況回同一中性訊息
+        const genericFp = '如該帳號已登記電郵，臨時密碼已寄出；如未收到，請聯絡旅團領袖重設密碼';
+        if (!user || user.status === 'inactive' || isHiddenRow(user)) return { success: true, message: genericFp };
         const email = String(user.email || '').trim();
-        if (!email) return { success: false, error: '此帳號未登記電郵，無法自助找回密碼，請聯絡領袖重設密碼' };
+        if (!email) return { success: true, message: genericFp };
         const last = state.forgotThrottle[user.ymis] || 0;
-        if (Date.now() - last < 60000) return { success: false, error: '請求過於頻密，請稍候一分鐘再試' };
+        if (Date.now() - last < 60000) return { success: true, message: genericFp };
         state.forgotThrottle[user.ymis] = Date.now();
         const temp = 'Rover' + Math.floor(100000 + Math.random() * 900000);
         state.sentEmails.push({ to: email, subject: '【樂行童軍進度系統】臨時密碼', body: '臨時密碼：' + temp });
         user.pass = temp;
         user.force_change_password = true;
-        return { success: true, message: '臨時密碼已發送到你的登記電郵，請查收後登入並設定新密碼', email_hint: maskEmail(email) };
+        return { success: true, message: genericFp };
+      }
+      case 'requestPasswordReset': {
+        // 忘記密碼（電郵一次性重設碼）：公開 action；授權完全靠寄到登記電郵嘅重設碼。
+        // 回應不洩漏帳戶是否存在（與真實 Code.gs handleRequestPasswordReset 一致）。
+        const lid = String(body.login_id || body.email || '').trim().substring(0, 120);
+        if (!lid) return { success: false, error: '請填寫 YMIS 或登記電郵' };
+        const findUser = () => {
+          if (isSuperAdminId(lid)) return null;
+          if (/^\d{10}$/.test(lid) || /^L\d+/i.test(lid)) return state.users[lid] || null;
+          if (lid.indexOf('@') >= 0) return Object.values(state.users).find(x => normEmail(x.email) === normEmail(lid)) || null;
+          return state.users[lid] || Object.values(state.users).find(x => normEmail(x.email) === normEmail(lid)) || null;
+        };
+        const user = findUser();
+        const key = user && user.email ? normEmail(user.email) : (lid.indexOf('@') >= 0 ? normEmail(lid) : 'ymis:' + normEmail(lid));
+        const now = Date.now();
+        const recent = state.pwdResets.filter(r => r.email === key && now - r.created_ms < 30 * 60 * 1000);
+        if (recent.length >= 3) return { success: false, error: '請求過於頻密，請稍後再試（約 30 分鐘後）' };
+        for (const r of state.pwdResets) if (r.email === key && r.status === 'pending') r.status = 'superseded';
+        const eligible = !!user && user.status === 'active' && !isHiddenRow(user) && !!user.email && !!user.pass;
+        const code = eligible ? Math.random().toString(36).slice(2, 10).toUpperCase().replace(/[^0-9A-Z]/g, 'X').padEnd(8, '0').slice(0, 8) : '';
+        state.pwdResets.push({
+          reset_id: 'PWR_' + now, ymis: eligible ? user.ymis : '', email: key,
+          code_hash: code ? sha256Hex(code) : '', created_ms: now, expires_ms: now + 15 * 60 * 1000,
+          attempts: 0, status: eligible ? 'pending' : 'no_account', used_at: ''
+        });
+        if (eligible && !state.pwdMailFlag) {
+          state.sentEmails.push({ to: user.email, subject: '【樂行童軍進度系統】忘記密碼重設碼 / Password reset code', body: '重設碼 / Reset code：' + code.substring(0, 4) + '-' + code.substring(4) });
+        }
+        return { success: true, delivery: state.pwdMailFlag ? 'unavailable' : 'ok', message: '若此帳號已登記電郵，重設碼已發送到登記電郵（15 分鐘內有效）' };
+      }
+      case 'confirmPasswordReset': {
+        const lid = String(body.login_id || body.email || '').trim().substring(0, 120);
+        const code = String(body.code || '').toUpperCase().replace(/[^0-9A-Z]/g, '');
+        const newPw = String(body.new_password || '');
+        const generic = '重設碼不正確或已過期，請重新申請 / Invalid or expired reset code';
+        if (!lid || code.length !== 8) return { success: false, error: generic };
+        if (newPw.length < 4) return { success: false, error: '新密碼至少4位' };
+        const findUser = () => {
+          if (/^\d{10}$/.test(lid) || /^L\d+/i.test(lid)) return state.users[lid] || null;
+          if (lid.indexOf('@') >= 0) return Object.values(state.users).find(x => normEmail(x.email) === normEmail(lid)) || null;
+          return state.users[lid] || Object.values(state.users).find(x => normEmail(x.email) === normEmail(lid)) || null;
+        };
+        const user = findUser();
+        const key = user && user.email ? normEmail(user.email) : (lid.indexOf('@') >= 0 ? normEmail(lid) : 'ymis:' + normEmail(lid));
+        const now = Date.now();
+        const rec = state.pwdResets.filter(r => r.email === key && r.status === 'pending' && r.code_hash)
+          .sort((a, b) => b.created_ms - a.created_ms)[0];
+        if (!rec || rec.expires_ms <= now) { if (rec) rec.status = 'expired'; return { success: false, error: generic }; }
+        if (rec.attempts >= 5) { rec.status = 'locked'; return { success: false, error: generic }; }
+        if (sha256Hex(code) !== rec.code_hash) {
+          rec.attempts++;
+          if (rec.attempts >= 5) rec.status = 'locked';
+          return { success: false, error: generic };
+        }
+        const target = state.users[rec.ymis];
+        if (!target || target.status !== 'active' || isHiddenRow(target) || normEmail(target.email) !== key) {
+          rec.status = 'void';
+          return { success: false, error: generic };
+        }
+        target.pass = newPw;
+        target.force_change_password = false;
+        rec.status = 'used'; rec.used_at = new Date().toISOString();
+        for (const r of state.pwdResets) if (r !== rec && (r.email === key || r.ymis === rec.ymis) && r.status === 'pending') r.status = 'superseded';
+        for (const tk of Object.keys(state.tokens)) if (state.tokens[tk] === rec.ymis) delete state.tokens[tk];
+        return { success: true, message: '密碼已重設，請用新密碼登入' };
       }
       case 'load': {
         if (state.apikey && body.apikey && body.apikey !== state.apikey) return { success: false, error: 'Invalid API Key' };

@@ -787,12 +787,30 @@ YMIS 匯出教學	YMIS export guide
 ❌ 雲端載入失敗，本機亦冇快取可顯示	❌ Cloud load failed and there is no local cache to show
 🔑 忘記密碼	🔑 Forgot password
 忘記密碼	Forgot password
-🔑 找回密碼	🔑 Recover password
 YMIS 或登記電郵	YMIS or registered email
 10位 YMIS 或電郵	10-digit YMIS or email
-寄出臨時密碼	Send temporary password
 寄送中...	Sending...
-輸入你的 YMIS 或登記電郵，系統會把一次性臨時密碼寄到你登記的電郵。如無登記電郵，請聯絡領袖重設。	Enter your YMIS or registered email; the system will send a one-time temporary password to your registered email. If you have no registered email, ask a leader to reset it.
+輸入你的 YMIS 或登記電郵，系統會把一次性 8 位重設碼寄到你登記的電郵（15 分鐘內有效）。如無登記電郵，請聯絡領袖在「用戶管理」重設。	Enter your YMIS or registered email; the system will send a one-time 8-character reset code to your registered email (valid for 15 minutes). If no email is registered, ask a leader to reset it in User Management.
+📧 發送重設碼	📧 Send reset code
+發送中...	Sending...
+輸入重設碼並設定新密碼	Enter the reset code and set a new password
+重設碼（電郵內 8 位）	Reset code (8 characters in the email)
+例如 A1B2C3D4	e.g. A1B2C3D4
+新密碼（至少4位）	New password (at least 4 characters)
+重設成功後所有舊登入階段會即時登出；如非你本人操作，請立即通知領袖。	After a successful reset, all previous sign-in sessions are signed out immediately. If you did not do this, notify a leader right away.
+← 重新發送	← Resend code
+💾 設定新密碼	💾 Set new password
+設定中...	Saving...
+請輸入 YMIS 或登記電郵	Please enter your YMIS or registered email
+若此帳號已登記電郵，重設碼已發送（15 分鐘內有效）	If this account has a registered email, the reset code has been sent (valid for 15 minutes)
+本旅團電郵發信暫未啟用，請聯絡領袖在「用戶管理」重設密碼	This troop's email sending is not enabled yet; ask a leader to reset your password in User Management
+此旅團後端尚未支援忘記密碼功能，請聯絡領袖在「用戶管理」重設密碼	This troop's backend does not support forgot password yet; ask a leader to reset it in User Management
+請求過於頻密，請稍後再試	Too many requests, please try again later
+系統繁忙，請稍後再試	System busy, please try again later
+重設碼不正確或已過期，請重新申請	Invalid or expired reset code; please request a new one
+請輸入電郵內的 8 位重設碼	Please enter the 8-character code from the email
+找回失敗，請稍後再試或聯絡領袖	Reset failed; please try again later or contact a leader
+✅ 密碼已重設，請用新密碼登入	✅ Password reset; please sign in with your new password
 ⚠️ 批次內重複 YMIS	⚠️ Duplicate YMIS in batch
 ⚠️ 批次內重複電郵	⚠️ Duplicate email in batch
 ⚠️ 電郵格式錯誤	⚠️ Invalid email format

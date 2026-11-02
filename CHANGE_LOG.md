@@ -1,5 +1,51 @@
 # CHANGE_LOG
 
+## 2026-11-02（續） — G11 完整圖標集＋A17 舊找回密碼防枚舉＋A12 私隱聲明＋授權聲明
+
+- **G11 圖標標準**：`assets/icons/` 新增完整 9 件圖標（16/32/48/192/256/512 PNG＋maskable 192/512＋favicon.ico，合計 157,848 B ≤ 260KB 上限），另加 `og-image-1200x630.png`（134KB）。新增 `assets/manifest.webmanifest`（any＋maskable 用途、theme/background #0D47A1），`index.html` head 加 manifest 連結、192/512 icon、`theme-color`、og: 系統 meta（`og:image` 用絕對網址 `https://roverbadge.vercel.app/assets/icons/og-image-1200x630.png`）＋ twitter:card。圖標檔名固定後**不可改名**（G11 不變性），換圖要加新檔名。html-integrity 加 9 項 G11 守護（現 53 項）。部署不受影響（`assets/` 本已在 build 白名單）。
+- **A17 舊 `forgotPassword` 防枚舉**：舊 action 保留向後兼容，但回應改為全中性——找不到帳號／未登記電郵／被停用／節流／寄信失敗全部回同一個 `{success:true, message:'如該帳號已登記電郵，臨時密碼已寄出…'}`，唔再回 `email_hint` 或「找不到此帳號」；實際只向已登記電郵寄臨時密碼，寄信失敗記審計 `forgot_password_mail_failed`。mock-gas 鏡像同一行為；相關斷言更新，auth-hardening 新增舊 action 一致性測試（8/8）。
+- **A12 私隱聲明**：`docs/LEADER_GUIDE.md` 新增「私隱聲明」章節（收集乜／目的／儲喺邊：各旅團自己 Google Sheet、中央唔儲個人資料／保留期／查閱更正刪除權／安全措施），依《個人資料（私隱）條例》第486章。
+- **授權聲明**：`README.md` 明确本 repo **All rights reserved、未附開源 LICENSE**（刻意唔用 MIT/CC-BY，避免第三方合法取用），見該章說明。
+- 測試：`npm test` 全綠（html-integrity 53/0、code-gs 156/0、auth-hardening 8/8 等）。
+
+## 2026-11-02 — 對齊 readme repo（PLAYBOOK）硬規則：A3 密碼雜湊升級＋A5 登入鎖定＋A17 防枚舉＋W1 版權 meta＋CI
+
+對照 [`playerkousas-rgb/readme`](https://github.com/playerkousas-rgb/readme) 嘅 PLAYBOOK／docs/31（有身份系統嘅硬性底線）審查，本輪強化（前端仍 v5.2；GS 仍 5.2.3，冇新增工作表／欄位，既有資料不變）：
+
+- **A3 密碼雜湊**：由單次 SHA-256 升級為 **PBKDF2-HMAC-SHA256（120,000 迭代＋每用戶 16-byte 隨機 salt）**，格式 `pbkdf2$<iter>$<salt>$<dk>`，寫入 `Users.password_hash` 同一欄。舊 64-hex SHA-256 hash 仍可驗證，**登入成功時自動升級**（密碼本身不變，只改儲存格式）；`upsertUser`／匯出匯入同時接受兩種格式（跨節點搬舊數唔受影響）；新開戶／改密碼／領袖重設／忘記密碼重設一律寫新格式；預設密碼 `changeme` 判斷兼容兩種格式。重設碼本身仍是高熵一次性碼，維持 SHA-256 儲存。
+- **A5 登入閘**：同一帳號連續 **5 次登入失敗鎖 15 分鐘**（ScriptProperties 記錄 `LOGIN_FAIL:*`，增補式；鎖定中連正確密碼都拒，寫審計 `login_locked`）；成功登入清記錄。**改密碼後踢走該用戶其他所有 session**（保留當前 token，`destroyUserTokensExcept`）。
+- **A17 防枚舉**：本地登入「找不到帳號」與「密碼錯誤」統一回 `帳號或密碼錯誤`；找不到帳號時另做一次假 KDF 令時序一致。
+- **W1**：`index.html` `<head>` 加 `<meta name="copyright" content="© SCOUT SYSTEM">` 同 `<meta name="app-version">`（html-integrity 加守護，現 44 項）。
+- **CI（G8／docs/20 P2 建議）**：新增 `.github/workflows/ci.yml`（push／PR 跑 `npm run lint`＋`check`＋`test`；actions 以 commit SHA pin）。
+- **AGENTS.md**：新增根目錄指引，叫施工嘅 Agent 先讀 readme repo 嘅 PLAYBOOK＋docs/19 專案案例＋docs/31，同本 repo嘅硬性規則。
+- **測試**：新增 `tests/auth-hardening.test.mjs`（7 項：PBKDF2 儲存、舊 hash 自動升級、預設密碼兩格式觸發強制改密、5 次鎖定 15 分鐘＋統一訊息＋審計、防枚舉訊息一致、改密碼踢舊 session 保留當前、upsertUser 雙格式兼容）；`password-reset`／`troop_link` morsel 断言改為按新格式（行為不變）。全套 `npm test` 綠。
+
+## 2026-11-02 — Repo 全面審查修復（無功能變更，前端仍 v5.2／GS 仍 5.2.3）
+
+對照 repo 自己嘅設計文件（`docs/AGENT_TEMPLATE_FOR_OTHER_SECTIONS.md` 架構＋自檢清單、`APP_ADMIN_WORKFLOW.md` 發佈檢查清單、`VERCEL_ENV_SETUP.md` 部署政策）審查，修復以下問題：
+
+- **補返缺失嘅 `data/mock_import.csv`**：`index.html` 測試工具有「📄 下載 CSV 匯入 Sheet」連結但檔案唔存在（部署後 404）。現由 `data/mock_members.json` 十個 MOCK 成員按批量開戶格式（`ymis,name,email,role,can_tick,password,note`）產生，密碼統一 123456。
+- **架構圖 WebP 由 1.1MB 重壓到 ~173KB**（quality 85，768×1376 不變，目視檢查文字清晰），符合 repo「唔好用大原圖」部署瘦身原則；`tests/build.test.mjs`／`credential-display.test.mjs` 嘅 >100KB 守護仍然過（防殘圖）。
+- **`VERCEL_ENV_SETUP.md` 圖片原則過時**：舊文寫「AVIF/WebP 暫不採用」，但 5.2.2 起已部署 WebP 架構圖。已更新為「唯一例外」條款（單一 lazy-loaded 圖、有下載連結、壓到 ~170KB、測試守住 >100KB）。
+- **新增 `README.md`**：repo 原本冇 README（姊妹 repo vsbadge／scoutbadge 有），補返一份講明架構、核心功能、審批流程、安全／資料保全硬性規則、發佈檢查要求、部署雙軌同開發指令。
+- **支援 `?lang=en`／`?lang=zh` 分享連結鎖定語言**（同 vsbadge 一致）：boot 時讀 URL 參數寫入 `localStorage: roverbadge_lang`，即時生效免重新載入；`tests/html-integrity.test.mjs` 加守護（43 項）。
+- **審查確認已符合設計、無需改動**：`vercel.json` 只含官方頂層欄位且冇 legacy builds/routes/functions；`.vercelignore` 不存在；`/api/proxy`、`/api/super` GET 回 405；`/api/troops` 淨係 id+name（短暫快取係刻意設計，見 build.test 註解）；`loadTroops()` 淨係讀 `/api/troops` 冇 fallback；防卡死（`_switching` 鎖、ESC、雙擊 header）、審批中心合併、其他獎章併入進度、私隱開關、內嵌教學、全團總覽上限、中央帳號零痕跡守護、MOCK 工具——全部都喺。
+- 測試：`npm test` 全綠（check.mjs 85/0、html-integrity 43/0、code-gs 156/0、run-e2e 166/0、password-reset 18/18 等）。
+
+## 2026-11-02 — GS 5.2.3：忘記密碼（電郵一次性重設碼，自助式）
+
+- **新功能**：登入頁（兩個登入分頁底部）新增「🔑 忘記密碼」兩步式 modal —— 輸入 YMIS 或登記電郵 → 寄 8 位一次性重設碼到登記電郵 → 即場輸入重設碼並設定新密碼。後端新增公開 action `requestPasswordReset`／`confirmPasswordReset`（登入前毋須 token），以及 `testPasswordResetMail()`（寄測試信去執行者電郵並清走發信故障旗標）。
+- **安全**：重設碼只存 SHA-256 雜湊（新增「密碼重設」工作表），15 分鐘有效、最多 5 次錯誤鎖定、一次性（used／superseded／expired／locked／void）、新申請作廢舊碼；同一電郵 30 分鐘最多 3 次、全團每小時 30 次、LockService 鎖防並發；回應不洩漏帳戶是否存在；電郵欄位拒絕 `=+-@` 開頭（公式注入）；成功後撤銷所有 session 並寫中性操作紀錄。合資格帳戶：已啟用、非 super_admin、已登記電郵且已設密碼（成員都可以用）。
+- **Proxy**：`api/proxy.js` 把兩個新 action 列入 `PUBLIC_ACTIONS`，同時主動剷走請求內的身份欄位（token／ymis／target_ymis／role／password_hash／code_hash／user／apikey／sig*），API Key 只在 server 端補上。
+- **發信故障處理**：MailApp 失敗（常見：換 Code.gs 後未重新授權 gmail.send）時回 `{success:true, delivery:'unavailable'}`，前端提示聯絡領袖；旗標全團共通，重新授權後成功發信即自動清走。
+- **舊版相容**：v8.8 臨時密碼 `forgotPassword` 流程完整保留；舊 GS 收到新 action 會回 `Unknown action`，前端顯示友善提示叫聯絡領袖重設。舊 Sheet 毋須重跑 `initializeSheets()`——「密碼重設」表會在首次申請時自動補建（新安裝則由 initializeSheets 一併建立），既有資料不變。
+- **版本**：GS 升至 **5.2.3（2026-11-02）**（`Code.gs` 與 `assets/gs-release.js` 同步）；前端維持 v5.2，不改 package.json 版本。
+- **字典**：`i18n_dict.tsv` 新增 21 組中英字串並移除 3 個孤兒鍵（1004 列），`index.html` LANG_DICT 手動同步（1007 項）。
+- **測試**：新增 `tests/password-reset.test.mjs`（18 項：完整流程、YMIS 申請、不洩漏、鎖定／過期／作廢、限速、注入、session 撤銷＋紀錄、發信失敗、自動補建、閂口、proxy 剷場、端到端 proxy→mock GAS），已加入 `npm test`；`scripts/check.mjs` 85/0、`code-gs.test.mjs` 156/0、`run-e2e.mjs` 166/0 全綠。
+- **文件**：新增 `docs/PASSWORD_RESET.md`；`docs/LEADER_GUIDE.md`、`APP_ADMIN_WORKFLOW.md`、`docs/DEPLOY_GUIDE_V5_DUALTRACK.md` 加入一行說明。
+- **部署提醒**：各旅團貼上新 Code.gs 並在既有部署選「新版本」後，**記得重新授權 gmail.send 範圍**，再執行一次 `testPasswordResetMail()` 測試發信。
+
+
 ## 2026-10-24 — GS 5.2.2：API Key-only 接入顯示、系統介紹與安全的可選初始化
 
 - **接入顯示**：`initializeSheets()` 與旅系統選單只提供 API Key；不讀取或顯示自動／快取 URL，初始化回傳物件移除 `scriptUrl`，保留初始化結果及本旅團管理員首次登入提示。既有 URL 屬性保留原值。內部登入／簽名驗證未更改。

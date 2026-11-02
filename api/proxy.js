@@ -84,7 +84,9 @@ const MAX_DATA_BYTES = 2 * 1024 * 1024; // 單次請求 data 上限 (2MB)
 // ---- action 白名單（對照 Code.gs doGet/doPost）----
 // 公開（無需 token）
 // ecStatus：只回 GS 版本與初始化標記（不含用戶資料），供「最新版本公告」核對
-const PUBLIC_ACTIONS = new Set(['login', 'apply', 'forgotPassword', 'getLoginMode', 'ecStatus']);
+// 公開（無需 token）。requestPasswordReset／confirmPasswordReset 係「忘記密碼」登入前入口：
+// 授權完全靠寄到登記電郵嘅一次性重設碼，唔靠 session token，所以列為公開（同 login／apply 一樣）。
+const PUBLIC_ACTIONS = new Set(['login', 'apply', 'forgotPassword', 'requestPasswordReset', 'confirmPasswordReset', 'getLoginMode', 'ecStatus']);
 // 需要登入 token 的旅團內操作
 const TOKEN_ACTIONS = new Set([
   'logout', 'load', 'getConfig', 'getMembers', 'getOtherBadges',
@@ -330,6 +332,13 @@ export default async function handler(req, res) {
   // 不接受用戶自行夾帶驗證票據或覆寫頂層 action。
   delete data.super_ticket;
   delete data.action;
+  // 「忘記密碼」兩個 action 係登入前公開入口，授權完全靠寄到登記電郵嘅一次性重設碼：
+  // 唔可以畀請求自帶有效管理員 token／指定 YMIS／角色去影響流程，後端亦完全唔讀呢啲欄位。
+  // 呢度主動剷走身份欄位（defense in depth），只保留 login_id／email／code／new_password。
+  if (action === 'requestPasswordReset' || action === 'confirmPasswordReset') {
+    ['token', 'ymis', 'target_ymis', 'role', 'password_hash', 'code_hash', 'user', 'apikey', 'sig', 'sig_ts', 'sig_nonce']
+      .forEach(k => delete data[k]);
+  }
   const superLogin = action === 'login' && isSuperId(data.login_id);
   if (superLogin) {
     if (!superConfigured()) {

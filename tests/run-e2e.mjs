@@ -639,16 +639,15 @@ console.log('\n【17】v8.8 用戶管理：唯一性／三區名單／自設密�
 
   // (e) forgotPassword 公開找回（免 token）：有 Email 者寄出、回遮罩提示
   const fp1 = await apiRequest('forgotPassword', { login_id: '1234560101' }, { troopId: '0082' });
-  check('forgotPassword 有 Email 者成功（免 token）', fp1.success === true && (fp1.email_hint || '').includes('@') && !(fp1.email_hint || '').includes('roster1b'));
+  check('forgotPassword 有 Email 者成功（免 token、中性回應）', fp1.success === true && /如該帳號已登記電郵/.test(fp1.message || '') && !('email_hint' in fp1));
   check('forgotPassword 回應不含臨時密碼', fp1.success === true && !('temp_password' in fp1) && !JSON.stringify(fp1).includes(mockA.state.users['1234560101'].pass));
   const tmpAfterFp = mockA.state.users['1234560101'].pass;
   const loginTmp = await apiRequest('login', { login_id: 'ROSTER1B@EXAMPLE.ORG', password: tmpAfterFp }, { troopId: '0082' });
   check('Email 收到的臨時密碼可用 Email 登入（大小寫不敏感）', loginTmp.success === true);
-  // 無 Email 者 → 失敗並提示聯絡領袖（1234560001 成員甲無 Email）
+  // 無 Email 者與不存在帳號 → 回應完全一致（A17 防枚舉；1234560001 成員甲無 Email）
   const fpNo = await apiRequest('forgotPassword', { login_id: '1234560001' }, { troopId: '0082' });
-  check('無 Email 者找回失敗並提示聯絡領袖', fpNo.success === false && /聯絡領袖/.test(fpNo.error || ''));
   const fpGhost = await apiRequest('forgotPassword', { login_id: '9999999999' }, { troopId: '0082' });
-  check('不存在帳號找回失敗', fpGhost.success === false);
+  check('無 Email 者與不存在帳號回應完全一致（中性）', JSON.stringify(fpNo) === JSON.stringify(fpGhost) && fpNo.success === true && !('email_hint' in fpNo), JSON.stringify(fpNo) + ' vs ' + JSON.stringify(fpGhost));
 
   // (f) 停用 → 恢復 → 徹底刪除
   const de2 = await apiRequest('deactivateUser', { token: tokenA, target_ymis: '1234560101' }, { troopId: '0082' });

@@ -238,9 +238,13 @@ v3.1 曾用 `_troops_static.js` 保底；**v4.0 起直接斬斷成條檔案路�
 3. **只排除開發產物**：`.git`、`node_modules`、`tests/`、log、tmp、備份、i18n 工具
    （`i18n_dict.tsv`、`build_i18n.py`）同純管理文件。`tests/vercel-config.test.mjs` 會守住
    「被引用嘅檔案冇被 `.vercelignore` 排除」呢條底線。
-4. **圖片**：LOGO 用 PNG（128px ≈20KB、256px ≈64KB）+ SVG fallback，唔使再壓。
-   AVIF/WebP 暫不採用：瀏覽器相容性要求 PNG fallback 照樣要隨部署上線，轉換後**總位元組
+4. **圖片**：LOGO 用 PNG（128px ≈7KB、256px ≈20KB），唔使再壓，唔好用大原圖（舊 1.3MB 原圖會令部署暴肥）。
+   AVIF 一般暫不採用：瀏覽器相容性要求 PNG fallback 照樣要隨部署上線，轉換後**總位元組
    （AVIF + PNG fallback）反而多咗**，而且會引入透明度／畫質回歸風險 —— 冇實際节省就唔做。
+   **唯一例外**：首頁「系統介紹」架構圖 `assets/system-introduction-zh-hant.webp`（768×1376、lazy-loaded、
+   另有放大／下載連結）。此圖用 WebP，原因係單一圖片冇 fallback 都係可接受嘅 degraded experience，
+   同埋已壓到 ~170KB（2026-11-02 由 1.1MB 重壓）。守護：`tests/build.test.mjs`／`credential-display.test.mjs`
+   確保部署產物存在而且 >100KB（防止被換成殘圖）；如要改圖，重新壓縮後必須保持 >100KB 且目視檢查可讀。
 5. **依賴極簡**：`dependencies` 為空；建構／測試工具只入 `devDependencies`（如有）。
    `vercel.json` 冇 `buildCommand`，`package.json` 冇 `build` script。
 6. **內部模組唔做成 endpoint**：`api/_registry.js`、`api/_super.js` 以下劃線開頭，
