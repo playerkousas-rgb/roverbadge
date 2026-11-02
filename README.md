@@ -72,7 +72,7 @@ i18n_dict.tsv           — 中英字典源（LANG_DICT 以此為準，手動同
 - **Vercel**：Build Output 模式——`vercel.json` 指定 `buildCommand: npm run build`，建置時 `scripts/build.mjs` 產生 `.vercel/output`（靜態白名單 `index.html`／`assets`／`data`／`docs`／`apps-script` ＋ `api/*.func`）。部署完成嘅定義：`curl /api/troops` 有 JSON、`GET /api/proxy` 回 **405**（404 即 function 冇建好）。
 - **旅團登記**：管理員喺 Vercel 加 `TROOP_0082_NAME`、`TROOP_0082_BACKEND`（必須係 `https://script.google.com/macros/s/.../exec` 白名單格式）、`TROOP_0082_APIKEY`，Redeploy 後開 `/api/troops` 確認。詳見 [VERCEL_ENV_SETUP.md](VERCEL_ENV_SETUP.md)。
 - **新旅團開 Sheet**：下載 `apps-script/Code.gs` → 建 Sheet → 貼上 → 執行 `initializeSheets()` → 部署為網頁應用程式 → 喺 Google「部署 → 管理部署」視窗複製 `/exec` URL 連同 API Key 交給 APP 管理員。雙軌指南見 [docs/DEPLOY_GUIDE_V5_DUALTRACK.md](docs/DEPLOY_GUIDE_V5_DUALTRACK.md)（軌道 A 獨立用；軌道 B 接主系統 Portal 免登入）。
-- **升級既有旅團**：覆蓋 `Code.gs` 後，喺 Apps Script「部署 → 管理部署作業 → 編輯 → **新版本** → 部署」（沿用原 `/exec` URL，唔好新建部署）；需要初始化時執行一次 `initializeSheets()`（可安全重跑，只做增補）。GS 公告／核對見首頁「📢 最新版本公告」。
+- **升級既有旅團**：覆蓋 `Code.gs` 後，喺 Apps Script「部署 → 管理部署作業 → 編輯 → **新版本** → 部署」（沿用原 `/exec` URL，唔好新建部署）；**建議每次更新後都執行一次 `initializeSheets()`**——即使該版本標示「毋須初始化」（`GS_INIT_REQUIRED=false`）：它只做增補（建表、補空白表頭、補缺失列），可安全重跑、不刪不改任何既有資料；由較舊版本一次跨多版升級時尤其必須，否則會缺少新版所需的工作表／欄位。GS 公告／核對見首頁「📢 最新版本公告」。
 
 ## 開發與檢查
 

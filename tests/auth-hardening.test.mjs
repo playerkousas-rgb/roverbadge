@@ -180,3 +180,101 @@ test('A17 舊版 forgotPassword action 都係中性回應（向後兼容但唔�
   const rSuper = env.call({ action: 'forgotPassword', login_id: env.api.SUPER_ADMIN_ID });
   assert.equal(rSuper.success, false);
 });
+
+// ===== 重設密碼授權（前端後台階級一致）＋重設後狀態清理 =====
+// 設計：只有 SUPER ADMIN 可以改 ADMIN；admin 不可改 admin；高權限可改低權限（低權限帳號本就由其上級批核／可停用）。
+// 重設成功後要清走該帳號的登入失敗計數（否則鎖定期間改完仍登入不到），並踢走該帳號所有舊 session。
+
+const ADMIN2 = { ymis: '1234560401', name: '第二管理員', email: 'admin2@example.org', role: 'admin', pwd: 'Admin2!pw' };
+const GL = { ymis: '1234560402', name: '團長乙', email: 'gl@example.org', role: 'group_leader', pwd: 'GroupL!pw' };
+const BL = { ymis: '1234560403', name: '副團長丙', email: 'bl@example.org', role: 'branch_leader', pwd: 'BranchL!pw' };
+const MEM = { ymis: '1234560404', name: '團員丁', email: '', role: 'member', pwd: 'Member!pw' };
+
+test('重設密碼授權：admin 不可改 admin、副團長不可改團長、團長不可改 admin、成員不可改任何人', () => {
+  const env = newEnv();
+  const root = login(env, '1111111111', 'changeme'); // 內置 admin
+  assert.equal(root.success, true);
+  seedUser(env, ADMIN2, true);
+  seedUser(env, GL, true);
+  seedUser(env, BL, true);
+  seedUser(env, MEM, true);
+  const admin2Hash = userRow(env, ADMIN2.ymis)[4];
+
+  // admin → admin：拒絕（只有 super_admin 可以）
+  const r1 = env.call({ action: 'resetPassword', token: root.token, target_ymis: ADMIN2.ymis, new_password: 'Hijack!1' });
+  assert.equal(r1.success, false);
+  assert.match(r1.error, /權限不足/, JSON.stringify(r1));
+
+  // 團長(60) → admin(80)：拒絕
+  const gl = login(env, GL.ymis, GL.pwd);
+  assert.equal(gl.success, true);
+  const r2 = env.call({ action: 'resetPassword', token: gl.token, target_ymis: ADMIN2.ymis, new_password: 'Hijack!2' });
+  assert.equal(r2.success, false);
+  assert.match(r2.error, /權限不足/);
+
+  // 副團長(40) → 團長(60)：拒絕
+  const bl = login(env, BL.ymis, BL.pwd);
+  assert.equal(bl.success, true);
+  const r3 = env.call({ action: 'resetPassword', token: bl.token, target_ymis: GL.ymis, new_password: 'Hijack!3' });
+  assert.equal(r3.success, false);
+  assert.match(r3.error, /權限不足/);
+
+  // 成員(0) → 任何人：入口即拒
+  const mem = login(env, MEM.ymis, MEM.pwd);
+  assert.equal(mem.success, true);
+  const r4 = env.call({ action: 'resetPassword', token: mem.token, target_ymis: GL.ymis, new_password: 'Hijack!4' });
+  assert.equal(r4.success, false);
+  assert.match(r4.error, /權限不足/);
+
+  // 被拒後目標帳號完全冇被改動
+  assert.equal(userRow(env, ADMIN2.ymis)[4], admin2Hash, '被拒的重設不可改動目標 hash');
+  assert.equal(login(env, ADMIN2.ymis, ADMIN2.pwd).success, true, '原密碼仍然有效');
+  assert.equal(login(env, ADMIN2.ymis, 'Hijack!1').success, false);
+});
+
+test('重設密碼授權：只有 super_admin 可重設 admin 密碼', () => {
+  const env = newEnv();
+  seedUser(env, ADMIN2, true);
+  const su = env.api.getUser(env.api.SUPER_ADMIN_ID);
+  assert.equal(su.role, 'super_admin');
+  const r = JSON.parse(env.api.handleResetPassword(ADMIN2.ymis, su, 'SuperSet!9').getContent());
+  assert.equal(r.success, true, JSON.stringify(r));
+  assert.ok(isV2(userRow(env, ADMIN2.ymis)[4]), '重設後應為 PBKDF2');
+  assert.equal(login(env, ADMIN2.ymis, 'SuperSet!9').success, true);
+  assert.equal(login(env, ADMIN2.ymis, ADMIN2.pwd).success, false);
+  // 保留帳號本身永遠不可被重設
+  const deny = JSON.parse(env.api.handleResetPassword(env.api.SUPER_ADMIN_ID, su, 'x!1234').getContent());
+  assert.equal(deny.success, false);
+});
+
+test('重設密碼成功後：清走登入失敗鎖定、踢走該帳號舊 session、強制首登改密', () => {
+  const env = newEnv();
+  assert.equal(login(env, '1111111111', 'changeme').success, true);
+  seedUser(env, MEM, true);
+  seedUser(env, GL, true);
+  // 成員先登入一次（建立舊 session）
+  const memSession = login(env, MEM.ymis, MEM.pwd);
+  assert.equal(memSession.success, true);
+  const tokensFor = () => env.ss.sheets.get('Tokens').rows.slice(1).filter(r => String(r[1]) === MEM.ymis).length;
+  assert.equal(tokensFor(), 1, '應有一個 session');
+  // 連續 5 次錯誤 → 鎖定
+  for (let i = 1; i <= 5; i++) login(env, MEM.ymis, 'bad-' + i);
+  assert.equal(login(env, MEM.ymis, MEM.pwd).success, false, '鎖定中正確密碼都拒');
+  assert.ok(env.scriptProps.get('LOGIN_FAIL:' + MEM.ymis), '應有失敗記錄');
+  // 團長（高於 member）重設
+  const gl = login(env, GL.ymis, GL.pwd);
+  assert.equal(gl.success, true);
+  const r = env.call({ action: 'resetPassword', token: gl.token, target_ymis: MEM.ymis, new_password: 'Reset!234' });
+  assert.equal(r.success, true, JSON.stringify(r));
+  assert.ok(isV2(userRow(env, MEM.ymis)[4]), '重設後應為 PBKDF2');
+  assert.equal(String(userRow(env, MEM.ymis)[13]).toLowerCase(), 'true', '應設強制首登改密');
+  assert.ok(!env.scriptProps.get('LOGIN_FAIL:' + MEM.ymis), '重設後應清走失敗記錄');
+  assert.equal(tokensFor(), 0, '重設後應踢走該帳號舊 session');
+  // 即刻可以用新密碼登入（不再被鎖）
+  const after = login(env, MEM.ymis, 'Reset!234');
+  assert.equal(after.success, true, '重設後應可即時登入：' + JSON.stringify(after));
+  assert.equal(after.force_change_password, true);
+  // 審計有記錄
+  const audit = env.ss.sheets.get('操作紀錄').rows.slice(1).filter(row => String(row[2]) === 'set_password');
+  assert.ok(audit.length >= 1, '應寫入 set_password 審計');
+});

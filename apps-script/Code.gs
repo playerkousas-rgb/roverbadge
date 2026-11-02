@@ -553,7 +553,7 @@ function handleSignedRequest(action, body) {
   if (action === 'addUser') return handleAddUser(body, manager);
   if (action === 'upsertUser') return handleUpsertUser(body.user || body, actor);
   if (action === 'importUsers') return handleSignedImport(body, actor);
-  if (action === 'resetPassword') return handleResetPassword(body.target_ymis, actor, body.new_password);
+  if (action === 'resetPassword') return handleResetPassword(body.target_ymis, manager, body.new_password);
   if (action === 'deactivateUser') return handleDeactivateUser(body, manager, actor);
   if (action === 'reactivateUser') return handleReactivateUser(body, manager, actor);
   if (action === 'updateUserProfile') return handleUpdateUserProfile(body, manager, actor);
@@ -862,7 +862,7 @@ const APPLY_ROLES = ['member','branch_leader'];
 // INITIALIZED_GS_VERSION（Script Property）只在 initializeSheets() 成功走完最後一步才寫入，
 // 表示「此 GS 版本的初始化已完成」。initializeSheets() 只做增補（缺表／缺欄位標題／缺預設管理員），
 // 不刪除、不改寫任何既有用戶、進度、紀錄或金鑰資料（見 docs/LEADER_GUIDE.md「資料保全規則」）。
-const GS_VERSION = '5.2.3';
+const GS_VERSION = '5.2.4';
 const GS_RELEASE_DATE = '2026-11-02';
 const GS_INIT_REQUIRED = false;
 const GS_INIT_PROP = 'INITIALIZED_GS_VERSION';
@@ -1413,7 +1413,7 @@ function doPost(e){
 
     // 以下為高權限
     if(action==='changePassword') return handleChangePassword(ymis,body.old_password,body.new_password,body.token);
-    if(action==='resetPassword'){ if(getRoleLevel(user.role)<40) return jsonResponse({success:false,error:'權限不足'}); return handleResetPassword(body.target_ymis,ymis,body.new_password); }
+    if(action==='resetPassword'){ if(getRoleLevel(user.role)<40) return jsonResponse({success:false,error:'權限不足'}); return handleResetPassword(body.target_ymis,user,body.new_password); }
     if(action==='deactivateUser'){ if(getRoleLevel(user.role)<40) return jsonResponse({success:false,error:'權限不足'}); return handleDeactivateUser(body,user,ymis); }
     if(action==='reactivateUser'){ if(getRoleLevel(user.role)<40) return jsonResponse({success:false,error:'權限不足'}); return handleReactivateUser(body,user,ymis); }
     if(action==='updateUserProfile'){ if(getRoleLevel(user.role)<40) return jsonResponse({success:false,error:'權限不足'}); return handleUpdateUserProfile(body,user,ymis); }
@@ -1790,23 +1790,34 @@ function writeAudit(actor,action,target,detail){
     sh.appendRow([now(),who,action||'',target||'',detail||'']);
   }catch(e){ console.warn('writeAudit failed',e); }
 }
-function handleResetPassword(targetYmis,managerYmis,newPassword){
+function handleResetPassword(targetYmis,managerRef,newPassword){
   try{
     const sh=getSheet().getSheetByName('Users');
     if(!sh) return jsonResponse({success:false,error:'Users sheet 缺失'});
     if(!targetYmis) return jsonResponse({success:false,error:'請提供目標 YMIS'});
     if(isSuperAdminId(targetYmis)) return jsonResponse({success:false,error:'不能重設系統管理員密碼'});
-    if(String(targetYmis)===String(managerYmis)) return jsonResponse({success:false,error:'不能重設自己的密碼，請聯絡其他管理員'});
+    // 權限主體：接受已驗證的管理員物件（token 入口／上游簽章入口），或 YMIS 字串（舊呼叫方式）
+    const mgr=(managerRef && typeof managerRef==='object') ? managerRef : getUser(String(managerRef||''));
+    if(!mgr || !mgr.ymis) return jsonResponse({success:false,error:'未授權'});
+    if(getRoleLevel(mgr.role)<40) return jsonResponse({success:false,error:'權限不足'});
+    const managerYmis=String(mgr.ymis);
+    if(String(targetYmis)===managerYmis) return jsonResponse({success:false,error:'不能重設自己的密碼，請聯絡其他管理員'});
     const custom=(newPassword!==undefined && newPassword!==null && String(newPassword).length>0) ? String(newPassword) : '';
     if(custom && custom.length<4) return jsonResponse({success:false,error:'新密碼至少4位'});
     const data=sh.getDataRange().getValues();
     for(let i=1;i<data.length;i++){
       if(String(data[i][0])===String(targetYmis)){
+        // 授權（前後端一致）：只可重設自己管得到的角色。
+        // admin 不可重設 admin（只有 super_admin 可以）；高權限可重設低權限（低權限帳號本就由其上級批核／可停用）。
+        const targetRole=String(data[i][3]||'member');
+        if(targetRole==='super_admin' || isSuperAdminId(String(data[i][0]))) return jsonResponse({success:false,error:'不能重設系統管理員密碼'});
+        if(!canManageUser(mgr,targetRole)) return jsonResponse({success:false,error:'權限不足，不能重設該角色密碼'});
         if(custom){
           sh.getRange(i+1,5).setValue(hashPasswordV2(custom));
           ensureForceChangeCol(sh);
           sh.getRange(i+1,FORCE_CHANGE_COL).setValue(true);
           writeAudit(managerYmis,'set_password',targetYmis,'領袖自設密碼（首次登入須更改）');
+          afterPasswordReset_(targetYmis);
           return jsonResponse({success:true,message:'已設定新密碼，請通知用戶首次登入後更改密碼'});
         }
         const temp='Rover'+Math.floor(100000+Math.random()*900000);
@@ -1814,11 +1825,18 @@ function handleResetPassword(targetYmis,managerYmis,newPassword){
         ensureForceChangeCol(sh);
         sh.getRange(i+1,FORCE_CHANGE_COL).setValue(true);
         writeAudit(managerYmis,'reset_password',targetYmis,'重設為一次性密碼（已寄出，不留底）');
+        afterPasswordReset_(targetYmis);
         return jsonResponse({success:true,temp_password:temp,message:'已重設，請通知用戶首次登入後更改密碼'});
       }
     }
     return jsonResponse({success:false,error:'找不到此 YMIS'});
   }catch(e){ return jsonResponse({success:false,error:e.toString()}); }
+}
+// 密碼重設成功後：清走該帳號的登入失敗計數（否則鎖定 15 分鐘內改完密碼仍然登入不到），
+// 並踢走該帳號所有舊 session（與電郵自助重設一致；舊裝置即刻失效）。不動管理員自己的 session。
+function afterPasswordReset_(targetYmis){
+  try{ PropertiesService.getScriptProperties().deleteProperty('LOGIN_FAIL:'+String(targetYmis||'')); }catch(e){}
+  try{ destroyUserTokens(targetYmis); }catch(e){}
 }
 // 有登記 Email → 產生臨時密碼並電郵寄出；冇 Email → 請聯絡領袖（領袖可在用戶管理自設密碼）
 function handleForgotPassword(loginId){

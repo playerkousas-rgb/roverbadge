@@ -121,6 +121,7 @@
 4. 新增的 `initializeSheets()` 步驟必須是**增補**：建表、補空白表頭、補缺失列。任何刪除或改寫既有值的改動，須經用戶確認，並寫入 CHANGE_LOG。
 5. 執行 `npm run check` 與 `npm test`；`tests/release-version.test.mjs` 的 before/after 快照測試會證明重跑初始化不改寫既有資料。
 6. 通知各旅團領袖：在 Apps Script 的既有部署上選**新版本**（沿用原 Web App 網址，不要新建部署）；只重新部署 Vercel 不足夠（舊 GS 會拒絕 proxy 的 token 請求）。
+7. 通知內容一併提醒：**每次更新後都執行一次 `initializeSheets()`**（即使 `GS_INIT_REQUIRED=false`）。它只做增補、可安全重跑、不刪不改既有資料；跨多版升級時必須執行，方能補齊新版所需表／欄。
 
 **資料保全規則**（硬性；領袖版說明見 `docs/LEADER_GUIDE.md`）
 
