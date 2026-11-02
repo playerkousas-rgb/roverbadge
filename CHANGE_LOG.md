@@ -6,7 +6,8 @@
 - **重設後清走登入鎖定**：重設成功（自設密碼／一次性臨時密碼兩條分支）後刪除 `LOGIN_FAIL:<ymis>`，否則帳號被鎖 15 分鐘期間，領袖改完密碼用戶仍然登入不到（對唔熟電腦嘅用戶易誤以為「壞了」）。
 - **重設後踢走舊 session**：重設成功後呼叫 `destroyUserTokens(targetYmis)`，與電郵自助重設行為一致（被盜裝置即時失效）；管理員自己的 session 不受影響。
 - **文件**：`docs/LEADER_GUIDE.md` 忘記密碼一段補充重設權限階級限制與重設後效果。
-- **GS 版本**：`GS_VERSION` 5.2.3 → **5.2.4**（`GS_RELEASE_DATE` 2026-11-02、`GS_INIT_REQUIRED` 維持 false），`assets/gs-release.js` 的 `GS_LATEST` 同步；各旅團更新 `Code.gs` 後只需在既有部署建立新版本，毋須初始化。
+- **GS 版本**：`GS_VERSION` 5.2.3 → **5.2.4**（`GS_RELEASE_DATE` 2026-11-02、`GS_INIT_REQUIRED` 維持 false），`assets/gs-release.js` 的 `GS_LATEST` 同步；各旅團更新 `Code.gs` 後在既有部署建立新版本即可。
+- **部署指引（新慣例）**：`README.md`、`docs/DEPLOY_GUIDE_V5_DUALTRACK.md`、`APP_ADMIN_WORKFLOW.md` 一致加入「**每次更新後都建議跑一次 `initializeSheets()`**」——即使該版 `GS_INIT_REQUIRED=false`。原因：初始化只做增補（建表、補空白表頭、補缺失列），可安全重跑、不刪不改既有資料；由舊版一次跨多版升級時必須執行，否則會缺新版所需的表／欄。
 - **mock／示範後端**：`tests/mock-gas.mjs` 的 `resetPassword` 同步同一授權規則（呼叫者須 ≥ 領袖、只可重設自己管得到的角色）及重設後踢走該帳號舊 session，令示範環境與正式行為一致。
 - **測試**：`tests/auth-hardening.test.mjs` 由 8 項增至 11 項（admin 改 admin／團長改管理員／副團長改團長／成員改任何人皆被拒且目標不變；SUPER ADMIN 可重設 ADMIN 且保留帳號本身不可被重設；重設後解除鎖定、清 session、強制首登改密）。`tests/gas-harness.mjs` 增加 `handleResetPassword` 測試內省匯出（僅測試用）。
 
