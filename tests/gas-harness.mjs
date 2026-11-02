@@ -231,7 +231,9 @@ export function loadCodeGs({ promptAnswers = [], urlFetchHandler = null, service
   // 學制／allowed_badges 測試用：發 token、讀取生成的項目目錄與角色預設
   createToken, ITEM_CATALOG_, DEFAULT_PERMS_,
   // A3/A5 測試內省用：密碼雜湊／驗證與匯入
-  hashPassword, hashPasswordV2, verifyPassword, isLegacyPasswordHash_, upsertUser
+  hashPassword, hashPasswordV2, verifyPassword, isLegacyPasswordHash_, upsertUser,
+  // 重設密碼授權測試用：直接以已驗證管理員物件呼叫（等同 token／上游簽章兩條入口的授權檢查）
+  handleResetPassword
 };`;
   vm.runInContext(code + exported, ctx, { filename: 'Code.gs' });
 

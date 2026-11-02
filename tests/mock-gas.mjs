@@ -557,7 +557,14 @@ export function startMockGas({ port, name, users, apikey = '', verifyUrl = '' })
         // v8.8：可附 new_password 自設密碼；留空沿用隨機一次性密碼
         const custom = (body.new_password !== undefined && body.new_password !== null && String(body.new_password).length > 0) ? String(body.new_password) : '';
         if (custom && custom.length < 4) return { success: false, error: '新密碼至少4位' };
-        if (!state.users[body.target_ymis]) return { success: false, error: '找不到此 YMIS' };
+        const rpMgr = managerOf(tokenYmis, validKey);
+        const rpTarget = state.users[body.target_ymis];
+        if (!rpTarget) return { success: false, error: '找不到此 YMIS' };
+        // 與真實 Code.gs 一致：呼叫者須 ≥ 領袖，且只可重設自己管得到的角色（admin 不可改 admin）
+        if (!rpMgr || (ROLE_LEVEL[rpMgr.role] || 0) < 40) return { success: false, error: '權限不足' };
+        if (!canManageUser(rpMgr, rpTarget.role)) return { success: false, error: '權限不足，不能重設該角色密碼' };
+        // 與真實 Code.gs 一致：重設後踢走該帳號所有舊 session
+        for (const [tk, y] of Object.entries(state.tokens)) if (y === body.target_ymis) delete state.tokens[tk];
         if (custom) {
           state.users[body.target_ymis].pass = custom;
           state.users[body.target_ymis].force_change_password = true;

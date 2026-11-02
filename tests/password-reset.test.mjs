@@ -332,12 +332,13 @@ test('B1 前端／proxy／Code.gs／版本／字典一致', () => {
   assert.match(proxySrc, /action === 'requestPasswordReset' \|\| action === 'confirmPasswordReset'/);
   assert.match(proxySrc, /'token', 'ymis', 'target_ymis', 'role', 'password_hash', 'code_hash', 'user'/);
 
-  // Code.gs：doPost 有路由；版本 5.2.3
+  // Code.gs：doPost 有路由；版本與前端公告一致（版本號本身由 release-version 測試把關）
   assert.match(gsSrc, /if\(action==='requestPasswordReset'\) return handleRequestPasswordReset\(body\)/);
   assert.match(gsSrc, /if\(action==='confirmPasswordReset'\) return handleConfirmPasswordReset\(body\)/);
-  assert.match(gsSrc, /const GS_VERSION = '5\.2\.3';/);
-  assert.match(gsSrc, /const GS_RELEASE_DATE = '2026-11-02';/);
-  assert.match(gsRelease, /version: '5\.2\.3'/);
+  const gsVer=(gsSrc.match(/const GS_VERSION = '([0-9.]+)';/)||[])[1];
+  assert.ok(gsVer, 'Code.gs 要有 GS_VERSION');
+  assert.ok(gsSrc.includes("const GS_RELEASE_DATE = '2026-11-02';"));
+  assert.ok(gsRelease.includes("version: '"+gsVer+"'"), 'gs-release.js 版本要與 Code.gs 一致：'+gsVer);
   assert.match(gsRelease, /releaseDate: '2026-11-02'/);
 
   // 字典：新 UI 字串中英齊備

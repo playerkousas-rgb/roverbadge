@@ -1,5 +1,15 @@
 # CHANGE_LOG
 
+## 2026-11-02（續 2） — 重設密碼授權收緊＋重設後狀態清理（前端仍 v5.2；GS 5.2.3 → **5.2.4**，無新增工作表／欄位、不需重跑 initializeSheets）
+
+- **重設密碼授權（前端後台階級一致）**：`handleResetPassword` 原本只驗「呼叫者係領袖（角色等級 ≥40）」，未驗目標角色，與 `deactivateUser`／`reactivateUser`／`updateUserRole` 不一致。現改為在 handler 內部用 `canManageUser()` 驗證：**只有 SUPER ADMIN 可重設 ADMIN、ADMIN 不可重設 ADMIN**、副團長不可重設團長、團長不可重設 ADMIN、成員不可重設任何人；高權限可重設低權限（低權限帳號本就由其上級批核／可停用）。因檢查置於 handler 內部，同時覆蓋 **token 入口**與**上游簽章（link-signed）入口**（後者原本完全冇角色檢查）。被拒時目標帳號 hash 完全不變。
+- **重設後清走登入鎖定**：重設成功（自設密碼／一次性臨時密碼兩條分支）後刪除 `LOGIN_FAIL:<ymis>`，否則帳號被鎖 15 分鐘期間，領袖改完密碼用戶仍然登入不到（對唔熟電腦嘅用戶易誤以為「壞了」）。
+- **重設後踢走舊 session**：重設成功後呼叫 `destroyUserTokens(targetYmis)`，與電郵自助重設行為一致（被盜裝置即時失效）；管理員自己的 session 不受影響。
+- **文件**：`docs/LEADER_GUIDE.md` 忘記密碼一段補充重設權限階級限制與重設後效果。
+- **GS 版本**：`GS_VERSION` 5.2.3 → **5.2.4**（`GS_RELEASE_DATE` 2026-11-02、`GS_INIT_REQUIRED` 維持 false），`assets/gs-release.js` 的 `GS_LATEST` 同步；各旅團更新 `Code.gs` 後只需在既有部署建立新版本，毋須初始化。
+- **mock／示範後端**：`tests/mock-gas.mjs` 的 `resetPassword` 同步同一授權規則（呼叫者須 ≥ 領袖、只可重設自己管得到的角色）及重設後踢走該帳號舊 session，令示範環境與正式行為一致。
+- **測試**：`tests/auth-hardening.test.mjs` 由 8 項增至 11 項（admin 改 admin／團長改管理員／副團長改團長／成員改任何人皆被拒且目標不變；SUPER ADMIN 可重設 ADMIN 且保留帳號本身不可被重設；重設後解除鎖定、清 session、強制首登改密）。`tests/gas-harness.mjs` 增加 `handleResetPassword` 測試內省匯出（僅測試用）。
+
 ## 2026-11-02（續） — G11 完整圖標集＋A17 舊找回密碼防枚舉＋A12 私隱聲明＋授權聲明
 
 - **G11 圖標標準**：`assets/icons/` 新增完整 9 件圖標（16/32/48/192/256/512 PNG＋maskable 192/512＋favicon.ico，合計 157,848 B ≤ 260KB 上限），另加 `og-image-1200x630.png`（134KB）。新增 `assets/manifest.webmanifest`（any＋maskable 用途、theme/background #0D47A1），`index.html` head 加 manifest 連結、192/512 icon、`theme-color`、og: 系統 meta（`og:image` 用絕對網址 `https://roverbadge.vercel.app/assets/icons/og-image-1200x630.png`）＋ twitter:card。圖標檔名固定後**不可改名**（G11 不變性），換圖要加新檔名。html-integrity 加 9 項 G11 守護（現 53 項）。部署不受影響（`assets/` 本已在 build 白名單）。
