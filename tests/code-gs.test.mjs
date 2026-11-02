@@ -515,18 +515,20 @@ console.log('\n【10】v8.8 唯一性／三區名單／自設密碼／找回密�
 
   // (e) forgotPassword：有 Email 者寄出（MailApp mock）、回遮罩、不回密碼
   const fp = env.call({ action: 'forgotPassword', login_id: 'uniq-a-new@x.com' });
-  check('forgotPassword 成功（免 token）', fp.success === true && (fp.email_hint || '').includes('@'), JSON.stringify(fp));
+  check('forgotPassword 成功（免 token、中性回應唔洩漏 email_hint）', fp.success === true && !('email_hint' in fp) && /如該帳號已登記電郵/.test(fp.message||''), JSON.stringify(fp));
   const sent = env.mailOutbox[env.mailOutbox.length - 1];
   check('MailApp 寄出臨時密碼郵件', !!sent && sent.to === 'uniq-a-new@x.com' && /Rover\d{6}/.test(sent.body), JSON.stringify(sent));
   const tmpPw = (sent.body.match(/Rover\d{6}/) || [])[0];
   const lgTmp = env.call({ action: 'login', login_id: '1234568001', password: tmpPw });
   check('郵件中的臨時密碼可登入', lgTmp.success === true, JSON.stringify(lgTmp));
+  const mailCountBefore = env.mailOutbox.length;
   const fpAgain = env.call({ action: 'forgotPassword', login_id: '1234568001' });
-  check('60 秒內重複找回被節流', fpAgain.success === false && /頻密/.test(fpAgain.error || ''), JSON.stringify(fpAgain));
+  check('60 秒內重複找回被節流（中性回應＋唔再寄信）', fpAgain.success === true && JSON.stringify(fpAgain) === JSON.stringify(fp) && env.mailOutbox.length === mailCountBefore, JSON.stringify(fpAgain));
   // 無 Email 者 → 提示聯絡領袖
   const noEm = env.call({ action: 'addUser', token: tk, ymis: '1234568003', name: '無郵成員', email: '', role: 'member', password: '1234' });
   const fpNo = env.call({ action: 'forgotPassword', login_id: '1234568003' });
-  check('無 Email 者找回失敗並提示聯絡領袖', noEm.success === true && fpNo.success === false && /聯絡領袖/.test(fpNo.error || ''), JSON.stringify(fpNo));
+  const fpGhost = env.call({ action: 'forgotPassword', login_id: '9999999999' });
+  check('無 Email 者與不存在帳號回應完全一致（A17 防枚舉）', noEm.success === true && JSON.stringify(fpNo) === JSON.stringify(fpGhost) && fpNo.success === true, JSON.stringify(fpNo) + ' vs ' + JSON.stringify(fpGhost));
 
   // (f) 停用 → 停用中不可重複開戶 → 恢復 → 徹底刪除 → 可重用
   const de1 = env.call({ action: 'deactivateUser', token: tk, target_ymis: '1234568001' });

@@ -84,6 +84,8 @@ console.log('\n【4】版號對齊：UI 各處版本必須一致，且等於 pac
     const need = [`樂行童軍進度追蹤系統 ${pkgVer} - `, `樂行童軍進度追蹤 ${pkgVer}\t`, `COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 ${pkgVer}`];
     return need.every(s => tsv.includes(s)) && html.includes(`"COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 ${pkgVer}"`);
   })());
+  check('支援 ?lang=en／?lang=zh 分享連結鎖定語言（讀 URL 參數並寫入 localStorage）',
+    /URLSearchParams\(window\.location\.search\)\.get\('lang'\)/.test(html) && /localStorage\.setItem\('roverbadge_lang',p\)/.test(html));
 }
 
 console.log('\n【5】Scout Admin 回報 · 意見按鈕 ＋ 非官方聲明');
@@ -97,6 +99,26 @@ console.log('\n【5】Scout Admin 回報 · 意見按鈕 ＋ 非官方聲明');
   check('登入頁有回報 · 意見連結', /onclick="openScoutReport\(\);return false"/.test(html));
   check('登入後 header 常駐回報 · 意見按鈕', /class="lang-toggle btn-feedback-top" onclick="openScoutReport\(\)"/.test(html));
   check('頁尾有非官方聲明（並非香港童軍總會官方產品）', html.includes('⚠️ 非官方聲明：本系統為獨立開發的非官方工具，並非香港童軍總會官方產品'));
+  check('W1：<head> 有 meta copyright（© SCOUT SYSTEM）與 app-version', /<meta name="copyright" content="© SCOUT SYSTEM">/.test(html) && /<meta name="app-version" content="v\d+\.\d+">/.test(html));
+  // G11 圖標標準：manifest ＋ 9 個 PNG/ICO（≤260KB）＋絕對網址 og:image
+  check('G11：<head> 連 manifest.webmanifest', /<link rel="manifest" href="assets\/manifest\.webmanifest">/.test(html));
+  const ogImg = /<meta property="og:image" content="(https:\/\/[^"]+)">/.exec(html);
+  check('G11：og:image 係絕對 https 網址', !!ogImg, ogImg && ogImg[1]);
+  check('G11：og:image 指向 1200x630 圖檔', !!ogImg && /og-image-1200x630\.png$/.test(ogImg[1]));
+  const manPath = path.join(ROOT, 'assets', 'manifest.webmanifest');
+  check('G11：manifest.webmanifest 存在且為合法 JSON', fs.existsSync(manPath));
+  if (fs.existsSync(manPath)) {
+    const man = JSON.parse(fs.readFileSync(manPath, 'utf8'));
+    const iconFiles = (man.icons || []).map(i => path.join(ROOT, 'assets', i.src));
+    check('G11：manifest 所有圖標檔案都存在', iconFiles.length >= 8 && iconFiles.every(f => fs.existsSync(f)), (man.icons||[]).map(i=>i.src).join(','));
+    check('G11：manifest 有 any 與 maskable 用途', (man.icons||[]).some(i => i.purpose === 'any' && i.sizes === '512x512') && (man.icons||[]).some(i => i.purpose === 'maskable'));
+  }
+  const iconDir = path.join(ROOT, 'assets', 'icons');
+  const nine = ['icon-16.png','icon-32.png','icon-48.png','icon-192.png','icon-256.png','icon-512.png','maskable-192.png','maskable-512.png','favicon.ico'];
+  check('G11：icons/ 有完整 9 件 PNG/ICO', nine.every(f => fs.existsSync(path.join(iconDir, f))));
+  const total = nine.reduce((a, f) => a + (fs.existsSync(path.join(iconDir, f)) ? fs.statSync(path.join(iconDir, f)).size : 0), 0);
+  check('G11：9 件圖標總大小 ≤ 260KB（現 ' + total + ' B）', total <= 260 * 1024);
+  check('G11：og-image 檔案存在（≤ 300KB）', fs.existsSync(path.join(iconDir, 'og-image-1200x630.png')) && fs.statSync(path.join(iconDir, 'og-image-1200x630.png')).size <= 300 * 1024);
   check('頁尾已移除 All rights reserved／總會連結', !/All rights reserved/.test(html) && !/href="https:\/\/www\.scout\.org\.hk" target="_blank">香港童軍總會<\/a>/.test(html));
 }
 

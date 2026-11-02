@@ -11,6 +11,7 @@ import { createHash, createHmac, randomUUID } from 'node:crypto';
 
 const GAS_SOURCE = fs.readFileSync('apps-script/Code.gs', 'utf8');
 const sha256 = value => createHash('sha256').update(String(value), 'utf8').digest('hex');
+const isV2Hash = h => /^pbkdf2\$\d+\$[0-9a-f]+\$[0-9a-f]{64}$/i.test(String(h||''));
 
 // ---- in-memory SpreadsheetApp ----
 function makeSheet(name) {
@@ -475,7 +476,7 @@ test('開戶：上游揀團開戶，經 sig 落下游寫（兩邊同一 password
   const downstreamRow = findUsersRow(down, '2345678901');
   assert.ok(upstreamRow && downstreamRow, '上下游都應有帳戶');
   assert.equal(upstreamRow.hash, downstreamRow.hash, '下游必須直插同一 hash');
-  assert.equal(downstreamRow.hash, sha256('4321'));
+  assert.ok(isV2Hash(downstreamRow.hash), '新帳戶密碼應以 PBKDF2 儲存（A3）');
   assert.equal(String(downstreamRow.row[3]), 'exec_committee');
   // 下游已閂口，但上游仍可直接寫下游進度
   assert.equal(up.context.callDownstream('progress', 'save', { changes: [{ ymis: '2345678901', itemId: 'L1-ACT-01', date: '2026-04-04' }] }).success, true);
@@ -491,7 +492,7 @@ test('開戶：上游揀團開戶，經 sig 落下游寫（兩邊同一 password
   assert.equal(mirrored.password_kept, true, '冇帶 hash 時必須保留原密碼');
   assert.equal(String(findUsersRow(down, '2345678901').row[1]), '李四（改名）');
   assert.equal(String(findUsersRow(down, '2345678901').row[5]), '第 82 旅深資', '冇帶 branch 不可洗走既有小隊');
-  assert.equal(findUsersRow(down, '2345678901').hash, sha256('4321'));
+  assert.ok(isV2Hash(findUsersRow(down, '2345678901').hash), '下游 hash 與上游一致（PBKDF2）');
   assert.equal(sheetRows(down, 'Users').filter(r => String(r[0]) === '2345678901').length, 1, '不可出現重複列');
 });
 
@@ -515,7 +516,7 @@ test('搬舊數：匯出含 hash（Drive 私人檔）→ 匯入逐個 upsertUser
   const payload = JSON.parse(stored.content);
   assert.equal(payload.format, 'roverbadge-users-export');
   const chen = payload.users.find(u => u.ymis === '1234567890');
-  assert.equal(chen.password_hash, sha256('newpass1'), '匯出必須含 hash');
+  assert.ok(isV2Hash(chen.password_hash), '匯出必須含 hash（PBKDF2 格式）');
   assert.equal(chen.email, 'chan@example.com');
   assert.equal(JSON.stringify(sheetRows(oldNode, '操作紀錄')).includes(chen.password_hash), false, 'hash 不可寫入操作紀錄');
   assert.equal(oldNode.ss.getSheets().some(sh => sh.getName().includes('匯出')), false, '匯出不可另開工作表');
@@ -528,7 +529,8 @@ test('搬舊數：匯出含 hash（Drive 私人檔）→ 匯入逐個 upsertUser
   assert.equal(imported.updated, 1);
   assert.equal(imported.failed, 0);
   const rec = findUsersRow(newNode, '1234567890');
-  assert.equal(rec.hash, sha256('newpass1'), '舊密碼必須保留');
+  assert.equal(rec.hash, chen.password_hash, '舊密碼 hash 必須原樣搬走');
+  assert.ok(isV2Hash(rec.hash));
   assert.equal(rec.row[13] === true || String(rec.row[13]).toUpperCase() === 'TRUE', false, '搬舊數唔應該強制改密碼');
   // 舊密碼喺新節點直接可用
   const login = newNode.context.doPost({ parameter: {}, postData: { contents: JSON.stringify({ action: 'login', login_id: '1234567890', password: 'newpass1' }) } });

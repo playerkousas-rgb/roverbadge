@@ -155,7 +155,9 @@ export function loadCodeGs({ promptAnswers = [], urlFetchHandler = null, service
       },
       // v8.9.3：登入票據 HMAC 簽／驗 + base64url + newBlob（零回傳本地驗簽用）
       computeHmacSha256Signature(value, key) {
-        return Array.from(crypto.createHmac('sha256', String(key)).update(String(value), 'utf8').digest());
+        // 真 GAS 接受 String 或 Byte[] 作 data；PBKDF2 會傳 byte[]，呢度要同 semantics
+        const v = Array.isArray(value) ? Buffer.from(value.map(b => b & 0xFF)) : Buffer.from(String(value), 'utf8');
+        return Array.from(crypto.createHmac('sha256', String(key)).update(v).digest());
       },
       base64EncodeWebSafe(str) {
         return Buffer.from(String(str), 'utf8').toString('base64url');
@@ -182,6 +184,10 @@ export function loadCodeGs({ promptAnswers = [], urlFetchHandler = null, service
         mailOutbox.push({ to: String(to), subject: String(subject), body: String(body) });
       },
       getRemainingDailyQuota() { return 100; }
+    },
+    // 忘記密碼發信測試（testPasswordResetMail）用：預設冇執行者電郵，測試可用 setSessionEmail 注入
+    Session: {
+      getActiveUser: () => ({ getEmail: () => String(sandbox.__sessionEmail || '') })
     },
     ScriptApp: { getService: () => ({ getUrl: () => { scriptServiceCalls.getUrl++; const values = serviceUrls.length ? serviceUrls : ['']; return values[serviceUrlIndex++ % values.length]; } }) },
     // v8.9.2：LockService + CacheService（handleSuperTicketLogin 票據一次性保護）
@@ -219,11 +225,13 @@ export function loadCodeGs({ promptAnswers = [], urlFetchHandler = null, service
   const exported = `
 ;globalThis.__api = {
   initializeSheets, showApiKey, menuShowLinkCredentials, onOpen, removeSuperAdminRows, handleLogin, getUser, getAllUsers,
-  getMembers, getApiKey, doPost, doGet, isSuperAdminId, verifySuperTicket, authorizeConnection,
+  getMembers, getApiKey, doPost, doGet, isSuperAdminId, verifySuperTicket, authorizeConnection, testPasswordResetMail,
   // 測試內省用：保留帳號識別字（唯一宣告在 Code.gs），用以驗證名單過濾與防護邏輯
   SUPER_ADMIN_ID,
   // 學制／allowed_badges 測試用：發 token、讀取生成的項目目錄與角色預設
-  createToken, ITEM_CATALOG_, DEFAULT_PERMS_
+  createToken, ITEM_CATALOG_, DEFAULT_PERMS_,
+  // A3/A5 測試內省用：密碼雜湊／驗證與匯入
+  hashPassword, hashPasswordV2, verifyPassword, isLegacyPasswordHash_, upsertUser
 };`;
   vm.runInContext(code + exported, ctx, { filename: 'Code.gs' });
 
@@ -238,6 +246,8 @@ export function loadCodeGs({ promptAnswers = [], urlFetchHandler = null, service
     scriptServiceCalls,
     menuItems,
     mailOutbox,
+    mailApp: sandbox.MailApp,               // 測試可替換 sendEmail 模擬發信失敗
+    setSessionEmail: (e) => { sandbox.__sessionEmail = String(e || ''); }, // testPasswordResetMail 用
     urlFetchLog: sandbox.__urlFetchLog,
     // 走真實 doPost() 路由（與部署後的 /exec 相同路徑）
     call: (body) => jsonOf(api.doPost({ postData: { contents: JSON.stringify(body) } })),

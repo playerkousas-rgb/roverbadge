@@ -3,12 +3,27 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="copyright" content="© SCOUT SYSTEM">
+<meta name="app-version" content="v5.2">
 <title>樂行童軍進度追蹤系統 v5.2 - 手機友善・批量開戶・全前端控制</title>
 <link rel="icon" href="assets/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
 <link rel="icon" type="image/png" sizes="128x128" href="assets/rover-badge-128.png">
 <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="assets/icons/icon-512.png">
+<link rel="manifest" href="assets/manifest.webmanifest">
+<meta name="theme-color" content="#0D47A1">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="RoverBadge">
+<meta property="og:title" content="RoverBadge — 樂行童軍進度追蹤">
+<meta property="og:description" content="童軍樂行進度電子追蹤（非官方工具）。選旅團即登入。">
+<meta property="og:url" content="https://roverbadge.vercel.app/">
+<meta property="og:image" content="https://roverbadge.vercel.app/assets/icons/og-image-1200x630.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <script defer src="https://cdn.vercel-insights.com/v1/script.js"></script>
 <style>
@@ -629,14 +644,30 @@ a:hover{text-decoration:underline}
   </div>
 </div>
 
+<!-- 忘記密碼：① YMIS／登記電郵收一次性重設碼 ② 輸入重設碼 + 自訂新密碼（後端只認重設碼） -->
 <div id="forgotPasswordModal" class="modal">
-  <div class="modal-content">
-    <h3>🔑 找回密碼</h3>
-    <p style="font-size:12px;color:var(--text-light)">輸入你的 YMIS 或登記電郵，系統會把一次性臨時密碼寄到你登記的電郵。如無登記電郵，請聯絡領袖重設。</p>
-    <div class="form-group"><label>YMIS 或登記電郵</label><input type="text" id="fp_loginId" placeholder="10位 YMIS 或電郵"></div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('forgotPasswordModal')">取消</button>
-      <button class="btn btn-primary" id="btnForgotPassword" onclick="submitForgotPassword()">寄出臨時密碼</button>
+  <div class="modal-content" style="max-width:440px">
+    <h3>🔑 忘記密碼</h3>
+    <div id="fpwStep1">
+      <p style="font-size:12px;color:var(--text-light);line-height:1.7">輸入你的 YMIS 或登記電郵，系統會把一次性 8 位重設碼寄到你登記的電郵（15 分鐘內有效）。如無登記電郵，請聯絡領袖在「用戶管理」重設。</p>
+      <div class="form-group"><label>YMIS 或登記電郵</label><input type="text" id="fpwLogin" placeholder="10位 YMIS 或電郵" maxlength="120" autocomplete="username" onkeydown="if(event.key==='Enter')submitForgotPasswordRequest()"></div>
+      <div id="fpwMsg" class="login-msg" role="alert"></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeForgotPasswordModal()">取消</button>
+        <button class="btn btn-primary" id="btnFpwSend" onclick="submitForgotPasswordRequest()">📧 發送重設碼</button>
+      </div>
+    </div>
+    <div id="fpwStep2" style="display:none">
+      <h4 style="font-size:13px;margin:0 0 6px">輸入重設碼並設定新密碼</h4>
+      <div class="form-group"><label>重設碼（電郵內 8 位）</label><input type="text" id="fpwCode" maxlength="12" autocomplete="one-time-code" placeholder="例如 A1B2C3D4" onkeydown="if(event.key==='Enter')submitForgotPasswordConfirm()"></div>
+      <div class="form-group"><label>新密碼（至少4位）</label><input type="password" id="fpwNew" placeholder="至少4位" maxlength="100" autocomplete="new-password"></div>
+      <div class="form-group"><label>再次輸入新密碼</label><input type="password" id="fpwNew2" placeholder="再輸入一次" maxlength="100" autocomplete="new-password" onkeydown="if(event.key==='Enter')submitForgotPasswordConfirm()"></div>
+      <div id="fpwMsg2" class="login-msg" role="alert"></div>
+      <p style="font-size:10px;color:var(--text-light)">重設成功後所有舊登入階段會即時登出；如非你本人操作，請立即通知領袖。</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="showForgotPwStep(1)">← 重新發送</button>
+        <button class="btn btn-primary" id="btnFpwConfirm" onclick="submitForgotPasswordConfirm()">💾 設定新密碼</button>
+      </div>
     </div>
   </div>
 </div>
@@ -874,7 +905,8 @@ a:hover{text-decoration:underline}
 <script src="assets/forms.js"></script>
 <script>
 /* ================== i18n (English mode) ================== */
-const UI_LANG=(function(){ try{ return localStorage.getItem('roverbadge_lang')||'zh'; }catch(e){ return 'zh'; } })();
+// ?lang=en／?lang=zh 可鎖定分享連結嘅語言（同 vsbadge 一致）：讀到就寫入 localStorage，即時生效，毋須重新載入
+const UI_LANG=(function(){ try{ const p=new URLSearchParams(window.location.search).get('lang'); if(p==='en'||p==='zh'){ try{ localStorage.setItem('roverbadge_lang',p); }catch(e2){} return p; } return localStorage.getItem('roverbadge_lang')||'zh'; }catch(e){ return 'zh'; } })();
 const LANG_DICT={
   "樂行童軍進度追蹤系統": "Rover Scout Progress Tracker",
   "樂行童軍進度追蹤": "Rover Scout Progress Tracker",
@@ -1692,12 +1724,30 @@ const LANG_DICT={
   "❌ 雲端載入失敗，本機亦冇快取可顯示": "❌ Cloud load failed and there is no local cache to show",
   "🔑 忘記密碼": "🔑 Forgot password",
   "忘記密碼": "Forgot password",
-  "🔑 找回密碼": "🔑 Recover password",
   "YMIS 或登記電郵": "YMIS or registered email",
   "10位 YMIS 或電郵": "10-digit YMIS or email",
-  "寄出臨時密碼": "Send temporary password",
   "寄送中...": "Sending...",
-  "輸入你的 YMIS 或登記電郵，系統會把一次性臨時密碼寄到你登記的電郵。如無登記電郵，請聯絡領袖重設。": "Enter your YMIS or registered email; the system will send a one-time temporary password to your registered email. If you have no registered email, ask a leader to reset it.",
+  "輸入你的 YMIS 或登記電郵，系統會把一次性 8 位重設碼寄到你登記的電郵（15 分鐘內有效）。如無登記電郵，請聯絡領袖在「用戶管理」重設。": "Enter your YMIS or registered email; the system will send a one-time 8-character reset code to your registered email (valid for 15 minutes). If no email is registered, ask a leader to reset it in User Management.",
+  "📧 發送重設碼": "📧 Send reset code",
+  "發送中...": "Sending...",
+  "輸入重設碼並設定新密碼": "Enter the reset code and set a new password",
+  "重設碼（電郵內 8 位）": "Reset code (8 characters in the email)",
+  "例如 A1B2C3D4": "e.g. A1B2C3D4",
+  "新密碼（至少4位）": "New password (at least 4 characters)",
+  "重設成功後所有舊登入階段會即時登出；如非你本人操作，請立即通知領袖。": "After a successful reset, all previous sign-in sessions are signed out immediately. If you did not do this, notify a leader right away.",
+  "← 重新發送": "← Resend code",
+  "💾 設定新密碼": "💾 Set new password",
+  "設定中...": "Saving...",
+  "請輸入 YMIS 或登記電郵": "Please enter your YMIS or registered email",
+  "若此帳號已登記電郵，重設碼已發送（15 分鐘內有效）": "If this account has a registered email, the reset code has been sent (valid for 15 minutes)",
+  "本旅團電郵發信暫未啟用，請聯絡領袖在「用戶管理」重設密碼": "This troop's email sending is not enabled yet; ask a leader to reset your password in User Management",
+  "此旅團後端尚未支援忘記密碼功能，請聯絡領袖在「用戶管理」重設密碼": "This troop's backend does not support forgot password yet; ask a leader to reset it in User Management",
+  "請求過於頻密，請稍後再試": "Too many requests, please try again later",
+  "系統繁忙，請稍後再試": "System busy, please try again later",
+  "重設碼不正確或已過期，請重新申請": "Invalid or expired reset code; please request a new one",
+  "請輸入電郵內的 8 位重設碼": "Please enter the 8-character code from the email",
+  "找回失敗，請稍後再試或聯絡領袖": "Reset failed; please try again later or contact a leader",
+  "✅ 密碼已重設，請用新密碼登入": "✅ Password reset; please sign in with your new password",
   "⚠️ 批次內重複 YMIS": "⚠️ Duplicate YMIS in batch",
   "⚠️ 批次內重複電郵": "⚠️ Duplicate email in batch",
   "⚠️ 電郵格式錯誤": "⚠️ Invalid email format",
@@ -3042,19 +3092,74 @@ async function submitFeedback(){
 
 /* ================== Contact ================== */
 function showContactModal(){ document.getElementById('contactModal').classList.add('active'); }
-/* ================== v8.8 忘記密碼（免登入公開） ================== */
-function showForgotPasswordModal(){ document.getElementById('fp_loginId').value=''; document.getElementById('forgotPasswordModal').classList.add('active'); }
-async function submitForgotPassword(){
-  const loginId=document.getElementById('fp_loginId').value.trim();
-  if(!loginId){ showToast('請輸入 YMIS 或登記電郵','error'); return; }
-  const btn=document.getElementById('btnForgotPassword');
-  btn.disabled=true; btn.textContent='寄送中...';
+/* ================== 忘記密碼（登入前公開：電郵一次性重設碼 → 即場設定新密碼） ==================
+   兩個 action（requestPasswordReset／confirmPasswordReset）都係登入前公開入口；授權完全靠寄到
+   登記電郵嘅一次性重設碼。前端唔會送 token／apikey，api/proxy 亦會主動剷走身份欄位。 */
+let __fpwLogin='';
+function showForgotPasswordModal(){
+  __fpwLogin='';
+  document.getElementById('fpwLogin').value=document.getElementById('loginId').value.trim();
+  ['fpwCode','fpwNew','fpwNew2'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  ['fpwMsg','fpwMsg2'].forEach(id=>{ const el=document.getElementById(id); if(el){ el.textContent=''; el.className='login-msg'; } });
+  showForgotPwStep(1);
+  document.getElementById('forgotPasswordModal').classList.add('active');
+  setTimeout(()=>{ const i=document.getElementById('fpwLogin'); if(i) i.focus(); },60);
+}
+function closeForgotPasswordModal(){ document.getElementById('forgotPasswordModal').classList.remove('active'); }
+function showForgotPwStep(step){
+  document.getElementById('fpwStep1').style.display=step===1?'block':'none';
+  document.getElementById('fpwStep2').style.display=step===2?'block':'none';
+  if(step===1) setTimeout(()=>{ const el=document.getElementById('fpwLogin'); if(el) el.focus(); },60);
+}
+function fpwSetMsg(id,text,kind){ const el=document.getElementById(id); if(!el) return; el.textContent=text; el.className='login-msg'+(kind?' '+kind:''); }
+function fpwErrorText(msg){
+  const raw=String(msg||'');
+  if(/Unknown action|不支援的操作|不支援此操作|not supported/i.test(raw)) return tr('此旅團後端尚未支援忘記密碼功能，請聯絡領袖在「用戶管理」重設密碼');
+  if(/請求過於頻密|too many/i.test(raw)) return tr('請求過於頻密，請稍後再試');
+  if(/系統繁忙|busy/i.test(raw)) return tr('系統繁忙，請稍後再試');
+  if(/重設碼不正確|已過期|Invalid or expired/i.test(raw)) return tr('重設碼不正確或已過期，請重新申請');
+  if(/至少4位|at least 4/i.test(raw)) return tr('新密碼至少4位');
+  return raw||tr('找回失敗，請稍後再試或聯絡領袖');
+}
+async function submitForgotPasswordRequest(){
+  const v=document.getElementById('fpwLogin').value.trim();
+  if(!v){ fpwSetMsg('fpwMsg',tr('請輸入 YMIS 或登記電郵'),'error'); return; }
+  __fpwLogin=v;
+  const btn=document.getElementById('btnFpwSend');
+  btn.disabled=true; btn.textContent=tr('發送中...');
+  fpwSetMsg('fpwMsg','','');
   try{
-    const d=await apiRequest('forgotPassword',{login_id:loginId});
-    if(d.success){ showToast('✅ '+(d.message||'臨時密碼已寄出'),'success'); closeModal('forgotPasswordModal'); }
-    else throw new Error(d.error||'失敗');
-  }catch(e){ showToast('找回失敗：'+e.message,'error'); }
-  btn.disabled=false; btn.textContent='寄出臨時密碼';
+    const d=await apiRequest('requestPasswordReset',{login_id:v});
+    if(!d.success){ fpwSetMsg('fpwMsg',fpwErrorText(d.error),'error'); return; }
+    // delivery=unavailable：後端發信失敗（常見：換 Code.gs 後未重新授權電郵範圍）。
+    // 呢個旗標係全團共通，唔會洩漏邊個帳號有效。
+    fpwSetMsg('fpwMsg2',d.delivery==='unavailable'
+      ? tr('本旅團電郵發信暫未啟用，請聯絡領袖在「用戶管理」重設密碼')
+      : tr('若此帳號已登記電郵，重設碼已發送（15 分鐘內有效）'),
+      d.delivery==='unavailable'?'warning':'success');
+    showForgotPwStep(2);
+    setTimeout(()=>{ const el=document.getElementById('fpwCode'); if(el) el.focus(); },60);
+  }catch(e){ fpwSetMsg('fpwMsg',fpwErrorText(e.message),'error'); }
+  finally{ btn.disabled=false; btn.textContent=tr('📧 發送重設碼'); }
+}
+async function submitForgotPasswordConfirm(){
+  const code=document.getElementById('fpwCode').value.toUpperCase().replace(/[^0-9A-Z]/g,'');
+  const p1=document.getElementById('fpwNew').value, p2=document.getElementById('fpwNew2').value;
+  if(code.length!==8){ fpwSetMsg('fpwMsg2',tr('請輸入電郵內的 8 位重設碼'),'error'); return; }
+  if(p1.length<4){ fpwSetMsg('fpwMsg2',tr('新密碼至少4位'),'error'); return; }
+  if(p1!==p2){ fpwSetMsg('fpwMsg2',tr('兩次輸入的新密碼不一致'),'error'); return; }
+  const btn=document.getElementById('btnFpwConfirm');
+  btn.disabled=true; btn.textContent=tr('設定中...');
+  try{
+    const d=await apiRequest('confirmPasswordReset',{login_id:__fpwLogin,code:code,new_password:p1});
+    if(!d.success){ fpwSetMsg('fpwMsg2',fpwErrorText(d.error),'error'); return; }
+    closeForgotPasswordModal();
+    document.getElementById('loginId').value=__fpwLogin;
+    const lpw=document.getElementById('loginPassword'); lpw.value=''; lpw.focus();
+    const lm=document.getElementById('loginMsg'); lm.textContent=tr('✅ 密碼已重設，請用新密碼登入'); lm.className='login-msg success';
+    showToast(tr('✅ 密碼已重設，請用新密碼登入'),'success');
+  }catch(e){ fpwSetMsg('fpwMsg2',fpwErrorText(e.message),'error'); }
+  finally{ btn.disabled=false; btn.textContent=tr('💾 設定新密碼'); }
 }
 function closeContactModal(){ document.getElementById('contactModal').classList.remove('active'); }
 function closeModal(id){ if(id==='feedbackModal'&&feedbackSubmitState==='sending')return; document.getElementById(id).classList.remove('active'); if(id==='feedbackModal'&&feedbackSubmitState==='sent')feedbackSubmitState='idle'; }
