@@ -210,10 +210,18 @@ test('Proxy 成功：映射 backendUrl、固定 type/appType、唔外洩 SUPER_K
     });
     assert.equal(res.statusCode, 200);
     assert.deepEqual(res.body, { success: true, message: '申請已提交' });
-    assert.equal(calls.length, 1);
-    assert.equal(calls[0].url, INBOX_A, 'env 值必須 trim 後使用');
-    assert.match(calls[0].url, /^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/);
-    assert.deepEqual(calls[0].body, {
+    // GS 5.3.0：送管理員之前先匿名探測一次後端 ecStatus（本 case 探測唔到狀態＝未知 → 照樣轉交）
+    const probe = calls.find(c => c.url.includes('action=ecStatus'));
+    const inbox = calls.find(c => c.url.startsWith(INBOX_A));
+    assert.equal(calls.length, 2, '一次探測＋一次收件匣');
+    assert.ok(probe, '應先探測後端初始化狀態');
+    assert.equal(probe.url, BACKEND + '?action=ecStatus');
+    assert.equal(probe.init.method, 'GET');
+    assert.equal(probe.body, null, '探測唔帶任何 payload／密鑰');
+    assert.ok(inbox, '未知狀態必須照樣轉交管理員');
+    assert.equal(inbox.url, INBOX_A, 'env 值必須 trim 後使用');
+    assert.match(inbox.url, /^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/);
+    assert.deepEqual(inbox.body, {
       type: 'apply',
       appType: 'roverbadge',
       troopId: '0082',
@@ -222,7 +230,7 @@ test('Proxy 成功：映射 backendUrl、固定 type/appType、唔外洩 SUPER_K
       apiKey: 'rover_key_123',
       note: '[roverbadge] 需要開通'
     });
-    const raw = JSON.stringify(calls[0].body);
+    const raw = JSON.stringify(inbox.body);
     assert.equal(raw.includes('scriptUrl'), false);
     assert.equal(/superKey|super_key|password|SUPER_KEY/.test(raw), false);
     assert.equal(raw.includes(process.env.SUPER_KEY), false, '伺服器端密鑰永不送上游');
@@ -281,10 +289,11 @@ test('submitFeedback 與 submitRegistration 共用同一個收件匣 helper', ()
   CUBSBADGE_ADMIN_API: INBOX_B
 }, async () => {
   await withFetch(() => jsonUpstream(200, { status: 'success' }), async calls => {
-    // 申請：SCOUT/ROVER 未設，應落到 CUBSBADGE_ADMIN_API
+    // 申請：SCOUT/ROVER 未設，應落到 CUBSBADGE_ADMIN_API（GS 5.3.0：先探測後端，再送收件匣）
     const reg = await registration({ troopId: '0082', scriptUrl: BACKEND, apiKey: 'k' });
     assert.equal(reg.statusCode, 200);
-    assert.equal(calls[0].url, INBOX_B);
+    const inboxCalls = () => calls.filter(c => c.url === INBOX_B);
+    assert.equal(inboxCalls().length, 1);
     // 回報：同一個 helper
     const fb = await call({
       troopId: '',
@@ -293,9 +302,11 @@ test('submitFeedback 與 submitRegistration 共用同一個收件匣 helper', ()
     });
     assert.equal(fb.statusCode, 200);
     assert.equal(fb.body.deliveryStatus, 'confirmed');
-    assert.equal(calls[1].url, INBOX_B);
-    assert.equal(calls[1].body.sourceApp, 'roverbadge');
-    assert.equal(JSON.stringify(calls[1].body).includes(process.env.SUPER_KEY || '__none__'), false);
+    assert.equal(inboxCalls().length, 2);
+    assert.equal(inboxCalls()[1].body.sourceApp, 'roverbadge');
+    assert.equal(JSON.stringify(inboxCalls()[1].body).includes(process.env.SUPER_KEY || '__none__'), false);
+    // 回報路徑唔應該探測任何後端（只有 submitRegistration 先探測）
+    assert.equal(calls.filter(c => c.url.includes('action=ecStatus')).length, 1);
   });
   // 回報亦唔可以只憑 { status: 'error' } 當成功
   await withFetch(() => jsonUpstream(200, { status: 'error' }), async () => {

@@ -102,7 +102,7 @@ auth_date, created_at, last_login, status, allowed_badges
 - 密碼一律以 SHA-256 雜湊儲存，與 app 後端登入機制一致。
 
 > 提示：若你想要這份 Sheet 完全由 app 使用（含進度追蹤、審批、操作紀錄等其他工作表），
-> 請先執行 app 後端的 `initializeSheets()` 一次性建立所有工作表，再執行批量開戶。
+> 請先喺 app 後端試算表選單按「🔗 旅系統 → 🔧 初始化／更新」（等同 `initializeSheets()`）一次性建立所有工作表，再執行批量開戶。
 
 ## 注意
 

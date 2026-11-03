@@ -56,14 +56,18 @@ test('statusOf：未核對／GS 未更新／GS 已更新但未初始化／全部
   assert.equal(GsRelease.statusOf({ gsVersion: '5.3.0', initRequired: true, initializedGsVersion: '5.3.0' }, L).code, 'ok');
 });
 
-test('initNotice respects the current optional-init release while retaining required-init semantics', () => {
+test('initNotice covers the current required-init release while retaining optional-init semantics', () => {
   const L = GsRelease.GS_LATEST;
-  assert.equal(L.initRequired, false);
-  assert.equal(GsRelease.initNotice({ gsVersion: L.version, initRequired: false, initializedGsVersion: '' }, L), false);
-  assert.equal(GsRelease.statusOf({ gsVersion: L.version, initRequired: false, initializedGsVersion: '' }, L).code, 'ok');
-  const olderInitRelease = { version: '5.2.3', releaseDate: '2026-10-25', initRequired: true };
-  assert.equal(GsRelease.initNotice({ gsVersion: '5.2.3', initRequired: true, initializedGsVersion: '' }, olderInitRelease), true);
-  assert.equal(GsRelease.initNotice({ gsVersion: '5.2.3', initRequired: true, initializedGsVersion: '5.2.3' }, olderInitRelease), false);
+  // 本版（GS 5.3.0）要求執行一次「🔧 初始化／更新」（initializeSheets()）
+  assert.equal(L.initRequired, true);
+  assert.equal(GsRelease.initNotice({ gsVersion: L.version, initRequired: true, initializedGsVersion: '' }, L), true);
+  assert.equal(GsRelease.statusOf({ gsVersion: L.version, initRequired: true, initializedGsVersion: '' }, L).code, 'needs_init');
+  assert.equal(GsRelease.initNotice({ gsVersion: L.version, initRequired: true, initializedGsVersion: L.version }, L), false);
+  assert.equal(GsRelease.statusOf({ gsVersion: L.version, initRequired: true, initializedGsVersion: L.version }, L).code, 'ok');
+  // 舊嘅可選初始化版本（GS 5.2.4）語義保留：冇標記都算完成
+  const optionalRelease = { version: '5.2.4', releaseDate: '2026-11-02', initRequired: false };
+  assert.equal(GsRelease.initNotice({ gsVersion: '5.2.4', initRequired: false, initializedGsVersion: '' }, optionalRelease), false);
+  assert.equal(GsRelease.statusOf({ gsVersion: '5.2.4', initRequired: false, initializedGsVersion: '' }, optionalRelease).code, 'ok');
 });
 
 // ---------- 3. Code.gs：ecStatus／load 回報版本，標記只在初始化成功後寫入 ----------
@@ -73,7 +77,8 @@ test('ecStatus 回報版本與標記，且不含任何用戶資料；旅系統�
   assert.equal(r.success, true);
   assert.equal(r.gsVersion, GsRelease.GS_LATEST.version);
   assert.equal(r.initializedGsVersion, '', '未初始化前標記應為空');
-  assert.equal(GsRelease.statusOf(r).code, 'ok', 'this release does not require initialization even before any initialization marker exists');
+  assert.equal(r.initRequired, true, '本版要求初始化');
+  assert.equal(GsRelease.statusOf(r).code, 'needs_init', '未初始化前必須提示要按一次選單「🔧 初始化／更新」，唔可以扮完成');
   const text = JSON.stringify(r);
   assert.ok(!/ymis|password|apikey|token|members|users/i.test(text), '回應不應含用戶或金鑰資料：' + text);
   // 關閉直接入口（閂口）：load 會被擋，但 ecStatus 仍可核對版本
@@ -96,7 +101,7 @@ test('initializeSheets() 成功完成後才寫入 INITIALIZED_GS_VERSION；load 
   assert.equal(load.success, true);
   assert.equal(load.gsVersion, GsRelease.GS_LATEST.version);
   assert.equal(load.initializedGsVersion, GsRelease.GS_LATEST.version);
-  assert.equal(load.initRequired, false);
+  assert.equal(load.initRequired, true);
   assert.equal(GsRelease.statusOf(load).code, 'ok');
 });
 
@@ -109,7 +114,7 @@ test('initializeSheets() 中途失敗：標記不寫入，狀態仍為「未初�
   };
   assert.throws(() => env.api.initializeSheets(), /模擬失敗/);
   assert.equal(env.scriptProps.get('INITIALIZED_GS_VERSION'), undefined, '失敗時不可寫入標記');
-  assert.equal(GsRelease.statusOf(env.get({ action: 'ecStatus' })).code, 'ok', 'failed optional initialization does not create a false mandatory-init state');
+  assert.equal(GsRelease.statusOf(env.get({ action: 'ecStatus' })).code, 'needs_init', '初始化失敗＝仍未完成，必須繼續提示要按「🔧 初始化／更新」');
 });
 
 // ---------- 4. 資料保全：舊結構升級只補表頭，不改寫既有資料 ----------
@@ -227,7 +232,9 @@ test('index.html：載入 gs-release.js，三個頁面都有公告容器，並�
   assert.match(indexHtml, /onclick="gsRecheck\(\)"/);
   assert.match(indexHtml, /本次更新毋須重跑初始化/);
   assert.ok(fs.existsSync(path.join(repoRoot, GsRelease.GS_LATEST.codeUrl)), 'Code.gs 下載路徑必須存在');
-  assert.equal(GsRelease.GS_LATEST.initRequired, false, 'display-only release must not require initializeSheets');
+  assert.equal(GsRelease.GS_LATEST.initRequired, true, 'GS 5.3.0 requires one initializeSheets() run via the Sheet menu button');
+  // 面向用戶嘅更新步驟只提「🔧 初始化／更新」呢個選單掣
+  assert.match(indexHtml, /🔗 旅系統 → 🔧 初始化／更新/);
   // 公告區不得寫入任何資料：不呼叫 save／save* 等寫入 action
   const seg = indexHtml.slice(indexHtml.indexOf('function gsNoticeHtml'), indexHtml.indexOf('document.addEventListener(\'DOMContentLoaded\', renderGsNotices)'));
   assert.doesNotMatch(seg, /apiRequest\('(save|add|update|delete|reset|submit|review)/);

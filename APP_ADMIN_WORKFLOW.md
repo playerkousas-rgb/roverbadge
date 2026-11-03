@@ -113,6 +113,18 @@
 2. `needs_init`：`initRequired` 為真，而 `initializedGsVersion` ≠ `gsVersion`。
 3. `ok`：以上皆不成立，顯示綠色「✅ 已核對」。
 
+### 接入四項硬化（GS 5.3.0，2026-11-03；對齊 ScoutBadge GS 6.3.0 PR #50）
+
+| 項目 | 規格 | 測試 |
+| --- | --- | --- |
+| 單一更新入口 | 選單「🔗 旅系統 → **🔧 初始化／更新（執行 initializeSheets）**」＝唯一面向用戶嘅更新步驟；handler 只呼叫 `initializeSheets()`，完成彈窗講明「唯一更新步驟／重跑只補缺失／不刪改資料／不換 API Key」。面向用戶嘅文案（首頁公告、教學步驟、升級說明、`docs/`）一律只提呢個掣 | `tests/onboarding-hardening.test.mjs`【1】 |
+| /exec 正規化 | `Code.gs` `canonicalServiceUrl_()` 把 `/a/macros/<域名>/s/<id>/exec` 同 `/a/<域名>/macros/s/<id>/exec` 正規化到標準 `/macros/s/<id>/exec`；`verifySuperTicket` 同時送 `backend`（原回報字串）與 `backendCanonical`。Vercel 端 `api/_registry.js` `canonicalBackendUrl()`／`backendForms()`／`backendMatches()` 接受「登記字串」或「正規化字串」；`api/super.js` 用 `backendMatches()` 比對，但**票據仍然綁死登記字串**（`ticket.backend === troop.backend`）。`getUrl()` 只用於比對，唔係「部署網址」嘅權威、亦唔會顯示給用戶 | `tests/onboarding-hardening.test.mjs`【2】、`tests/security.test.mjs` |
+| 未初始化唔扮完成 | `initStatusWarningLines_()`：`initRequired` 且 `initializedGsVersion ≠ gsVersion` 時，`menuShowLinkCredentials()`／`showApiKey()` 喺顯示 KEY **之前**加警告（KEY 照樣顯示）；跑一次選單掣後警告消失、KEY 不變 | `tests/onboarding-hardening.test.mjs`【3】 |
+| 申請初始化閘 | `/api/proxy` `submitRegistration` 先匿名 `GET ?action=ecStatus` 探測申請人填嘅後端（只限 `isTrustedExecUrl()` 白名單，防 SSRF，唔帶任何密鑰）：`initRequired===true` 且 `initializedGsVersion` 為空 → **422**，訊息可行動且**唔回顯後端網址／API Key**，該次申請**唔會**送到管理員收件匣。舊版後端冇呢兩個欄位／冇 `ecStatus`／探測逾時／非白名單 URL ＝「未知」→ 照樣轉交 | `tests/onboarding-hardening.test.mjs`【4】 |
+
+**fail-closed 不變**：換部署、換 API KEY、改一個 byte 仍然一律拒絕；`/api/super` 探測回應只回 `{ok:boolean}`，唔洩漏後端網址或 KEY。
+**資料保全不變**：`initializeSheets()` 冪等只增不刪，可安心重跑（`tests/release-version.test.mjs` before/after 快照守護）。
+
 **發佈新版 GS 的檢查清單**
 
 1. `Code.gs`：更新 `GS_VERSION`、`GS_RELEASE_DATE`；若本版要求執行 `initializeSheets()`，`GS_INIT_REQUIRED = true`。
@@ -121,7 +133,7 @@
 4. 新增的 `initializeSheets()` 步驟必須是**增補**：建表、補空白表頭、補缺失列。任何刪除或改寫既有值的改動，須經用戶確認，並寫入 CHANGE_LOG。
 5. 執行 `npm run check` 與 `npm test`；`tests/release-version.test.mjs` 的 before/after 快照測試會證明重跑初始化不改寫既有資料。
 6. 通知各旅團領袖：在 Apps Script 的既有部署上選**新版本**（沿用原 Web App 網址，不要新建部署）；只重新部署 Vercel 不足夠（舊 GS 會拒絕 proxy 的 token 請求）。
-7. 通知內容一併提醒：**每次更新後都執行一次 `initializeSheets()`**（即使 `GS_INIT_REQUIRED=false`）。它只做增補、可安全重跑、不刪不改既有資料；跨多版升級時必須執行，方能補齊新版所需表／欄。
+7. 通知內容一併提醒：**每次更新後都喺試算表選單按一次「🔗 旅系統 → 🔧 初始化／更新」**（GS 5.3.0 起呢個選單掣係唯一面向用戶嘅更新入口；即使 `GS_INIT_REQUIRED=false` 都建議按）。它只做增補、可安全重跑、不刪不改既有資料、不換 API Key；跨多版升級時必須執行，方能補齊新版所需表／欄。**面向用戶嘅文案（首頁公告／教學／升級說明）只可以提呢個選單掣，唔好叫用戶去 Apps Script 函式選單搵函式。**
 
 **資料保全規則**（硬性；領袖版說明見 `docs/LEADER_GUIDE.md`）
 

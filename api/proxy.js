@@ -159,6 +159,46 @@ async function callUpstream(url, { method, params, payload }) {
   return { status: up.status, json, raw: text };
 }
 
+// ---- 新旅團接入申請：匿名探測後端初始化狀態（GS 5.3.0）----
+// 未初始化嘅後端（一張工作表都未建）就算管理員批准接入，前端都唔會有任何帳號可用——
+// 用戶喺 initializeSheets() 之前已經攞到一條「睇落正常」嘅 API Key，容易以為接入完成。
+// 所以申請送去管理員收件匣之前，先匿名讀一次 ecStatus（唯讀，只回版本＋初始化標記）：
+//   ・initRequired===true 且 initializedGsVersion 為空 → 判定未完成初始化 → 422，且唔送管理員
+//   ・舊版後端冇呢兩個欄位／冇 ecStatus action ＝「未知」→ 照樣轉交（唔可以誤殺合法申請）
+//   ・探測失敗／逾時／非 JSON／URL 唔喺白名單 → 一律當「未知」→ 照樣轉交
+// 只探測通過 isTrustedExecUrl() 嘅正式 script.google.com /exec URL（防 SSRF）；探測唔帶任何密鑰，
+// 回應只當版本字串／boolean 用；任何錯誤訊息一律唔回顯後端網址或 API Key。
+const PROBE_TIMEOUT_MS = (() => {
+  const v = parseInt(process.env.ROVERBADGE_PROBE_TIMEOUT_MS || '12000', 10);
+  if (Number.isNaN(v)) return 12000;
+  return Math.max(2000, Math.min(30000, v));
+})();
+
+async function probeAnonymousBackend(backendUrl) {
+  const url = String(backendUrl || '').trim();
+  if (!isTrustedExecUrl(url)) return null;
+  try {
+    const target = url + (url.includes('?') ? '&' : '?') + 'action=ecStatus';
+    const up = await fetch(target, { method: 'GET', redirect: 'follow', signal: AbortSignal.timeout(PROBE_TIMEOUT_MS) });
+    const text = await up.text();
+    let json = null;
+    try { json = JSON.parse(text); } catch (e) { json = null; }
+    if (up.status !== 200 || !json || json.success !== true) return null;
+    const short = (v) => (typeof v === 'string' ? v.slice(0, 32) : '');
+    return {
+      initRequired: json.initRequired === true,
+      initializedGsVersion: short(json.initializedGsVersion),
+      gsVersion: short(json.gsVersion)
+    };
+  } catch (e) {
+    return null; // 探測唔到 ＝ 未知，照樣轉交（唔可以因為探測失敗而誤殺合法申請）
+  }
+}
+
+// 初始化閘攔住時嘅訊息：可行動（講明按哪個選單掣、只會補建、不會刪改、之後用同一條網址重新提交），
+// 而且唔回顯後端網址／API Key。
+const INIT_GATE_ERROR = '後端尚未完成初始化／更新，申請暫時未送出：請先喺該旅團嘅 Google 試算表選單「🔗 旅系統 → 🔧 初始化／更新（執行 initializeSheets）」按一次——只會補建缺少的工作表及預設管理員，不會刪改任何既有資料、不會更換 API Key。完成後用同一條網址重新提交申請。';
+
 // 當保留帳號（已於 Vercel 通過 SUPER_KEY 及 rbs1. session 驗證）存取已閂口（ALLOW_LOCAL_LOGIN=false）
 // 或未升級之 GAS 時，自動以該旅團已登記的 APIKEY 簽署 sig 請求轉發，確保保留帳號在任何閂口狀態下都能進入及操作。
 async function callUpstreamSigned(troop, action, data) {
@@ -301,6 +341,15 @@ export default async function handler(req, res) {
     delete regPayload.superKey;
     delete regPayload.super_key;
     delete regPayload.SUPER_KEY;
+    // ===== 初始化閘（GS 5.3.0）：後端未完成初始化就唔好佔用管理員審批 =====
+    // 判定為「未完成初始化」時直接 422：呢次申請唔會送到管理員收件匣，用戶按指引跑一次
+    // 「🔧 初始化／更新」後用同一條網址重新提交即可。探測唔到（舊版後端／逾時／非白名單 URL）
+    // 一律當「未知」照樣轉交，唔會誤殺合法申請。
+    const probe = await probeAnonymousBackend(regPayload.backendUrl);
+    if (probe && probe.initRequired && !probe.initializedGsVersion) {
+      safeLog({ result: 'registration_backend_uninitialized', initGate: 'blocked', ms: Date.now() - t0 });
+      return sendJson(res, 422, { success: false, deliveryStatus: 'not_sent', error: INIT_GATE_ERROR });
+    }
     try {
       const up = await callUpstream(adminApi, { method: 'POST', payload: regPayload });
       // Scout Admin GS 以 { status: 'success' } 表示成功；亦兼容 { success: true }。
@@ -309,7 +358,11 @@ export default async function handler(req, res) {
         safeLog({ result: 'admin_upstream_bad', status: up.status, ms: Date.now() - t0 });
         return sendJson(res, 502, { success: false, error: '申請未能送達管理員，請稍後重試' });
       }
-      safeLog({ result: 'registration_ok', status: up.status, ms: Date.now() - t0 });
+      safeLog({
+        result: 'registration_ok', status: up.status,
+        initGate: !probe ? 'unknown' : (probe.initRequired ? (probe.initializedGsVersion ? 'initialized' : 'blocked') : 'not_required'),
+        ms: Date.now() - t0
+      });
       return sendJson(res, 200, { success: true, message: '申請已提交' });
     } catch (e) {
       const timeout = e && (e.name === 'TimeoutError' || e.name === 'AbortError');

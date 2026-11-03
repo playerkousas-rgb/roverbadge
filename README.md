@@ -2,7 +2,7 @@
 
 > RoverBadge 是為香港樂行童軍旅團設計的進度紀錄及領袖行政工具：領袖可在網頁完成日常管理、審批及報表列印，而資料仍由各旅團自己既有的 Google Sheet 與 Apps Script 保管。
 >
-> 基於 2026 年第 11 版《樂行童軍訓練綱要》 • 前端 v5.2 ＋ 後端 GS 5.2.3（2026-11-02）
+> 基於 2026 年第 11 版《樂行童軍訓練綱要》 • 前端 v5.2 ＋ 後端 GS 5.3.0（2026-11-03）
 >
 > ⚠️ **非官方聲明**：本系統為獨立開發的非官方工具，並非香港童軍總會官方產品，與總會並無隸屬或贊助關係。
 >
@@ -70,9 +70,9 @@ i18n_dict.tsv           — 中英字典源（LANG_DICT 以此為準，手動同
 ## 部署
 
 - **Vercel**：Build Output 模式——`vercel.json` 指定 `buildCommand: npm run build`，建置時 `scripts/build.mjs` 產生 `.vercel/output`（靜態白名單 `index.html`／`assets`／`data`／`docs`／`apps-script` ＋ `api/*.func`）。部署完成嘅定義：`curl /api/troops` 有 JSON、`GET /api/proxy` 回 **405**（404 即 function 冇建好）。
-- **旅團登記**：管理員喺 Vercel 加 `TROOP_0082_NAME`、`TROOP_0082_BACKEND`（必須係 `https://script.google.com/macros/s/.../exec` 白名單格式）、`TROOP_0082_APIKEY`，Redeploy 後開 `/api/troops` 確認。詳見 [VERCEL_ENV_SETUP.md](VERCEL_ENV_SETUP.md)。
-- **新旅團開 Sheet**：下載 `apps-script/Code.gs` → 建 Sheet → 貼上 → 執行 `initializeSheets()` → 部署為網頁應用程式 → 喺 Google「部署 → 管理部署」視窗複製 `/exec` URL 連同 API Key 交給 APP 管理員。雙軌指南見 [docs/DEPLOY_GUIDE_V5_DUALTRACK.md](docs/DEPLOY_GUIDE_V5_DUALTRACK.md)（軌道 A 獨立用；軌道 B 接主系統 Portal 免登入）。
-- **升級既有旅團**：覆蓋 `Code.gs` 後，喺 Apps Script「部署 → 管理部署作業 → 編輯 → **新版本** → 部署」（沿用原 `/exec` URL，唔好新建部署）；**建議每次更新後都執行一次 `initializeSheets()`**——即使該版本標示「毋須初始化」（`GS_INIT_REQUIRED=false`）：它只做增補（建表、補空白表頭、補缺失列），可安全重跑、不刪不改任何既有資料；由較舊版本一次跨多版升級時尤其必須，否則會缺少新版所需的工作表／欄位。GS 公告／核對見首頁「📢 最新版本公告」。
+- **旅團登記**：管理員喺 Vercel 加 `TROOP_0082_NAME`、`TROOP_0082_BACKEND`（必須係 `https://script.google.com/macros/s/.../exec` 白名單格式）、`TROOP_0082_APIKEY`，Redeploy 後開 `/api/troops` 確認。登記字串同 Google Workspace 帳戶回報嘅 `/a/macros/<域名>/s/<id>/exec` 寫法視為等價（GS 5.3.0 起一律**正規化後比對**，唔會因為寫法唔同而永久登入失敗）。詳見 [VERCEL_ENV_SETUP.md](VERCEL_ENV_SETUP.md)。
+- **新旅團開 Sheet**：下載 `apps-script/Code.gs` → 建 Sheet → 貼上 → 喺試算表選單按「🔗 旅系統 → 🔧 初始化／更新（執行 initializeSheets）」→ 部署為網頁應用程式 → 喺 Google「部署 → 管理部署」視窗複製 `/exec` URL 連同 API Key 交給 APP 管理員。**未完成初始化之前攞到嘅 API Key 暫時未可用**（顯示 KEY 嘅對話框會警告），而且接入申請會被 `/api/proxy` 以 **422** 擋住，唔會送到管理員收件匣。雙軌指南見 [docs/DEPLOY_GUIDE_V5_DUALTRACK.md](docs/DEPLOY_GUIDE_V5_DUALTRACK.md)（軌道 A 獨立用；軌道 B 接主系統 Portal 免登入）。
+- **升級既有旅團**：覆蓋 `Code.gs` 後，喺 Apps Script「部署 → 管理部署作業 → 編輯 → **新版本** → 部署」（沿用原 `/exec` URL，唔好新建部署），然後喺試算表選單按一次「🔗 旅系統 → 🔧 初始化／更新」。**呢個選單掣係唯一嘅更新步驟**（GS 5.3.0 起）：它只做增補（建表、補空白表頭、補缺失列、補預設管理員），可安全重跑、不刪不改任何既有資料、不會更換 API Key；本版 `GS_INIT_REQUIRED=true`，未按一次之前前端會顯示「GS 已更新但未初始化」。GS 公告／核對見首頁「📢 最新版本公告」。
 
 ## 開發與檢查
 

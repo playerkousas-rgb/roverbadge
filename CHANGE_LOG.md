@@ -1,5 +1,43 @@
 # CHANGE_LOG
 
+## 2026-11-03 — GS 5.3.0：接入四項硬化（單一更新入口／`/exec` 正規化／未初始化唔扮完成／申請初始化閘）
+
+對齊姊妹 repo **ScoutBadge GS 6.3.0（PR #50）** 嘅四項修正，逐項核實本 repo 現狀後修正（前端仍 v5.2，`package.json` 版本不動；GS 5.2.4 → **5.3.0**、`GS_RELEASE_DATE` 2026-11-03、`GS_INIT_REQUIRED` false → **true**、`assets/gs-release.js` 嘅 `GS_LATEST` 同步）。**資料保全零變動**：冇改任何既有資料、欄位值、API Key、Token、旅團設定；`initializeSheets()` 仍然冪等只增不刪、可安心重跑（`tests/release-version.test.mjs` before/after 快照仍然全綠）。
+
+### 【1】單一更新入口（原本冇 → 已補）
+
+- **核實結果**：`onOpen()` 原本**冇任何選單項目呼叫 `initializeSheets()`**（`grep -n "addItem(" apps-script/Code.gs` 冇「初始化」項；`grep -n "function menuInitializeSheets"` 冇輸出），文件一律叫用戶「喺 Apps Script 編輯器／函式選單執行 `initializeSheets()`」。本 repo 冇 `repairSheets()`／`diagnoseSheets()`（全 repo grep 為空）。
+- **修正**：`Code.gs` 新增 `menuInitializeSheets()`，選單「🔗 旅系統」第一項改為「**🔧 初始化／更新（執行 initializeSheets）**」；handler 只呼叫 `initializeSheets()`（失敗時只顯示錯誤，唔寫標記），完成彈窗講明：**呢個掣就係唯一嘅更新步驟**、重跑只補缺失、不刪改任何既有帳號／進度／徽章／履歷／設定、不換 API Key。
+- **面向用戶文案全部改為只提呢個掣**：`index.html`（首頁／登入頁／主頁公告嘅更新步驟、`needs_init` 徽章、`gs-must-init` 提示、資料保全說明、「新旅團部署」步驟 2.3／4、升級說明、進度系統節點說明）、`README.md`、`docs/LEADER_GUIDE.md`、`docs/DEPLOY_GUIDE_V5_DUALTRACK.md`、`docs/TROOP_UPGRADE_2026.md`、`docs/BULK_ONBOARD.md`、`VERCEL_ENV_SETUP.md`、`APP_ADMIN_WORKFLOW.md`。i18n 兩處同步（`i18n_dict.tsv` ＋ `index.html` 內嵌 `LANG_DICT`）。
+- `authorizeConnection()`（一次性 UrlFetch 授權）維持原樣，只出現喺管理員文件 `VERCEL_ENV_SETUP.md`，唔屬面向普通用戶嘅更新步驟。
+
+### 【2】`/exec` 雜湊／網址正規化（GS 端＋Vercel 端）
+
+- **核實結果**：本 repo 冇 `sha256Hex(serviceUrl)`／`backendHash` 呢套（grep 為空），但**同一個缺陷以另一種形式存在**：`api/super.js` 用 `body.backend === troop.backend` 直接字串比對，而 `Code.gs` `verifySuperTicket()` 送嘅係 `ScriptApp.getService().getUrl()` 原字串。Workspace 帳戶回報 `https://script.google.com/a/macros/<域名>/s/<id>/exec`（或舊寫法 `/a/<域名>/macros/s/<id>/exec`）時，同登記用嘅標準 `/macros/s/<id>/exec` 永遠比對唔上 → 永久「登入失敗」，而且完全冇訊息講得出原因。
+- **修正（兩邊都做）**：
+  - `Code.gs` 新增 `canonicalServiceUrl_(u)`（兩條 replace，同 ScoutBadge 一致），`verifySuperTicket()` payload 保留 `backend`（原回報字串，票據綁定不變）並加送 `backendCanonical`。
+  - `api/_registry.js` 新增 `canonicalBackendUrl()`（先試 `/a/macros/<域名>(/s/…)` → `/macros$1`，再試 `/a/<域名>(/macros/s/…)` → `$1`；其他 host／解唔到原樣回傳）、`backendForms()`、`backendMatches()`（接受「登記字串」或「正規化字串」，時序安全比對）。
+  - `api/super.js` 改用 `backendMatches()` 比對 GAS 回報值（`backend` 或 `backendCanonical`），但 **`ticket.backend === troop.backend` 保持嚴格相等**——票據仍然綁死「登記字串」，冇放寬。
+  - `api/_registry.js` 保持**零內部依賴**（時序安全比對用本地 `node:crypto` 實作，唔 import `_super.js`），所以 `scripts/build.mjs` 嘅 function 依賴圖不變（`troops`／`portal` 仍然只打包 `_registry.js`；`tests/serverless-registry.test.mjs` 嘅「只有 env、冇 scripts/」模擬 lambda 照樣跑得）。
+- **fail-closed 不變**：換部署、換 KEY、改一個 byte、空字串、非 `script.google.com` host 一律拒絕；`/api/super` 仍然只回 `{ok:boolean}`，唔洩漏後端網址或 API Key。`getUrl()` 嘅回報值只用於正規化比對，唔當作「部署網址」嘅權威、亦唔會顯示或回傳給用戶（`tests/credential-display.test.mjs` 嘅「顯示流程零次呼叫 `getService().getUrl()`」守護仍然通過）。
+
+### 【3】未初始化時唔可以扮完成（原本冇 → 已補）
+
+- **核實結果**：初始化版本標記已有（`initializeSheets()` 最後一步 `setProperty(GS_INIT_PROP, GS_VERSION)`，`Code.gs:1120` 一帶），但 `menuShowLinkCredentials()`／`showApiKey()` **完全冇提初始化狀態**——用戶可以在建表之前攞到一條「睇落正常」嘅 API Key 就以為接入完成。
+- **修正**：`Code.gs` 新增 `initStatusWarningLines_()`（同 ScoutBadge 同文），`menuShowLinkCredentials()` 與 `showApiKey()` 喹訊息**最前面**加入警告（Key 照樣顯示，回傳值不變）。本版 `GS_INIT_REQUIRED=true`，所以未初始化／初始化失敗時警告會出現，跑一次選單掣後消失、Key 一個 byte 都不變。
+
+### 【4】新旅團申請時的初始化閘（原本冇 probe → 已補）
+
+- **核實結果**：本 repo 有新旅團接入申請表（`submitRegistration` → 中央管理員收件匣），但**完全冇匿名 probe**（`grep -rn "probeAnonymousBackend" api lib` 為空；本 repo 亦冇 `lib/` 目錄，registry 喺 `api/_registry.js`）。`ecStatus` 本身已經回傳 `initRequired`／`initializedGsVersion`（`ecStatusResponse_()`），即係未初始化嘅後端照樣送去管理員信箱，批准後先發現冇任何帳號。
+- **修正**：`api/proxy.js` 新增 `probeAnonymousBackend()`——只對通過 `isTrustedExecUrl()` 白名單嘅正式 `/exec` URL 發一次匿名 `GET ?action=ecStatus`（唔帶任何密鑰，12 秒逾時，可用 `ROVERBADGE_PROBE_TIMEOUT_MS` 覆寫）。`initRequired===true` 且 `initializedGsVersion` 為空 → **422** ＋ `deliveryStatus:'not_sent'`，訊息講明按哪個選單掣、只會補建、不會刪改、不換 API Key、之後用**同一條網址**重新提交，而且**唔回顯後端網址／API Key**；該次申請唔會送到管理員收件匣。舊版後端冇呢兩個欄位／冇 `ecStatus`／探測逾時／非 JSON／非白名單 URL ＝「未知」→ 照樣轉交（唔誤殺合法申請）。`safeLog` 只記 metadata（`initGate: blocked|initialized|not_required|unknown`）。
+
+### 版號／文件／測試
+
+- **版號一齊升**：`Code.gs` `GS_VERSION` 5.2.4 → **5.3.0**、`GS_RELEASE_DATE` **2026-11-03**、`GS_INIT_REQUIRED` **true**；`assets/gs-release.js` `GS_LATEST` 同步；`README.md`（後端 GS 5.3.0）、`docs/LEADER_GUIDE.md`、`docs/DEPLOY_GUIDE_V5_DUALTRACK.md`、`docs/TROOP_UPGRADE_2026.md`、`VERCEL_ENV_SETUP.md`、`APP_ADMIN_WORKFLOW.md`（新增「接入四項硬化（GS 5.3.0）」規格表）一齊更新。
+- **新增測試**：`tests/onboarding-hardening.test.mjs`（已加入 `npm test`）——【1】選單掣存在／handler 只呼叫 `initializeSheets()`／完成彈窗四項保證／重跑資料與 KEY 不變／全 repo 冇 `repairSheets`·`diagnoseSheets`／文件只提選單掣；【2】`canonicalBackendUrl` 三種寫法＋其他 host 原樣回傳、`backendMatches` fail-closed、真跑 `api/super.js`（Workspace／舊寫法成功；換 KEY／改 byte／換部署／票據綁錯字串全部拒絕且唔洩漏）、真跑 `verifySuperTicket` 觀察 payload；【3】未初始化警告出現且含 `initializeSheets`、初始化後警告消失且 Key 不變；【4】422 且管理員收件匣零請求、探測只發一次匿名 GET ecStatus、六種「未知」情境照樣轉交。
+- **既有測試同步（只屬版號／發佈政策同步，冇放寬任何 fail-closed 斷言）**：`tests/release-version.test.mjs` 五處由「本版 `initRequired=false`」改為「本版 `initRequired=true`」（未初始化 → `needs_init`；初始化失敗 → `needs_init`；另加 GS 5.2.4 可選初始化語義保留斷言）；`tests/gs-notice-dom-test.mjs` 版號 5.2.2 → 5.3.0 並改為驗證「未初始化提示指向選單掣」。`tests/gas-harness.mjs` 增加 `menuInitializeSheets`／`initStatusWarningLines_`／`canonicalServiceUrl_`／`gsVersionInfo_` 測試內省匯出。
+- **檢查**：`npm run lint`、`npm run check`、`npm test`（含真實 Code.gs harness、mock GAS 端到端、jsdom DOM 測試）、`npm run test:build` 全部 exit 0。
+
 ## 2026-11-02（續 2） — 重設密碼授權收緊＋重設後狀態清理（前端仍 v5.2；GS 5.2.3 → **5.2.4**，無新增工作表／欄位、不需重跑 initializeSheets）
 
 - **重設密碼授權（前端後台階級一致）**：`handleResetPassword` 原本只驗「呼叫者係領袖（角色等級 ≥40）」，未驗目標角色，與 `deactivateUser`／`reactivateUser`／`updateUserRole` 不一致。現改為在 handler 內部用 `canManageUser()` 驗證：**只有 SUPER ADMIN 可重設 ADMIN、ADMIN 不可重設 ADMIN**、副團長不可重設團長、團長不可重設 ADMIN、成員不可重設任何人；高權限可重設低權限（低權限帳號本就由其上級批核／可停用）。因檢查置於 handler 內部，同時覆蓋 **token 入口**與**上游簽章（link-signed）入口**（後者原本完全冇角色檢查）。被拒時目標帳號 hash 完全不變。
