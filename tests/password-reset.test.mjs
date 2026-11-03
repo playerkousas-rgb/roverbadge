@@ -337,9 +337,10 @@ test('B1 前端／proxy／Code.gs／版本／字典一致', () => {
   assert.match(gsSrc, /if\(action==='confirmPasswordReset'\) return handleConfirmPasswordReset\(body\)/);
   const gsVer=(gsSrc.match(/const GS_VERSION = '([0-9.]+)';/)||[])[1];
   assert.ok(gsVer, 'Code.gs 要有 GS_VERSION');
-  assert.ok(gsSrc.includes("const GS_RELEASE_DATE = '2026-11-02';"));
+  const gsDate=(gsSrc.match(/const GS_RELEASE_DATE = '([0-9-]+)';/)||[])[1];
+  assert.ok(gsDate, 'Code.gs 要有 GS_RELEASE_DATE');
   assert.ok(gsRelease.includes("version: '"+gsVer+"'"), 'gs-release.js 版本要與 Code.gs 一致：'+gsVer);
-  assert.match(gsRelease, /releaseDate: '2026-11-02'/);
+  assert.ok(gsRelease.includes("releaseDate: '"+gsDate+"'"), 'gs-release.js 日期要與 Code.gs 一致：'+gsDate);
 
   // 字典：新 UI 字串中英齊備
   for (const k of ['📧 發送重設碼', '輸入重設碼並設定新密碼', '重設碼（電郵內 8 位）', '💾 設定新密碼', '✅ 密碼已重設，請用新密碼登入']) {

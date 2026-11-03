@@ -34,7 +34,7 @@
 **旅團負責人做 (3步)：**
 1. 去 Google Sheet 建新試算表
 2. 擴充功能 → Apps Script → 貼上 `apps-script/Code.gs` → 儲存
-3. 執行 `initializeSheets` → 授權 → 顯示 API Key；正式 URL 從 Google 部署視窗取得
+3. 喺試算表選單按「🔗 旅系統 → 🔧 初始化／更新（執行 initializeSheets）」→ 授權 → 顯示 API Key；正式 URL 從 Google 部署視窗取得（未完成初始化前，顯示 KEY 嘅對話框會警告「此 API Key 暫時未可用」）
    - `showApiKey()` 隨時可再睇 KEY
    - 正式 URL 只從 Google「部署」視窗複製；初始化／旅系統選單不推算或顯示 URL。
    - 不需先在 Apps Script 設定旅團編號，也不需新增 URL 貼上設定。
@@ -280,7 +280,8 @@ GAS 回打 `/api/super` 驗票 → 發 token）。**任何一環錯，都只會�
 3. `TROOP_{ID}_BACKEND` 指向咗舊／已刪除嘅部署 URL → `GET /api/troops` 睇旅團清單／部署設定，
    錯就改 env + Redeploy。
 4. **旅團未設 `TROOP_{ID}_APIKEY`**：冇共享鎖匙 `D` 簽唔到票據（proxy log 會見 `super_no_apikey`），
-   請喺 GAS 執行 `initializeSheets()`（或 `showApiKey()`）攞 `API_KEY`，登記做 env `TROOP_{ID}_APIKEY` + Redeploy。
+   請喺該旅團試算表選單按「🔗 旅系統 → 🔧 初始化／更新」（等同 `initializeSheets()`），再按「🔑 顯示 API KEY（交 ADMIN）」攞 `API_KEY`，登記做 env `TROOP_{ID}_APIKEY` + Redeploy。
+   若該旅團未完成初始化，接入申請會被 `/api/proxy` 以 **422** 擋住（唔會送到管理員收件匣）；探測唔到狀態（舊版後端／逾時）則照樣轉交。
 
 **B. 「帳號或密碼錯誤」（用系統管理員帳號登入時）**
 ＝ GAS 收到請求但驗證唔通過（proxy log 會見 `super_login_denied`）：

@@ -226,6 +226,8 @@ export function loadCodeGs({ promptAnswers = [], urlFetchHandler = null, service
 ;globalThis.__api = {
   initializeSheets, showApiKey, menuShowLinkCredentials, onOpen, removeSuperAdminRows, handleLogin, getUser, getAllUsers,
   getMembers, getApiKey, doPost, doGet, isSuperAdminId, verifySuperTicket, authorizeConnection, testPasswordResetMail,
+  // GS 5.3.0 測試內省用：唯一更新入口（選單掣）、初始化狀態警告、/exec 正規化
+  menuInitializeSheets, initStatusWarningLines_, canonicalServiceUrl_, gsVersionInfo_,
   // 測試內省用：保留帳號識別字（唯一宣告在 Code.gs），用以驗證名單過濾與防護邏輯
   SUPER_ADMIN_ID,
   // 學制／allowed_badges 測試用：發 token、讀取生成的項目目錄與角色預設

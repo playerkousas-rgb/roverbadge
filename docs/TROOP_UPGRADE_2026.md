@@ -3,6 +3,8 @@
 > 版本號只保留在此 MD。`apps-script/Code.gs` 與 `assets/batch-onboard/Code.gs` 內所有 `// vX.X` 版本註解已全數清除（`tests/troop_link.test.mjs` 第 11 項守護）。
 
 **版號：v9.0 — 旅系統對齊版（2026-09-22；2026-09-23 補完接入步驟表與支部 SHEET 成對說明）；對齊基準：vsbadge `operations/TROOP_LINK_UPGRADE.md`**
+>
+> **2026-11-03 更新（GS 5.3.0）**：接入四項硬化——① 唯一更新入口＝試算表選單「🔗 旅系統 → 🔧 初始化／更新（執行 initializeSheets）」；② `/exec` 網址正規化（Workspace 帳戶嘅 `/a/macros/<域名>/s/<id>/exec` 同標準寫法等價）；③ 未初始化時顯示 API Key 會警告「暫時未可用」；④ 新旅團申請時後端未初始化 → 422，唔會送到管理員收件匣。下文提到「執行 `initializeSheets()`」嘅步驟一律改用呢個選單掣。
 
 ---
 
@@ -29,7 +31,7 @@ DOWNSTREAM_<id>_KEY = <下游節點 API_KEY>
 （有地域有鎖匙先入到；掛錯對方一測 sig／一睇結構就會發現會改返。）
 
 - **每團補一張「支部 SHEET」，與現有「進度 SHEET」成對**：「支部 SHEET」係**成張全新 Google Sheet
-  部署**（新 Sheet → 貼同一份 `Code.gs` → `initializeSheets()` → 部署 → Google 部署視窗取得 B、選單取得 D）——
+  部署**（新 Sheet → 貼同一份 `Code.gs` → 選單「🔗 旅系統 → 🔧 初始化／更新」→ 部署 → Google 部署視窗取得 B、選單取得 D）——
   支部 SHEET 係上游節點、進度 SHEET 係下游節點，一對一配對。
 - 程式層面**冇「支部」工作表（tab）、冇支部登記表**：呢個「支部 SHEET」係部署單位，唔係工作表。
   v9 舊方案嘅 `BRANCH_SHEET_NAME='支部'`、`handleGetBranches/handleSaveBranch/handleDeleteBranch`、
@@ -48,7 +50,7 @@ DOWNSTREAM_<id>_KEY = <下游節點 API_KEY>
 | **C** | NAME | 節點顯示名稱 | **自行填寫** | 交 ADMIN 時一併提供 | 例如 `第 82 旅（進度）` |
 | **D** | APIKEY（SHEET KEY） | `rover_` + uuid24 | **GS 產生**（`getApiKey()`，initializeSheets 保留顯示） | 選單「🔑 顯示 API KEY（交 ADMIN）」 | 存本節點 Script Properties `API_KEY` |
 
-新旅團接入：先從 Google「部署」視窗取得 B，再由 initializeSheets／Sheet 選單 **🔗 旅系統 → 🔑 顯示 API KEY（交 ADMIN）** 取得 D；不要求在 GS 設定團號或貼 URL。部署者在原有 ADMIN FORM 填寫旅團編號、名稱、URL、API Key，然後按既有申請流程提交。
+新旅團接入：先從 Google「部署」視窗取得 B，再由選單 **🔗 旅系統 → 🔧 初始化／更新**（初始化）／**🔑 顯示 API KEY（交 ADMIN）** 取得 D；不要求在 GS 設定團號或貼 URL。部署者在原有 ADMIN FORM 填寫旅團編號、名稱、URL、API Key，然後按既有申請流程提交。
 伺服器端會固定送 `type: "apply"` + `appType: "roverbadge"`，並將前端 `scriptUrl` 映射為
 `backendUrl`（Scout Admin GS `FIELD_MAP["URL"]` 只認 `backendUrl`）；`troopName` 空白時補
 `第 {troopId} 旅`、`note` 自動加 `[roverbadge]` 標記，確保 Scout Admin「🏛️ 旅團登記」卡片必定顯示。
@@ -73,14 +75,14 @@ DOWNSTREAM_<id>_KEY = <下游節點 API_KEY>
 |---|---|---|
 | 1 | 部署 GS，從 Google 視窗抄 B，取得 D | 每層 Sheet → Apps Script → 部署（執行身分「我」、存取權「任何人」），URL 從 Google 部署視窗取得；API Key 從 initializeSheets／「🔗 旅系統 → 🔑 顯示 API KEY（交 ADMIN）」取得 |
 | 2 | 填 C，連 B/D 經收件匣交 ADMIN | 既有 ADMIN FORM（旅團編號／名稱／Apps Script URL／API Key）→ `submitRegistration` → `/api/proxy` → 固定中央收件端點（`type=apply`、`appType=roverbadge`、`backendUrl`） |
-| 3 | 每團補一張支部 SHEET，與現有進度 SHEET 成對 | 新 Sheet → 貼同一份 `Code.gs` → `initializeSheets()` → 部署 → Google 部署視窗取得 B、選單取得 D |
+| 3 | 每團補一張支部 SHEET，與現有進度 SHEET 成對 | 新 Sheet → 貼同一份 `Code.gs` → 選單「🔧 初始化／更新」→ 部署 → Google 部署視窗取得 B、選單取得 D |
 | 4 | 上游控下游寫：掣在上游（旅控團、團控進度） | 上游選單「➕ 登記下游（URL + SHEET KEY）」→「📡 測試下游連線（sig）」；「🚪 下游直接入口」經 sig 打下游 `setLocalLogin`，旗 `ALLOW_LOCAL_LOGIN` 寫在下游 Script Properties，閂後只收 sig |
 | 5 | 搬舊數（第 6 節） | 舊進度「📤 匯出 JSON（含 hash）」→ 新支部「📥 匯入 JSON」，逐個 `upsertUser` 直插 hash（保留舊密碼） |
 | 6 | 匯完核對無誤後閂下游直接入口 | 上游選單「🚪 下游直接入口 → 🔒 閂口（只收 sig）」（閂口前有確認彈窗，提醒先完成匯入及連線測試） |
 | 7 | 之後開戶一律在上游 | 上游選單「👤 為下游開戶（揀團）」，經 sig 落下游寫 |
 
 - 每層升級都要：Apps Script → 用新 `Code.gs` 全檔覆蓋 → 部署 → **管理部署 → ✏️ 編輯 → 版本選「新版本」**（`/exec` URL 唔變，Registry 唔使改）。
-- **只有全新嘅支部 SHEET 先執行 `initializeSheets()`**；現有進度 SHEET 唔好重跑（唔改 schema、唔清資料）。
+- **全新嘅支部 SHEET 必須按一次選單「🔧 初始化／更新」**；現有進度 SHEET 都可以安全重跑同一個掣（GS 5.3.0：冪等只增不刪——只補缺表／缺欄／缺預設管理員，唔改 schema、唔清資料、唔換 API Key）。
 - 上游 Script Properties：`DOWNSTREAM_<id>_URL`、`DOWNSTREAM_<id>_KEY`、`DOWNSTREAM_<id>_NAME`、`DOWNSTREAM_<id>_AT`。<id> 由你改（例：`progress`、`branch-a`），只可用英文／數字／底線／連字號，最長 32 字元。旅對住幾個團就登記幾條。
 - 下游 Script Properties：`ALLOW_LOCAL_LOGIN`（未設定＝開啟，現有旅團零影響）。
 

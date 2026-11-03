@@ -14,7 +14,7 @@ COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 v5.2	COPYRIGHT 20
 最新：v5.0 FINAL	Latest: v5.0 FINAL
 • 目前 v5.0 FINAL 已穩定，測試完成	• v5.0 FINAL is stable and fully tested
 • 新版本新增功能和改動說明	• New features and changes in this version
-• 新版本後端 Code.gs 下載（記得保有舊資料 - initializeSheets 不會清舊資料）	• New backend Code.gs download (your old data is kept - initializeSheets does not clear old data)
+• 新版本後端 Code.gs 下載（記得保有舊資料 - 選單「🔧 初始化／更新」只補缺失，不會清舊資料）	• New backend Code.gs download (your old data is kept - the menu item "🔧 Initialize / Update" only adds what is missing and never clears old data)
 框架保留，內容已精簡（依你要求移除舊修復資訊）	Framework kept, content streamlined (old fix notes removed per your request)
 🆕 v5.1 新增	🆕 New in v5.1
 此區未來用於：	This section will be used for:
@@ -924,7 +924,7 @@ YMIS	YMIS
 📋 新旅團部署指南 (10分鐘)	📋 New Group Deployment Guide (10 min)
 提交給 roverbadge 管理員	Submit to the roverbadge admin
 首次登入（預設管理員帳號）	First sign-in (default admin account)
-initializeSheets 跑完會自動建立預設管理員。登記完成後首頁揀該旅團卡片 → 用「👤 成員」分頁登入（YMIS 登入，唔好用「👨‍💼 領袖」＝Email 分頁）：	initializeSheets automatically creates a default admin. Once registration is complete, pick the Group card on the home page → sign in via the "👤 Member" tab (YMIS sign-in, not the "👨‍💼 Leader" = Email tab):
+選單「🔧 初始化／更新」跑完會自動建立預設管理員。登記完成後首頁揀該旅團卡片 → 用「👤 成員」分頁登入（YMIS 登入，唔好用「👨‍💼 領袖」＝Email 分頁）：	The menu item "🔧 Initialize / Update" automatically creates a default admin.
 首次登入會強制改密碼（最少 4 位）。之後喺「用戶管理」開返各領袖自己嘅帳號並設角色／權限，喺「審批中心」批成員申請。	The first sign-in forces a password change (min 4 characters). Then create each leader's own account with roles/permissions in "User Management", and approve member applications in the "Approval Centre".
 若旅團重私隱，成員預設只看自己；若想互相鼓勵，團長可在用戶管理→系統設定開啟「允許成員互相查看進度」	For privacy-focused Groups, members see only themselves by default; for mutual encouragement, the Group Scout Leader can enable "Allow members to view each other's progress" in User Management → System Settings
 在原有 ADMIN FORM 填寫旅團編號、名稱、Google 部署視窗提供的 URL 及 API Key	Enter the Group ID, name, URL from the Google deployment dialog, and API Key in the existing ADMIN FORM
@@ -968,17 +968,17 @@ GS 最新版本	Latest GS version
 核對中…	Checking…
 無法連線核對，請稍後按「重新檢查」	Could not check. Please press "Re-check" later
 ⚠️ GS 未更新：本旅團 Apps Script 仍是舊版，請先更新 Code.gs	⚠️ GS not updated: this troop's Apps Script is still an old version. Please update Code.gs first
-⚠️ GS 已更新但未初始化：必須執行一次 initializeSheets()	⚠️ GS updated but not initialized: you must run initializeSheets() once
+⚠️ GS 已更新但未初始化：請按選單「🔗 旅系統 → 🔧 初始化／更新」一次	⚠️ GS updated but not initialized: press the menu "🔗 Troop System → 🔧 Initialize / Update" once
 ✅ 已核對：GS 已是最新版本，初始化已完成	✅ Checked: GS is up to date and initialization is complete
-必須執行一次 initializeSheets()	You must run initializeSheets() once
-🛡️ 資料保全：更新 Code.gs 不會清除既有資料；initializeSheets() 只補缺少的表格與欄位標題，不刪除、不改寫用戶、進度、紀錄或金鑰。	🛡️ Data safety: updating Code.gs does not delete existing data. initializeSheets() only adds missing sheets and column headers; it does not delete or change any users, progress, records or keys.
+必須按一次選單「🔗 旅系統 → 🔧 初始化／更新」（只補缺失，不刪改資料）	Press the menu "🔗 Troop System → 🔧 Initialize / Update" once (it only adds what is missing and never changes existing data)
+🛡️ 資料保全：更新 Code.gs 不會清除既有資料；選單「🔧 初始化／更新」只補缺少的表格與欄位標題，不刪除、不改寫用戶、進度、紀錄或金鑰，亦不會更換 API Key。	🛡️ Data safety: updating Code.gs does not delete existing data. The menu item "🔧 Initialize / Update" only adds missing sheets and column headers; it does not delete or change any users, progress, records or keys, and it never changes the API Key.
 ⬇️ 下載 Code.gs	⬇️ Download Code.gs
 🔄 重新檢查	🔄 Re-check
 更新步驟	Update steps
 下載 Code.gs（按下方按鈕）	Download Code.gs (use the button below)
 開啟旅團試算表 →「擴充功能」→「Apps Script」，全選刪除舊碼，貼上新 Code.gs 並儲存	Open the troop's spreadsheet → "Extensions" → "Apps Script". Select all, delete the old code, paste the new Code.gs and save
 「部署」→「管理部署作業」→ 編輯 ✏️ →「版本」選「新版本」→「部署」（沿用原有 Web App 網址，不要另建）	"Deploy" → "Manage deployments" → Edit ✏️ → "Version": "New version" → "Deploy" (keep the existing Web App URL; do not create a new one)
-若需要初始化：在 Apps Script 函式選單選 initializeSheets，執行一次（首次需授權）	If initialization is needed: choose initializeSheets in the Apps Script function menu and run it once (authorise on first run)
+初始化／更新：喺旅團試算表選單「🔗 旅系統 → 🔧 初始化／更新」按一次（首次需授權）	Initialize / update: in the Group Sheet menu press "🔗 Troop System → 🔧 Initialize / Update" once (authorise on first run)
 回到本頁按「重新檢查」，出現綠色「已核對」即完成	Come back here and press "Re-check"; the green "Checked" badge means done
 請先選擇旅團並登入	Please select a troop and log in first
 ℹ️ 系統介紹	ℹ️ System Introduction
@@ -999,8 +999,13 @@ GS 最新版本	Latest GS version
 了解資料流程、Google Sheet 分享設定及安全界線。	Learn about the data flow, Google Sheet sharing settings and security boundaries.
 查看「系統介紹」 / View system introduction	View system introduction
 ✅ 已核對：本次更新毋須重跑初始化	✅ Checked: this update does not require initialization to be rerun
-儲存→執行 initializeSheets，授權並取得 API Key（初始化不要求旅團編號）	Save → run initializeSheets, authorise and get the API Key (no Group ID is required first)
+儲存→喺試算表選單「🔗 旅系統 → 🔧 初始化／更新」按一次，授權並取得 API Key（初始化不要求旅團編號）	Save → press "🔗 Troop System → 🔧 Initialize / Update" once in the Sheet menu, authorise and get the API Key (no Group ID is required first)
 部署為網頁應用程式（執行身分：我；存取權：任何人）；從 Google 部署視窗複製正式 URL	Deploy as a web app (execute as me; access: anyone); copy the official URL from the Google deployment dialog
 共通：下載 Code.gs → 建 Sheet → 執行 initializeSheets → 部署；只從 initializeSheets／旅系統選單取得 API Key。URL 請由 Google 部署視窗取得，再填入原有 ADMIN FORM。	Common: download Code.gs → create a Sheet → run initializeSheets → deploy. Get only the API Key from initializeSheets or the Rover System menu. Get the URL from the Google deployment dialog and enter it in the existing ADMIN FORM.
 在原有 ADMIN FORM 自行填寫旅團編號、名稱、URL、API Key。不要把 URL 貼到 Apps Script 或 Sheet 的新設定。	Enter the Group ID, name, URL and API Key yourself in the existing ADMIN FORM. Do not paste the URL into a new Apps Script or Sheet setting.
 自行在原有 ADMIN FORM 填寫旅團編號、名稱、Google 部署視窗提供的 URL 及 API Key。	Enter the Group ID, name, URL from the Google deployment dialog, and API Key yourself in the existing ADMIN FORM.
+
+正式 URL 從 Google 部署視窗取得；選單「🔧 初始化／更新」與「🔑 顯示 API KEY（交 ADMIN）」只顯示 API Key。資料請填入原有 ADMIN FORM。	Get the official URL from the Google deployment dialog; the menu items "🔧 Initialize / Update" and "🔑 Show API KEY (for the ADMIN)" only show the API Key. Enter the details in the existing ADMIN FORM.
+每次更新後請按一次選單「🔗 旅系統 → 🔧 初始化／更新」（等同 initializeSheets()）。</b>佢只會補建缺少的工作表（例如「活動履歷」及「待批履歷」）與欄位標題，不會更改或清除現有資料，亦不會更換 API Key。	After every update press the menu "🔗 Troop System → 🔧 Initialize / Update" once (the same as initializeSheets()).</b>It only adds missing sheets (for example "Activity Log" and "Pending Activity Log") and column headers; it never changes or clears existing data and never changes the API Key.
+旅團後端未升級 v8.2：請通知管理員更新 Code.gs 並按選單「🔗 旅系統 → 🔧 初始化／更新」一次	Group backend not upgraded to v8.2: ask the admin to update Code.gs and press the menu "🔗 Troop System → 🔧 Initialize / Update" once
+新節點接入：選單「🔧 初始化／更新」／「🔑 顯示 API KEY（交 ADMIN）」只提供 API Key；URL 由 Google 部署視窗取得，再填原有 ADMIN FORM。	New node onboarding: the menu items "🔧 Initialize / Update" and "🔑 Show API KEY (for the ADMIN)" provide only the API Key; get the URL from the Google deployment dialog and enter it in the existing ADMIN FORM.

@@ -29,7 +29,7 @@
 - `1111111111` 只係佔位 YMIS，開好真帳號後可停用或留作後備
 - 忘記密碼：成員可自助喺登入頁用「登記電郵重設碼」即場重設（GS 5.2.3 起，見 [PASSWORD_RESET.md](PASSWORD_RESET.md)）；後端未升級或發信未授權時，仍由另一個 admin／團長在「用戶管理」重設，重設後首次登入會再強制改密
 - 之後由領袖開嘅帳號（臨時密碼 `1234`）首次登入仍然強制改密
-- **每次更新 `Code.gs` 後都建議跑一次 `initializeSheets()`**，唔好只睇「毋須初始化」標示：它只做增補（建表／補空白表頭／補缺失列），可安全重跑、唔會刪除或改寫任何既有資料；由舊版一次過跨多版升級時必須跑，否則會缺新版所需嘅表／欄（例如「密碼重設」表、`force_change_password` 欄）。
+- **每次更新 `Code.gs` 後都按一次選單「🔗 旅系統 → 🔧 初始化／更新」**（GS 5.3.0 起呢個掣係唯一嘅更新步驟，唔使再去 Apps Script 函式選單搵函式），唔好只睇「毋須初始化」標示：它只做增補（建表／補空白表頭／補缺失列／補預設管理員），可安全重跑、唔會刪除或改寫任何既有資料、唔會更換 API Key；由舊版一次過跨多版升級時必須跑，否則會缺新版所需嘅表／欄（例如「密碼重設」表、`force_change_password` 欄）。本版 `GS_INIT_REQUIRED=true`，未按之前前端會顯示「GS 已更新但未初始化」，而顯示 API Key 嘅對話框會警告「此 API Key 暫時未可用」。
 - 預設管理員俾人刪咗都唔緊要：重跑一次 `initializeSheets()` 會自動補返（2026-10 起）；
   帳號密碼仲係 `changeme` 嘅話，登入時仍會被要求「首次登入強制改密」（2026-10 起由登入時判斷，重跑初始化唔會改寫任何既有帳號列；見 `docs/LEADER_GUIDE.md`）
 
@@ -48,7 +48,7 @@
 
 ## 兩條軌道
 
-**共通**：下載 Code.gs → 建 Sheet → 執行 initializeSheets（只顯示 API Key）→ 部署；正式 URL 從 Google 部署視窗取得，再在既有 ADMIN FORM 填旅團編號、名稱、URL、API Key。不需設定旅團編號或把 URL 貼入 Apps Script。
+**共通**：下載 Code.gs → 建 Sheet → 選單「🔗 旅系統 → 🔧 初始化／更新」（等同 initializeSheets，只顯示 API Key）→ 部署；正式 URL 從 Google 部署視窗取得，再在既有 ADMIN FORM 填旅團編號、名稱、URL、API Key。不需設定旅團編號或把 URL 貼入 Apps Script。未完成初始化前，接入申請會被擋住（422）而唔會送到管理員。
 
 **軌道A 無主系統/有但想獨立用**：
 - 在既有 ADMIN FORM 填入 Google 部署視窗提供的 URL 及 API Key → 喺 Vercel 加 `TROOP_{ID}_NAME/_BACKEND/_APIKEY` 環境變數 → Redeploy → 完成
@@ -72,4 +72,4 @@
 
 ## API Key 與部署 URL（2026-10-24 更新）
 
-`initializeSheets()` 及「🔗 旅系統 → 🔑 顯示 API KEY（交 ADMIN）」只提供 API Key；不會顯示 `getService().getUrl()` 或舊 URL 快取。正式 Web App URL 由 Google 部署視窗提供。旅團在現有 ADMIN FORM 填寫 ID、名稱、URL、API Key；不需要新增 GAS URL 設定。既有正常 Sheet 因本次顯示修正不必重跑初始化。
+選單「🔗 旅系統 → 🔧 初始化／更新」（等同 `initializeSheets()`）及「🔗 旅系統 → 🔑 顯示 API KEY（交 ADMIN）」只提供 API Key；不會顯示 `getService().getUrl()` 或舊 URL 快取。正式 Web App URL 由 Google 部署視窗提供。旅團在現有 ADMIN FORM 填寫 ID、名稱、URL、API Key；不需要新增 GAS URL 設定。既有正常 Sheet 因本次顯示修正不必重跑初始化。

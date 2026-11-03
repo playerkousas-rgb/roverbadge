@@ -583,7 +583,10 @@ function getApiKey() {
 function showApiKey() {
   const apiKey = getApiKey();
   const ui = SpreadsheetApp.getUi();
-  if (ui) ui.alert('API Key', '你的 API Key：\n\n' + apiKey, ui.ButtonSet.OK);
+  // 未初始化時唔可以扮完成：Key 照樣顯示，但先講明呢條 Key 暫時未可用＋點樣完成初始化
+  const warn = initStatusWarningLines_();
+  const prefix = warn.length ? warn.join('\n') + '\n' : '';
+  if (ui) ui.alert('API Key', prefix + '你的 API Key：\n\n' + apiKey, ui.ButtonSet.OK);
   Logger.log('API Key: ' + apiKey);
   return apiKey;
 }
@@ -601,6 +604,20 @@ function authorizeConnection(){
   if(response.getResponseCode()!==405) throw new Error('連線服務未就緒，請檢查部署設定');
   return '連線正常，請更新 Apps Script 既有部署至新版本';
 }
+// ===== /exec 網址正規化（GS 5.3.0）=====
+// 同一個部署，ScriptApp.getService().getUrl() 會視乎帳戶類型回報唔同寫法：
+//   標準：           https://script.google.com/macros/s/<id>/exec
+//   Workspace 帳戶： https://script.google.com/a/macros/<域名>/s/<id>/exec
+//   舊／手改寫法：   https://script.google.com/a/<域名>/macros/s/<id>/exec
+// 登記（Vercel env TROOP_*_BACKEND）通常係「部署 → 管理部署」視窗顯示嘅標準寫法；
+// 唔正規化就直接比對，Workspace 帳戶嘅旅團會永遠驗票失敗，而且完全冇訊息講得出原因。
+// 呢度只改寫「形式」，唔改部署 ID；其他 host／解唔到嘅字串一律原樣回傳（比對端仍然 fail-closed）。
+// 注意：getUrl() 嘅回報值唔係「部署網址」嘅權威，所以只用作正規化後比對，唔會顯示或回傳給用戶。
+function canonicalServiceUrl_(u){
+  return String(u||'')
+    .replace(/^https:\/\/script\.google\.com\/a\/macros\/[^/]+(\/s\/)/, 'https://script.google.com/macros$1')
+    .replace(/^https:\/\/script\.google\.com\/a\/[^/]+(\/macros\/)/, 'https://script.google.com$1');
+}
 function verifySuperTicket(ticket){
   if(typeof ticket!=='string' || ticket.length>4096) return false;
   const lock=LockService.getScriptLock();
@@ -609,9 +626,10 @@ function verifySuperTicket(ticket){
     const cache=CacheService.getScriptCache();
     const cacheKey='super-ticket:'+hashPassword(ticket);
     if(cache.get(cacheKey)) return false;
+    // backend 保留原回報字串（票據仍然綁死登記字串），另附正規化形式供比對端接受兩種寫法
     const response=UrlFetchApp.fetch(SUPER_VERIFY_URL, {
       method:'post', contentType:'application/json', muteHttpExceptions:true,
-      payload:JSON.stringify({ticket:ticket, apikey:getApiKey(), backend:ScriptApp.getService().getUrl()})
+      payload:JSON.stringify({ticket:ticket, apikey:getApiKey(), backend:ScriptApp.getService().getUrl(), backendCanonical:canonicalServiceUrl_(ScriptApp.getService().getUrl())})
     });
     if(response.getResponseCode()!==200 || JSON.parse(response.getContentText()).ok!==true) return false;
     cache.put(cacheKey,'used',120);
@@ -862,14 +880,27 @@ const APPLY_ROLES = ['member','branch_leader'];
 // INITIALIZED_GS_VERSION（Script Property）只在 initializeSheets() 成功走完最後一步才寫入，
 // 表示「此 GS 版本的初始化已完成」。initializeSheets() 只做增補（缺表／缺欄位標題／缺預設管理員），
 // 不刪除、不改寫任何既有用戶、進度、紀錄或金鑰資料（見 docs/LEADER_GUIDE.md「資料保全規則」）。
-const GS_VERSION = '5.2.4';
-const GS_RELEASE_DATE = '2026-11-02';
-const GS_INIT_REQUIRED = false;
+const GS_VERSION = '5.3.0';
+const GS_RELEASE_DATE = '2026-11-03';
+const GS_INIT_REQUIRED = true;
 const GS_INIT_PROP = 'INITIALIZED_GS_VERSION';
 function gsVersionInfo_(){
   let initialized='';
   try{ initialized=String(PropertiesService.getScriptProperties().getProperty(GS_INIT_PROP)||''); }catch(e){}
   return {gsVersion:GS_VERSION, gsReleaseDate:GS_RELEASE_DATE, initRequired:GS_INIT_REQUIRED, initializedGsVersion:initialized};
+}
+// 未初始化時唔可以扮完成（GS 5.3.0）：
+// 選單「🔑 顯示 API KEY（交 ADMIN）」只讀 Script Properties，getApiKey() 會即時生成並持久化 API_KEY，
+// 所以用戶可以在 initializeSheets() 之前攞到一條「睇落正常」嘅 Key，以為接入完成（實際一張表都未建）。
+// 呢個 helper 只產生警告文字：Key 照樣顯示，但會講明暫時未可用＋唯一嘅完成步驟（選單「🔧 初始化／更新」）。
+function initStatusWarningLines_(){
+  const info = gsVersionInfo_();
+  if (info.initRequired && info.initializedGsVersion !== info.gsVersion) {
+    return ['⚠️ 尚未完成初始化／更新（此 API Key 暫時未可用）',
+            '請先執行選單「🔧 初始化／更新」一次（等同 initializeSheets()）；',
+            '只會補建缺少的工作表及預設管理員，不會刪改任何既有資料。', ''];
+  }
+  return [];
 }
 // 表頭只在「該格完全空白」時才寫入，絕不覆蓋既有欄名
 function setHeaderIfEmpty_(sheet, col, label){
@@ -2660,6 +2691,8 @@ function onOpen() {
   try {
     const ui = SpreadsheetApp.getUi();
     ui.createMenu('🔗 旅系統')
+      .addItem('🔧 初始化／更新（執行 initializeSheets）', 'menuInitializeSheets')
+      .addSeparator()
       .addItem('📤 匯出 JSON（含 hash）', 'menuExportUsersJson')
       .addItem('📥 匯入 JSON（upsertUser 直插 hash）', 'menuImportUsersJson')
       .addSeparator()
@@ -2706,6 +2739,32 @@ function linkSummarizeResults(results, limit) {
     return '・' + String(r.ymis || '?') + '：' + String(r.error || '');
   }).join('\n');
 }
+// ===== 唯一嘅更新入口（GS 5.3.0）=====
+// 首次建表、以及每次貼上新 Code.gs 之後，用戶只需要按呢一個掣一次。
+// 佢只呼叫 initializeSheets()：只補建缺少嘅工作表／表頭欄／預設管理員，並喺全部成功後
+// 最後一步寫入初始化標記（INITIALIZED_GS_VERSION）。絕不刪除、覆寫、重置任何既有帳號、
+// 進度、徽章、履歷、設定，亦絕不更換既有 API_KEY —— 所以可以安心重跑。
+// 普通用戶唔需要（亦唔應該被要求去）搵任何其他維護函式。
+function menuInitializeSheets() {
+  let failure = '';
+  try { initializeSheets(); } catch (e) { failure = String((e && e.message) || e); }
+  if (failure) {
+    return linkAlert('🔧 初始化／更新', '❌ 未完成：' + failure + '\n\n未完成時不會寫入初始化標記；既有資料不受影響。請稍後再按一次本掣。');
+  }
+  const info = gsVersionInfo_();
+  const lines = [
+    '✅ 已完成初始化／更新（GS v' + info.gsVersion + '，初始化標記 ' + (info.initializedGsVersion || '—') + '）',
+    '',
+    '呢個掣就係唯一嘅更新步驟：',
+    '・首次建表、以及每次貼上新 Code.gs 並部署「新版本」後，按一次即可',
+    '・重跑只會補建缺少的工作表、表頭欄與預設管理員',
+    '・不會刪除或改寫任何既有帳號、進度、徽章、活動履歷、系統設定',
+    '・不會更換 API Key（沿用原有嗰條，已登記嘅接入不受影響）',
+    '',
+    '如需把 API Key 交 ADMIN，請按「🔑 顯示 API KEY（交 ADMIN）」。'
+  ];
+  return linkAlert('🔧 初始化／更新', lines.join('\n'));
+}
 function menuExportUsersJson() {
   const r = exportUsersJson();
   if (!r.success) return linkAlert('匯出 JSON', '匯出失敗：' + String(r.error || ''));
@@ -2737,7 +2796,9 @@ function menuShowLinkState() {
 }
 function menuShowLinkCredentials() {
   const key = getApiKey();
-  const message = 'API Key = ' + key +
+  // 未初始化時先講明「呢條 Key 暫時未可用」＋唯一嘅完成步驟；Key 照樣顯示（不影響既有流程）
+  const message = initStatusWarningLines_().join('\n') +
+    'API Key = ' + key +
     '\n\n正式部署 URL 請從 Google「部署」視窗取得；請自行在原有 ADMIN FORM 填寫旅團編號、名稱、URL 和 API Key。';
   return linkAlert('API KEY（交 ADMIN）', message);
 }

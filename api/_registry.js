@@ -1,6 +1,73 @@
 // 伺服器端環境變數 Registry；不讀取或公開旅團 JSON。
+// 刻意零內部依賴（唔 import 其他 api 模組）：本檔被 troops／portal／proxy／super 四個 function 共用，
+// 亦被 tests/serverless-registry.test.mjs 複製到「只有 env、冇 scripts/」嘅模擬 lambda 單獨執行。
+import { createHash, timingSafeEqual } from 'node:crypto';
+
 // 已登記的 GAS /exec URL 白名單格式（只接受 HTTPS 正式部署 URL，不接受 /dev）
 const EXEC_URL_RE = /^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]{10,}\/exec\/?$/i;
+
+// ===== /exec 網址正規化（GS 5.3.0）=====
+// 同一個部署有幾種等價寫法，視乎帳戶類型由 ScriptApp.getService().getUrl() 回報：
+//   標準（登記用）：  https://script.google.com/macros/s/<id>/exec
+//   Workspace 帳戶：  https://script.google.com/a/macros/<域名>/s/<id>/exec
+//   舊／手改寫法：    https://script.google.com/a/<域名>/macros/s/<id>/exec
+// 登記字串（TROOP_{ID}_BACKEND）同 GAS 回報字串形式唔同時，直接字串比對會永遠失敗，
+// 而且完全冇錯誤訊息講得出原因（用戶只見到「登入失敗」）。所以一律「正規化後再比較」。
+// 注意：getUrl() 嘅回報值唔係「部署網址」嘅權威，正規化只用於比對，唔會用作顯示或回傳。
+// 其他 host／解唔到嘅字串一律原樣回傳（fail-closed 由比對端把關，唔會放寬）。
+export function canonicalBackendUrl(value) {
+  const raw = typeof value === 'string' ? value.trim() : '';
+  if (!raw) return '';
+  let u;
+  try { u = new URL(raw); } catch (e) { return raw; }
+  if (u.protocol !== 'https:' || u.hostname.toLowerCase() !== 'script.google.com') return raw;
+  let pathname = u.pathname;
+  let m = pathname.match(/^\/a\/macros\/[^/]+(\/s\/.+)$/);
+  if (m) pathname = '/macros' + m[1];
+  else {
+    m = pathname.match(/^\/a\/[^/]+(\/macros\/s\/.+)$/);
+    if (m) pathname = m[1];
+  }
+  return u.protocol + '//' + u.hostname + pathname;
+}
+
+// 時序安全字串比對（與 api/_super.js 嘅密鑰比對同語義；本地實作以保持本檔零內部依賴）
+const sha256Digest = (text) => createHash('sha256').update(String(text), 'utf8').digest();
+function sameUrlText(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const da = sha256Digest(a);
+  const db = sha256Digest(b);
+  return da.length === db.length && timingSafeEqual(da, db);
+}
+
+// 比對用嘅形式（尾斜線視同同一形式；只影響比對，不改寫任何已登記設定）
+function compareForm(value) {
+  return String(value === undefined || value === null ? '' : value).trim().replace(/\/+$/, '');
+}
+
+// 登記字串嘅等價形式集合（登記字串＋正規化字串）
+export function backendForms(backend) {
+  const forms = new Set();
+  for (const v of [compareForm(backend), compareForm(canonicalBackendUrl(backend))]) {
+    if (v) forms.add(v);
+  }
+  return [...forms];
+}
+
+// 驗票端比對：「登記字串」原樣接受，或者**兩邊正規化後相等**即接受
+//（登記用標準寫法、GAS 回報 /a/macros/<域名>/s/<id>/exec，或者反過來，都算同一個部署）。
+// 其餘一律拒絕：換部署 ID、改一個 byte、空字串、非 script.google.com 全部 fail-closed。
+export function backendMatches(backend, supplied) {
+  const p = compareForm(supplied);
+  if (!p) return false;
+  for (const form of backendForms(backend)) {
+    if (sameUrlText(form, p)) return true;
+  }
+  const registeredCanonical = compareForm(canonicalBackendUrl(backend));
+  const suppliedCanonical = compareForm(canonicalBackendUrl(p));
+  if (!registeredCanonical || !suppliedCanonical) return false;
+  return sameUrlText(registeredCanonical, suppliedCanonical);
+}
 
 // 正規化 origin：只接受 http/https，並用 URL.origin 統一（小寫 host、去掉 path / query / hash）
 // 用於 portalOrigin（主系統網址）比對，容許管理員填 "https://hub.example/app/" 這類寫法。

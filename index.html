@@ -474,15 +474,15 @@ a:hover{text-decoration:underline}
         <p style="font-size:11px;margin-top:8px;background:#fff;padding:6px;border-radius:6px"><b>重點：有主系統 ≠ 一定要接上本系統</b>，可自由選擇獨立用或接上，兩條路並存不衝突。藉此告訴用家有更大平台可用。</p>
       </div>
 
-      <div class="info-card"><h3>🗺️ 部署流程</h3><p>正式 URL 從 Google 部署視窗取得；initializeSheets 與旅系統選單只顯示 API Key。資料請填入原有 ADMIN FORM。</p></div>
+      <div class="info-card"><h3>🗺️ 部署流程</h3><p>正式 URL 從 Google 部署視窗取得；選單「🔧 初始化／更新」與「🔑 顯示 API KEY（交 ADMIN）」只顯示 API Key。資料請填入原有 ADMIN FORM。</p></div>
       -->
 
       <div class="tutorial">
         <div class="steps">
           <div class="step"><div class="step-number">1</div><div class="step-content"><h4>共通：下載後端程式碼 (單一檔案版)</h4><p>包含待批、其他獎章、批量、PNG、私隱開關</p><a href="apps-script/Code.gs" download="Code.gs" class="btn btn-primary btn-sm" style="margin-top:6px">⬇️ 下載 Code.gs (最新)</a></div></div>
-          <div class="step"><div class="step-number">2</div><div class="step-content"><h4>共通：建立 Google Sheet 並部署</h4><p><b>2.1</b> 建新試算表<br><b>2.2</b> 擴充功能→Apps Script，貼上 Code.gs<br><b>2.3</b> 儲存→執行 initializeSheets，授權並取得 API Key（初始化不要求旅團編號）<br><b>2.4</b> 部署為網頁應用程式（執行身分：我；存取權：任何人）；從 Google 部署視窗複製正式 URL</p></div></div>
+          <div class="step"><div class="step-number">2</div><div class="step-content"><h4>共通：建立 Google Sheet 並部署</h4><p><b>2.1</b> 建新試算表<br><b>2.2</b> 擴充功能→Apps Script，貼上 Code.gs<br><b>2.3</b> 儲存→喺試算表選單「🔗 旅系統 → 🔧 初始化／更新」按一次，授權並取得 API Key（初始化不要求旅團編號）<br><b>2.4</b> 部署為網頁應用程式（執行身分：我；存取權：任何人）；從 Google 部署視窗複製正式 URL</p></div></div>
           <div class="step"><div class="step-number">3</div><div class="step-content"><h4>提交給 roverbadge 管理員</h4><p>在原有 ADMIN FORM 自行填寫旅團編號、名稱、從 Google 部署視窗複製的 URL，以及 API Key。不要把 URL 貼到 Apps Script 或 Sheet 的新設定。</p></div></div>
-          <div class="step"><div class="step-number">4</div><div class="step-content"><h4>首次登入（預設管理員帳號）</h4><p>initializeSheets 跑完會自動建立預設管理員。登記完成後首頁揀該旅團卡片 → 用「👤 成員」分頁登入（YMIS 登入，唔好用「👨‍💼 領袖」＝Email 分頁）：<br><b style="font-size:13px">YMIS 1111111111　密碼 changeme</b><br>首次登入會強制改密碼（最少 4 位）。之後喺「用戶管理」開返各領袖自己嘅帳號並設角色／權限，喺「審批中心」批成員申請。</p></div></div>
+          <div class="step"><div class="step-number">4</div><div class="step-content"><h4>首次登入（預設管理員帳號）</h4><p>選單「🔧 初始化／更新」跑完會自動建立預設管理員。登記完成後首頁揀該旅團卡片 → 用「👤 成員」分頁登入（YMIS 登入，唔好用「👨‍💼 領袖」＝Email 分頁）：<br><b style="font-size:13px">YMIS 1111111111　密碼 changeme</b><br>首次登入會強制改密碼（最少 4 位）。之後喺「用戶管理」開返各領袖自己嘅帳號並設角色／權限，喺「審批中心」批成員申請。</p></div></div>
           <!-- [主系統暫時隱藏 2026-10] 軌道B（接上主系統）未開放。重啟方法：解除本註解及上方介紹卡註解，重排步驟號（現時 4=首次登入、5=私隱選擇），詳見 CHANGE_LOG.md：
           <div class="step"><div class="step-number">4</div><div class="step-content"><h4>軌道B：有主系統並想接上 - 額外提交給主系統管理員</h4><p>告知主系統管理員旅團編號：旅團設定→元件設定 roverbadge 卡片只需設 u 參數（backend/apikey 不用；就算 URL 帶入亦會被忽略）。之後成員點 Dashboard 卡片自動帶入 ?u=0082&role=&from=portal&src=主系統網址&embed=1（ymis 可省略），經伺服器驗證來源及角色後免密碼進入</p></div></div>
           -->
@@ -518,7 +518,7 @@ a:hover{text-decoration:underline}
       <h2 style="font-size:18px;color:var(--maroon);margin-bottom:12px">📦 版本更新紀錄（未來用於新版本後端GS及功能改動）</h2>
       <div class="info-card" style="border-left-color:var(--blue);background:var(--blue-light)">
         <h3 style="color:var(--blue)">框架保留，內容已精簡（依你要求移除舊修復資訊）</h3>
-        <p style="font-size:12px">此區未來用於：<br>• 新版本後端 Code.gs 下載（記得保有舊資料 - initializeSheets 不會清舊資料）<br>• 新版本新增功能和改動說明</p>
+        <p style="font-size:12px">此區未來用於：<br>• 新版本後端 Code.gs 下載（記得保有舊資料 - 選單「🔧 初始化／更新」只補缺失，不會清舊資料）<br>• 新版本新增功能和改動說明</p>
         <div style="margin-top:8px;font-size:11px;color:var(--text-light)">COPYRIGHT 2026 Scout System</div>
       </div>
       <div class="info-section" style="margin-top:12px">
@@ -949,7 +949,7 @@ const LANG_DICT={
   "最新：v5.0 FINAL": "Latest: v5.0 FINAL",
   "• 目前 v5.0 FINAL 已穩定，測試完成": "• v5.0 FINAL is stable and fully tested",
   "• 新版本新增功能和改動說明": "• New features and changes in this version",
-  "• 新版本後端 Code.gs 下載（記得保有舊資料 - initializeSheets 不會清舊資料）": "• New backend Code.gs download (your old data is kept - initializeSheets does not clear old data)",
+  "• 新版本後端 Code.gs 下載（記得保有舊資料 - 選單「🔧 初始化／更新」只補缺失，不會清舊資料）": "• New backend Code.gs download (your old data is kept - the menu item \"🔧 Initialize / Update\" only adds what is missing and never clears old data)",
   "框架保留，內容已精簡（依你要求移除舊修復資訊）": "Framework kept, content streamlined (old fix notes removed per your request)",
   "🆕 v5.1 新增": "🆕 New in v5.1",
   "此區未來用於：": "This section will be used for:",
@@ -995,7 +995,7 @@ const LANG_DICT={
   "⬇️ 下載 Code.gs (最新)": "⬇️ Download Code.gs (latest)",
   "擴充功能→Apps Script，貼上 Code.gs": "Extensions → Apps Script, paste Code.gs",
   "儲存→執行 initializeSheets，授權，複製 API Key": "Save → run initializeSheets, authorise, copy the API Key",
-  "儲存→執行 initializeSheets，授權並取得 API Key（初始化不要求旅團編號）": "Save → run initializeSheets, authorise and get the API Key (no Group ID is required first)",
+  "儲存→喺試算表選單「🔗 旅系統 → 🔧 初始化／更新」按一次，授權並取得 API Key（初始化不要求旅團編號）": "Save → press \"🔗 Troop System → 🔧 Initialize / Update\" once in the Sheet menu, authorise and get the API Key (no Group ID is required first)",
   "部署為網頁應用程式（執行身分：我；存取權：任何人）；從 Google 部署視窗複製正式 URL": "Deploy as a web app (execute as me; access: anyone); copy the official URL from the Google deployment dialog",
   "共通：下載 Code.gs → 建 Sheet → 執行 initializeSheets → 部署；只從 initializeSheets／旅系統選單取得 API Key。URL 請由 Google 部署視窗取得，再填入原有 ADMIN FORM。": "Common: download Code.gs → create a Sheet → run initializeSheets → deploy. Get only the API Key from initializeSheets or the Rover System menu. Get the URL from the Google deployment dialog and enter it in the existing ADMIN FORM.",
   "部署為網頁應用程式 (執行身分我，存取權任何人)，複製 URL (/exec)": "Deploy as a web app (execute as me, access: anyone), copy the URL (/exec)",
@@ -1798,7 +1798,7 @@ const LANG_DICT={
   "問題回報 / 意見回饋（經 Scout Admin 統一回收，可匿名）": "Report an issue / send feedback (via Scout Admin, anonymous welcome)",
   "⚠️ 非官方聲明：本系統為獨立開發的非官方工具，並非香港童軍總會官方產品，與總會並無隸屬或贊助關係。": "⚠️ Unofficial notice: this system is an independently developed unofficial tool. It is NOT an official product of the Scout Association of Hong Kong and has no affiliation with or sponsorship from the Association.",
   "私隱：普通成員預設只看自己，能否看其他成員由團長開放。": "Privacy: members only see themselves by default; the Group Scout Leader decides whether they can view others.",
-  "本節點係進度系統（下游），唔設支部表。上下游接駁經 Google Sheet 選單「🔗 旅系統」操作（sig 係 GAS→GAS 直連，唔經本 proxy）：➕ 登記下游（URL + SHEET KEY）→ 📡 測試下游連線 → 📤 匯出 JSON（含 hash，Drive 私人檔）→ 📥 匯入 JSON → 🚪 閂下游直接入口 → 👤 為下游開戶。新節點接入：initializeSheets／選單「🔑 顯示 API KEY（交 ADMIN）」只提供 API Key；URL 由 Google 部署視窗取得，再填原有 ADMIN FORM。": "This node is a Progress System (downstream); it has no Branch sheet. Upstream/downstream linking is done via the Google Sheet menu \"🔗 Troop System\" (sig is a direct GAS→GAS connection, not via this proxy): ➕ Register downstream (URL + SHEET KEY) → 📡 Test downstream connection → 📤 Export JSON (with hash, private Drive file) → 📥 Import JSON → 🚪 Close downstream direct entry → 👤 Create accounts for downstream. New node onboarding: initializeSheets and menu \"🔑 Show API KEY (for the ADMIN)\" provide only the API Key; get the URL from the Google deployment dialog and enter it in the existing ADMIN FORM.",
+  "本節點係進度系統（下游），唔設支部表。上下游接駁經 Google Sheet 選單「🔗 旅系統」操作（sig 係 GAS→GAS 直連，唔經本 proxy）：➕ 登記下游（URL + SHEET KEY）→ 📡 測試下游連線 → 📤 匯出 JSON（含 hash，Drive 私人檔）→ 📥 匯入 JSON → 🚪 閂下游直接入口 → 👤 為下游開戶。新節點接入：選單「🔧 初始化／更新」／「🔑 顯示 API KEY（交 ADMIN）」只提供 API Key；URL 由 Google 部署視窗取得，再填原有 ADMIN FORM。": "New node onboarding: the menu items \"🔧 Initialize / Update\" and \"🔑 Show API KEY (for the ADMIN)\" provide only the API Key; get the URL from the Google deployment dialog and enter it in the existing ADMIN FORM.",
   "⚠️ 直接入口開關（ALLOW_LOCAL_LOGIN）只由上游（旅／支部系統）選單／sig 遠端操作，或在本節點 GAS Script Properties 手動設定；本 APP 屬下游系統，介面內不設此掣。誤閂而鎖死時：由上游選單「🚪 下游直接入口」重開。": "⚠️ The direct-entry switch (ALLOW_LOCAL_LOGIN) is operated only by the upstream (Troop/Branch system) menu via sig, or set manually in this node's GAS Script Properties. This app is a downstream system and does not offer this switch in its UI. If it is closed by mistake and locks everyone out: re-open it from the upstream menu \"🚪 Downstream direct entry\".",
   "問題回報 / 意見回饋（經 Scout Admin 統一回收；可匿名，留聯絡方式可收通知）": "Report an issue / send feedback (via Scout Admin; anonymous submissions are welcome, add contact details for a reply)",
   "🐛💬 回報問題／意見": "🐛💬 Report a problem / feedback",
@@ -1859,7 +1859,7 @@ const LANG_DICT={
   "📋 新旅團部署指南 (10分鐘)": "📋 New Group Deployment Guide (10 min)",
   "提交給 roverbadge 管理員": "Submit to the roverbadge admin",
   "首次登入（預設管理員帳號）": "First sign-in (default admin account)",
-  "initializeSheets 跑完會自動建立預設管理員。登記完成後首頁揀該旅團卡片 → 用「👤 成員」分頁登入（YMIS 登入，唔好用「👨‍💼 領袖」＝Email 分頁）：": "initializeSheets automatically creates a default admin. Once registration is complete, pick the Group card on the home page → sign in via the \"👤 Member\" tab (YMIS sign-in, not the \"👨‍💼 Leader\" = Email tab):",
+  "選單「🔧 初始化／更新」跑完會自動建立預設管理員。登記完成後首頁揀該旅團卡片 → 用「👤 成員」分頁登入（YMIS 登入，唔好用「👨‍💼 領袖」＝Email 分頁）：": "The menu item \"🔧 Initialize / Update\" automatically creates a default admin.",
   "首次登入會強制改密碼（最少 4 位）。之後喺「用戶管理」開返各領袖自己嘅帳號並設角色／權限，喺「審批中心」批成員申請。": "The first sign-in forces a password change (min 4 characters). Then create each leader's own account with roles/permissions in \"User Management\", and approve member applications in the \"Approval Centre\".",
   "若旅團重私隱，成員預設只看自己；若想互相鼓勵，團長可在用戶管理→系統設定開啟「允許成員互相查看進度」": "For privacy-focused Groups, members see only themselves by default; for mutual encouragement, the Group Scout Leader can enable \"Allow members to view each other's progress\" in User Management → System Settings",
   "將旅團編號、名稱、URL、API Key 交 roverbadge 管理員登記": "Send the Group ID, name, URL and API Key to the roverbadge admin for registration",
@@ -1903,17 +1903,17 @@ const LANG_DICT={
   "核對中…": "Checking…",
   "無法連線核對，請稍後按「重新檢查」": "Could not check. Please press \"Re-check\" later",
   "⚠️ GS 未更新：本旅團 Apps Script 仍是舊版，請先更新 Code.gs": "⚠️ GS not updated: this troop's Apps Script is still an old version. Please update Code.gs first",
-  "⚠️ GS 已更新但未初始化：必須執行一次 initializeSheets()": "⚠️ GS updated but not initialized: you must run initializeSheets() once",
+  "⚠️ GS 已更新但未初始化：請按選單「🔗 旅系統 → 🔧 初始化／更新」一次": "⚠️ GS updated but not initialized: press the menu \"🔗 Troop System → 🔧 Initialize / Update\" once",
   "✅ 已核對：GS 已是最新版本，初始化已完成": "✅ Checked: GS is up to date and initialization is complete",
-  "必須執行一次 initializeSheets()": "You must run initializeSheets() once",
-  "🛡️ 資料保全：更新 Code.gs 不會清除既有資料；initializeSheets() 只補缺少的表格與欄位標題，不刪除、不改寫用戶、進度、紀錄或金鑰。": "🛡️ Data safety: updating Code.gs does not delete existing data. initializeSheets() only adds missing sheets and column headers; it does not delete or change any users, progress, records or keys.",
+  "必須按一次選單「🔗 旅系統 → 🔧 初始化／更新」（只補缺失，不刪改資料）": "Press the menu \"🔗 Troop System → 🔧 Initialize / Update\" once (it only adds what is missing and never changes existing data)",
+  "🛡️ 資料保全：更新 Code.gs 不會清除既有資料；選單「🔧 初始化／更新」只補缺少的表格與欄位標題，不刪除、不改寫用戶、進度、紀錄或金鑰，亦不會更換 API Key。": "🛡️ Data safety: updating Code.gs does not delete existing data. The menu item \"🔧 Initialize / Update\" only adds missing sheets and column headers; it does not delete or change any users, progress, records or keys, and it never changes the API Key.",
   "⬇️ 下載 Code.gs": "⬇️ Download Code.gs",
   "🔄 重新檢查": "🔄 Re-check",
   "更新步驟": "Update steps",
   "下載 Code.gs（按下方按鈕）": "Download Code.gs (use the button below)",
   "開啟旅團試算表 →「擴充功能」→「Apps Script」，全選刪除舊碼，貼上新 Code.gs 並儲存": "Open the troop's spreadsheet → \"Extensions\" → \"Apps Script\". Select all, delete the old code, paste the new Code.gs and save",
   "「部署」→「管理部署作業」→ 編輯 ✏️ →「版本」選「新版本」→「部署」（沿用原有 Web App 網址，不要另建）": "\"Deploy\" → \"Manage deployments\" → Edit ✏️ → \"Version\": \"New version\" → \"Deploy\" (keep the existing Web App URL; do not create a new one)",
-  "若需要初始化：在 Apps Script 函式選單選 initializeSheets，執行一次（首次需授權）": "If initialization is needed: choose initializeSheets in the Apps Script function menu and run it once (authorise on first run)",
+  "初始化／更新：喺旅團試算表選單「🔗 旅系統 → 🔧 初始化／更新」按一次（首次需授權）": "Initialize / update: in the Group Sheet menu press \"🔗 Troop System → 🔧 Initialize / Update\" once (authorise on first run)",
   "回到本頁按「重新檢查」，出現綠色「已核對」即完成": "Come back here and press \"Re-check\"; the green \"Checked\" badge means done",
   "請先選擇旅團並登入": "Please select a troop and log in first",
 };
@@ -2232,11 +2232,11 @@ function gsNoticeHtml(where){
   else if(gsCheckState==='error') badge='<div class="gs-badge gs-warn">'+tr('無法連線核對，請稍後按「重新檢查」')+'</div>';
   else if(st.code==='unchecked') badge='<div class="gs-badge gs-info">'+tr(where==='home'?'請先選擇旅團並登入，即可核對本旅團 GS 版本':'尚未核對，請按「重新檢查」')+'</div>';
   else if(st.code==='outdated') badge='<div class="gs-badge gs-danger">'+tr('⚠️ GS 未更新：本旅團 Apps Script 仍是舊版，請先更新 Code.gs')+'</div>';
-  else if(st.code==='needs_init') badge='<div class="gs-badge gs-warn">'+tr('⚠️ GS 已更新但未初始化：必須執行一次 initializeSheets()')+'</div>';
+  else if(st.code==='needs_init') badge='<div class="gs-badge gs-warn">'+tr('⚠️ GS 已更新但未初始化：請按選單「🔗 旅系統 → 🔧 初始化／更新」一次')+'</div>';
   else badge='<div class="gs-badge gs-ok">'+tr(!L.initRequired?'✅ 已核對：本次更新毋須重跑初始化':'✅ 已核對：GS 已是最新版本，初始化已完成')+'</div>';
   const meta=(where!=='home' && gsCheckInfo && st.code!=='unchecked')
     ? '<div class="gs-meta">'+tr('本旅團 GS 版本')+'：v'+escapeHtmlText(st.gsVersion||'—')+'　'+tr('初始化標記')+'：'+escapeHtmlText(st.initializedGsVersion||'—')+'</div>' : '';
-  const mustInit=needInit ? '<div class="gs-must-init">'+tr('必須執行一次 initializeSheets()')+'</div>' : '';
+  const mustInit=needInit ? '<div class="gs-must-init">'+tr('必須按一次選單「🔗 旅系統 → 🔧 初始化／更新」（只補缺失，不刪改資料）')+'</div>' : '';
   return '<div class="gs-notice">'+
     '<h3>'+tr('📢 最新版本公告')+'</h3>'+
     '<div>'+tr('GS 最新版本')+'：<b>v'+escapeHtmlText(L.version)+'</b>（'+escapeHtmlText(L.releaseDate)+'）</div>'+
@@ -2246,10 +2246,10 @@ function gsNoticeHtml(where){
       '<li>'+tr('下載 Code.gs（按下方按鈕）')+'</li>'+
       '<li>'+tr('開啟旅團試算表 →「擴充功能」→「Apps Script」，全選刪除舊碼，貼上新 Code.gs 並儲存')+'</li>'+
       '<li>'+tr('「部署」→「管理部署作業」→ 編輯 ✏️ →「版本」選「新版本」→「部署」（沿用原有 Web App 網址，不要另建）')+'</li>'+
-      '<li>'+tr('若需要初始化：在 Apps Script 函式選單選 initializeSheets，執行一次（首次需授權）')+'</li>'+
+      '<li>'+tr('初始化／更新：喺旅團試算表選單「🔗 旅系統 → 🔧 初始化／更新」按一次（首次需授權）')+'</li>'+
       '<li>'+tr('回到本頁按「重新檢查」，出現綠色「已核對」即完成')+'</li>'+
     '</ol>'+
-    '<div class="gs-data-safe">'+tr('🛡️ 資料保全：更新 Code.gs 不會清除既有資料；initializeSheets() 只補缺少的表格與欄位標題，不刪除、不改寫用戶、進度、紀錄或金鑰。')+'</div>'+
+    '<div class="gs-data-safe">'+tr('🛡️ 資料保全：更新 Code.gs 不會清除既有資料；選單「🔧 初始化／更新」只補缺少的表格與欄位標題，不刪除、不改寫用戶、進度、紀錄或金鑰，亦不會更換 API Key。')+'</div>'+
     '<div class="gs-actions">'+
       '<a class="btn btn-sm btn-outline" href="'+L.codeUrl+'" download>'+tr('⬇️ 下載 Code.gs')+'</a>'+
       '<button class="btn btn-sm" type="button" onclick="gsRecheck()">'+tr('🔄 重新檢查')+'</button>'+
@@ -4492,7 +4492,7 @@ function renderLogsTab(){
     c.innerHTML=`<div class="info-section" style="border-left:4px solid var(--orange);background:#FFFBEB">
       <h3>📅 活動履歷（服務／活動／訓練班紀錄）</h3>
       <p style="font-size:13px;margin-top:6px">⚠️ 此旅團後端尚未升級到 <b>v8.2</b>，暫未能使用活動履歷（成員申報→領袖審批）。進度、審批、用戶管理等現有功能完全不受影響。</p>
-      <p style="font-size:12px;color:var(--text-light);margin-top:8px">升級方法（約 5 分鐘）：Apps Script 貼上最新 Code.gs → 管理部署 → 編輯 → 版本選「新版本」→ 部署。URL 不變。<b>後端已在 v8.2 或以上：無需執行 initializeSheets()，Sheet 結構與資料完全不動。</b>只有 v8.2 之前的舊後端才需要執行一次 initializeSheets() 補建「活動履歷」及「待批履歷」工作表（只會補建缺少的工作表，不會更改或清除現有資料）。</p>
+      <p style="font-size:12px;color:var(--text-light);margin-top:8px">升級方法（約 5 分鐘）：Apps Script 貼上最新 Code.gs → 管理部署 → 編輯 → 版本選「新版本」→ 部署。URL 不變。<b>每次更新後請按一次選單「🔗 旅系統 → 🔧 初始化／更新」（等同 initializeSheets()）。</b>佢只會補建缺少的工作表（例如「活動履歷」及「待批履歷」）與欄位標題，不會更改或清除現有資料，亦不會更換 API Key。</p>
       <button class="btn btn-sm btn-secondary" style="margin-top:8px" onclick="refreshLogRecords()">🔄 重新檢查</button>
     </div>`;
     return;
@@ -4720,7 +4720,7 @@ async function submitLogRecord(){
       // 領袖：直接寫入活動履歷
       const d=await apiRequest('saveLogRecord',{token:currentToken,records,recorder_name:currentUser.name});
       if(!d.success){
-        throw new Error(/工作表不存在|Unknown action/i.test(d.error||'')?'旅團後端未升級 v8.2：請通知管理員更新 Code.gs 並執行 initializeSheets()':(d.error||'儲存失敗'));
+        throw new Error(/工作表不存在|Unknown action/i.test(d.error||'')?'旅團後端未升級 v8.2：請通知管理員更新 Code.gs 並按選單「🔗 旅系統 → 🔧 初始化／更新」一次':(d.error||'儲存失敗'));
       }
       (d.results||[]).forEach((res,i)=>{
         if(!res.success) return;
@@ -4743,7 +4743,7 @@ async function submitLogRecord(){
         res=await apiRequest('submitLogRequest',{token:currentToken,records});
       }
       if(!res.success){
-        throw new Error(/工作表不存在|Unknown action/i.test(res.error||'')?'旅團後端未升級 v8.2：請通知管理員更新 Code.gs 並執行 initializeSheets()':(res.error||'送出失敗'));
+        throw new Error(/工作表不存在|Unknown action/i.test(res.error||'')?'旅團後端未升級 v8.2：請通知管理員更新 Code.gs 並按選單「🔗 旅系統 → 🔧 初始化／更新」一次':(res.error||'送出失敗'));
       }
       await loadPendingLogRequests();
       closeModal('logRecordModal'); renderLogsTab(); renderRequestsTab();
@@ -5124,7 +5124,7 @@ async function loadUsers(){
       let h=roleExplain+systemSettingHtml+mockTool+`<div class="info-section" style="font-size:11px;border-left-color:var(--orange);background:#FFF7ED;margin-bottom:8px">${tr('團長全團只可有一位。')}${gslHolder?tr('現任：')+gslHolder.name+'。'+tr('如需更換，請先將現任團長轉為其他角色。'):tr('目前未有團長。')}</div>
       <div class="info-section" style="border-left-color:var(--maroon);background:#FFF5F5">
         <h3 style="color:var(--maroon)">🔗 旅系統接駁（進度系統節點，上下游 sig 直連）</h3>
-        <p style="font-size:11px;color:var(--text-light)">本節點係進度系統（下游），唔設支部表。上下游接駁經 Google Sheet 選單「🔗 旅系統」操作（sig 係 GAS→GAS 直連，唔經本 proxy）：➕ 登記下游（URL + SHEET KEY）→ 📡 測試下游連線 → 📤 匯出 JSON（含 hash，Drive 私人檔）→ 📥 匯入 JSON → 🚪 閂下游直接入口 → 👤 為下游開戶。新節點接入：initializeSheets／選單「🔑 顯示 API KEY（交 ADMIN）」只提供 API Key；URL 由 Google 部署視窗取得，再填原有 ADMIN FORM。</p>
+        <p style="font-size:11px;color:var(--text-light)">本節點係進度系統（下游），唔設支部表。上下游接駁經 Google Sheet 選單「🔗 旅系統」操作（sig 係 GAS→GAS 直連，唔經本 proxy）：➕ 登記下游（URL + SHEET KEY）→ 📡 測試下游連線 → 📤 匯出 JSON（含 hash，Drive 私人檔）→ 📥 匯入 JSON → 🚪 閂下游直接入口 → 👤 為下游開戶。新節點接入：選單「🔧 初始化／更新」／「🔑 顯示 API KEY（交 ADMIN）」只提供 API Key；URL 由 Google 部署視窗取得，再填原有 ADMIN FORM。</p>
         <p style="font-size:11px;color:var(--text-light);margin-top:6px">⚠️ 直接入口開關（ALLOW_LOCAL_LOGIN）只由上游（旅／支部系統）選單／sig 遠端操作，或在本節點 GAS Script Properties 手動設定；本 APP 屬下游系統，介面內不設此掣。誤閂而鎖死時：由上游選單「🚪 下游直接入口」重開。</p>
       </div>
       <div class="info-section" style="border-left-color:var(--blue);background:var(--blue-light)">
