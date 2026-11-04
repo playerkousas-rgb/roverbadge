@@ -15,7 +15,7 @@
 - **用戶管理**：新增／編輯／停用／重設密碼（臨時密碼寄電郵或當面給，首次登入強制改密）、細緻權限 `allowed_badges`、私隱開關 `allow_member_view_others`（成員預設只看自己）、批量開戶（CSV／YMIS 自訂報表 PDF 瀏覽器內解密）
 - **🔑 忘記密碼（GS 5.2.3 起）**：登入頁自助式——輸入 YMIS 或登記電郵 → 寄 8 位一次性重設碼 → 即場設新密碼；重設碼只存 SHA-256、15 分鐘有效、5 次錯誤鎖定、不洩漏帳戶是否存在。詳見 [docs/PASSWORD_RESET.md](docs/PASSWORD_RESET.md)
 - **官方表格**：新制／舊制 PT/21、PT/22、PT/69 自動填寫，`.print-area` 雙面列印
-- **📖 ROVERBOOK 對接（GS 5.4.0 起）**：ROVERBOOK 是成員自己手機上的紀錄冊（前端），ROVERBADGE 是領袖統管（後端）。兩者只交換**進度**：成員交上來的 JSON／檔案即場剝走全部個資（電話、電郵、地址、生日、相片、簽名墨跡、緊急聯絡人），只留 `scoutId`＋項目＋日期寫入「紀錄冊核簽」；領袖可一頁看全團進度、**一次過頒發**（寫入「紀錄冊頒發」），成員按「取回我的進度」只拿回自己的資料。詳見 [docs/ROVERBOOK_BRIDGE.md](docs/ROVERBOOK_BRIDGE.md)
+- **📖 ROVERBOOK 對接（GS 5.4.0 起）**：ROVERBOOK 是成員自己手機上的紀錄冊（前端），ROVERBADGE 是領袖統管（後端）。兩者只交換**進度**：成員交上來的 JSON／檔案即場剝走全部個資（電話、電郵、地址、生日、相片、簽名墨跡、緊急聯絡人），只留 `scoutId`＋項目＋日期；而**成員自己簽的紀錄只會放入「紀錄冊待批」，領袖逐項／一次過 CONFIRM 之後才計入進度**（杜絕「自己簽完扮完成」）。「只加不減、但可以改」：較舊日期永不回寫。雙向信任：**BADGE → BOOK 無條件相信領袖已核實的紀錄（未核實的不錄入）；BOOK → BADGE 一律只當申請**，成員自稱已簽都會變待批。領袖可一頁看全團進度、**一次過頒發**（寫入「紀錄冊頒發」），成員按「取回我的進度」只拿回自己的資料。詳見 [docs/ROVERBOOK_BRIDGE.md](docs/ROVERBOOK_BRIDGE.md)
 - **其他獎章**併入進度頁底部；**考驗介紹**內建（每項 detail／assessment／tip／links）；**保護兒童**資源一鍵直達
 - **中／英一鍵切換**：`🌐 English` 按鈕即時全站切換（記喺 `localStorage: roverbadge_lang`）；分享連結可用 `?lang=en`／`?lang=zh` 鎖定語言
 - **🐛💬 回報 · 意見**：對接 [scout-admin](https://github.com/playerkousas-rgb/scout-admin) 統一回報（首頁／登入頁／登入後 header 三個入口），傳送狀態明確（傳送中 → 已確認／未能確認，防重複提交）

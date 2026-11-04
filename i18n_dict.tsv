@@ -1052,3 +1052,36 @@ RB1 二維碼要由 ROVERBOOK 自己解碼：請成員在 ROVERBOOK 按「匯出
 檔案不是有效 JSON	The file is not valid JSON
 請每行填：SCOUT ID, 獎章, 日期（YYYY-MM-DD）	Each line needs: SCOUT ID, badge, date (YYYY-MM-DD)
 對接模組未載入（assets/roverbook-bridge.js）	Bridge module not loaded (assets/roverbook-bridge.js)
+BOOK 日期	Book date
+以上項目仍未計入進度。請喺下面「待批」逐項或一次過按 ✅ 確認；BOOK 交上嚟嘅資料唔會自動變成已完成。	These items are NOT counted yet. Confirm them one by one (or all at once) with ✅ under “Pending”; data handed in from the BOOK never becomes completed by itself.
+全部確認	Confirm all
+同一日	Same date
+呢啲係成員喺 ROVERBOOK 自己標記嘅進度，全部未計入正式進度。確認後才會寫入「進度追蹤」並產生核簽；拒絕就唔會入帳。	These are progress marks the member made on their own device in ROVERBOOK and none of them count yet. Only after you confirm do they get written into “進度追蹤” with a sign-off; rejected items are never recorded.
+如果係團集會／考驗營「有參加就一次過簽」，請用「🏠 全團總覽 → 🚀 考驗營批量完成」或「📋 待批 → 批量批准」，唔需要經 ROVERBOOK；ROVERBOOK 只係成員自己擁有、出外可讀的紀錄冊。	For “everyone who attended gets signed off in one go” (meetings, challenge camps), use “🏠 Troop overview → 🚀 Camp bulk complete” or “📋 Pending → bulk approve”. You do not go through ROVERBOOK; the BOOK is simply the record book each member owns and can read on the go.
+差異	Difference
+已存在，略過	Already present, skipped
+已放入待批	Staged for confirmation
+待批（等領袖確認）	Pending (awaiting leader confirmation)
+待領袖確認（未計入進度）	Pending leader confirmation (not counted yet)
+成員在 ROVERBOOK 用「出示二維碼」揀「訓練進度」，領袖掃完之後（或成員自己貼上）會得到一段 RB1… 或以 { 開頭的 JSON。貼在下面即可；系統只會讀 SCOUT ID、項目 ID、完成日期，而且只會放入「待批」，要你確認才計入進度。	The member uses “show QR code → training progress” in ROVERBOOK; after scanning (or the member pasting it) you get an RB1… string or a JSON starting with {. Paste it below — only the SCOUT ID, item ID and completion date are read, and they are placed in “Pending” until you confirm them.
+拒絕所選	Reject selected
+新項目	New item
+暫無待批項目	Nothing pending
+未接收（格式／學制不符）	Not accepted (bad format / wrong scheme)
+確認所選（寫入進度）	Confirm selected (write to progress)
+請先勾選要拒絕的項目	Tick the items you want to reject
+請先勾選要確認的項目	Tick the items you want to confirm
+較後日期（會更新）	Later date (will update)
+較舊、未回寫（既有紀錄較後，已保留）	Older, not written back (existing record is later and was kept)
+較舊（預設不改）	Older (kept by default)
+📥 接收（放入待批）	📥 Receive (stage for confirmation)
+🔄 重新整理全團一覽同待批	🔄 Refresh troop overview and pending list
+BOOK 信任度	BOOK trust
+BOOK 顯示領袖已簽	BOOK says a leader signed
+BOOK 顯示領袖已簽（仍待你確認）	BOOK says a leader signed (still needs your confirmation)
+只確認 BOOK 顯示已簽的	🔏 Confirm only BOOK items marked leader-signed
+待批清單內沒有「BOOK 顯示領袖已簽」的項目	No leader-signed items in the pending list
+成員自己標記	Marked by the member
+成員自己標記（未經領袖）	Marked by the member (no leader yet)
+貼回 ROVERBOOK 時：這裡的「進度／核簽」＝領袖已核實，BOOK 會無條件採用；「待領袖確認」的項目 BOOK 只會顯示為申請中，不會當成完成。	When pasted back into ROVERBOOK: “progress / sign-offs” here are leader-verified and the BOOK adopts them as-is; items “awaiting leader confirmation” appear only as pending requests and never as completed.
+雙向信任規則：BADGE → BOOK 會無條件相信你在這裡核實過的紀錄（BOOK 只會採用已核實的項目，未核實的不會變成完成）；BOOK → BADGE 則一律不信——即使成員手機上寫住「已由領袖簽核」，都只會變成待你確認，因為成員部機可以改任何欄位。	Two-way trust rule: BADGE → BOOK trusts anything you verified here unconditionally (the BOOK only adopts verified items; unverified ones never become completed); BOOK → BADGE trusts nothing — even if the member’s phone claims “signed by a leader”, it only becomes something for you to confirm, because the member controls every field on that device.

@@ -112,7 +112,10 @@ test('bridge：ROVERBADGE → ROVERBOOK 只匯出進度，唔會夾帶個資', (
   assert.equal(out.schema, Bridge.SCHEMA_PROGRESS_V2);
   assert.deepEqual(out.progress, { 'L1-ACT-01': '2026-03-01' });
   assert.deepEqual(out.awards, { L1: '2026-04-01' });
-  assert.deepEqual(Object.keys(out).sort(), ['awards', 'exportedAt', 'privacy', 'progress', 'schema', 'scoutId', 'source', 'troopId', 'v']);
+  assert.deepEqual(Object.keys(out).sort(), ['awards', 'exportedAt', 'privacy', 'progress', 'schema', 'scoutId', 'signoffs', 'source', 'troopId', 'v', 'verified', 'verifiedBy']);
+  // 由 BADGE 匯出＝領袖核實過：BOOK 可以無條件採用（有 verified + 受信來源）
+  assert.equal(out.verified, true);
+  assert.ok(out.signoffs.every(x => x.verified === true && x.source === 'ROVERBADGE'));
 });
 
 test('bridge：sanitizeBridgePayload（代理層最後一道）只放行 scoutId／progress／grants', () => {
@@ -123,6 +126,53 @@ test('bridge：sanitizeBridgePayload（代理層最後一道）只放行 scoutId
   });
   assert.deepEqual(Object.keys(payload).sort(), ['grants', 'progress', 'scoutId']);
   assert.equal(payload.grants.length, 1);
+});
+
+// ---------- A2. 信任邊界（雙向） ----------
+test('信任：BADGE → BOOK 只信領袖核實過的項目，未核實的不錄入', () => {
+  const book = { progress: { 'L1-ACT-01': '2026-03-01' }, awards: {} };
+  const exported = {
+    schema: 'roverbadge.progress.roverbook.v2', verified: true,
+    signoffs: [
+      { id: 'L1-ACT-01', date: '2026-02-01', verified: true },   // 較舊 → 唔覆寫手機上的
+      { id: 'L1-UND-01', date: '2026-04-01', verified: true },   // 新 → 錄入
+      { id: 'L1-UND-02', date: '2026-04-02', verified: false }   // BADGE 都話未核實 → 唔錄入
+    ],
+    awards: { L1: '2026-05-01' }
+  };
+  const r = Bridge.applySignoff(book, exported);
+  assert.equal(r.progress['L1-ACT-01'], '2026-03-01', '只加不減：較舊唔可以蓋走手機紀錄');
+  assert.equal(r.progress['L1-UND-01'], '2026-04-01', '領袖核實過嘅新項目要錄入');
+  assert.equal(r.progress['L1-UND-02'], undefined, 'BADGE 標示未核實 → 不錄入');
+  assert.equal(r.awards.L1, '2026-05-01');
+  assert.equal(r.applied, 1);
+  assert.equal(r.kept, 1);
+  assert.ok(r.notes.some(n => n.itemId === 'L1-UND-02'));
+});
+
+test('信任：BOOK → BADGE 一律唔信成員自稱 verified（只會變待批）', () => {
+  const fake = {
+    member: { scoutId: SID },
+    progress: {
+      // 成員自己偽造「領袖已簽」——連來源都照抄
+      'L1-ACT-01': { date: '2026-03-01', verified: true, source: 'ROVERBADGE', assessor: '團長甲' },
+      // 完全冇核實資料
+      'L1-UND-01': '2026-03-02',
+      // verification 子物件寫法
+      'L1-UND-02': { date: '2026-03-03', verification: { by: '團長甲', source: 'roverbadge/signoff' } }
+    }
+  };
+  const r = Bridge.fromRoverBook(fake);
+  // 分類：有 trusted 來源＋verified 才算 leader-signed（仍然只係「BOOK 聲稱」）
+  assert.deepEqual(Object.keys(r.verified), ['L1-ACT-01', 'L1-UND-02']);
+  assert.deepEqual(Object.keys(r.claims), ['L1-UND-01']);
+  // 但兩種都有 trust 標記，BADGE 端一律入待批，唔會自動完成
+  const byId = Object.fromEntries(r.changes.map(c => [c.itemId, c.trust]));
+  assert.equal(byId['L1-ACT-01'], Bridge.TRUST_BASIS.SIGNED_BY_LEADER);
+  assert.equal(byId['L1-UND-01'], Bridge.TRUST_BASIS.MEMBER_CLAIM);
+  // trustOf：冇來源嘅 verified 一律唔信
+  assert.equal(Bridge.trustOf({ date: '2026-01-01', verified: true }).verified, false);
+  assert.equal(Bridge.trustOf('2026-01-01').verified, false);
 });
 
 // ---------- B. 後端（真跑 Code.gs） ----------
@@ -151,7 +201,7 @@ test('後端：initializeSheets 建立「紀錄冊核簽／紀錄冊頒發」而
   }
 });
 
-test('後端 bookSync：寫入進度，個資一律唔會入表（包括請求夾帶）', () => {
+test('後端 bookSync：只入「紀錄冊待批」，個資一律唔會入表（包括請求夾帶）', () => {
   const { env, token } = leaderEnv();
   const book = memberBook();
   const r = env.call({
@@ -168,16 +218,20 @@ test('後端 bookSync：寫入進度，個資一律唔會入表（包括請求�
     holderSignature: book.holderSignature, nameZh: book.member.nameZh
   });
   assert.equal(r.success, true, JSON.stringify(r));
-  assert.equal(r.written, 2, '只應寫入 2 項有效進度');
+  assert.equal(r.staged, 2, '只應有 2 項有效進度入待批');
+  assert.equal(r.needsConfirm, true);
   assert.ok(r.rejected.length >= 2, '壞項目／壞日期要被拒絕：' + JSON.stringify(r.rejected));
   assert.ok(r.privacy.removedCount >= 5, '應報告剝走的個資欄位：' + JSON.stringify(r.privacy));
-  // 回傳的 progress 係「成員喺進度追蹤的實際狀態」——核簽寫入「紀錄冊核簽」，
-  // 要領袖按「確認寫入雲端」才會計入正式進度（單一權威來源：領袖）
-  assert.ok(env.ss.sheets.get('紀錄冊核簽').rows.length >= 3, '應寫入核簽表');
-  assert.equal(typeof r.progress, 'object');
 
-  // 只檢查「由 ROVERBOOK 寫入」的三張表；Users 表的電郵是領袖自己開戶時填的，與 ROVERBOOK 無關
-  const dump = ['紀錄冊核簽', '紀錄冊頒發', '進度追蹤']
+  // ★ 關鍵：成員交上嚟嘅資料**唔可以**變成正式進度或核簽
+  assert.deepEqual(r.progress, {}, 'BOOK 交上嚟唔可以當成已完成');
+  assert.equal((env.ss.sheets.get('紀錄冊核簽').rows.length), 1, '核簽表仍只有表頭（未 CONFIRM）');
+  assert.equal((env.ss.sheets.get('進度追蹤').rows.length), 1, '進度追蹤仍只有表頭（未 CONFIRM）');
+  assert.equal(env.ss.sheets.get('紀錄冊待批').rows.length, 3, '表頭 + 2 筆待批');
+  assert.deepEqual(r.pending, { 'L1-ACT-01': '2026-03-01', 'L1-UND-01': '2026-03-02' });
+
+  // 只檢查「由 ROVERBOOK 寫入」的四張表；Users 表的電郵是領袖自己開戶時填的，與 ROVERBOOK 無關
+  const dump = ['紀錄冊待批', '紀錄冊核簽', '紀錄冊頒發', '進度追蹤']
     .map(n => { const sh = env.ss.sheets.get(n); return sh ? n + '\n' + sh.rows.map(r2 => r2.join('\u0001')).join('\n') : ''; }).join('\n');
   for (const v of [book.member.phone, book.member.email, book.member.address, book.member.dob,
     book.member.emergencyName, book.member.emergencyPhone, 'PHOTO', 'HOLDERSIG']) {
@@ -187,12 +241,92 @@ test('後端 bookSync：寫入進度，個資一律唔會入表（包括請求�
   assert.ok(dump.includes(SID) && dump.includes('L1-ACT-01') && dump.includes('2026-03-01'));
 });
 
+test('後端 bookSync：BOOK 自稱「領袖已簽」都只入待批，唔會自動完成', () => {
+  const { env, token } = leaderEnv();
+  const r = env.call({
+    action: 'bookSync', token, scoutId: SID,
+    progress: {
+      'L1-ACT-01': { date: '2026-03-01', verified: true, source: 'ROVERBADGE', assessor: '團長甲' },
+      'L1-UND-01': { date: '2026-03-02' }
+    }
+  });
+  assert.equal(r.success, true, JSON.stringify(r));
+  assert.equal(r.staged, 2, '兩項都要入待批');
+  assert.equal(r.leaderSignedCount, 1, 'BOOK 聲稱領袖已簽的一項要標示出來（方便領袖快速確認）');
+  assert.equal(r.memberClaimCount, 1);
+  assert.deepEqual(r.progress, {}, '無論聲稱與否，都唔會自動變成完成');
+  assert.equal(env.ss.sheets.get('進度追蹤').rows.length, 1, '進度追蹤仍然只有表頭');
+  const pend = env.call({ action: 'bookPending', token, scoutId: SID });
+  const t = Object.fromEntries(pend.pending.map(x => [x.itemId, x.trust]));
+  assert.equal(t['L1-ACT-01'], 'leader-signed');
+  assert.equal(t['L1-UND-01'], 'member-claim');
+  // 冇 verified 欄位／來源唔受信 → member-claim
+  const r2 = env.call({ action: 'bookSync', token, scoutId: SID, progress: { 'L1-UND-02': { date: '2026-03-03', verified: true, source: 'my-own-phone' } } });
+  assert.equal(r2.memberClaimCount, 1);
+});
+
+test('後端 bookConfirm：領袖 CONFIRM 之後才寫入正式進度，並產生核簽', () => {
+  const { env, token } = leaderEnv();
+  env.call({ action: 'bookSync', token, scoutId: SID, progress: { 'L1-ACT-01': '2026-03-01', 'L1-UND-01': '2026-03-02' } });
+  const pend = env.call({ action: 'bookPending', token, scoutId: SID });
+  assert.equal(pend.count, 2, JSON.stringify(pend));
+  // 只批准其中一項
+  const r1 = env.call({ action: 'bookConfirm', token, pendingIds: [pend.pending[0].pendingId] });
+  assert.equal(r1.success, true, JSON.stringify(r1));
+  assert.equal(r1.approved, 1);
+  const prog1 = env.call({ action: 'bookRoster', token }).members[SID] || {};
+  assert.equal(Object.keys(prog1).length, 1, '只應入帳已確認的一項');
+  // 再一次過批准其餘
+  const r2 = env.call({ action: 'bookConfirm', token, scoutId: SID });
+  assert.equal(r2.approved, 1);
+  const prog2 = env.call({ action: 'bookRoster', token }).members[SID];
+  assert.deepEqual(prog2, { 'L1-ACT-01': '2026-03-01', 'L1-UND-01': '2026-03-02' });
+  const signoffs = env.ss.sheets.get('紀錄冊核簽').rows.slice(1);
+  assert.equal(signoffs.length, 2, 'CONFIRM 才寫核簽（成員自己簽唔算）');
+  assert.equal(env.call({ action: 'bookPending', token, scoutId: SID }).count, 0, '待批清單應清空');
+});
+
+test('後端 bookConfirm：較舊日期唔會回寫（只加不減），領袖可選擇覆寫', () => {
+  const { env, token } = leaderEnv();
+  env.call({ action: 'save', token, changes: [{ ymis: SID, itemId: 'L1-ACT-01', date: '2026-06-01' }] });
+  const sync = env.call({ action: 'bookSync', token, scoutId: SID, progress: { 'L1-ACT-01': '2026-03-01' } });
+  assert.equal(sync.staged, 0, '較舊日期唔應入待批：' + JSON.stringify(sync));
+  assert.equal(sync.older.length, 1);
+  assert.equal(sync.older[0].existing, '2026-06-01');
+  // 就算有人手動把舊日期塞入待批，CONFIRM 都會守住（預設不覆寫）
+  const sh = env.ss.sheets.get('紀錄冊待批');
+  sh.appendRow(['BP_manual', SID, 'L1-ACT-01', '2026-03-01', 'ROVERBOOK', '', 'pending', 'older', '', '', '', '']);
+  const c = env.call({ action: 'bookConfirm', token, pendingIds: ['BP_manual'] });
+  assert.equal(c.approved, 0, '預設唔可以蓋走較後日期');
+  assert.equal((env.call({ action: 'bookRoster', token }).members[SID])['L1-ACT-01'], '2026-06-01');
+  // 領袖明確 overwrite 才可以改（「可以改」）
+  sh.appendRow(['BP_manual2', SID, 'L1-ACT-01', '2026-03-01', 'ROVERBOOK', '', 'pending', 'older', '', '', '', '']);
+  const c2 = env.call({ action: 'bookConfirm', token, pendingIds: ['BP_manual2'], overwrite: true });
+  assert.equal(c2.approved, 1);
+  assert.equal((env.call({ action: 'bookRoster', token }).members[SID])['L1-ACT-01'], '2026-03-01');
+});
+
+test('後端 bookConfirm：成員無權確認（唔可以自己批自己）', () => {
+  const { env, token } = leaderEnv();
+  env.call({ action: 'bookSync', token, scoutId: SID, progress: { 'L1-ACT-01': '2026-03-01' } });
+  const m = env.call({ action: 'login', login_id: SID, password: 'Member!1234' });
+  const pid = env.call({ action: 'bookPending', token, scoutId: SID }).pending[0].pendingId;
+  const r = env.call({ action: 'bookConfirm', token: m.token, pendingIds: [pid] });
+  assert.equal(r.success, false);
+  assert.match(r.error, /權限不足/);
+  // 成員亦只可以讀自己的待批
+  const other = env.call({ action: 'bookPending', token: m.token, scoutId: '1234567891' });
+  assert.equal(other.success, false);
+  assert.equal(env.call({ action: 'bookRoster', token }).members[SID], undefined, '未 CONFIRM 前不可見於進度一覽');
+});
+
 test('後端 bookSync：未知／已停用項目、壞日期一律拒絕（防止亂寫進度）', () => {
   const { env, token } = leaderEnv();
-  const r = env.call({ action: 'bookSync', token, scoutId: SID, progress: { 'L9-XYZ-99': '2026-01-01', '': '2026-01-01' } });
+  const r = env.call({ action: 'bookSync', token, scoutId: SID, progress: { 'L9-XYZ-99': '2026-01-01', '': '2026-01-01', 'L1-ACT-01': '2026-99-99' } });
   assert.equal(r.success, true);
-  assert.equal(r.written, 0);
+  assert.equal(r.staged, 0);
   assert.equal(Object.keys(r.progress).length, 0);
+  assert.equal(env.ss.sheets.get('紀錄冊待批').rows.length, 1, '冇有效項目就唔應有待批列');
 });
 
 test('後端 bookSync／bookAward：成員無權（需要可勾選的領袖）', () => {
@@ -229,6 +363,7 @@ test('後端 bookAward：一次過頒發多成員多獎章，重複唔會寫第�
 test('後端 bookPull：只回自己（token 身分），冇個資；bookRoster 給領袖零個資一覽', () => {
   const { env, token } = leaderEnv();
   env.call({ action: 'bookSync', token, scoutId: SID, progress: { 'L1-ACT-01': '2026-03-01' } });
+  env.call({ action: 'bookConfirm', token, scoutId: SID });
   env.call({ action: 'bookAward', token, awards: [{ scoutId: SID, badgeId: 'L1', date: '2026-04-01' }] });
 
   const m = env.call({ action: 'login', login_id: SID, password: 'Member!1234' });
@@ -240,6 +375,9 @@ test('後端 bookPull：只回自己（token 身分），冇個資；bookRoster 
   // 核簽（成員交上嚟、領袖已簽）本身就是成員的完成紀錄；正式「進度追蹤」有紀錄時以它為準
   assert.equal(pull.progress['L1-ACT-01'], '2026-03-01');
   assert.ok(pull.signoffs.some(x => x.id === 'L1-ACT-01'), '但核簽本身要回給成員（貼回 ROVERBOOK）');
+  // BOOK 側只可以「無條件相信」verifiedInBadge（全部由領袖行為產生）
+  assert.equal(pull.verified, true);
+  assert.equal(pull.verifiedInBadge['L1-ACT-01'], '2026-03-01');
   assert.ok(pull.signoffs.length >= 1);
   // 唔可以含任何個資
   const json = JSON.stringify(pull);
@@ -258,7 +396,10 @@ test('後端 bookPull：只回自己（token 身分），冇個資；bookRoster 
 test('後端：核簽日期只可以向後（唔會被舊日期蓋走）', () => {
   const { env, token } = leaderEnv();
   env.call({ action: 'bookSync', token, scoutId: SID, progress: { 'L1-ACT-01': '2026-06-01' } });
-  env.call({ action: 'bookSync', token, scoutId: SID, progress: { 'L1-ACT-01': '2026-03-01' } });
+  env.call({ action: 'bookConfirm', token, scoutId: SID });
+  // 成員改細日期再交（想「扮」舊日期）→ 唔會入待批，亦唔會蓋走核簽
+  const s2 = env.call({ action: 'bookSync', token, scoutId: SID, progress: { 'L1-ACT-01': '2026-03-01' } });
+  assert.equal(s2.staged, 0);
   const sh = env.ss.sheets.get('紀錄冊核簽');
   const row = sh.rows.find(r => String(r[1]) === SID && String(r[2]) === 'L1-ACT-01');
   assert.ok(row, '應有核簽列');
@@ -277,6 +418,33 @@ test('後端：選單有「📖 ROVERBOOK 對接狀態」，且狀態只計數�
 });
 
 // ---------- C. 代理層／前端接線 ----------
+test('前後端契約：前端每個 book* 呼叫都有後端處理，反之亦然（唔會靜靜哋 400／Unknown action）', () => {
+  const calls = new Set([...indexHtml.matchAll(/apiRequest\('(book[A-Za-z]+)'/g)].map(m => m[1]));
+  assert.ok(calls.size >= 4, '前端至少要有接收／確認／頒發／取回：' + [...calls].join(','));
+  for (const a of calls) {
+    assert.ok(new RegExp(`action ?=== ?'${a}'`).test(codeSrc), 'Code.gs 缺少 handler 路由：' + a);
+    assert.ok(proxySrc.includes(`'${a}'`), 'api/proxy.js 白名單缺少：' + a);
+  }
+  // 後端有、但前端未用（例如 bookRoster 由舊路徑呼叫）都要在白名單
+  for (const a of ['bookRoster', 'bookSync', 'bookConfirm', 'bookPending', 'bookAward', 'bookPull']) {
+    assert.ok(new RegExp(`action ?=== ?'${a}'`).test(codeSrc), 'Code.gs 缺少：' + a);
+    assert.ok(proxySrc.includes(`'${a}'`), 'proxy 缺少：' + a);
+  }
+  // 防止回退：bookSync 唔可以直接寫正式進度
+  const sync = codeSrc.slice(codeSrc.indexOf('function handleBookSync'), codeSrc.indexOf('function handleBookConfirm'));
+  assert.ok(!/bookWriteProgress_/.test(sync), 'bookSync 唔可以直接寫「進度追蹤」（必須經 bookConfirm）');
+  assert.ok(!/writeBookSignoffs_/.test(sync), 'bookSync 唔可以直接寫核簽（必須經 bookConfirm）');
+  assert.match(indexHtml, /function bookConfirmSelected\(/, '前端要有逐項確認');
+  assert.match(indexHtml, /function bookConfirmAll\(/, '前端要有一次過確認');
+  assert.match(indexHtml, /function bookConfirmLeaderSigned\(/, '前端要可以只確認 BOOK 顯示已簽的');
+  // BOOK 信任度要顯示在待批表格（領袖要分得出邊項係成員自己標記）
+  assert.match(indexHtml, /BOOK 信任度/);
+  assert.match(indexHtml, /leader-signed/);
+  // GAS：待批一律 pending（唔可以因為 BOOK 聲稱 verified 就跳過）
+  const stage = codeSrc.slice(codeSrc.indexOf('function stageBookPending_'), codeSrc.indexOf('function bookProgressOf_'));
+  assert.ok(!/APPROVED/.test(stage), 'stageBookPending_ 唔可以直接批准（只可以寫 pending）');
+});
+
 test('proxy：四個 ROVERBOOK action 都在 TOKEN_ACTIONS（前端呼叫唔會被擋）', () => {
   const m = proxySrc.match(/const TOKEN_ACTIONS = new Set\(\[([\s\S]*?)\]\)/);
   assert.ok(m);

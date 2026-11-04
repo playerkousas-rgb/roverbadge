@@ -1,6 +1,6 @@
 # CHANGE_LOG
 
-## 2026-11-04 — GS 5.4.0：登入逾時修正（PBKDF2 120k → 10k、單次 KDF、單行定位）＋ ROVERBOOK 對接
+## 2026-11-04（2026-11-05 修正 CONFIRM 閘） — GS 5.4.0：登入逾時修正（PBKDF2 120k → 10k、單次 KDF、單行定位）＋ ROVERBOOK 對接
 
 沿用姊妹 repo **ScoutBadge 6.4.0**（`docs/TROUBLESHOOT_82.md`）已驗證的做法，解決「super 入得、其他成員一直逾時」。GS 5.3.0 → **5.4.0**、`GS_RELEASE_DATE` 2026-11-04、`GS_INIT_REQUIRED` 維持 `true`、`assets/gs-release.js` 嘅 `GS_LATEST` 同步（前端仍 v5.2、`package.json` 版本不動）。**資料保全零變動**：唔改任何既有欄名、唔刪任何列、唔換 API Key、唔要求任何人重設密碼；舊雜湊在任何格式下都照樣登入得，成功登入時透明升級。
 
@@ -22,22 +22,25 @@
 
 ### 【2】ROVERBOOK 對接（成員手機紀錄冊 ⇄ 領袖統管）
 
-產品決定（2026-11-04）：**ROVERBOOK 是成員自己手機上的紀錄冊（前端）；ROVERBADGE 是領袖的統管後台**。三條鐵律：① 成員個資只留在他自己的手機；② ROVERBADGE 只記進度；③ 頒發只由領袖一次過做。
+產品決定（2026-11-04，2026-11-05 修正）：**ROVERBADGE 的定位不變**——仍然係領袖統管＋一次過簽發的後端；**ROVERBOOK 只係多一個「成員自己擁有」的前端**（手機 localStorage），方便成員出外時隨時翻閱自己的紀錄冊。兩者只交換進度。四條鐵律：① 成員個資只留在他自己的手機；② ROVERBADGE 只記進度；③ 頒發只由領袖一次過做（團集會「有參加就一次過簽」照舊用「全團總覽 → 考驗營批量完成」／「待批 → 批量批准」，唔經 BOOK）；④ **成員喺 BOOK 自己簽嘅唔算完成**，要領袖 CONFIRM。
 
-- **新增工作表（只增不刪）**：「紀錄冊核簽」`[簽核編號, SCOUT ID, 項目 ID, 完成日期, 核簽領袖, 職銜, 核簽日期, 來源, 寫入時間, 備註]`、「紀錄冊頒發」`[SCOUT ID, 獎章 ID, 頒發日期, 頒發人, 來源, 寫入時間, 備註]`，由 `initializeSheets()` 冪等補建。冇改任何既有表／欄。
-- **四個新 action**：`bookSync`（領袖接收成員紀錄冊）、`bookAward`（領袖一次過頒發）、`bookPull`（成員只取自己）、`bookRoster`（領袖看全團，零個資）。四個都加入 `doPost`／`handleSignedRequest` 路由、`api/proxy.js` 嘅 action 白名單與 `TOKEN_ACTIONS`，上游簽名（`LINK_SIG_*`）亦可呼叫。
+- **新增工作表（只增不刪）**：「紀錄冊待批」`[待批編號, SCOUT ID, 項目 ID, BOOK 日期, 來源, 提交時間, 狀態, 差異, 領袖確認日期, 確認人, 確認時間, 備註]`、「紀錄冊核簽」、「紀錄冊頒發」，全部由 `initializeSheets()` 冪等補建。冇改任何既有表／欄。
+- **★ 雙向信任規則（2026-11-05 定案）**：**BADGE → BOOK** 無條件相信「BADGE 內領袖核實過」的紀錄（`Bridge.applySignoff`：只採用 `verified:true` ＋受信來源或 `signoffs[]` 已核實項目；未核實的不錄入、只在 `notes` 回報；較舊日期不覆寫），並在匯出檔加 `verified:true`／`signoffs[]`；**BOOK → BADGE** 一律不信（成員手機可改任何欄位），全部只變「待領袖核實」。待批每項附 `trust`：`leader-signed`／`member-claim`，前端新增「🔏 只確認 BOOK 顯示已簽的」一鍵處理；`bookPull` 新增 `verified`／`verifiedInBadge`／`unverified`。
+- **★ CONFIRM 閘（防止「自己簽完扮完成」）**：`bookSync` 由成員手機收到的每一項**只寫「紀錄冊待批」**，絕不寫「進度追蹤」、亦不寫「紀錄冊核簽」。領袖要經 `bookConfirm` 逐項勾選／全部確認（可改日期）才寫入正式進度＋產生核簽；`decision:'reject'` 則永不入帳。測試會斷言 `bookSync` 之後「進度追蹤」仍然只有表頭、「紀錄冊核簽」空白，成員呼叫 `bookConfirm` 得「權限不足」。
+- **★ 只加不減（但可以改）**：同一 (SCOUT ID, 項目) 已有較後日期時，較舊提交回 `older:[{itemId,date,existing}]` 而**不入待批**；即使人手塞入待批，`bookConfirm` 預設都唔會覆寫（要明確 `overwrite:true` 才改得到）。同一日期重覆提交標 `duplicate` 不新增列，不會產生重覆紀錄。已頒發獎章永不改、不重覆寫。→ 換機／還原舊備份／貼錯舊檔都唔會把舊資料倒灌。
+- **六個 action**：`bookSync`（接收 → 待批）、`bookConfirm`（CONFIRM／拒絕）、`bookPending`（讀待批：領袖看全部、成員只看自己）、`bookAward`（一次過頒發）、`bookPull`（成員只取自己，另列「待領袖確認」）、`bookRoster`（全團一覽＋待批，零個資）。全部 token＋`sig` 驗證；已加入 `api/proxy.js` 白名單／`TOKEN_ACTIONS`、`LINK_SIG_READ/WRITE_ACTIONS`。
 - **個資剝離（兩道防線）**：`assets/roverbook-bridge.js` 的 `fromRoverBook()` 只取 `scoutId`／`itemId`／`date`／`assessor`，其餘即場剝走；GAS 端 `bookStripPersonal_()` 再掃一次。回報只有 `{removedFields, removedCount}`（**不含值**）。唯一跨越邊界的成員欄位是 `scoutId`。
 - **格式**：接受 ROVERBOOK 原生 `{member,progress}`（扁平或 per-scout）及 `roverbadge.progress.v1` 信封；輸出 `roverbadge.progress.roverbook.v2`、`roverbadge.signoff.v2`（`t:'roverbook/signoff'`，`leader.ink:null`／`privacy.ink:'withheld'`，**唔附墨跡**）、`roverbadge.award.v1`。
-- **規則**：項目 ID 兩邊同一道閘 `/^[A-Z]{1,3}[0-9]?(?:-[A-Z0-9]{1,12}){1,4}$/`（大寫限定，姓名／電話／日期過唔到）；日期正規化 `YYYY-M-D`／`YYYY/M/D`，無效即丟；`progress` 上限 500 項；核簽 upsert **保留較後日期**（證明較早日期不能覆蓋）；頒發**不可變**（重覆提交同一批 → `written 0, skipped N`）。
-- **前端**：主畫面新分頁「📖 ROVERBOOK 對接」（只對領袖顯示），三個子分頁（接收進度／一次過頒發／成員取回）＋成員 × 項目清單＋「交上嚟但未入帳」清單；`bookPull` 用 token 認人，成員只看自己。
-- **ROVERBOOK 端**（另一個 repo）：`npm run book:dropin` 生成 `dist/roverbook/{roverbadge-bridge.mjs, bridge-fixtures.json, PATCH.md}`，貼去 ROVERBOOK 的 `shared/bridge/`／`test/fixtures/`；本 repo 只負責介面與後端。
-- **測試**：`tests/roverbook-bridge.test.mjs` 17 項（橋接邏輯／真實 `Code.gs`／proxy＋前端接線＋文件），其中一項把滿載個資的模擬紀錄冊餵入後，掃描「紀錄冊核簽」「紀錄冊頒發」「進度追蹤」三張表所有儲存格，確認**零個資**；另一項真的跑一次 drop-in 生成並 `import()` 比對核心 vs 生成物輸出完全一致。`npm test` 已納入此檔。
-- 文件：[docs/ROVERBOOK_BRIDGE.md](docs/ROVERBOOK_BRIDGE.md)（介面、四個 action、部署、ROVERBOOK 端改動、可照抄的私隱說明）；[docs/LEADER_GUIDE.md](docs/LEADER_GUIDE.md) 新增第 9 節。
+- **規則**：項目 ID 兩邊同一道閘 `/^[A-Z]{1,3}[0-9]?(?:-[A-Z0-9]{1,12}){1,4}$/`（大寫限定，姓名／電話／日期過唔到）；日期正規化 `YYYY-M-D`／`YYYY/M/D`，無效即丟；`progress` 上限 500 項。
+- **前端**：主畫面新分頁「📖 ROVERBOOK 對接」（只對領袖顯示）：接收進度（含待批表格：逐項勾選／全部確認／拒絕，並標示「新項目／較後日期／較舊（預設不改）／同一日」）／一次過頒發／成員取回；`bookPull` 用 token 認人，成員只看自己。i18n 新增 65 條（兩處同步）。
+- **ROVERBOOK 端**（另一個 repo）：`npm run book:dropin` 生成 `dist/roverbook/{roverbadge-bridge.mjs, bridge-fixtures.json, PATCH.md}`。
+- **測試**：`tests/roverbook-bridge.test.mjs` **24 項**（新增：BOOK→BADGE 偽造 verified 分類、BADGE→BOOK 只採用已核實、`bookSync` 後仍只有表頭、`stageBookPending_` 不得出現 APPROVED）：橋接邏輯／真實 `Code.gs`／CONFIRM 閘／只加不減／成員無權確認／前後端 action 契約（掃前端每個 `apiRequest('book…')`，並斷言 `bookSync` 內不得呼叫 `bookWriteProgress_`／`writeBookSignoffs_`）／proxy＋前端接線／文件；其中一項把滿載個資的模擬紀錄冊餵入後掃描「紀錄冊待批」「紀錄冊核簽」「紀錄冊頒發」「進度追蹤」所有儲存格確認**零個資**；另一項真的跑一次 drop-in 生成並 `import()` 比對核心 vs 生成物輸出一致。
+- 文件：[docs/ROVERBOOK_BRIDGE.md](docs/ROVERBOOK_BRIDGE.md)（介面、五條規則、六個 action、權限一覽、部署、ROVERBOOK 端改動、可照抄的私隱說明）；[docs/LEADER_GUIDE.md](docs/LEADER_GUIDE.md) 第 9 節。
 
 ### 部署（由 5.3.0 升 5.4.0）
 
 1. 覆寫 `apps-script/Code.gs` →「部署 → 管理部署作業 → ✏️ → 建立新版本 → 部署」（沿用原 `/exec`，唔好新建部署）。
-2. 試算表選單按一次「🔗 旅系統 → 🔧 初始化／更新」補建兩張新表（只增不刪）。
+2. 試算表選單按一次「🔗 旅系統 → 🔧 初始化／更新」補建三張新表（紀錄冊待批／核簽／頒發；只增不刪）。
 3. 選單「📖 ROVERBOOK 對接狀態」核對；舊帳號第一次登入即自動升級雜湊，**唔需要任何人重設密碼**。
 4. 可選：部署本版前端，領袖就會見到新的「📖 ROVERBOOK 對接」分頁與（如 GS 仍係舊版）紅色逾時橫幅。
 

@@ -37,7 +37,7 @@ const LINK_SIG_SUPPORTED = new Set([
   'upsertUser', 'importUsers', 'resetPassword', 'deactivateUser', 'reactivateUser',
   'updateUserProfile', 'deleteMember', 'deleteUser', 'updateUserRole', 'updatePermissions',
   'updateConfig', 'saveLogRecord', 'deleteLogRecord', 'submitLogRequest', 'reviewLogRequest',
-  'reviewApplication', 'setLocalLogin', 'setScheme', 'bookRoster', 'bookSync', 'bookAward', 'bookPull'
+  'reviewApplication', 'setLocalLogin', 'setScheme', 'bookRoster', 'bookSync', 'bookConfirm', 'bookAward', 'bookPull', 'bookPending'
 ]);
 
 function buildSuperInnerToken(apikey) {
@@ -105,8 +105,9 @@ const TOKEN_ACTIONS = new Set([
   // 吐 JSON（搬舊數）：含 hash 直插
   'exportUsers', 'upsertUser',
   // ROVERBOOK 對接（GS 5.4.0）：成員手機 ↔ 領袖統管（只交換進度，零個資）
-  //   bookRoster／bookAward／bookSync 需領袖；bookPull 只回 token 本人的進度
-  'bookRoster', 'bookSync', 'bookAward', 'bookPull'
+  //   bookRoster／bookAward／bookSync／bookConfirm 需領袖；bookPull 只回 token 本人的進度；
+  //   bookPending 讀待批清單（領袖看全部、成員只看自己）
+  'bookRoster', 'bookSync', 'bookConfirm', 'bookAward', 'bookPull', 'bookPending'
 ]);
 // 上游 sig 直通可替代 token 的操作（閂口後經 sig 落下游寫）
 const SIG_ACTIONS = new Set(['addUser','upsertUser','addMember','exportUsers','getBranches','saveBranch','deleteBranch','getAllowLocalLogin','setAllowLocalLogin']);

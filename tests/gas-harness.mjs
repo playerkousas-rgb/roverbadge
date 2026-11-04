@@ -271,6 +271,8 @@ export function loadCodeGs({ promptAnswers = [], urlFetchHandler = null, service
   handleBookAward: (typeof handleBookAward !== 'undefined' ? handleBookAward : undefined),
   handleBookPull: (typeof handleBookPull !== 'undefined' ? handleBookPull : undefined),
   handleBookRoster: (typeof handleBookRoster !== 'undefined' ? handleBookRoster : undefined),
+  handleBookConfirm: (typeof handleBookConfirm !== 'undefined' ? handleBookConfirm : undefined),
+  handleBookPending: (typeof handleBookPending !== 'undefined' ? handleBookPending : undefined),
   menuBookStatus: (typeof menuBookStatus !== 'undefined' ? menuBookStatus : undefined),
   bookStats_: (typeof bookStats_ !== 'undefined' ? bookStats_ : undefined),
   __kdfStats: () => ({ calls: (typeof __kdfCalls_ !== 'undefined' ? __kdfCalls_ : 0), iterations: (typeof __kdfIterations_ !== 'undefined' ? __kdfIterations_ : 0) }),

@@ -46,6 +46,15 @@
   const ITEM_ID_RE = /^[A-Z]{1,3}[0-9]?(?:-[A-Z0-9]{1,12}){1,4}$/;
   const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+  // ★ 信任邊界（雙向、fail-closed）
+  //   BADGE → BOOK：BOOK「無條件相信」領袖核實過嘅紀錄 → 只認 verified===true 且來源屬這張清單。
+  //   BOOK → BADGE：一律唔信（成員部機可以改任何欄位），到 BADGE 只會變成「待領袖核實」。
+  const TRUSTED_SIGNOFF_SOURCES = ['ROVERBADGE', 'roverbadge', 'roverbadge/signoff', 'roverbadge.signoff.v2', 'LEADER'];
+  const TRUST_BASIS = {
+    SIGNED_BY_LEADER: 'leader-signoff',   // BADGE 領袖簽核（BOOK 可無條件採用）
+    MEMBER_CLAIM: 'member-claim'          // 成員自己標記（BOOK 只顯示；BADGE 一律待核實）
+  };
+
   const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
   const text = (v, n) => String(v === undefined || v === null ? '' : v).trim().slice(0, n || 200);
   const sid = (v) => text(v, 32).replace(/[^0-9A-Za-z_-]/g, '');
@@ -86,24 +95,59 @@
   }
 
   // ---- 進度：{ scoutId: { itemId: date } } -------------------------------------
+  // opts.withTrust=true 時，另外回傳 verified／claims（同一個 itemId 只會在其中一邊）：
+  //   verified = 有 trusted 來源 + verified===true（BOOK 可以無條件採用）
+  //   claims   = 其餘（成員自己標記）→ 上到 BADGE 只會變「待領袖核實」
   function sanitizeProgress(map, opts) {
     const o = opts || {};
     const out = {};
+    const verified = {};
+    const claims = {};
     const dropped = { badItemId: 0, badDate: 0, overflow: 0 };
     let kept = 0;
     const max = o.maxItems || 500;
-    if (!isObj(map)) return { progress: out, kept: 0, dropped };
+    if (!isObj(map)) return { progress: out, verified, claims, kept: 0, dropped };
     Object.keys(map).forEach((itemId) => {
       const id = text(itemId, 32);
       if (!ITEM_ID_RE.test(id)) { dropped.badItemId++; return; }
       const raw = map[itemId];
-      const date = normDate(typeof raw === 'string' ? raw : (raw && raw.date));
+      const t = trustOf(raw);
+      const date = t.date;
       if (!date) { dropped.badDate++; return; }
       if (kept >= max) { dropped.overflow++; return; }
       out[id] = date;
+      if (t.verified) verified[id] = date; else claims[id] = date;
       kept++;
     });
-    return { progress: out, kept: kept, dropped };
+    return { progress: out, verified, claims, kept: kept, dropped };
+  }
+
+  // 判斷一個進度值係「領袖已核實」定「成員自己標記」
+  // 接受兩種寫法：
+  //   { date, verified:true, source:'ROVERBADGE', assessor:'團長' }
+  //   { date, verification:{ by:'團長', at:'2026-03-02', source:'roverbadge/signoff' } }
+  // 其餘（純日期字串、或冇 trusted 來源）＝ 成員自己標記 → 唔會當成已完成。
+  function trustOf(entry) {
+    if (!isObj(entry)) return { date: normDate(entry), verified: false, source: '', assessor: '' };
+    const date = normDate(entry.date || entry.verifiedDate);
+    const src = text(entry.source, 40);
+    const ver = isObj(entry.verification) ? entry.verification : null;
+    const srcOk = src && TRUSTED_SIGNOFF_SOURCES.some((x) => src.toLowerCase().indexOf(x.toLowerCase()) >= 0);
+    const verSrc = ver ? text(ver.source, 40) : '';
+    const verSrcOk = verSrc && TRUSTED_SIGNOFF_SOURCES.some((x) => verSrc.toLowerCase().indexOf(x.toLowerCase()) >= 0);
+    // 兩種寫法都算「聲稱由領袖簽」：
+    //   ① 頂層 verified===true ＋ 受信 source
+    //   ② 有 verification 子物件（by/at/source）＋ 受信 source（冇明確 verified:false）
+    // 兩者仍然只係「BOOK 聲稱」，到 BADGE 一樣要入待批。
+    const verified =
+      (entry.verified === true && (srcOk || verSrcOk)) ||
+      (!!ver && entry.verified !== false && verSrcOk);
+    return {
+      date: date,
+      verified: !!verified,
+      source: src || verSrc,
+      assessor: text(entry.assessor || (ver && ver.by), 80)
+    };
   }
 
   /**
@@ -139,20 +183,94 @@
       });
     }
     const privacy = privacyReport(src);
+    // ★ 分成兩堆：領袖已核實（可信）／成員自己標記（一定要領袖核實）
+    // BADGE 端一律先把兩堆都放入「待批」，唔會因為 JSON 寫住 verified 就自動完成；
+    // 但領袖會清楚見到邊幾項係「BOOK 顯示已核實」（可以快速全部確認），
+    // 邊幾項係「成員自己標記」（逐項判斷）。
+    const verifiedItems = p.verified || {};
+    const claimItems = p.claims || {};
     return {
       ok: !!scoutId,
       reason: scoutId ? '' : '缺少 SCOUT ID／YMIS：成員需要在紀錄冊填一次成員編號（只需填在佢自己部機）',
       scoutId: scoutId,
       progress: p.progress,
+      verified: verifiedItems,
+      claims: claimItems,
+      verifiedCount: Object.keys(verifiedItems).length,
+      claimCount: Object.keys(claimItems).length,
       kept: p.kept,
       dropped: p.dropped,
       assessors: assessors,
       awards: awards,
       privacy: privacy,
-      // 方便一次過貼入進度追蹤表
-      changes: Object.keys(p.progress).map((itemId) => ({ ymis: scoutId, itemId, date: p.progress[itemId] })),
+      // 方便一次過貼入進度追蹤表（附 trust 標記，讓 BADGE 知道邊啲係領袖簽過）
+      changes: Object.keys(p.progress).map((itemId) => ({
+        ymis: scoutId, itemId, date: p.progress[itemId],
+        trust: verifiedItems[itemId] ? TRUST_BASIS.SIGNED_BY_LEADER : TRUST_BASIS.MEMBER_CLAIM
+      })),
       source: text(src.schema || src.source || 'ROVERBOOK', 40)
     };
+  }
+
+  /**
+   * BOOK 側：把 BADGE 匯出的進度寫入成員手機紀錄冊。
+   * 「無條件相信在 BADGE 內領袖核實了的資料，未核實的不錄入（不當完成）」：
+   *   只有 verified 的項目會寫成完成；claims（成員自己標記）只會回報為 notes，不會蓋掉任何已完成日期，
+   *   亦不會被當成已完成。日期只加不減（舊資料唔會蓋走手機上較後嘅紀錄）。
+   * bookData: { progress:{itemId:date}, awards:{badge:date}, signoffs:[{id,date,verified}] }
+   * 回傳 { progress, awards, applied, kept, notes }
+   */
+  function applySignoff(bookData, exported, opts) {
+    const o = opts || {};
+    const book = isObj(bookData) ? bookData : {};
+    const src = isObj(exported) ? exported : {};
+    const progress = Object.assign({}, isObj(book.progress) ? book.progress : {});
+    const awards = Object.assign({}, isObj(book.awards) ? book.awards : {});
+    const notes = [];
+    // BADGE 匯出的 signoffs 係「領袖核實」嘅唯一權威來源
+    const signedIds = {};
+    (Array.isArray(src.signoffs) ? src.signoffs : []).forEach((x) => {
+      const id = text(x && x.id, 32);
+      const d = normDate(x && x.date);
+      if (!ITEM_ID_RE.test(id) || !d) return;
+      if (x.verified !== true) { notes.push({ itemId: id, reason: 'BADGE 標示未核實，不錄入' }); return; }
+      signedIds[id] = d;
+    });
+    const verifiedMap = {};
+    (Array.isArray(src.items) ? src.items : []).forEach((x) => {
+      const id = text(x && x.id, 32);
+      const d = normDate(x && x.date);
+      if (!ITEM_ID_RE.test(id) || !d) return;
+      if (x.verified !== true) { notes.push({ itemId: id, reason: 'BADGE 標示未核實，不錄入' }); return; }
+      signedIds[id] = d;
+    });
+    const pv = isObj(src.verified) ? src.verified : {};
+    Object.keys(pv).forEach((k) => {
+      const id = text(k, 32); const d = normDate(pv[k]);
+      if (ITEM_ID_RE.test(id) && d) signedIds[id] = d;
+    });
+    let applied = 0, kept = 0;
+    Object.keys(signedIds).forEach((id) => {
+      const d = signedIds[id];
+      const have = normDate(progress[id]);
+      if (have && have >= d) { kept++; return; }         // 只加不減：較舊唔覆寫
+      progress[id] = d; applied++;
+    });
+    // 成員自己標記嘅（BADGE 話未核實）→ 只記錄、唔會變完成
+    const pc = isObj(src.claims) ? src.claims : {};
+    Object.keys(pc).forEach((k) => {
+      const id = text(k, 32);
+      if (ITEM_ID_RE.test(id)) notes.push({ itemId: id, reason: 'BADGE 尚未核實（只保留手機上的標記）' });
+    });
+    // 頒發（只加不減）
+    const awardsIn = isObj(src.awards) ? src.awards : {};
+    Object.keys(awardsIn).forEach((k) => {
+      const badge = text(k, 16).toUpperCase(); const d = normDate(awardsIn[k]);
+      if (!/^L\d$/.test(badge) || !d) return;
+      if (normDate(awards[badge]) && normDate(awards[badge]) >= d) return;
+      awards[badge] = d;
+    });
+    return { progress, awards, applied, kept, notes, source: text(src.schema, 40) };
   }
 
   /** ROVERBADGE → ROVERBOOK：只匯出進度（＋頒發），絕不匯出任何個人資料。 */
@@ -167,11 +285,15 @@
       troopId: text(t.troopId, 32),
       privacy: { personalData: 'none', note: '只交換進度；姓名／聯絡／相片／簽名只留在成員手機' }
     };
+    // 只要係 BADGE 匯出，就係「領袖核實過」嘅紀錄（來源標記 + verified 讓 BOOK 無條件採用）
+    out.verified = true;
+    out.verifiedBy = text(t.troopId ? 'ROVERBADGE' : 'ROVERBADGE', 40);
     if (o.scoutId) {
       const s = sid(o.scoutId);
       const p = sanitizeProgress((t.progress || {})[s] || t.progress, o);
       out.scoutId = s;
       out.progress = p.progress;
+      out.signoffs = Object.keys(p.progress).map((id) => ({ id: id, date: p.progress[id], verified: true, source: 'ROVERBADGE' }));
       out.awards = isObj((t.awards || {})[s]) ? (t.awards || {})[s] : {};
     } else {
       out.progress = {};
@@ -282,6 +404,10 @@
     SCHEMA_SIGNOFF,
     ALLOWED_MEMBER_FIELDS,
     NEVER_TRANSFER_FIELDS,
+    TRUSTED_SIGNOFF_SOURCES,
+    TRUST_BASIS,
+    trustOf,
+    applySignoff,
     normDate,
     privacyReport,
     sanitizeProgress,

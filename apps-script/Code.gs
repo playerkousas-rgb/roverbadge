@@ -75,6 +75,18 @@ const BOOK_SIGNOFF_SHEET = '紀錄冊核簽';
 const BOOK_SIGNOFF_HEADERS = ['簽核編號','SCOUT ID','項目 ID','完成日期','核簽領袖','職銜','核簽日期','來源','寫入時間','備註'];
 const BOOK_AWARD_SHEET = '紀錄冊頒發';
 const BOOK_AWARD_HEADERS = ['SCOUT ID','獎章 ID','頒發日期','頒發人','來源','寫入時間','備註'];
+// 成員手機交上嚟嘅資料**一律先入待批**，領袖逐項／一次過 CONFIRM 之後才寫入正式進度。
+// 呢個係「成員自己喺 BOOK 簽了再錄入 BADGE 扮已完成」嘅唯一防線：BOOK 冇權寫正式進度。
+const BOOK_PENDING_SHEET = '紀錄冊待批';
+const BOOK_PENDING_HEADERS = ['待批編號','SCOUT ID','項目 ID','BOOK 日期','來源','提交時間','狀態','差異','領袖確認日期','確認人','確認時間','備註'];
+const BOOK_PENDING_STATUS = { PENDING: 'pending', APPROVED: 'approved', REJECTED: 'rejected' };
+// 信任邊界（雙向、fail-closed）：
+//   BADGE → BOOK：BOOK 無條件相信領袖核實過嘅紀錄（exported verified:true + 受信來源）；
+//   BOOK → BADGE：一律唔信（成員部機可以改任何欄位）→ 只會變成「待領袖核實」。
+//   差異欄位 diff 會標示來源可信度：leader-signed（BOOK 聲稱已由領袖簽）／member-claim（成員自己標記）。
+const BOOK_TRUST_LEADER = 'leader-signed';
+const BOOK_TRUST_CLAIM = 'member-claim';
+const BOOK_PENDING_HEADERS_TRUST = '差異'; // 差異欄位同時標示 new／newer／older／same（保持表格兼容）
 // 項目 ID 形狀（與 data/items.json 一致：L1-ACT-01／OT-WOSM-SW）；唔寫死清單，交由 itemCatalog 驗證
 const BOOK_ITEM_RE = /^[A-Z]{1,3}[0-9]?(?:-[A-Z0-9]{1,12}){1,4}$/;
 // 成員個資欄位：任何由 ROVERBOOK 傳入的欄位若命中，一律剝走並記錄（不寫入、不回傳）
@@ -110,8 +122,8 @@ const LINK_HASH_RE = /^([0-9a-f]{64}|pbkdf2\$\d+\$[0-9a-f]{16,64}\$[0-9a-f]{64})
 const LINK_RESERVED_BODY_KEYS = ['sig', 'sig_ts', 'sig_nonce'];
 // 上游以 sig 可以在下游執行的 action。login／apply／logout／changePassword／
 // superTicketLogin／forgotPassword／requestPasswordReset／confirmPasswordReset 等本地憑證操作永不接受（即使有 sig）。
-const LINK_SIG_READ_ACTIONS = ['load', 'getLoginMode', 'getLinkState', 'getMembers', 'getConfig', 'getAllUsers', 'getOtherBadges', 'getPendingRequests', 'getApplications', 'getLogRecords', 'getPendingLogRequests', 'exportUsers', 'bookRoster', 'bookPull'];
-const LINK_SIG_WRITE_ACTIONS = ['save', 'saveOtherBadge', 'requestComplete', 'reviewRequest', 'addMember', 'addUser', 'upsertUser', 'importUsers', 'resetPassword', 'deactivateUser', 'reactivateUser', 'updateUserProfile', 'deleteMember', 'deleteUser', 'updateUserRole', 'updatePermissions', 'updateConfig', 'saveLogRecord', 'deleteLogRecord', 'submitLogRequest', 'reviewLogRequest', 'reviewApplication', 'setLocalLogin', 'setScheme', 'bookSync', 'bookAward'];
+const LINK_SIG_READ_ACTIONS = ['load', 'getLoginMode', 'getLinkState', 'getMembers', 'getConfig', 'getAllUsers', 'getOtherBadges', 'getPendingRequests', 'getApplications', 'getLogRecords', 'getPendingLogRequests', 'exportUsers', 'bookRoster', 'bookPull', 'bookPending'];
+const LINK_SIG_WRITE_ACTIONS = ['save', 'saveOtherBadge', 'requestComplete', 'reviewRequest', 'addMember', 'addUser', 'upsertUser', 'importUsers', 'resetPassword', 'deactivateUser', 'reactivateUser', 'updateUserProfile', 'deleteMember', 'deleteUser', 'updateUserRole', 'updatePermissions', 'updateConfig', 'saveLogRecord', 'deleteLogRecord', 'submitLogRequest', 'reviewLogRequest', 'reviewApplication', 'setLocalLogin', 'setScheme', 'bookSync', 'bookConfirm', 'bookAward'];
 const USER_EXPORT_FORMAT = 'roverbadge-users-export';
 
 function linkProps() { return PropertiesService.getScriptProperties(); }
@@ -563,6 +575,8 @@ function handleSignedRequest(action, body) {
   // ROVERBOOK 對接：上游簽名請求亦可（上游＝支部／進度節點一次過統管）
   if (action === 'bookRoster') return handleBookRoster(linkManager(body));
   if (action === 'bookSync') return handleBookSync(linkManager(body), body);
+  if (action === 'bookConfirm') return handleBookConfirm(linkManager(body), body);
+  if (action === 'bookPending') return handleBookPending(linkManager(body), body);
   if (action === 'bookAward') return handleBookAward(linkManager(body), body);
   if (action === 'bookPull') return handleBookPull(linkManager(body));
   if (action === 'save') return handleSave(body.changes || [], String(body.confirmer || actor), manager);
@@ -1220,13 +1234,14 @@ function initializeSheets() {
   // ROVERBOOK 對接（GS 5.4.0）：新工作表「紀錄冊核簽」＋「紀錄冊頒發」
   // 只存「SCOUT ID → 項目／日期／核簽人」與「SCOUT ID → 獎章／頒發日期」。
   // 成員個人資料（姓名以外嘅聯絡方法、相片、簽名墨跡）永遠唔會寫入本試算表。
-  [BOOK_SIGNOFF_SHEET, BOOK_AWARD_SHEET].forEach(function(name){
+  [BOOK_SIGNOFF_SHEET, BOOK_AWARD_SHEET, BOOK_PENDING_SHEET].forEach(function(name){
     const sh = ss.getSheetByName(name);
     if(sh) return;
+    const headers = name===BOOK_SIGNOFF_SHEET ? BOOK_SIGNOFF_HEADERS
+      : (name===BOOK_AWARD_SHEET ? BOOK_AWARD_HEADERS : BOOK_PENDING_HEADERS);
     const created = ss.insertSheet(name);
-    created.appendRow(name===BOOK_SIGNOFF_SHEET ? BOOK_SIGNOFF_HEADERS : BOOK_AWARD_HEADERS);
-    created.getRange(1,1,1,(name===BOOK_SIGNOFF_SHEET?BOOK_SIGNOFF_HEADERS:BOOK_AWARD_HEADERS).length)
-      .setFontWeight('bold').setBackground('#8B0000').setFontColor('#FFFFFF');
+    created.appendRow(headers);
+    created.getRange(1,1,1,headers.length).setFontWeight('bold').setBackground('#8B0000').setFontColor('#FFFFFF');
     created.setFrozenRows(1);
   });
 
@@ -1504,6 +1519,8 @@ function doPost(e){
     //   bookPull  ：成員只下載「自己」的進度＋頒發＋核簽（身分由 token 決定，唔接受任意 SCOUT ID）
     if(action==='bookRoster') return handleBookRoster(user);
     if(action==='bookSync') return handleBookSync(user, body);
+    if(action==='bookConfirm') return handleBookConfirm(user, body);
+    if(action==='bookPending') return handleBookPending(user, body);
     if(action==='bookAward') return handleBookAward(user, body);
     if(action==='bookPull') return handleBookPull(user);
 
@@ -2883,12 +2900,22 @@ function handleReviewLogRequest(reqId, decision, reviewer, note){
   return jsonResponse({success:true,message:'已批准並寫入活動履歷',record_id:newRecordId});
 }
 // ===== ROVERBOOK 對接（GS 5.4.0）=====
-// 一份 Code.gs 同時服務「領袖的 ROVERBADGE」與「成員手機上的 ROVERBOOK」。三條鐵律：
+// 定位不變：ROVERBADGE 仍然係領袖的統管後端；ROVERBOOK 只係**成員自己擁有**、出外可讀的紀錄冊前端。
+// 頒發仍然只由領袖做（bookAward），團集會「有參加就一次過簽」照舊用「全團總覽 → 批量剔」（唔經 BOOK）。
+//
+// 三條鐵律：
 //   ① 成員個人資料只留在成員自己的手機：本節任何函數都唔會接收／回傳／寫入姓名以外嘅個資，
 //      即使請求夾帶（phone／email／address／photo／signature…）亦會剝走，只回一張「剝走了甚麼」清單。
 //   ② ROVERBADGE 只記進度（SCOUT ID + 項目 ID + 完成日期 + 核簽領袖），方便領袖一次過統管。
-//   ③ 頒發（badge award）只由領袖一次過做；成員只收到唯讀結果（writebookAwards 會核對角色）。
-// 寫入都係「只增不改歷史」：同一 (SCOUT ID, 項目) 已有日期就唔會覆寫，只會補核簽欄。
+//   ③ 頒發（badge award）只由領袖一次過做；成員只收到唯讀結果。
+//
+// ★ 安全閘（2026-11-05 修正）：成員喺 BOOK 自己簽嘅紀錄**唔可以直接變成 BADGE 的完成進度**。
+//   bookSync 只會寫入「紀錄冊待批」（pending），一律唔會寫「進度追蹤」、亦唔會寫「紀錄冊核簽」。
+//   領袖要經 bookConfirm 逐項／一次過 CONFIRM，才會寫入正式進度 —— 杜絕「成員自己簽完錄入就扮完成」。
+//
+// ★ 只加不減（防舊資料回寫）：同一個 (SCOUT ID, 項目) 已經有紀錄時，
+//   較早日期只會標為 diff='older'（領袖可以選擇覆寫，因為「可以改」），
+//   同一日或較後日期標為 diff='same'／'newer'；重覆提交同一個日期唔會產生第二行。
 
 function bookStripPersonal_(obj, sink) {
   if (!obj || typeof obj !== 'object') return;
@@ -2918,7 +2945,41 @@ function bookSheet_(name, headers) {
   }
   return sh;
 }
-// 核簽紀錄以「項目」為唯一鍵（同一成員同一項目只保留最新一次核簽，日期永不回退）
+
+// ---- 正式進度（進度追蹤）：同 (SCOUT ID, 項目) 只保留較後日期 ----
+// 回傳 { existing: 'YYYY-MM-DD' | '' }，讓呼叫端知道「本來有冇、係邊日」
+function bookProgressDateOf_(sid, itemId) {
+  const sh = getSheet().getSheetByName('進度追蹤');
+  if (!sh) return '';
+  const data = sh.getDataRange().getValues();
+  let best = '';
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0] || '').trim() !== sid) continue;
+    if (String(data[i][1] || '').trim() !== itemId) continue;
+    const d = bookNormDate_(data[i][2]);
+    if (d && d > best) best = d;
+  }
+  return best;
+}
+// 寫入正式進度：只加不減（只可以改日期，唔會移除已完成紀錄）
+function bookWriteProgress_(sid, itemId, date, confirmer, note) {
+  const sh = getSheet().getSheetByName('進度追蹤');
+  if (!sh) return { ok: false, reason: '找不到「進度追蹤」工作表' };
+  const data = sh.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0] || '').trim() !== sid) continue;
+    if (String(data[i][1] || '').trim() !== itemId) continue;
+    sh.getRange(i + 1, 3).setValue(date);
+    sh.getRange(i + 1, 4).setValue(new Date());
+    sh.getRange(i + 1, 5).setValue(confirmer || '');
+    sh.getRange(i + 1, 6).setValue(note || '');
+    return { ok: true, updated: true };
+  }
+  sh.appendRow([sid, itemId, date, new Date(), confirmer || '', note || '']);
+  return { ok: true, updated: false };
+}
+
+// ---- 核簽紀錄（由領袖 CONFIRM 之後才寫；成員自己交嘅唔會直接入呢張表）----
 function writeBookSignoffs_(items, meta) {
   const sh = bookSheet_(BOOK_SIGNOFF_SHEET, BOOK_SIGNOFF_HEADERS);
   const data = sh.getDataRange().getValues();
@@ -2982,8 +3043,83 @@ function writeBookAwards_(awards, actorYmis) {
   });
   return { written: written, skipped: skipped };
 }
-// 成員已完成哪些項目：正式「進度追蹤」（領袖確認過的）優先，核簽表只補未入帳的。
-// 兩張表欄位次序唔同，所以分開處理（唔好靠欄位位置猜）。
+
+// ---- 待批（成員交上嚟、等領袖 CONFIRM）----
+function bookPendingRows_() {
+  const sh = getSheet().getSheetByName(BOOK_PENDING_SHEET);
+  if (!sh) return [];
+  const data = sh.getDataRange().getValues();
+  const out = [];
+  for (let i = 1; i < data.length; i++) {
+    if (!data[i][0]) continue;
+    out.push({
+      row: i + 1,
+      pendingId: String(data[i][0] || ''), scoutId: String(data[i][1] || ''), itemId: String(data[i][2] || ''),
+      date: bookNormDate_(data[i][3]), source: String(data[i][4] || ''), submittedAt: String(data[i][5] || ''),
+      status: String(data[i][6] || ''), diff: String(data[i][7] || ''),
+      confirmedDate: bookNormDate_(data[i][8]), confirmer: String(data[i][9] || ''), confirmedAt: String(data[i][10] || ''), note: String(data[i][11] || '')
+    });
+  }
+  return out;
+}
+// 由 BOOK 傳入嘅每一項判斷「可信度」：只有 verified===true 且來源屬受信清單才算 leader-signed。
+// 但仍然只係「BOOK 聲稱」，一樣要入待批（成員部機可以改 JSON）。
+const BOOK_TRUSTED_SOURCES_ = ['roverbadge', 'roverbadge/signoff', 'roverbadge.signoff.v2', 'leader'];
+function bookTrustOf_(entry) {
+  if (!entry || typeof entry !== 'object') return BOOK_TRUST_CLAIM;
+  if (entry.verified !== true) return BOOK_TRUST_CLAIM;
+  const src = String(entry.source || (entry.verification && entry.verification.source) || '').toLowerCase();
+  if (!src) return BOOK_TRUST_CLAIM;
+  for (let i = 0; i < BOOK_TRUSTED_SOURCES_.length; i++) {
+    if (src.indexOf(BOOK_TRUSTED_SOURCES_[i]) >= 0) return BOOK_TRUST_LEADER;
+  }
+  return BOOK_TRUST_CLAIM;
+}
+// 把一份 BOOK 進度寫入「待批」：已存在（pending）或已批准（同日）就唔會再加一行
+function stageBookPending_(sid, progress, opts) {
+  // opts.verifiedClaims = { itemId: 'leader-signed' | 'member-claim' }（由 trustOf 判斷，缺省 member-claim）
+  // 注意：**兩種都一樣入待批**。BOOK 聲稱「領袖已核實」只係方便領袖快速全部確認，
+  // 絕對唔會令紀錄自動變成完成（成員部機改一個 JSON 就可以自稱 verified）。
+
+  const o = opts || {};
+  const sh = bookSheet_(BOOK_PENDING_SHEET, BOOK_PENDING_HEADERS);
+  const existing = {};
+  bookPendingRows_().forEach(function (r) {
+    existing[r.scoutId + '|' + r.itemId + '|' + r.date + '|' + r.status] = true;
+  });
+  const ts = now();
+  const staged = [], older = [], duplicates = [], skipped = [];
+  let stagedCount = 0;
+  Object.keys(progress || {}).forEach(function (itemId) {
+    const date = bookNormDate_(progress[itemId]);
+    const id = String(itemId || '').trim();
+    if (!BOOK_ITEM_RE.test(id) || !date) { skipped.push({ itemId: id, reason: '項目 ID 或日期格式不正確' }); return; }
+    const have = bookProgressDateOf_(sid, id);
+    if (have && date < have) {
+      // 舊資料：只記錄，不會自動回寫（防止「舊同步去新」）
+      older.push({ itemId: id, date: date, existing: have });
+      return;
+    }
+    if (existing[sid + '|' + id + '|' + date + '|' + BOOK_PENDING_STATUS.PENDING] ||
+        (have && date === have)) {
+      duplicates.push({ itemId: id, date: date });
+      return;
+    }
+    const diff = have ? 'newer' : 'new';
+    const trust = (o.verifiedClaims && o.verifiedClaims[id]) === BOOK_TRUST_LEADER ? BOOK_TRUST_LEADER : BOOK_TRUST_CLAIM;
+    const pendingId = 'BP_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+    sh.appendRow([pendingId, sid, id, date, safeSheetText(o.source || 'ROVERBOOK', 24), ts,
+      BOOK_PENDING_STATUS.PENDING, diff, '', '', '',
+      safeSheetText('來源信任：' + (trust === BOOK_TRUST_LEADER ? 'BOOK 顯示領袖已簽（仍待你確認）' : '成員自己標記（未經任何領袖）'), 160)]);
+    staged.push({ pendingId: pendingId, itemId: id, date: date, diff: diff, trust: trust, existing: have || '' });
+    stagedCount++;
+  });
+  return {
+    staged: stagedCount, items: staged, older: older, duplicates: duplicates,
+    skipped: skipped, at: ts
+  };
+}
+
 function bookProgressOf_(sid) {
   const out = {};
   const pSheet = getSheet().getSheetByName('進度追蹤');
@@ -3023,7 +3159,17 @@ function bookAwardsOf_(sid) {
   }
   return out;
 }
-// 領袖讀：全團「已完成哪些項目」一覽（零個資；只有 SCOUT ID 與項目／日期）
+// 成員自己手機上已有、但 BADGE 未入帳嘅項目（只計 pending，唔會當成完成）
+function bookPendingOf_(sid) {
+  const out = {};
+  bookPendingRows_().forEach(function (r) {
+    if (r.scoutId !== sid || r.status !== BOOK_PENDING_STATUS.PENDING || !r.date) return;
+    if (!out[r.itemId] || r.date > out[r.itemId]) out[r.itemId] = r.date;
+  });
+  return out;
+}
+
+// 領袖讀：全團「已完成」一覽（零個資；只有 SCOUT ID 與項目／日期）＋ 待批清單
 function handleBookRoster(actor) {
   if (!canTickUser_(actor)) return jsonResponse({ success: false, error: '權限不足，需已獲勾選權限的領袖' });
   const sheet = getSheet().getSheetByName('進度追蹤');
@@ -3040,49 +3186,153 @@ function handleBookRoster(actor) {
       if (!members[sid][itemId] || date > members[sid][itemId]) members[sid][itemId] = date;
     }
   }
-  // 未完成的核簽（成員自己勾了但領袖未簽）→ 提示領袖去簽
-  const unsigned = [];
-  const sh = getSheet().getSheetByName(BOOK_SIGNOFF_SHEET);
-  if (sh) {
-    const data = sh.getDataRange().getValues();
-    for (let i = 1; i < data.length; i++) {
-      const sid = bookScoutId_(data[i][1]);
-      const itemId = String(data[i][2] || '').trim();
-      if (!sid || !BOOK_ITEM_RE.test(itemId)) continue;
-      if (!members[sid] || !members[sid][itemId]) unsigned.push({ scoutId: sid, itemId: itemId, date: bookNormDate_(data[i][3]) });
-    }
-  }
-  return jsonResponse({ success: true, members: members, unsignedFromBook: unsigned, count: Object.keys(members).length, privacy: { personalData: 'none' } });
+  // 待批（成員交上嚟、等領袖 CONFIRM）
+  const pending = bookPendingRows_()
+    .filter(function (r) { return r.status === BOOK_PENDING_STATUS.PENDING; })
+    .map(function (r) { return { pendingId: r.pendingId, scoutId: r.scoutId, itemId: r.itemId, date: r.date, diff: r.diff, trust: /BOOK 顯示領袖已簽/.test(r.note || '') ? BOOK_TRUST_LEADER : BOOK_TRUST_CLAIM }; });
+  const pendingByScout = {};
+  pending.forEach(function (r) {
+    if (!pendingByScout[r.scoutId]) pendingByScout[r.scoutId] = {};
+    if (!pendingByScout[r.scoutId][r.itemId] || r.date > pendingByScout[r.scoutId][r.itemId]) pendingByScout[r.scoutId][r.itemId] = r.date;
+  });
+  return jsonResponse({
+    success: true, members: members, count: Object.keys(members).length,
+    pending: pending, pendingByScout: pendingByScout, pendingCount: pending.length,
+    // 兼容舊前端：以前叫 unsignedFromBook
+    unsignedFromBook: pending.map(function (r) { return { scoutId: r.scoutId, itemId: r.itemId, date: r.date }; }),
+    privacy: { personalData: 'none' }
+  });
 }
-// 成員（或領袖代掃）上載：只收 SCOUT ID／項目／日期，其餘一律剝走
+
+// 讀待批清單：領袖看全部（可指定 scoutId），成員只看自己（只讀，零個資）
+function handleBookPending(actor, body) {
+  const b = body || {};
+  const isLeader = canTickUser_(actor);
+  const want = bookScoutId_(b.scoutId);
+  const me = bookScoutId_(actor && (actor.scoutId || actor.ymis));
+  if (!isLeader && want && want !== me) return jsonResponse({ success: false, error: '權限不足：只可以查看自己的待批紀錄' });
+  const sid = isLeader ? want : me;
+  const status = String(b.status || BOOK_PENDING_STATUS.PENDING);
+  const list = bookPendingRows_().filter(function (r) {
+    if (sid && r.scoutId !== sid) return false;
+    if (status !== 'all' && r.status !== status) return false;
+    return true;
+  }).map(function (r) {
+    const trust = /BOOK 顯示領袖已簽/.test(r.note || '') ? BOOK_TRUST_LEADER : BOOK_TRUST_CLAIM;
+    return { pendingId: r.pendingId, scoutId: r.scoutId, itemId: r.itemId, date: r.date, diff: r.diff, trust: trust, source: r.source, submittedAt: r.submittedAt };
+  });
+  return jsonResponse({ success: true, pending: list, count: list.length, scope: sid || 'all', privacy: { personalData: 'none' } });
+}
+
+// 領袖（或成員自己）上載：只會寫入「紀錄冊待批」，**唔會**寫入 進度追蹤／紀錄冊核簽
 function handleBookSync(actor, body) {
   if (!canTickUser_(actor)) return jsonResponse({ success: false, error: '權限不足，需已獲勾選權限的領袖' });
   const b = body || {};
   const sid = bookScoutId_(b.scoutId || (b.member && b.member.scoutId));
   if (!sid) return jsonResponse({ success: false, error: '缺少 SCOUT ID：請成員在紀錄冊填一次成員編號' });
   const privacy = bookPrivacyReport_(b);
-  // 學制／項目檢查用同一套規則（未知或已停用項目一律拒絕，避免亂寫）
-  const items = [];
-  const rejected = [];
   const rawProgress = (b.progress && typeof b.progress === 'object') ? b.progress : {};
+  const clean = {}, rejected = [], verifiedClaims = {};
   Object.keys(rawProgress).forEach(function (itemId) {
     const id = String(itemId || '').trim();
-    const date = bookNormDate_(typeof rawProgress[itemId] === 'string' ? rawProgress[itemId] : (rawProgress[itemId] && rawProgress[itemId].date));
+    const entry = rawProgress[itemId];
+    const date = bookNormDate_(typeof entry === 'string' ? entry : (entry && entry.date));
     if (!BOOK_ITEM_RE.test(id) || !date) { rejected.push({ itemId: id, reason: '項目 ID 或日期格式不正確' }); return; }
     const err = checkTickBatch_([{ ymis: sid, itemId: id }], null);
     if (err) { rejected.push({ itemId: id, reason: err }); return; }
-    const assessor = (rawProgress[itemId] && typeof rawProgress[itemId] === 'object') ? String(rawProgress[itemId].assessor || '') : '';
-    items.push({ scoutId: sid, itemId: id, date: date, leader: assessor, source: 'ROVERBOOK' });
+    clean[id] = date;
+    verifiedClaims[id] = bookTrustOf_(entry);
   });
-  const res = writeBookSignoffs_(items, { leader: actor.name || '', leaderTitle: '', source: 'ROVERBOOK' });
-  writeAudit(actor.ymis, 'book_sync', sid, 'ROVERBOOK 上載：' + res.written + ' 項核簽（已剝走個資欄位 ' + privacy.removedCount + ' 個）');
+  const stage = stageBookPending_(sid, clean, { source: 'ROVERBOOK', verifiedClaims: verifiedClaims });
+  writeAudit(actor.ymis, 'book_sync', sid,
+    'ROVERBOOK 上載：待批 ' + stage.staged + ' 項、較舊未回寫 ' + stage.older.length + ' 項、重覆 ' + stage.duplicates.length + ' 項（已剝走個資欄位 ' + privacy.removedCount + ' 個）');
   return jsonResponse({
-    success: true, scoutId: sid, written: res.written, skipped: res.skipped,
+    success: true, scoutId: sid,
+    staged: stage.staged, items: stage.items,
+    older: stage.older, duplicates: stage.duplicates,
     rejected: rejected, privacy: privacy,
-    progress: bookProgressOf_(sid), awards: bookAwardsOf_(sid),
-    message: '只寫入進度（' + res.written + ' 項），未收到任何個人資料'
+    progress: bookProgressOf_(sid), pending: bookPendingOf_(sid), awards: bookAwardsOf_(sid),
+    needsConfirm: stage.staged > 0,
+    leaderSignedCount: stage.items.filter(function (x) { return x.trust === BOOK_TRUST_LEADER; }).length,
+    memberClaimCount: stage.items.filter(function (x) { return x.trust === BOOK_TRUST_CLAIM; }).length,
+    trustNote: 'BOOK 交上嚟嘅每一項都只會入「待批」：即使 BOOK 顯示已由領袖簽核，都要你在這裡再確認一次（成員部機可以改任何欄位，所以一律唔信）。',
+    message: stage.staged > 0
+      ? ('已放入「紀錄冊待批」' + stage.staged + ' 項，等領袖確認後才會計入進度（BOOK 交上嚟嘅資料唔會自動變成已完成）')
+      : '沒有新的項目需要確認（已存在、較舊或格式不正確）'
   });
 }
+
+// 領袖 CONFIRM：把待批項目寫入正式進度（逐項揀，或一次過全部批准）
+function handleBookConfirm(actor, body) {
+  if (!canTickUser_(actor)) return jsonResponse({ success: false, error: '權限不足，需已獲勾選權限的領袖' });
+  const b = body || {};
+  const all = bookPendingRows_().filter(function (r) { return r.status === BOOK_PENDING_STATUS.PENDING; });
+  const wantIds = Array.isArray(b.pendingIds) ? b.pendingIds.map(String) : null;
+  const wantScout = bookScoutId_(b.scoutId);
+  let targets = all;
+  if (wantIds) targets = all.filter(function (r) { return wantIds.indexOf(r.pendingId) >= 0; });
+  else if (wantScout) targets = all.filter(function (r) { return r.scoutId === wantScout; });
+  // 可以只批准某幾項：b.items=[{pendingId,date}] 覆寫日期（「只加不減，但可以改」）
+  const dateOverride = {};
+  (Array.isArray(b.items) ? b.items : []).forEach(function (it) {
+    const pid = String((it && it.pendingId) || '');
+    const d = bookNormDate_(it && it.date);
+    if (pid && d) dateOverride[pid] = d;
+  });
+  const decision = String(b.decision || 'approve').toLowerCase();
+  if (decision === 'reject') {
+    const sh = bookSheet_(BOOK_PENDING_SHEET, BOOK_PENDING_HEADERS);
+    let n = 0;
+    targets.forEach(function (r) {
+      sh.getRange(r.row, 7).setValue(BOOK_PENDING_STATUS.REJECTED);
+      sh.getRange(r.row, 9).setValue('');
+      sh.getRange(r.row, 10).setValue(sheetActor(actor.ymis));
+      sh.getRange(r.row, 11).setValue(now());
+      n++;
+    });
+    if (n) writeAudit(actor.ymis, 'book_confirm_reject', String(n) + ' 項', '領袖拒絕 ROVERBOOK 待批紀錄');
+    return jsonResponse({ success: true, approved: 0, rejected: n, message: '已拒絕 ' + n + ' 項（不會計入進度）' });
+  }
+  if (!targets.length) return jsonResponse({ success: true, approved: 0, rejected: 0, message: '沒有待批項目' });
+  // 授權檢查：領袖必須有權勾選該項目（同一套 allowed_badges 規則）
+  const bad = [];
+  targets.forEach(function (r) {
+    const err = checkTickBatch_([{ ymis: r.scoutId, itemId: r.itemId }], actor);
+    if (err) bad.push({ pendingId: r.pendingId, itemId: r.itemId, reason: err });
+  });
+  if (bad.length) return jsonResponse({ success: false, error: bad[0].reason, rejected: bad });
+  const confirmDate = bookNormDate_(b.date) || formatDate(new Date());
+  const confirmer = sheetActor(actor.ymis);
+  const sh = bookSheet_(BOOK_PENDING_SHEET, BOOK_PENDING_HEADERS);
+  let approved = 0;
+  const signItems = [];
+  targets.forEach(function (r) {
+    if (!r.date) return;
+    const date = dateOverride[r.pendingId] || r.date;
+    const have = bookProgressDateOf_(r.scoutId, r.itemId);
+    // 只加不減：除非領袖明確表示要改（b.overwrite=true），否則較早日期唔會蓋走既有紀錄
+    if (have && date < have && !b.overwrite) {
+      sh.getRange(r.row, 7).setValue(BOOK_PENDING_STATUS.REJECTED);
+      sh.getRange(r.row, 12).setValue('較舊日期（既有 ' + have + '），已保留原紀錄');
+      sh.getRange(r.row, 10).setValue(confirmer);
+      sh.getRange(r.row, 11).setValue(now());
+      return;
+    }
+    const res = bookWriteProgress_(r.scoutId, r.itemId, date, confirmer, '由 ROVERBOOK 待批確認（' + r.pendingId + '）');
+    if (!res.ok) return;
+    signItems.push({ scoutId: r.scoutId, itemId: r.itemId, date: date, leader: actor.name || '', note: 'CONFIRM ' + r.pendingId });
+    sh.getRange(r.row, 7).setValue(BOOK_PENDING_STATUS.APPROVED);
+    sh.getRange(r.row, 8).setValue(have ? (date > have ? 'newer' : 'same') : 'new');
+    sh.getRange(r.row, 9).setValue(date);
+    sh.getRange(r.row, 10).setValue(confirmer);
+    sh.getRange(r.row, 11).setValue(now());
+    approved++;
+  });
+  if (signItems.length) writeBookSignoffs_(signItems, { leader: actor.name || '', leaderTitle: '', source: 'ROVERBADGE' });
+  writeAudit(actor.ymis, 'book_confirm', String(approved) + ' 項', '領袖確認 ROVERBOOK 待批紀錄並寫入進度');
+  return jsonResponse({ success: true, approved: approved, rejected: targets.length - approved, signoffs: signItems.length, message: '已確認 ' + approved + ' 項並寫入進度' });
+}
+
 // 領袖一次過頒發：可指定多個成員／多個獎章，一 call 完成
 function handleBookAward(actor, body) {
   if (!canTickUser_(actor)) return jsonResponse({ success: false, error: '權限不足，需已獲勾選權限的領袖' });
@@ -3093,12 +3343,14 @@ function handleBookAward(actor, body) {
   writeAudit(actor.ymis, 'book_award', String(list.length) + ' 人／章', '一次過頒發：' + res.written + ' 筆（已存在 ' + res.skipped + ' 筆）');
   return jsonResponse({ success: true, written: res.written, skipped: res.skipped, message: '已頒發 ' + res.written + ' 筆（重複或格式不正確 ' + res.skipped + ' 筆）' });
 }
+
 // 成員自己下載「唯讀」進度（只回自己那行；用 token 身分，不接受任意 SCOUT ID）
 function handleBookPull(actor) {
   const sid = bookScoutId_(actor && (actor.scoutId || actor.ymis));
   if (!sid) return jsonResponse({ success: false, error: '找不到 SCOUT ID' });
   const progress = bookProgressOf_(sid);
   const awards = bookAwardsOf_(sid);
+  const pending = bookPendingOf_(sid);
   // 核簽清單（成員可貼回 ROVERBOOK；不含任何人名以外的個資）
   const signoffs = [];
   const sh = getSheet().getSheetByName(BOOK_SIGNOFF_SHEET);
@@ -3112,47 +3364,53 @@ function handleBookPull(actor) {
       signoffs.push({ id: itemId, date: date, leader: String(data[i][4] || ''), title: String(data[i][5] || ''), verified: true });
     }
   }
+  // BOOK 側只可以「無條件相信」呢啲（全部係 BADGE 領袖核實過 / 由領袖行為產生）
+  const verifiedInBadge = {};
+  Object.keys(progress).forEach(function (k) { verifiedInBadge[k] = progress[k]; });
   return jsonResponse({
     success: true, schema: 'roverbadge.progress.roverbook.v2', scoutId: sid,
+    verified: true, verifiedBy: 'ROVERBADGE',
     progress: progress, awards: awards, signoffs: signoffs,
+    verifiedInBadge: verifiedInBadge,
+    // 待批（未經領袖核實）→ BOOK 只可以顯示為「申請中」，唔准當完成
+    pending: pending, unverified: pending,
     privacy: { personalData: 'none', note: '只回進度與頒發；姓名、聯絡、相片、簽名墨跡不出本檔' }
   });
 }
+
 function menuBookStatus() {
   const stats = bookStats_();
   const lines = [
     'ROVERBOOK 對接狀態（GS v' + GS_VERSION + '）',
     '',
-    '・「' + BOOK_SIGNOFF_SHEET + '」：' + stats.signoffs + ' 筆核簽（' + stats.signedMembers + ' 位成員）',
+    '・「' + BOOK_PENDING_SHEET + '」：待領袖確認 ' + stats.pending + ' 項（成員交上嚟，未計入進度）',
+    '・「' + BOOK_SIGNOFF_SHEET + '」：' + stats.signoffs + ' 筆核簽（' + stats.signedMembers + ' 位成員，全部由領袖確認產生）',
     '・「' + BOOK_AWARD_SHEET + '」：' + stats.awards + ' 筆頒發（' + stats.awardedMembers + ' 位成員）',
-    '・未完成：成員已交但領袖未簽 ' + stats.unsigned + ' 項',
+    '・待批較舊而未有回寫：' + stats.olderBlocked + ' 項',
+    '',
+    '重要：成員喺 ROVERBOOK 自己簽嘅紀錄，只會進入「' + BOOK_PENDING_SHEET + '」，',
+    '要領袖逐項／一次過確認（CONFIRM）之後才會寫入正式「進度追蹤」。',
     '',
     '私隱：本試算表只存 SCOUT ID、項目、日期、核簽領袖姓名；',
     '成員的電話／電郵／地址／相片／簽名墨跡永遠留在佢自己部手機。',
-    '兩張表都在「🔧 初始化／更新」時自動補建，唔會改動任何既有資料。'
+    '三張表都在「🔧 初始化／更新」時自動補建，唔會改動任何既有資料。'
   ];
   return linkAlert('📖 ROVERBOOK 對接', lines.join('\n'));
 }
 function bookStats_() {
-  const out = { signoffs: 0, awards: 0, signedMembers: {}, awardedMembers: {}, unsigned: 0 };
+  const out = { signoffs: 0, awards: 0, signedMembers: {}, awardedMembers: {}, pending: 0, olderBlocked: 0 };
   const sh = getSheet().getSheetByName(BOOK_SIGNOFF_SHEET);
-  const done = {};
-  const p = getSheet().getSheetByName('進度追蹤');
-  if (p) {
-    const d = p.getDataRange().getValues();
-    for (let i = 1; i < d.length; i++) {
-      const sid = String(d[i][0] || '').trim(); const id = String(d[i][1] || '').trim();
-      if (sid && id) done[sid + '|' + id] = true;
-    }
-  }
   if (sh) {
     const d = sh.getDataRange().getValues();
     for (let i = 1; i < d.length; i++) {
       if (!d[i][1]) continue;
       out.signoffs++; out.signedMembers[String(d[i][1])] = true;
-      if (!done[String(d[i][1]) + '|' + String(d[i][2])]) out.unsigned++;
     }
   }
+  bookPendingRows_().forEach(function (r) {
+    if (r.status === BOOK_PENDING_STATUS.PENDING) out.pending++;
+    if (r.status === BOOK_PENDING_STATUS.REJECTED && r.diff === 'older') out.olderBlocked++;
+  });
   const a = getSheet().getSheetByName(BOOK_AWARD_SHEET);
   if (a) {
     const d = a.getDataRange().getValues();
@@ -3162,6 +3420,7 @@ function bookStats_() {
   out.awardedMembers = Object.keys(out.awardedMembers).length;
   return out;
 }
+
 
 // ===== 旅系統：Sheet 選單（onOpen）=====
 // 全部接駁操作都經呢度做（sig 係 GAS→GAS，唔經 Vercel proxy，前端／api 唔使改）。

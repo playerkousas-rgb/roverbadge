@@ -123,8 +123,10 @@
 | 慢速觀測 | `api/proxy.js` `SLOW_PASSWORD_LOG_MS = 8000` ＋ `logSlowPassword()` → `[proxy] slow_password_kdf`（只記 action／耗時／旅團 id，唔記密碼或帳號） | `tests/password-kdf.test.mjs`、`tests/proxy-login.test.mjs` |
 | 版本風險橫幅 | `assets/gs-release.js` `versionAtRisk(v)` 只在 `5.2.0 ≤ v < 5.4.0` 為真；`index.html` 首頁／登入頁顯示紅色「此版本登入會逾時」，GS 更新後自動消失 | `tests/password-kdf.test.mjs` |
 | 自檢／救援 | 選單「⚡ 登入效能自檢」（即場量 1,000／10,000／120,000 次迭代毫秒數＋本旅團雜湊分佈）與「🚑 救援：重設某成員密碼」 | `tests/password-kdf.test.mjs` |
-| ROVERBOOK：只收進度 | 新表「紀錄冊核簽」（10 欄）／「紀錄冊頒發」（7 欄）由 `initializeSheets()` 冪等補建；行動 `bookSync`／`bookAward`／`bookPull`／`bookRoster`；成員個資（姓名以外全部）在橋接層與 GAS 層各剝一次，回報只有 `{removedFields, removedCount}` | `tests/roverbook-bridge.test.mjs`（含整份試算表個資掃描） |
-| ROVERBOOK：權限 | `bookSync`／`bookAward`／`bookRoster` 只限可勾選領袖；`bookPull` 只回 token 本人（不接受任意 SCOUT ID）；四個 action 都要 token ＋ `sig` 驗證，並已加入 `api/proxy.js` 白名單與 `TOKEN_ACTIONS`、`LINK_SIG_*` 清單 | `tests/roverbook-bridge.test.mjs`、`tests/proxy-actions.test.mjs` |
+| ROVERBOOK：只收進度 | 新表「紀錄冊待批」（12 欄）／「紀錄冊核簽」（10 欄）／「紀錄冊頒發」（7 欄）由 `initializeSheets()` 冪等補建；成員個資（姓名以外全部）在橋接層與 GAS 層各剝一次，回報只有 `{removedFields, removedCount}` | `tests/roverbook-bridge.test.mjs`（含四張表整份個資掃描） |
+| ROVERBOOK：CONFIRM 閘（防自簽扮完成） | `bookSync` **只寫「紀錄冊待批」**，唔會寫「進度追蹤」或「紀錄冊核簽」；領袖經 `bookConfirm` 逐項／一次過確認（可改日期）才入帳，`decision:'reject'` 永不入帳；成員呼叫 `bookConfirm` → 權限不足 | `tests/roverbook-bridge.test.mjs`（斷言 sync 後兩表仍只有表頭、成員確認被拒、前端契約掃描） |
+| ROVERBOOK：只加不減（但可以改） | 同一 (SCOUT ID, 項目) 已有較後日期時，較舊提交只回 `older[]` 而不入待批；`bookConfirm` 預設不覆寫（要 `overwrite:true`）；同一日期重覆提交標 `duplicate`；頒發永不重覆、不改期 | `tests/roverbook-bridge.test.mjs` |
+| ROVERBOOK：權限 | `bookSync`／`bookConfirm`／`bookAward`／`bookRoster` 只限可勾選領袖；`bookPending` 領袖看全部、成員只看自己；`bookPull` 只回 token 本人（不接受任意 SCOUT ID）；六個 action 都要 token ＋ `sig` 驗證，並已加入 `api/proxy.js` 白名單與 `TOKEN_ACTIONS`、`LINK_SIG_*` 清單 | `tests/roverbook-bridge.test.mjs`、`tests/proxy-actions.test.mjs` |
 
 **ROVERBOOK 端不在本 repo**：本 repo 只負責介面（`assets/roverbook-bridge.js`）與後端；`npm run book:dropin` 生成 ESM 版＋測試向量＋貼上指引（`dist/roverbook/`，已 gitignore），由 ROVERBOOK repo 自行收納。詳見 `docs/ROVERBOOK_BRIDGE.md`。
 
