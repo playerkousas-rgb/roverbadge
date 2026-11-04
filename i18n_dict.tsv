@@ -1085,3 +1085,11 @@ BOOK 顯示領袖已簽（仍待你確認）	BOOK says a leader signed (still ne
 成員自己標記（未經領袖）	Marked by the member (no leader yet)
 貼回 ROVERBOOK 時：這裡的「進度／核簽」＝領袖已核實，BOOK 會無條件採用；「待領袖確認」的項目 BOOK 只會顯示為申請中，不會當成完成。	When pasted back into ROVERBOOK: “progress / sign-offs” here are leader-verified and the BOOK adopts them as-is; items “awaiting leader confirmation” appear only as pending requests and never as completed.
 雙向信任規則：BADGE → BOOK 會無條件相信你在這裡核實過的紀錄（BOOK 只會採用已核實的項目，未核實的不會變成完成）；BOOK → BADGE 則一律不信——即使成員手機上寫住「已由領袖簽核」，都只會變成待你確認，因為成員部機可以改任何欄位。	Two-way trust rule: BADGE → BOOK trusts anything you verified here unconditionally (the BOOK only adopts verified items; unverified ones never become completed); BOOK → BADGE trusts nothing — even if the member’s phone claims “signed by a leader”, it only becomes something for you to confirm, because the member controls every field on that device.
+撤回	Withdraw
+撤回（刪除）這些頒發紀錄，需要確認	Withdraw (delete) these awards — requires confirmation
+更正	Correct
+更正已頒發的日期（會覆寫原日期，需要確認）	Correct the award date (overwrites the original date; requires confirmation)
+確定要一次過確認**全部**待批項目？（會寫入全團所有成員的進度）	Confirm ALL pending items at once? (this writes progress for every member in the troop)
+確定要刪除這些頒發紀錄？刪除後成員的 ROVERBOOK 下次取回時會消失。	Delete these award records? They will disappear from the member’s ROVERBOOK the next time it pulls.
+確定要更正已頒發的日期？原日期會被覆寫（會寫入備註）。	Correct the awarded date? The original date is overwritten (and noted in the remarks column).
+領袖已撤回（貼回 ROVERBOOK 時會移除）	Withdrawn by the leader (removed when pasted back into ROVERBOOK)

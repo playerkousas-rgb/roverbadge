@@ -28,6 +28,7 @@ const proxySrc = fs.readFileSync(new URL('../api/proxy.js', import.meta.url), 'u
 const indexHtml = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
 const SID = '1234567890';
+const SID2 = '1234567891';
 // 成員手機上一份「真實」的紀錄冊：滿載個資，用來證明剝得乾淨
 function memberBook() {
   return {
@@ -186,6 +187,11 @@ function leaderEnv() {
     email: 'taiman@example.org', role: 'member', password: 'Member!1234'
   });
   assert.equal(add.success, true, JSON.stringify(add));
+  // 第二位成員（測試多成員一次過頒發）
+  env.call({
+    action: 'addUser', token: login.token, ymis: SID2, name: '李小明',
+    email: 'siuming@example.org', role: 'member', password: 'Member!1234'
+  });
   return { env, token: login.token };
 }
 
@@ -315,7 +321,7 @@ test('後端 bookConfirm：成員無權確認（唔可以自己批自己）', ()
   assert.equal(r.success, false);
   assert.match(r.error, /權限不足/);
   // 成員亦只可以讀自己的待批
-  const other = env.call({ action: 'bookPending', token: m.token, scoutId: '1234567891' });
+  const other = env.call({ action: 'bookPending', token: m.token, scoutId: SID2 });
   assert.equal(other.success, false);
   assert.equal(env.call({ action: 'bookRoster', token }).members[SID], undefined, '未 CONFIRM 前不可見於進度一覽');
 });
@@ -345,7 +351,7 @@ test('後端 bookAward：一次過頒發多成員多獎章，重複唔會寫第�
   const awards = [
     { scoutId: SID, badgeId: 'L1', date: '2026-04-01' },
     { scoutId: SID, badgeId: 'L2', date: '2026-05-01' },
-    { scoutId: '1234567891', badgeId: 'L1', date: '2026-04-02' },
+    { scoutId: SID2, badgeId: 'L1', date: '2026-04-02' },
     { scoutId: SID, badgeId: 'X9', date: '2026-04-01' }, // 壞獎章
     { scoutId: SID, badgeId: 'L3', date: '01/04/2026' }  // 壞日期
   ];
@@ -417,6 +423,162 @@ test('後端：選單有「📖 ROVERBOOK 對接狀態」，且狀態只計數�
   assert.ok(!text.includes('陳大文'), '狀態訊息不可含姓名');
 });
 
+// ---------- B2. 撤回／更正／打錯編號（2026-11-05 審計修正的回歸） ----------
+test('撤回（BUG 修正）：領袖取消完成後，bookPull／bookRoster 都唔可以再由核簽補回', () => {
+  const { env, token } = leaderEnv();
+  env.call({ action: 'bookSync', token, scoutId: SID, progress: { 'L1-ACT-01': '2026-03-01' } });
+  env.call({ action: 'bookConfirm', token, scoutId: SID });
+  assert.equal((env.call({ action: 'bookRoster', token }).members[SID])['L1-ACT-01'], '2026-03-01');
+  // 領袖在「我的進度」取消完成
+  env.call({ action: 'save', token, changes: [{ ymis: SID, itemId: 'L1-ACT-01', uncomplete: true }] });
+  const m = env.call({ action: 'login', login_id: SID, password: 'Member!1234' });
+  const pull = env.call({ action: 'bookPull', token: m.token });
+  assert.equal(pull.progress['L1-ACT-01'], undefined, '撤回後唔可以仍然回報已完成（否則 BOOK 會重新採用）');
+  assert.ok(!pull.signoffs.some(x => x.id === 'L1-ACT-01'), '撤回後唔可以再宣稱核簽已核實');
+  assert.deepEqual(pull.verifiedInBadge, {});
+  assert.deepEqual(pull.withdrawn, ['L1-ACT-01'], '要明確告知 BOOK 移除');
+  assert.equal(env.call({ action: 'bookRoster', token }).members[SID], undefined);
+});
+
+test('撤回（BOOK 側）：applySignoff 會依 withdrawn 移除完成紀錄', () => {
+  const r = Bridge.applySignoff(
+    { progress: { 'L1-ACT-01': '2026-03-01', 'L1-UND-01': '2026-03-02' }, awards: {} },
+    { verified: true, signoffs: [{ id: 'L1-UND-01', date: '2026-03-02', verified: true }], withdrawn: ['L1-ACT-01'] }
+  );
+  assert.equal(r.progress['L1-ACT-01'], undefined, '領袖撤回 → BOOK 要移除');
+  assert.equal(r.progress['L1-UND-01'], '2026-03-02');
+  assert.deepEqual(r.removed, ['L1-ACT-01']);
+  assert.ok(r.notes.some(n => /撤回/.test(n.reason)));
+});
+
+test('打錯編號（BUG 修正）：不存在的 SCOUT ID 唔可以寫待批或頒發（整批拒絕，唔會半寫）', () => {
+  const { env, token } = leaderEnv();
+  const bad = '9999999999';
+  const r1 = env.call({ action: 'bookSync', token, scoutId: bad, progress: { 'L1-ACT-01': '2026-03-01' } });
+  assert.equal(r1.success, false);
+  assert.equal(r1.unknownScoutId, bad);
+  assert.equal(env.ss.sheets.get('紀錄冊待批').rows.length, 1, '唔可以留低幽靈待批');
+  const r2 = env.call({ action: 'bookAward', token, awards: [
+    { scoutId: SID, badgeId: 'L1', date: '2026-04-01' },
+    { scoutId: bad, badgeId: 'L2', date: '2026-04-01' }
+  ] });
+  assert.equal(r2.success, false, '有未知成員 → 整批拒絕');
+  assert.deepEqual(r2.unknownScoutId, [bad]);
+  assert.equal(env.ss.sheets.get('紀錄冊頒發').rows.length, 1, '唔可以半寫（連第一位都唔寫）');
+  // 已在「成員名單」的成員（未開戶）仍然可以收
+  env.call({ action: 'addMember', token, ymis: '1234567899', name: '未開戶成員' });
+  const r3 = env.call({ action: 'bookSync', token, scoutId: '1234567899', progress: { 'L1-ACT-01': '2026-03-01' } });
+  assert.equal(r3.success, true, JSON.stringify(r3));
+});
+
+test('頒發更正／撤回（BUG 修正）：預設永不改，領袖明確 confirm 才改或刪', () => {
+  const { env, token } = leaderEnv();
+  env.call({ action: 'bookAward', token, awards: [{ scoutId: SID, badgeId: 'L2', date: '2026-04-01' }] });
+  // 預設：唔可以改
+  const r1 = env.call({ action: 'bookAward', token, awards: [{ scoutId: SID, badgeId: 'L2', date: '2026-05-01', correct: true }] });
+  assert.equal(r1.corrected, 0, '冇 confirm 唔可以更正');
+  assert.equal(env.call({ action: 'bookPull', token: env.call({ action: 'login', login_id: SID, password: 'Member!1234' }).token }).awards.L2, '2026-04-01');
+  // 明確 confirm：可以更正錯日期
+  const r2 = env.call({ action: 'bookAward', token, confirm: true, awards: [{ scoutId: SID, badgeId: 'L2', date: '2026-05-01', correct: true }] });
+  assert.equal(r2.corrected, 1, JSON.stringify(r2));
+  const award = env.ss.sheets.get('紀錄冊頒發').rows.find(x => x[0] === SID && x[1] === 'L2');
+  assert.equal(award[2], '2026-05-01');
+  assert.match(String(award[6]), /更正頒發日期（原 2026-04-01）/);
+  // 撤回：需要 confirm
+  const r3 = env.call({ action: 'bookAward', token, awards: [{ scoutId: SID, badgeId: 'L2', date: '2026-05-01', remove: true }] });
+  assert.equal(r3.removed, 0);
+  const r4 = env.call({ action: 'bookAward', token, confirm: true, awards: [{ scoutId: SID, badgeId: 'L2', date: '2026-05-01', remove: true }] });
+  assert.equal(r4.removed, 1);
+  assert.equal(env.ss.sheets.get('紀錄冊頒發').rows.length, 1, '只剩表頭');
+});
+
+test('bookConfirm 範圍（BUG 修正）：冇指明 pendingIds／scoutId 就唔准確認（要 all:true）', () => {
+  const { env, token } = leaderEnv();
+  env.call({ action: 'bookSync', token, scoutId: SID, progress: { 'L1-ACT-01': '2026-03-01' } });
+  env.call({ action: 'bookSync', token, scoutId: SID2, progress: { 'L1-ACT-01': '2026-03-02' } });
+  const r = env.call({ action: 'bookConfirm', token });
+  assert.equal(r.success, false, '唔可以無範圍就掃全團');
+  assert.match(r.error, /pendingIds|scoutId|all/);
+  assert.equal(env.ss.sheets.get('進度追蹤').rows.length, 1, '一項都唔可以寫入');
+  const ok = env.call({ action: 'bookConfirm', token, all: true });
+  assert.equal(ok.approved, 2, '明確 all:true 才一次過確認全部');
+});
+
+test('端到端往返：成員手機 → 待批 → 領袖 CONFIRM → 取回 → BOOK 採用（偽造／舊資料都擋住）', () => {
+  const { env, token } = leaderEnv();
+  // A. 成員手機：自己標記一項
+  const book = { progress: { 'L1-ACT-01': '2026-03-05' }, awards: {} };
+  const parsed = Bridge.fromRoverBook({
+    member: { scoutId: SID, nameZh: '陳大文', phone: '91234567' },
+    progress: book.progress
+  });
+  assert.deepEqual(Object.keys(parsed.claims), ['L1-ACT-01']);
+  // B. 交上 BADGE → 只入待批
+  const sync = env.call({ action: 'bookSync', token, scoutId: SID, progress: parsed.progress });
+  assert.equal(sync.staged, 1);
+  assert.equal(env.ss.sheets.get('進度追蹤').rows.length, 1);
+  // C. 領袖 CONFIRM（指明範圍）
+  assert.equal(env.call({ action: 'bookConfirm', token, scoutId: SID }).approved, 1);
+  // D. 成員取回 → BOOK 採用（BOOK 無條件相信已核實）
+  const m = env.call({ action: 'login', login_id: SID, password: 'Member!1234' });
+  const pull = env.call({ action: 'bookPull', token: m.token });
+  const merged = Bridge.applySignoff(book, pull);
+  assert.equal(merged.progress['L1-ACT-01'], '2026-03-05');
+  assert.equal(merged.applied, 0, '手機已有同一日 → kept（只加不減）');
+  assert.equal(merged.kept, 1);
+  // E. 成員偽造「領袖已簽」→ 仍然只入待批，唔會完成
+  const fake = Bridge.fromRoverBook({
+    member: { scoutId: SID },
+    progress: { 'L1-UND-01': { date: '2026-06-01', verified: true, source: 'ROVERBADGE' } }
+  });
+  assert.equal(fake.verifiedCount, 1);
+  env.call({ action: 'bookSync', token, scoutId: SID, progress: fake.progress, trusts: fake.trusts });
+  const roster = env.call({ action: 'bookRoster', token });
+  assert.equal(roster.members[SID]['L1-UND-01'], undefined, '未 CONFIRM 唔可以出現');
+  assert.ok(roster.pending.some(x => x.itemId === 'L1-UND-01' && x.trust === 'leader-signed'),
+    '前端送出的 trust 標記要保留：' + JSON.stringify(roster.pending));
+  // F. 舊備份（較早日期）→ 唔入待批、唔會倒流
+  const older = Bridge.fromRoverBook({ member: { scoutId: SID }, progress: { 'L1-ACT-01': '2026-01-01' } });
+  const s2 = env.call({ action: 'bookSync', token, scoutId: SID, progress: older.progress });
+  assert.equal(s2.staged, 0);
+  assert.deepEqual(s2.older, [{ itemId: 'L1-ACT-01', date: '2026-01-01', existing: '2026-03-05' }]);
+  assert.equal(env.call({ action: 'bookRoster', token }).members[SID]['L1-ACT-01'], '2026-03-05');
+  // G. 領袖頒發 → 成員取回 → BOOK 採用；另一位成員見唔到
+  env.call({ action: 'bookAward', token, awards: [{ scoutId: SID, badgeId: 'L1', date: '2026-04-01' }] });
+  assert.deepEqual(Bridge.applySignoff(merged, env.call({ action: 'bookPull', token: m.token })).awards, { L1: '2026-04-01' });
+  const m2 = env.call({ action: 'login', login_id: SID2, password: 'Member!1234' });
+  const p2 = env.call({ action: 'bookPull', token: m2.token });
+  assert.equal(p2.scoutId, SID2);
+  assert.deepEqual(p2.progress, {});
+  assert.deepEqual(p2.awards, {});
+});
+
+test('信任標記傳遞（BUG 修正）：bridge 的 trusts 要送得到 BADGE，唔會被壓成 member-claim', () => {
+  const { env, token } = leaderEnv();
+  const parsed = Bridge.fromRoverBook({
+    member: { scoutId: SID },
+    progress: {
+      'L1-ACT-01': { date: '2026-03-01', verified: true, source: 'ROVERBADGE' }, // BOOK 聲稱領袖簽過
+      'L1-UND-01': '2026-03-02'                                                    // 成員自己標記
+    }
+  });
+  assert.deepEqual(parsed.trusts, { 'L1-ACT-01': 'leader-signed', 'L1-UND-01': 'member-claim' });
+  // 前端必須把 trusts 一齊送出（progress 只有日期字串，唔會自帶信任資訊）
+  assert.match(indexHtml, /trusts: parsed\.trusts/, '前端要送 trusts');
+  const r = env.call({ action: 'bookSync', token, scoutId: SID, progress: parsed.progress, trusts: parsed.trusts });
+  assert.equal(r.leaderSignedCount, 1);
+  assert.equal(r.memberClaimCount, 1);
+  const pend = env.call({ action: 'bookPending', token, scoutId: SID });
+  const t = Object.fromEntries(pend.pending.map(x => [x.itemId, x.trust]));
+  assert.equal(t['L1-ACT-01'], 'leader-signed');
+  assert.equal(t['L1-UND-01'], 'member-claim');
+  // 就算 trusts 缺失／亂填，都只影響顯示，一樣入待批、一樣要 CONFIRM
+  const r2 = env.call({ action: 'bookSync', token, scoutId: SID, progress: { 'L1-UND-02': '2026-03-03' }, trusts: { 'L1-UND-02': 'whatever' } });
+  assert.equal(r2.staged, 1);
+  assert.equal(r2.memberClaimCount, 1);
+  assert.deepEqual(r2.progress, {}, 'trust 標記唔可以令任何項目自動完成');
+});
+
 // ---------- C. 代理層／前端接線 ----------
 test('前後端契約：前端每個 book* 呼叫都有後端處理，反之亦然（唔會靜靜哋 400／Unknown action）', () => {
   const calls = new Set([...indexHtml.matchAll(/apiRequest\('(book[A-Za-z]+)'/g)].map(m => m[1]));
@@ -436,6 +598,9 @@ test('前後端契約：前端每個 book* 呼叫都有後端處理，反之亦�
   assert.ok(!/writeBookSignoffs_/.test(sync), 'bookSync 唔可以直接寫核簽（必須經 bookConfirm）');
   assert.match(indexHtml, /function bookConfirmSelected\(/, '前端要有逐項確認');
   assert.match(indexHtml, /function bookConfirmAll\(/, '前端要有一次過確認');
+  assert.match(indexHtml, /all: !!all/, '「全部確認」必須明確帶 all:true');
+  assert.match(indexHtml, /bookAwardCorrect/, '頒發要有更正日期控制');
+  assert.match(indexHtml, /bookAwardRemove/, '頒發要有撤回控制');
   assert.match(indexHtml, /function bookConfirmLeaderSigned\(/, '前端要可以只確認 BOOK 顯示已簽的');
   // BOOK 信任度要顯示在待批表格（領袖要分得出邊項係成員自己標記）
   assert.match(indexHtml, /BOOK 信任度/);

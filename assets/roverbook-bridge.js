@@ -51,8 +51,9 @@
   //   BOOK → BADGE：一律唔信（成員部機可以改任何欄位），到 BADGE 只會變成「待領袖核實」。
   const TRUSTED_SIGNOFF_SOURCES = ['ROVERBADGE', 'roverbadge', 'roverbadge/signoff', 'roverbadge.signoff.v2', 'LEADER'];
   const TRUST_BASIS = {
-    SIGNED_BY_LEADER: 'leader-signoff',   // BADGE 領袖簽核（BOOK 可無條件採用）
-    MEMBER_CLAIM: 'member-claim'          // 成員自己標記（BOOK 只顯示；BADGE 一律待核實）
+    // 與 Code.gs 的 BOOK_TRUST_LEADER／BOOK_TRUST_CLAIM 用同一組字串（跨端契約）
+    SIGNED_BY_LEADER: 'leader-signed',   // BADGE 領袖簽核（BOOK 可無條件採用）
+    MEMBER_CLAIM: 'member-claim'         // 成員自己標記（BOOK 只顯示；BADGE 一律待核實）
   };
 
   const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -196,6 +197,11 @@
       progress: p.progress,
       verified: verifiedItems,
       claims: claimItems,
+      // 逐項信任標記（前端要連同 progress 一齊送去 BADGE；進度本身只是日期字串，唔會帶得到信任資訊）
+      trusts: Object.keys(p.progress).reduce((acc, id) => {
+        acc[id] = verifiedItems[id] ? TRUST_BASIS.SIGNED_BY_LEADER : TRUST_BASIS.MEMBER_CLAIM;
+        return acc;
+      }, {}),
       verifiedCount: Object.keys(verifiedItems).length,
       claimCount: Object.keys(claimItems).length,
       kept: p.kept,
@@ -218,7 +224,7 @@
    *   只有 verified 的項目會寫成完成；claims（成員自己標記）只會回報為 notes，不會蓋掉任何已完成日期，
    *   亦不會被當成已完成。日期只加不減（舊資料唔會蓋走手機上較後嘅紀錄）。
    * bookData: { progress:{itemId:date}, awards:{badge:date}, signoffs:[{id,date,verified}] }
-   * 回傳 { progress, awards, applied, kept, notes }
+   * 回傳 { progress, awards, applied, kept, removed, notes }
    */
   function applySignoff(bookData, exported, opts) {
     const o = opts || {};
@@ -262,6 +268,15 @@
       const id = text(k, 32);
       if (ITEM_ID_RE.test(id)) notes.push({ itemId: id, reason: 'BADGE 尚未核實（只保留手機上的標記）' });
     });
+    // 領袖撤回：明確清單（唯一可以「減」的情況；由 BADGE 領袖主動產生，唔係成員自己講）
+    const removed = [];
+    (Array.isArray(src.withdrawn) ? src.withdrawn : []).forEach((id) => {
+      const k = text(id, 32);
+      if (!ITEM_ID_RE.test(k)) return;
+      if (Object.prototype.hasOwnProperty.call(progress, k)) { delete progress[k]; removed.push(k); }
+    });
+    if (removed.length) notes.push({ itemId: removed.join(','), reason: '領袖已撤回，BOOK 已移除完成紀錄' });
+
     // 頒發（只加不減）
     const awardsIn = isObj(src.awards) ? src.awards : {};
     Object.keys(awardsIn).forEach((k) => {
@@ -270,7 +285,7 @@
       if (normDate(awards[badge]) && normDate(awards[badge]) >= d) return;
       awards[badge] = d;
     });
-    return { progress, awards, applied, kept, notes, source: text(src.schema, 40) };
+    return { progress, awards, applied, kept, removed, notes, source: text(src.schema, 40) };
   }
 
   /** ROVERBADGE → ROVERBOOK：只匯出進度（＋頒發），絕不匯出任何個人資料。 */

@@ -911,6 +911,14 @@ a:hover{text-decoration:underline}
 // ?lang=en／?lang=zh 可鎖定分享連結嘅語言（同 vsbadge 一致）：讀到就寫入 localStorage，即時生效，毋須重新載入
 const UI_LANG=(function(){ try{ const p=new URLSearchParams(window.location.search).get('lang'); if(p==='en'||p==='zh'){ try{ localStorage.setItem('roverbadge_lang',p); }catch(e2){} return p; } return localStorage.getItem('roverbadge_lang')||'zh'; }catch(e){ return 'zh'; } })();
 const LANG_DICT={
+  "撤回": "Withdraw",
+  "撤回（刪除）這些頒發紀錄，需要確認": "Withdraw (delete) these awards — requires confirmation",
+  "更正": "Correct",
+  "更正已頒發的日期（會覆寫原日期，需要確認）": "Correct the award date (overwrites the original date; requires confirmation)",
+  "確定要一次過確認**全部**待批項目？（會寫入全團所有成員的進度）": "Confirm ALL pending items at once? (this writes progress for every member in the troop)",
+  "確定要刪除這些頒發紀錄？刪除後成員的 ROVERBOOK 下次取回時會消失。": "Delete these award records? They will disappear from the member’s ROVERBOOK the next time it pulls.",
+  "確定要更正已頒發的日期？原日期會被覆寫（會寫入備註）。": "Correct the awarded date? The original date is overwritten (and noted in the remarks column).",
+  "領袖已撤回（貼回 ROVERBOOK 時會移除）": "Withdrawn by the leader (removed when pasted back into ROVERBOOK)",
   "BOOK 信任度": "BOOK trust",
   "BOOK 顯示領袖已簽": "BOOK says a leader signed",
   "BOOK 顯示領袖已簽（仍待你確認）": "BOOK says a leader signed (still needs your confirmation)",
@@ -3533,9 +3541,9 @@ async function bookLoadPending() {
   renderBookTab();
 }
 
-async function bookConfirmSubmit(pendingIds, decision, overwrite) {
+async function bookConfirmSubmit(pendingIds, decision, overwrite, all) {
   try {
-    const r = await apiRequest('bookConfirm', { token: currentToken, pendingIds, decision, overwrite: !!overwrite });
+    const r = await apiRequest('bookConfirm', { token: currentToken, pendingIds, decision, overwrite: !!overwrite, all: !!all });
     if (!r.success) throw new Error(r.error || 'confirm failed');
     bookState.confirmResult = r;
     bookState.selected = {};
@@ -3554,7 +3562,10 @@ function bookConfirmSelected() {
   if (!ids.length) { bookState.error = tr('請先勾選要確認的項目'); renderBookTab(); return; }
   bookConfirmSubmit(ids, 'approve', false);
 }
-function bookConfirmAll() { bookConfirmSubmit(null, 'approve', false); }
+function bookConfirmAll() {
+  if (!window.confirm(tr('確定要一次過確認**全部**待批項目？（會寫入全團所有成員的進度）'))) return;
+  bookConfirmSubmit(null, 'approve', false, true);
+}
 // 只確認「BOOK 顯示領袖已簽」嗰啲（仍然係一次過由領袖決定；成員自己標記嘅一項都唔會混入）
 function bookConfirmLeaderSigned() {
   const p = bookState.pending;
@@ -3575,8 +3586,12 @@ function bookAwardHtml() {
     <p style="font-size:12px;line-height:1.7">${bookEsc(tr('一行一個：SCOUT ID, 獎章（L1／L2／L3／L4）, 頒發日期（YYYY-MM-DD）。一次過提交，成員下次喺 ROVERBOOK 取回時就會見到。'))}</p>
     <p style="font-size:12px;line-height:1.7;color:var(--text-light)">ℹ️ ${bookEsc(tr('如果係團集會／考驗營「有參加就一次過簽」，請用「🏠 全團總覽 → 🚀 考驗營批量完成」或「📋 待批 → 批量批准」，唔需要經 ROVERBOOK；ROVERBOOK 只係成員自己擁有、出外可讀的紀錄冊。'))}</p>
     <textarea id="bookAwards" rows="5" style="width:100%;font-family:monospace;font-size:12px" placeholder="1234567890, L1, 2026-04-01&#10;1234567891, L2, 2026-04-01"></textarea>
+    <div style="margin-top:8px;font-size:12px;line-height:1.8">
+      <label><input type="checkbox" id="bookAwardCorrect"> ${bookEsc(tr('更正已頒發的日期（會覆寫原日期，需要確認）'))}</label><br>
+      <label><input type="checkbox" id="bookAwardRemove"> ${bookEsc(tr('撤回（刪除）這些頒發紀錄，需要確認'))}</label>
+    </div>
     <div style="margin-top:8px"><button class="btn btn-sm btn-primary" onclick="bookSubmitAwards()">${bookEsc(tr('🏅 一次過頒發'))}</button></div>
-    ${r ? `<div class="info-section" style="border-left-color:var(--green)"><b>✅ ${bookEsc(tr('已頒發'))} ${bookEsc(String(r.written))} ${bookEsc(tr('筆'))}</b>${r.skipped ? `<div style="font-size:11px;color:var(--text-light)">${bookEsc(tr('略過（已頒發或格式不正確）'))}：${bookEsc(String(r.skipped))}</div>` : ''}</div>` : ''}
+    ${r ? `<div class="info-section" style="border-left-color:var(--green)"><b>✅ ${bookEsc(tr('已頒發'))} ${bookEsc(String(r.written))} ${bookEsc(tr('筆'))}</b>${r.corrected ? `　<span style="font-size:11px">${bookEsc(tr('更正'))} ${bookEsc(String(r.corrected))}</span>` : ''}${r.removed ? `　<span style="font-size:11px">${bookEsc(tr('撤回'))} ${bookEsc(String(r.removed))}</span>` : ''}${r.skipped ? `<div style="font-size:11px;color:var(--text-light)">${bookEsc(tr('略過（已頒發或格式不正確）'))}：${bookEsc(String(r.skipped))}</div>` : ''}</div>` : ''}
   </div>`;
 }
 
@@ -3592,6 +3607,7 @@ function bookPullHtml() {
       ${bookProgressRows(p.progress || {})}
       ${Object.keys(p.awards || {}).length ? `<div style="margin-top:8px;font-size:12px">🏅 ${bookEsc(tr('已頒發'))}：${bookEsc(Object.keys(p.awards).sort().map(k => k + ' ' + p.awards[k]).join('、'))}</div>` : ''}
       ${Object.keys(p.pending || {}).length ? `<div style="margin-top:8px;font-size:12px;color:var(--orange)">⏳ ${bookEsc(tr('待領袖確認（未計入進度）'))}：${bookEsc(Object.keys(p.pending).sort().map(k => k + ' ' + p.pending[k]).join('、'))}</div>` : ''}
+      ${(p.withdrawn || []).length ? `<div style="margin-top:8px;font-size:12px;color:var(--red)">↩️ ${bookEsc(tr('領袖已撤回（貼回 ROVERBOOK 時會移除）'))}：${bookEsc((p.withdrawn || []).join('、'))}</div>` : ''}
       <div style="margin-top:10px"><button class="btn btn-sm btn-secondary" onclick="bookCopyPull()">${bookEsc(tr('📋 複製 JSON（貼入 ROVERBOOK）'))}</button></div>
       <textarea id="bookPullJson" rows="5" style="width:100%;margin-top:8px;font-family:monospace;font-size:11px" readonly>${bookEsc(JSON.stringify(p, null, 2))}</textarea>
     </div>` : ''}
@@ -3617,7 +3633,7 @@ async function bookSyncPayload(payload) {
   if (!parsed.ok) { bookState.error = tr(parsed.reason); renderBookTab(); return; }
   bookState.busy = true;
   try {
-    const r = await apiRequest('bookSync', { token: currentToken, scoutId: parsed.scoutId, progress: parsed.progress });
+    const r = await apiRequest('bookSync', { token: currentToken, scoutId: parsed.scoutId, progress: parsed.progress, trusts: parsed.trusts || {} });
     if (!r.success) throw new Error(r.error || 'sync failed');
     bookState.syncResult = r;
     bookState.confirmResult = null;
@@ -3669,8 +3685,15 @@ async function bookSubmitAwards() {
     return { scoutId: parts[0], badgeId: (parts[1] || '').toUpperCase(), date: parts[2] };
   }).filter(a => a.scoutId && a.badgeId && a.date);
   if (!awards.length) { bookState.error = tr('請每行填：SCOUT ID, 獎章, 日期（YYYY-MM-DD）'); renderBookTab(); return; }
+  const correctEl = document.getElementById('bookAwardCorrect');
+  const removeEl = document.getElementById('bookAwardRemove');
+  const wantCorrect = !!(correctEl && correctEl.checked);
+  const wantRemove = !!(removeEl && removeEl.checked);
+  if (wantCorrect && !window.confirm(tr('確定要更正已頒發的日期？原日期會被覆寫（會寫入備註）。'))) { renderBookTab(); return; }
+  if (wantRemove && !window.confirm(tr('確定要刪除這些頒發紀錄？刪除後成員的 ROVERBOOK 下次取回時會消失。'))) { renderBookTab(); return; }
+  if (wantCorrect || wantRemove) awards.forEach(a => { a.correct = wantCorrect; a.remove = wantRemove; });
   try {
-    const r = await apiRequest('bookAward', { token: currentToken, awards });
+    const r = await apiRequest('bookAward', { token: currentToken, awards, confirm: wantCorrect || wantRemove });
     if (!r.success) throw new Error(r.error || 'award failed');
     bookState.awardResult = r; bookState.error = '';
   } catch (e) { bookState.error = e.message || String(e); }

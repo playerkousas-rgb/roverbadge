@@ -44,6 +44,17 @@
 
 > 一句總結：**「BADGE 講嘅就信，BOOK 講嘅只當申請」**。
 
+### 1.2 撤回、更正、打錯編號（2026-11-05 審計修正）
+
+| 情況 | 規則 | 原因 |
+| --- | --- | --- |
+| 領袖在「我的進度」取消完成（撤回） | 該項目即刻由 `bookProgressOf_`／`bookRoster` 移除，`bookPull` **唔會**再由核簽補回，並在 `withdrawn[]` 明確告知 BOOK；BOOK 側 `applySignoff()` 會把該項目由「已完成」移除 | 舊版：領袖撤回後核簽殘留，`bookPull` 仍回 `verified:true` → BOOK 會重新採用，等於「撤回無效」 |
+| 打錯 SCOUT ID（幽靈成員） | `bookSync`／`bookAward` 一律拒絕（`unknownScoutId`），頒發更是**整批拒絕、不會半寫**；判定範圍＝Users（active）＋成員名單 | 舊版會寫入無人跟進的待批／頒發紀錄 |
+| 頒發錯日期 | 預設永不改（`written 0, skipped N`）；領袖明確 `confirm:true` ＋ `correct:true` 才會改，並在備註記「更正頒發日期（原 …）」 | 「只加不減，但可以改」——改要人手確認 |
+| 頒發錯人／錯章 | 明確 `confirm:true` ＋ `remove:true` 才刪（`removed`） | 同上 |
+| 「全部確認」 | 必須明確 `all:true`（前端有 `window.confirm`）；冇 `pendingIds`／`scoutId` 就一律拒絕 | 舊版「冇帶 id＝全團」，誤按會一次過確認全團 |
+| 信任標記傳遞 | 前端送 `trusts`（bridge `fromRoverBook().trusts`），GAS 以 `leader-signed`／`member-claim` 記錄；缺失或亂填只影響顯示，一樣入待批、一樣要 CONFIRM | 舊版 `progress` 只有日期字串，信任標記在傳輸中丟失，「只確認已簽」永遠找不到 |
+
 ## 2. 誰在什麼時候用什麼
 
 ```
@@ -162,4 +173,4 @@ node scripts/roverbook-dropin.mjs   # 產物在 dist/roverbook/（已 gitignore�
 - `apps-script/Code.gs` — `handleBookSync`／`handleBookConfirm`／`handleBookPending`／`handleBookAward`／`handleBookPull`／`handleBookRoster`／`menuBookStatus`
 - `api/proxy.js` — 四個 action 的白名單 + 上游 sig 支援
 - `scripts/roverbook-dropin.mjs` — 生成 ROVERBOOK 端 drop-in
-- `tests/roverbook-bridge.test.mjs` — 24 項回歸（含整份試算表個資掃描、CONFIRM 閘、只加不減、雙向信任、前後端契約）
+- `tests/roverbook-bridge.test.mjs` — 31 項回歸（含整份試算表個資掃描、CONFIRM 閘、只加不減、雙向信任、前後端契約）
