@@ -24,8 +24,8 @@
   else root.GsRelease = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   const GS_LATEST = Object.freeze({
-    version: '5.3.0',
-    releaseDate: '2026-11-03',
+    version: '5.4.0',
+    releaseDate: '2026-11-04',
     initRequired: true,
     codeUrl: 'apps-script/Code.gs'
   });
@@ -62,5 +62,33 @@
     return st.code === 'needs_init' || (st.code === 'outdated' && L.initRequired);
   }
 
-  return { GS_LATEST: GS_LATEST, compareVersions: compareVersions, statusOf: statusOf, initNotice: initNotice };
+  // 「此版本登入會逾時」判斷（GS 5.4.0 新增）
+  // 背景：GS 5.2.x–5.3.0 用 PBKDF2 120,000 次迭代，而且成功登入會做 2× KDF、失敗會逐行掃全表。
+  // Apps Script 每次 HMAC 都要過 JS↔Java 邊界，所以嗰幾個版本一多人登入就會撞爆 proxy 上游 45 秒，
+  // 前端只會見到「後端服務連線逾時」。呢個 function 只做版本比對，唔會讀任何旅團資料。
+  //   versionAtRisk：該旅團實際回報版本係唔係「慢登入」版本（未更新／未知一律 false，唔靠嚇）
+  //   loginTimeoutNotice：登入頁要唔要顯示提示
+  const SLOW_LOGIN_MIN = { version: '5.2.0', releaseDate: '2026-11-02' }; // 引入 120k PBKDF2 嘅版本
+  const SLOW_LOGIN_FIXED = '5.4.0';                                        // 改為 10k + 單行定位嘅版本
+  function versionAtRisk(gsVersion) {
+    const v = String(gsVersion || '').trim();
+    if (!v) return false; // 舊到冇版本欄位＝未升級到 120k 版本，登入係單次 SHA-256，唔會逾時
+    if (compareVersions(v, SLOW_LOGIN_MIN.version) < 0) return false;
+    return compareVersions(v, SLOW_LOGIN_FIXED) < 0;
+  }
+  // 只有「已知版本」先提示；unchecked／error 狀態唔猜
+  function loginTimeoutNotice(info) {
+    if (!info) return false;
+    return versionAtRisk(info.gsVersion);
+  }
+
+  return {
+    GS_LATEST: GS_LATEST,
+    compareVersions: compareVersions,
+    statusOf: statusOf,
+    initNotice: initNotice,
+    versionAtRisk: versionAtRisk,
+    loginTimeoutNotice: loginTimeoutNotice,
+    SLOW_LOGIN_FIXED: SLOW_LOGIN_FIXED
+  };
 });

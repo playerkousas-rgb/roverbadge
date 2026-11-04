@@ -2,7 +2,7 @@
 
 > RoverBadge 是為香港樂行童軍旅團設計的進度紀錄及領袖行政工具：領袖可在網頁完成日常管理、審批及報表列印，而資料仍由各旅團自己既有的 Google Sheet 與 Apps Script 保管。
 >
-> 基於 2026 年第 11 版《樂行童軍訓練綱要》 • 前端 v5.2 ＋ 後端 GS 5.3.0（2026-11-03）
+> 基於 2026 年第 11 版《樂行童軍訓練綱要》 • 前端 v5.2 ＋ 後端 GS 5.4.0（2026-11-04）
 >
 > ⚠️ **非官方聲明**：本系統為獨立開發的非官方工具，並非香港童軍總會官方產品，與總會並無隸屬或贊助關係。
 >
@@ -15,6 +15,7 @@
 - **用戶管理**：新增／編輯／停用／重設密碼（臨時密碼寄電郵或當面給，首次登入強制改密）、細緻權限 `allowed_badges`、私隱開關 `allow_member_view_others`（成員預設只看自己）、批量開戶（CSV／YMIS 自訂報表 PDF 瀏覽器內解密）
 - **🔑 忘記密碼（GS 5.2.3 起）**：登入頁自助式——輸入 YMIS 或登記電郵 → 寄 8 位一次性重設碼 → 即場設新密碼；重設碼只存 SHA-256、15 分鐘有效、5 次錯誤鎖定、不洩漏帳戶是否存在。詳見 [docs/PASSWORD_RESET.md](docs/PASSWORD_RESET.md)
 - **官方表格**：新制／舊制 PT/21、PT/22、PT/69 自動填寫，`.print-area` 雙面列印
+- **📖 ROVERBOOK 對接（GS 5.4.0 起）**：ROVERBOOK 是成員自己手機上的紀錄冊（前端），ROVERBADGE 是領袖統管（後端）。兩者只交換**進度**：成員交上來的 JSON／檔案即場剝走全部個資（電話、電郵、地址、生日、相片、簽名墨跡、緊急聯絡人），只留 `scoutId`＋項目＋日期寫入「紀錄冊核簽」；領袖可一頁看全團進度、**一次過頒發**（寫入「紀錄冊頒發」），成員按「取回我的進度」只拿回自己的資料。詳見 [docs/ROVERBOOK_BRIDGE.md](docs/ROVERBOOK_BRIDGE.md)
 - **其他獎章**併入進度頁底部；**考驗介紹**內建（每項 detail／assessment／tip／links）；**保護兒童**資源一鍵直達
 - **中／英一鍵切換**：`🌐 English` 按鈕即時全站切換（記喺 `localStorage: roverbadge_lang`）；分享連結可用 `?lang=en`／`?lang=zh` 鎖定語言
 - **🐛💬 回報 · 意見**：對接 [scout-admin](https://github.com/playerkousas-rgb/scout-admin) 統一回報（首頁／登入頁／登入後 header 三個入口），傳送狀態明確（傳送中 → 已確認／未能確認，防重複提交）
@@ -24,7 +25,7 @@
 
 ```
 index.html              — 前端所有邏輯（單一 HTML，統一 apiRequest() → 同源 /api/proxy）
-assets/                 — LOGO PNG 128/256 + favicon + 架構圖 WebP + forms.js／rover-scope.js／ymis-parse.js
+assets/                 — LOGO PNG 128/256 + favicon + 架構圖 WebP + forms.js／rover-scope.js／ymis-parse.js／roverbook-bridge.js（純邏輯對接規則）
 data/                   — items.json（樂行綱要：32 項段章細項（+子細項 0 項），15 項其他獎章）／items_en.json／members_template.csv／mock_members.json／mock_import.csv
 apps-script/Code.gs     — 各旅團 Google Sheet 後端（單一檔案；進度／獎章／審批／帳戶／履歷／忘記密碼）
 api/                    — proxy.js（同源多旅團 GAS Proxy，SSRF 白名單＋逾時＋錯誤標準化）
@@ -35,7 +36,7 @@ api/                    — proxy.js（同源多旅團 GAS Proxy，SSRF 白名�
 scripts/build.mjs       — 建置：產生 .vercel/output（Build Output API；靜態白名單＋ functions bundle）
 vercel.json             — 只含 version:2／framework:null／buildCommand／git.deploymentEnabled
 tests/                  — 全套測試（真實 Code.gs harness + mock GAS + 真 proxy 端到端）
-docs/                   —領袖／執委／成員教學、部署指南（部署時只有白名單文件上線）
+docs/                   —領袖／執委／成員教學、ROVERBOOK 對接（ROVERBOOK_BRIDGE.md）、部署指南（部署時只有白名單文件上線）
 i18n_dict.tsv           — 中英字典源（LANG_DICT 以此為準，手動同步 index.html）
 ```
 
@@ -77,13 +78,15 @@ i18n_dict.tsv           — 中英字典源（LANG_DICT 以此為準，手動同
 ## 開發與檢查
 
 ```bash
-npm run check    # 語法檢查（含 index.html inline script 與 Code.gs）+ 結構守護（85 項）
+npm run check    # 語法檢查（含 index.html inline script 與 Code.gs）+ 結構守護（95 項）
 npm run lint     # 無 TODO 殘留／行尾空格／可疑 log
 npm test         # 全套：check + 單元 + 真實 Code.gs harness + mock GAS + 真 HTTP 端到端
 npm run dev      # 本機預覽：mock 旅團 0082 + 開發伺服器（port 3000，綁 0.0.0.0）
 npm run demo     # Demo server（同樣掛 /api/proxy、/api/troops、/api/super）
 npm run build    # 產生 .vercel/output（本機驗證 Build Output）
 npm run test:build   # 驗證建置產物
+npm run test:book    # ROVERBOOK 對接回歸（17 項，含整份試算表個資掃描）
+npm run book:dropin  # 生成 ROVERBOOK 端 drop-in（dist/roverbook/，不入 git）
 ```
 
 CI：`.github/workflows/ci.yml` 會在 push／PR 自動跑 `lint`＋`check`＋`test`（見 PLAYBOOK G8）。
@@ -93,7 +96,7 @@ CI：`.github/workflows/ci.yml` 會在 push／PR 自動跑 `lint`＋`check`＋`t
 ## 文件
 
 - 旅團負責人／領袖：[docs/LEADER_GUIDE.md](docs/LEADER_GUIDE.md)｜執委：[docs/EXEC_GUIDE.md](docs/EXEC_GUIDE.md)｜成員：[docs/MEMBER_GUIDE.md](docs/MEMBER_GUIDE.md)
-- 部署：[docs/DEPLOY_GUIDE_V5_DUALTRACK.md](docs/DEPLOY_GUIDE_V5_DUALTRACK.md)／[VERCEL_ENV_SETUP.md](VERCEL_ENV_SETUP.md)｜批量開戶：[docs/BULK_ONBOARD.md](docs/BULK_ONBOARD.md)／[docs/YMIS_EXPORT.md](docs/YMIS_EXPORT.md)｜忘記密碼：[docs/PASSWORD_RESET.md](docs/PASSWORD_RESET.md)｜主系統整合：[docs/MAIN_SYSTEM_INTEGRATION.md](docs/MAIN_SYSTEM_INTEGRATION.md)
+- 部署：[docs/DEPLOY_GUIDE_V5_DUALTRACK.md](docs/DEPLOY_GUIDE_V5_DUALTRACK.md)／[VERCEL_ENV_SETUP.md](VERCEL_ENV_SETUP.md)｜批量開戶：[docs/BULK_ONBOARD.md](docs/BULK_ONBOARD.md)／[docs/YMIS_EXPORT.md](docs/YMIS_EXPORT.md)｜忘記密碼：[docs/PASSWORD_RESET.md](docs/PASSWORD_RESET.md)｜ROVERBOOK 對接：[docs/ROVERBOOK_BRIDGE.md](docs/ROVERBOOK_BRIDGE.md)｜登入逾時：[docs/TROUBLESHOOT_LOGIN_TIMEOUT.md](docs/TROUBLESHOOT_LOGIN_TIMEOUT.md)｜主系統整合：[docs/MAIN_SYSTEM_INTEGRATION.md](docs/MAIN_SYSTEM_INTEGRATION.md)
 - APP 管理員工作流程／發佈檢查清單：[APP_ADMIN_WORKFLOW.md](APP_ADMIN_WORKFLOW.md)｜歷史：[CHANGE_LOG.md](CHANGE_LOG.md)
 
 ## 姊妹系統

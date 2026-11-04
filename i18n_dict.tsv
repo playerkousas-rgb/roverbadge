@@ -1009,3 +1009,46 @@ GS 最新版本	Latest GS version
 每次更新後請按一次選單「🔗 旅系統 → 🔧 初始化／更新」（等同 initializeSheets()）。</b>佢只會補建缺少的工作表（例如「活動履歷」及「待批履歷」）與欄位標題，不會更改或清除現有資料，亦不會更換 API Key。	After every update press the menu "🔗 Troop System → 🔧 Initialize / Update" once (the same as initializeSheets()).</b>It only adds missing sheets (for example "Activity Log" and "Pending Activity Log") and column headers; it never changes or clears existing data and never changes the API Key.
 旅團後端未升級 v8.2：請通知管理員更新 Code.gs 並按選單「🔗 旅系統 → 🔧 初始化／更新」一次	Group backend not upgraded to v8.2: ask the admin to update Code.gs and press the menu "🔗 Troop System → 🔧 Initialize / Update" once
 新節點接入：選單「🔧 初始化／更新」／「🔑 顯示 API KEY（交 ADMIN）」只提供 API Key；URL 由 Google 部署視窗取得，再填原有 ADMIN FORM。	New node onboarding: the menu items "🔧 Initialize / Update" and "🔑 Show API KEY (for the ADMIN)" provide only the API Key; get the URL from the Google deployment dialog and enter it in the existing ADMIN FORM.
+🔴 此版本登入會逾時：本旅團 GS 是慢登入版本，請更新 Code.gs 至 v5.4.0	🔴 This version will time out on login: this troop's GS is a slow-login version — please update Code.gs to v5.4.0
+此版本每次登入要做 120,000 次密碼雜湊（成功登入更要做兩次），超過後端 45 秒上限，部分帳號會一直顯示「連線逾時」。更新後新雜湊只需 10,000 次、每次登入只做一次，登入會回復 1–3 秒；舊帳號登入一次後會自動升級，不需要任何人重設密碼。	This version runs 120,000 password-hash iterations on every login (twice on a successful login), which exceeds the backend's 45-second limit, so some accounts keep seeing "connection timed out". After updating, new hashes need only 10,000 iterations and each login runs the KDF once, so login returns to 1–3 seconds; older hashes upgrade themselves automatically on the next successful login — nobody needs to reset a password.
+📖 ROVERBOOK 對接	📖 ROVERBOOK bridge
+ROVERBOOK 對接	ROVERBOOK bridge
+📥 1 · 接收進度（從 ROVERBOOK）	📥 1 · Receive progress (from ROVERBOOK)
+🏅 2 · 一次過頒發	🏅 2 · Award in one go
+📤 3 · 成員取回進度	📤 3 · Member pulls progress
+ROVERBOOK 是成員自己手機上的紀錄冊；這裡只收「進度」。姓名以外嘅個人資料（電話、電郵、地址、相片、簽名墨跡）永遠留在成員自己部機，系統會自動剝走並顯示剝走了幾多項。	ROVERBOOK is the record book on each member's own phone; this page only receives progress. Personal particulars (phone, email, address, photo, signature ink) always stay on the member's device — the system strips them and reports how many were removed.
+項目 ID	Item ID
+完成日期	Completed on
+未有任何進度紀錄	No progress records yet
+已接收	Received
+項進度	progress items
+已剝走個資欄位	Personal-data fields stripped
+未寫入（格式／學制不符）	Not written (bad format or scheme mismatch)
+步驟 1：把成員手機的進度交上嚟	Step 1: bring a member's progress up from their phone
+成員在 ROVERBOOK 用「出示二維碼」揀「訓練進度」，領袖掃完之後（或成員自己貼上）會得到一段 RB1… 或以 { 開頭的 JSON。貼在下面即可；系統只會讀 SCOUT ID、項目 ID、完成日期。	In ROVERBOOK the member picks “Training progress” under “Show QR code”. After the leader scans it (or the member pastes it) you get an RB1… string or a JSON starting with {. Paste it below — only SCOUT ID, item ID and completion date are read.
+✅ 接收並寫入進度	✅ Receive and write progress
+📂 或者揀一個 JSON 檔	📂 Or choose a JSON file
+🔄 重新整理全團一覽	🔄 Refresh troop overview
+全團已完成進度一覽	Troop progress overview
+位成員	members
+項	items
+暫未有任何進度	No progress yet
+成員交上嚟但未喺進度追蹤入帳	Received from members but not yet in the progress sheet
+步驟 2：一次過頒發（多個成員、多個獎章）	Step 2: award in one go (many members, many badges)
+一行一個：SCOUT ID, 獎章（L1／L2／L3／L4）, 頒發日期（YYYY-MM-DD）。一次過提交，成員下次喺 ROVERBOOK 取回時就會見到。	One per line: SCOUT ID, badge (L1/L2/L3/L4), award date (YYYY-MM-DD). Submit once — members see it the next time they pull from ROVERBOOK.
+🏅 一次過頒發	🏅 Award all
+已頒發	Awarded
+筆	entries
+略過（已頒發或格式不正確）	Skipped (already awarded or bad format)
+步驟 3：成員取回自己的進度（唯讀）	Step 3: member pulls their own progress (read-only)
+按一下即取回你自己的進度、頒發同核簽，可以貼返入 ROVERBOOK。只會回你本人嘅資料，唔會回其他人。	One tap pulls your own progress, awards and sign-offs, ready to paste back into ROVERBOOK. Only your own data is returned.
+📤 取回我的進度	📤 Pull my progress
+📋 複製 JSON（貼入 ROVERBOOK）	📋 Copy JSON (paste into ROVERBOOK)
+已複製，請貼入 ROVERBOOK 的「從 ROVERBADGE 匯入」	Copied — paste it into ROVERBOOK's “Import from ROVERBADGE”
+複製失敗，請手動選取文字	Copy failed — please select the text manually
+請先貼上 ROVERBOOK 的內容	Paste the ROVERBOOK content first
+RB1 二維碼要由 ROVERBOOK 自己解碼：請成員在 ROVERBOOK 按「匯出 ROVERBADGE 進度」再把 JSON 貼上（或儲存成檔案）	An RB1 QR code must be decoded by ROVERBOOK itself: ask the member to press “Export ROVERBADGE progress” in ROVERBOOK and paste (or save) that JSON instead
+內容不是有效 JSON	The content is not valid JSON
+檔案不是有效 JSON	The file is not valid JSON
+請每行填：SCOUT ID, 獎章, 日期（YYYY-MM-DD）	Each line needs: SCOUT ID, badge, date (YYYY-MM-DD)
+對接模組未載入（assets/roverbook-bridge.js）	Bridge module not loaded (assets/roverbook-bridge.js)

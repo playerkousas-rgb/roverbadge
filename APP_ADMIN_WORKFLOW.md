@@ -113,6 +113,21 @@
 2. `needs_init`：`initRequired` 為真，而 `initializedGsVersion` ≠ `gsVersion`。
 3. `ok`：以上皆不成立，顯示綠色「✅ 已核對」。
 
+### 登入 KDF 與 ROVERBOOK 對接（GS 5.4.0，2026-11-04；對齊 ScoutBadge GS 6.4.0）
+
+| 項目 | 規格 | 測試 |
+| --- | --- | --- |
+| 迭代次數 | `PBKDF2_ITERATIONS = 10000`（原本 120,000），新格式 `pbkdf2$10000$<salt>$<dk>`；`parsePbkdf2Hash_()` 一律用**雜湊字串自帶**的迭代次數（1,000–2,000,000），所以 `pbkdf2$120000$` 與舊 64-hex 都照樣登入得 | `tests/password-kdf.test.mjs`（**不寫死迭代次數**，只斷言 ≤ `PBKDF2_MAX_ITERATIONS＝20000`） |
+| 單次 KDF／單行定位 | 一次成功登入只做 1 次 KDF；`isDefaultPasswordHash_()` 不再為判斷而重跑（dummy hash 用 `CacheService` 快取，跨執行重用）；登入以 `findUserRowByYmis_/Email_` 單行定位，唔再掃全表 | `tests/password-kdf.test.mjs`（含「排第 30+ 行仍只 1 次」） |
+| 透明升級 | `needsRehash_()`：舊格式或迭代次數 ≠ 本版時，登入成功即改寫同一欄；**唔需要任何人重設密碼**；`verifyPassword()` 不再有「迭代次數下限」而拒絕舊雜湊 | `tests/password-kdf.test.mjs` |
+| 慢速觀測 | `api/proxy.js` `SLOW_PASSWORD_LOG_MS = 8000` ＋ `logSlowPassword()` → `[proxy] slow_password_kdf`（只記 action／耗時／旅團 id，唔記密碼或帳號） | `tests/password-kdf.test.mjs`、`tests/proxy-login.test.mjs` |
+| 版本風險橫幅 | `assets/gs-release.js` `versionAtRisk(v)` 只在 `5.2.0 ≤ v < 5.4.0` 為真；`index.html` 首頁／登入頁顯示紅色「此版本登入會逾時」，GS 更新後自動消失 | `tests/password-kdf.test.mjs` |
+| 自檢／救援 | 選單「⚡ 登入效能自檢」（即場量 1,000／10,000／120,000 次迭代毫秒數＋本旅團雜湊分佈）與「🚑 救援：重設某成員密碼」 | `tests/password-kdf.test.mjs` |
+| ROVERBOOK：只收進度 | 新表「紀錄冊核簽」（10 欄）／「紀錄冊頒發」（7 欄）由 `initializeSheets()` 冪等補建；行動 `bookSync`／`bookAward`／`bookPull`／`bookRoster`；成員個資（姓名以外全部）在橋接層與 GAS 層各剝一次，回報只有 `{removedFields, removedCount}` | `tests/roverbook-bridge.test.mjs`（含整份試算表個資掃描） |
+| ROVERBOOK：權限 | `bookSync`／`bookAward`／`bookRoster` 只限可勾選領袖；`bookPull` 只回 token 本人（不接受任意 SCOUT ID）；四個 action 都要 token ＋ `sig` 驗證，並已加入 `api/proxy.js` 白名單與 `TOKEN_ACTIONS`、`LINK_SIG_*` 清單 | `tests/roverbook-bridge.test.mjs`、`tests/proxy-actions.test.mjs` |
+
+**ROVERBOOK 端不在本 repo**：本 repo 只負責介面（`assets/roverbook-bridge.js`）與後端；`npm run book:dropin` 生成 ESM 版＋測試向量＋貼上指引（`dist/roverbook/`，已 gitignore），由 ROVERBOOK repo 自行收納。詳見 `docs/ROVERBOOK_BRIDGE.md`。
+
 ### 接入四項硬化（GS 5.3.0，2026-11-03；對齊 ScoutBadge GS 6.3.0 PR #50）
 
 | 項目 | 規格 | 測試 |

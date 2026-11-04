@@ -1,5 +1,48 @@
 # CHANGE_LOG
 
+## 2026-11-04 — GS 5.4.0：登入逾時修正（PBKDF2 120k → 10k、單次 KDF、單行定位）＋ ROVERBOOK 對接
+
+沿用姊妹 repo **ScoutBadge 6.4.0**（`docs/TROUBLESHOOT_82.md`）已驗證的做法，解決「super 入得、其他成員一直逾時」。GS 5.3.0 → **5.4.0**、`GS_RELEASE_DATE` 2026-11-04、`GS_INIT_REQUIRED` 維持 `true`、`assets/gs-release.js` 嘅 `GS_LATEST` 同步（前端仍 v5.2、`package.json` 版本不動）。**資料保全零變動**：唔改任何既有欄名、唔刪任何列、唔換 API Key、唔要求任何人重設密碼；舊雜湊在任何格式下都照樣登入得，成功登入時透明升級。
+
+### 【1】登入成本（實測：`node tests/measure-login-kdf.mjs`）
+
+| 路徑 | 修前（5.3.0，120,000 次） | 修後（5.4.0，10,000 次） |
+| --- | --- | --- |
+| 新種 `pbkdf2$` 帳號，密碼正確 | 18.0 s（2× KDF ＝ 240,000 次） | **1.5 s（1× KDF）** |
+| 舊 64-hex 帳號（即場升級） | 180 s 級（逐行掃全表） | **1.5 s** |
+| 帳號排第 30+ 行 | 180–594 s | **1.5 s** |
+| 密碼錯誤 | 逐行掃 ＋ 每行 2× KDF | **1.5 s**（只驗 1 行） |
+| 預設密碼 dummy hash | 20,000 次 | 3.0 s（CacheService 快取，跨執行重用） |
+
+四個放大器一併拆掉：① 迭代次數 120,000 → **10,000**（新格式 `pbkdf2$10000$<salt>$<dk>`）；② 驗證一律讀雜湊字串自帶的迭代次數（`parsePbkdf2Hash_`，1,000–2,000,000），所以 `pbkdf2$120000$` 及舊 64-hex 都照樣登入得；③ 登入**單行定位**，唔再逐行掃全表；④ `isDefaultPasswordHash_()` 唔再為咗判斷「是否預設密碼」而重跑一次 PBKDF2（dummy hash 用 CacheService 快取，避免每行都計）。另外新增 `PBKDF2_MAX_ITERATIONS = 20000` 常數作測試契約上限（**測試不寫死迭代次數**，只讀 `getPbkdf2Iterations()`），同 `needsRehash_()`（登入成功後透明升級）。
+
+**上游／前端配套**：`api/proxy.js` 新增 `SLOW_PASSWORD_LOG_MS = 8000` 同 `logSlowPassword()`，慢過 8 秒嘅密碼類請求會記 `[proxy] slow_password_kdf`（只記 action／耗時／旅團，唔記密碼或帳號）；`index.html` 新增首頁／登入頁紅色橫幅「此版本登入會逾時」（由 `assets/gs-release.js` 嘅 `versionAtRisk(v)` 判斷，**只在 5.2.0 ≤ v < 5.4.0 時出現**，更新後自動消失）；Apps Script 選單新增「⚡ 登入效能自檢」（即場量 1,000／10,000／120,000 次迭代毫秒數＋本旅團雜湊分佈）同「🚑 救援：重設某成員密碼」。
+
+文件：[docs/TROUBLESHOOT_LOGIN_TIMEOUT.md](docs/TROUBLESHOOT_LOGIN_TIMEOUT.md)（含實測表、部署步驟、唔應該做嘅事）。
+
+### 【2】ROVERBOOK 對接（成員手機紀錄冊 ⇄ 領袖統管）
+
+產品決定（2026-11-04）：**ROVERBOOK 是成員自己手機上的紀錄冊（前端）；ROVERBADGE 是領袖的統管後台**。三條鐵律：① 成員個資只留在他自己的手機；② ROVERBADGE 只記進度；③ 頒發只由領袖一次過做。
+
+- **新增工作表（只增不刪）**：「紀錄冊核簽」`[簽核編號, SCOUT ID, 項目 ID, 完成日期, 核簽領袖, 職銜, 核簽日期, 來源, 寫入時間, 備註]`、「紀錄冊頒發」`[SCOUT ID, 獎章 ID, 頒發日期, 頒發人, 來源, 寫入時間, 備註]`，由 `initializeSheets()` 冪等補建。冇改任何既有表／欄。
+- **四個新 action**：`bookSync`（領袖接收成員紀錄冊）、`bookAward`（領袖一次過頒發）、`bookPull`（成員只取自己）、`bookRoster`（領袖看全團，零個資）。四個都加入 `doPost`／`handleSignedRequest` 路由、`api/proxy.js` 嘅 action 白名單與 `TOKEN_ACTIONS`，上游簽名（`LINK_SIG_*`）亦可呼叫。
+- **個資剝離（兩道防線）**：`assets/roverbook-bridge.js` 的 `fromRoverBook()` 只取 `scoutId`／`itemId`／`date`／`assessor`，其餘即場剝走；GAS 端 `bookStripPersonal_()` 再掃一次。回報只有 `{removedFields, removedCount}`（**不含值**）。唯一跨越邊界的成員欄位是 `scoutId`。
+- **格式**：接受 ROVERBOOK 原生 `{member,progress}`（扁平或 per-scout）及 `roverbadge.progress.v1` 信封；輸出 `roverbadge.progress.roverbook.v2`、`roverbadge.signoff.v2`（`t:'roverbook/signoff'`，`leader.ink:null`／`privacy.ink:'withheld'`，**唔附墨跡**）、`roverbadge.award.v1`。
+- **規則**：項目 ID 兩邊同一道閘 `/^[A-Z]{1,3}[0-9]?(?:-[A-Z0-9]{1,12}){1,4}$/`（大寫限定，姓名／電話／日期過唔到）；日期正規化 `YYYY-M-D`／`YYYY/M/D`，無效即丟；`progress` 上限 500 項；核簽 upsert **保留較後日期**（證明較早日期不能覆蓋）；頒發**不可變**（重覆提交同一批 → `written 0, skipped N`）。
+- **前端**：主畫面新分頁「📖 ROVERBOOK 對接」（只對領袖顯示），三個子分頁（接收進度／一次過頒發／成員取回）＋成員 × 項目清單＋「交上嚟但未入帳」清單；`bookPull` 用 token 認人，成員只看自己。
+- **ROVERBOOK 端**（另一個 repo）：`npm run book:dropin` 生成 `dist/roverbook/{roverbadge-bridge.mjs, bridge-fixtures.json, PATCH.md}`，貼去 ROVERBOOK 的 `shared/bridge/`／`test/fixtures/`；本 repo 只負責介面與後端。
+- **測試**：`tests/roverbook-bridge.test.mjs` 17 項（橋接邏輯／真實 `Code.gs`／proxy＋前端接線＋文件），其中一項把滿載個資的模擬紀錄冊餵入後，掃描「紀錄冊核簽」「紀錄冊頒發」「進度追蹤」三張表所有儲存格，確認**零個資**；另一項真的跑一次 drop-in 生成並 `import()` 比對核心 vs 生成物輸出完全一致。`npm test` 已納入此檔。
+- 文件：[docs/ROVERBOOK_BRIDGE.md](docs/ROVERBOOK_BRIDGE.md)（介面、四個 action、部署、ROVERBOOK 端改動、可照抄的私隱說明）；[docs/LEADER_GUIDE.md](docs/LEADER_GUIDE.md) 新增第 9 節。
+
+### 部署（由 5.3.0 升 5.4.0）
+
+1. 覆寫 `apps-script/Code.gs` →「部署 → 管理部署作業 → ✏️ → 建立新版本 → 部署」（沿用原 `/exec`，唔好新建部署）。
+2. 試算表選單按一次「🔗 旅系統 → 🔧 初始化／更新」補建兩張新表（只增不刪）。
+3. 選單「📖 ROVERBOOK 對接狀態」核對；舊帳號第一次登入即自動升級雜湊，**唔需要任何人重設密碼**。
+4. 可選：部署本版前端，領袖就會見到新的「📖 ROVERBOOK 對接」分頁與（如 GS 仍係舊版）紅色逾時橫幅。
+
+---
+
 ## 2026-11-03 — GS 5.3.0：接入四項硬化（單一更新入口／`/exec` 正規化／未初始化唔扮完成／申請初始化閘）
 
 對齊姊妹 repo **ScoutBadge GS 6.3.0（PR #50）** 嘅四項修正，逐項核實本 repo 現狀後修正（前端仍 v5.2，`package.json` 版本不動；GS 5.2.4 → **5.3.0**、`GS_RELEASE_DATE` 2026-11-03、`GS_INIT_REQUIRED` false → **true**、`assets/gs-release.js` 嘅 `GS_LATEST` 同步）。**資料保全零變動**：冇改任何既有資料、欄位值、API Key、Token、旅團設定；`initializeSheets()` 仍然冪等只增不刪、可安心重跑（`tests/release-version.test.mjs` before/after 快照仍然全綠）。

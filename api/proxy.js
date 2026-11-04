@@ -37,7 +37,7 @@ const LINK_SIG_SUPPORTED = new Set([
   'upsertUser', 'importUsers', 'resetPassword', 'deactivateUser', 'reactivateUser',
   'updateUserProfile', 'deleteMember', 'deleteUser', 'updateUserRole', 'updatePermissions',
   'updateConfig', 'saveLogRecord', 'deleteLogRecord', 'submitLogRequest', 'reviewLogRequest',
-  'reviewApplication', 'setLocalLogin', 'setScheme'
+  'reviewApplication', 'setLocalLogin', 'setScheme', 'bookRoster', 'bookSync', 'bookAward', 'bookPull'
 ]);
 
 function buildSuperInnerToken(apikey) {
@@ -103,7 +103,10 @@ const TOKEN_ACTIONS = new Set([
   'getBranches', 'saveBranch', 'deleteBranch',
   'getAllowLocalLogin', 'setAllowLocalLogin',
   // 吐 JSON（搬舊數）：含 hash 直插
-  'exportUsers', 'upsertUser'
+  'exportUsers', 'upsertUser',
+  // ROVERBOOK 對接（GS 5.4.0）：成員手機 ↔ 領袖統管（只交換進度，零個資）
+  //   bookRoster／bookAward／bookSync 需領袖；bookPull 只回 token 本人的進度
+  'bookRoster', 'bookSync', 'bookAward', 'bookPull'
 ]);
 // 上游 sig 直通可替代 token 的操作（閂口後經 sig 落下游寫）
 const SIG_ACTIONS = new Set(['addUser','upsertUser','addMember','exportUsers','getBranches','saveBranch','deleteBranch','getAllowLocalLogin','setAllowLocalLogin']);
@@ -121,6 +124,20 @@ function sendJson(res, status, obj) {
 function safeLog(fields) {
   // 只記錄 metadata，絕不記錄 token／密碼／apikey／payload
   try { console.log(JSON.stringify({ svc: 'roverbadge-proxy', ...fields })); } catch (e) { /* ignore */ }
+}
+
+// ---- 慢密碼操作觀測（GS 5.4.0，對齊 scoutbadge 6.4.0）----
+// 背景：GS 5.2.x–5.3.0 每次登入做 120,000 次 PBKDF2（Apps Script 每次 HMAC 都要過 JS↔Java 邊界），
+// 成功登入更做 2×、密碼錯就掃全表 → 撞爆上游 45 秒上限，用戶只見到「後端服務連線逾時」。
+// GS 5.4.0 起改為 10,000 次 + 單行定位，正常 1–3 秒。呢度對慢過 8 秒嘅密碼類 action 額外寫一行：
+//   [proxy] slow_password_kdf troop=<id> action=login duration=<ms>
+// 一行就認得出「邊個旅團仲未更新」，唔需要逐個問。只記 metadata，永不記帳號或密碼。
+const PASSWORD_ACTIONS = new Set(['login', 'changePassword', 'resetPassword', 'forgotPassword', 'requestPasswordReset', 'confirmPasswordReset', 'addUser', 'upsertUser']);
+const SLOW_PASSWORD_LOG_MS = 8000;
+function logSlowPassword(action, troopId, ms) {
+  if (!PASSWORD_ACTIONS.has(action)) return;
+  if (!(ms >= SLOW_PASSWORD_LOG_MS)) return;
+  safeLog({ result: 'slow_password_kdf', troop: troopId, action, duration: Math.round(ms) });
 }
 
 async function readRawBody(req) {
@@ -491,11 +508,13 @@ export default async function handler(req, res) {
       return sendJson(res, 502, { success: false, error: msg });
     }
 
+    logSlowPassword(action, troopId, Date.now() - t0);
     safeLog({ result: 'ok', troopId, action, status: up.status, ms: Date.now() - t0 });
     // GAS 業務錯誤（success:false）照原樣回傳，前端按語意顯示
     return sendJson(res, 200, up.json);
   } catch (e) {
     const timeout = e && (e.name === 'TimeoutError' || e.name === 'AbortError');
+    logSlowPassword(action, troopId, Date.now() - t0);
     safeLog({ result: timeout ? 'upstream_timeout' : 'upstream_fetch_error', troopId, action, ms: Date.now() - t0 });
     return sendJson(res, timeout ? 504 : 502, {
       success: false,

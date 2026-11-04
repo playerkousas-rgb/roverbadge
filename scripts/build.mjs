@@ -11,7 +11,7 @@ for (const file of ['index.html', 'assets', 'data', 'docs', 'apps-script']) {
   fs.cpSync(path.join(root, file), path.join(staticDir, file), { recursive: true });
 }
 // 內部文檔只留在 Git，唔部署（與舊 .vercelignore 同一名單）
-for (const f of ['AGENT_TEMPLATE_FOR_OTHER_SECTIONS.md', 'DEPLOY_GUIDE_V5_DUALTRACK.md', 'MAIN_SYSTEM_INTEGRATION.md', 'VERCEL_API_404_POSTMORTEM.md', 'TROOP_UPGRADE_2026.md']) {
+for (const f of ['AGENT_TEMPLATE_FOR_OTHER_SECTIONS.md', 'DEPLOY_GUIDE_V5_DUALTRACK.md', 'MAIN_SYSTEM_INTEGRATION.md', 'VERCEL_API_404_POSTMORTEM.md', 'TROOP_UPGRADE_2026.md', 'TROUBLESHOOT_LOGIN_TIMEOUT.md']) {
   fs.rmSync(path.join(staticDir, 'docs', f), { force: true });
 }
 const dependencies = {

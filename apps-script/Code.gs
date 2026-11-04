@@ -63,6 +63,22 @@ const LOG_TYPES = ['service','activity','training'];
 //  - 成員可申報自己的活動履歷；批准後寫入「活動履歷」；批准後成員仍可申請修改（重新待批）
 const LOG_PENDING_SHEET_NAME = '待批履歷';
 const LOG_PENDING_HEADERS = ['request_id','record_id','type','ymis','name','date','title','role','hours','cert_no','detail','status','requested_at','submitted_by','reviewed_by','reviewed_at','review_note','submission_type'];
+
+// ===== ROVERBOOK 對接（GS 5.4.0）=====
+// 定位：ROVERBOOK 是成員自己手機上的紀錄冊（前端），ROVERBADGE 是領袖統管（後端）。
+// 三條鐵律：① 成員個資只留在他自己的手機（本檔的新工作表冇任何聯絡欄位）
+//          ② ROVERBADGE 只記進度，方便領袖一次過統管
+//          ③ 頒發只由領袖一次過做，成員收到唯讀結果
+// 介面版本見 assets/roverbook-bridge.js（前後端同一套規則；格式 'roverbadge.signoff.v2'／
+// 'roverbadge.award.v1'／'roverbadge.progress.roverbook.v2'）。
+const BOOK_SIGNOFF_SHEET = '紀錄冊核簽';
+const BOOK_SIGNOFF_HEADERS = ['簽核編號','SCOUT ID','項目 ID','完成日期','核簽領袖','職銜','核簽日期','來源','寫入時間','備註'];
+const BOOK_AWARD_SHEET = '紀錄冊頒發';
+const BOOK_AWARD_HEADERS = ['SCOUT ID','獎章 ID','頒發日期','頒發人','來源','寫入時間','備註'];
+// 項目 ID 形狀（與 data/items.json 一致：L1-ACT-01／OT-WOSM-SW）；唔寫死清單，交由 itemCatalog 驗證
+const BOOK_ITEM_RE = /^[A-Z]{1,3}[0-9]?(?:-[A-Z0-9]{1,12}){1,4}$/;
+// 成員個資欄位：任何由 ROVERBOOK 傳入的欄位若命中，一律剝走並記錄（不寫入、不回傳）
+const BOOK_NEVER_STORE_FIELDS = ['nameZh','nameEn','phone','email','address','dob','placeOfBirth','bloodType','emergencyName','emergencyPhone','photo','signature','signatures','holderSignature','png','group','crew','district','region','sponsoringAuthority','groupAddress','gsl','rsl','meetingPlace','dateJoined','dateScoutMovement','issueDate'];
 function safeSheetText(v,maxLen){
   let text=String(v||'').trim().substring(0,maxLen||200);
   if(/^['=+\-@\t\r]/.test(text)) text="'" +text;
@@ -94,8 +110,8 @@ const LINK_HASH_RE = /^([0-9a-f]{64}|pbkdf2\$\d+\$[0-9a-f]{16,64}\$[0-9a-f]{64})
 const LINK_RESERVED_BODY_KEYS = ['sig', 'sig_ts', 'sig_nonce'];
 // 上游以 sig 可以在下游執行的 action。login／apply／logout／changePassword／
 // superTicketLogin／forgotPassword／requestPasswordReset／confirmPasswordReset 等本地憑證操作永不接受（即使有 sig）。
-const LINK_SIG_READ_ACTIONS = ['load', 'getLoginMode', 'getLinkState', 'getMembers', 'getConfig', 'getAllUsers', 'getOtherBadges', 'getPendingRequests', 'getApplications', 'getLogRecords', 'getPendingLogRequests', 'exportUsers'];
-const LINK_SIG_WRITE_ACTIONS = ['save', 'saveOtherBadge', 'requestComplete', 'reviewRequest', 'addMember', 'addUser', 'upsertUser', 'importUsers', 'resetPassword', 'deactivateUser', 'reactivateUser', 'updateUserProfile', 'deleteMember', 'deleteUser', 'updateUserRole', 'updatePermissions', 'updateConfig', 'saveLogRecord', 'deleteLogRecord', 'submitLogRequest', 'reviewLogRequest', 'reviewApplication', 'setLocalLogin', 'setScheme'];
+const LINK_SIG_READ_ACTIONS = ['load', 'getLoginMode', 'getLinkState', 'getMembers', 'getConfig', 'getAllUsers', 'getOtherBadges', 'getPendingRequests', 'getApplications', 'getLogRecords', 'getPendingLogRequests', 'exportUsers', 'bookRoster', 'bookPull'];
+const LINK_SIG_WRITE_ACTIONS = ['save', 'saveOtherBadge', 'requestComplete', 'reviewRequest', 'addMember', 'addUser', 'upsertUser', 'importUsers', 'resetPassword', 'deactivateUser', 'reactivateUser', 'updateUserProfile', 'deleteMember', 'deleteUser', 'updateUserRole', 'updatePermissions', 'updateConfig', 'saveLogRecord', 'deleteLogRecord', 'submitLogRequest', 'reviewLogRequest', 'reviewApplication', 'setLocalLogin', 'setScheme', 'bookSync', 'bookAward'];
 const USER_EXPORT_FORMAT = 'roverbadge-users-export';
 
 function linkProps() { return PropertiesService.getScriptProperties(); }
@@ -544,6 +560,11 @@ function handleSignedRequest(action, body) {
   if (action === 'getLogRecords') return handleGetLogRecords();
   if (action === 'getPendingLogRequests') return handleGetPendingLogRequests(manager);
   if (action === 'exportUsers') return handleExportUsers();
+  // ROVERBOOK 對接：上游簽名請求亦可（上游＝支部／進度節點一次過統管）
+  if (action === 'bookRoster') return handleBookRoster(linkManager(body));
+  if (action === 'bookSync') return handleBookSync(linkManager(body), body);
+  if (action === 'bookAward') return handleBookAward(linkManager(body), body);
+  if (action === 'bookPull') return handleBookPull(linkManager(body));
   if (action === 'save') return handleSave(body.changes || [], String(body.confirmer || actor), manager);
   if (action === 'saveOtherBadge') return handleSaveOtherBadge(body.records || [], manager);
   if (action === 'requestComplete') return handleRequestComplete(body, actor);
@@ -642,14 +663,30 @@ function hashPassword(p) {
   const raw = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, p, Utilities.Charset.UTF_8);
   return raw.map(function(b){return ('0' + (b & 0xFF).toString(16)).slice(-2);}).join('');
 }
-// ===== A3 密碼雜湊：PBKDF2-HMAC-SHA256（>=100k 迭代 + 每用戶隨機 salt + 時序安全比對）=====
+// ===== A3 密碼雜湊：PBKDF2-HMAC-SHA256（每用戶 16-byte 隨機 salt + 時序安全比對）=====
 // 新格式寫入 Users.password_hash 同一欄：pbkdf2$<iter>$<saltHex>$<dkHex>
-// 舊格式（64 hex 單次 SHA-256）仍可驗證；登入成功時自動升級為新格式（密碼本身不變，屬增補式升級，不影響舊密碼登入）。
-const PBKDF2_ITERATIONS = 120000;
+//
+// ⚠️ 迭代次數（GS 5.4.0，2026-11-04）：120,000 → 10,000。
+//    Apps Script 每次 Utilities.computeHmacSha256Signature() 都要過一次 JS↔Java 邊界（約 0.1–0.3 ms），
+//    所以 120,000 次＝實測 12–20 秒（唔係 Node／PHP 嗰種幾百 ms）。配合下面兩條舊 bug
+//    （登入掃全表逐行驗、成功後再驗一次預設密碼），全團登入會撞爆 api/proxy.js 的上游 45 秒上限，
+//    症狀就係「後端服務連線逾時」。詳見 docs/TROUBLESHOOT_LOGIN_TIMEOUT.md。
+// 驗證一律讀「雜湊字串自帶嘅迭代次數」，所以舊 pbkdf2$120000$ 及更舊 64-hex 照樣登入得；
+// 成功登入一次後自動改寫成本版格式（密碼本身不變）。
+const PBKDF2_ITERATIONS = 10000;
+// 驗證時接受嘅迭代範圍：防有人塞 pbkdf2$999999999$ 令登入變成 DoS。
+// 下限 1,000（比 1,000 更低嘅雜湊視為壞資料，回「帳號或密碼錯誤」），上限 2,000,000。
+const PBKDF2_MIN_ITERATIONS = 1000;
+const PBKDF2_MAX_ITERATIONS = 2000000;
+// 診斷用：本次執行做過幾多次 PBKDF2（回歸測試用嚟證明「一次登入只做一個 KDF」；不對外提供）
+let __kdfCalls_ = 0;
+let __kdfIterations_ = 0;
 function hexToBytes_(hex){ const out=[]; hex=String(hex||'').replace(/[^0-9a-f]/gi,''); for(let i=0;i+1<hex.length;i+=2) out.push(parseInt(hex.substr(i,2),16)); return out; }
 function xorBytes_(a,b){ const out=[]; for(let i=0;i<a.length;i++) out.push((a[i]^b[i])&0xFF); return out; }
 function pbkdf2HmacSha256_(password, saltBytes, iterations){
   // dkLen=32（一個 block）：T = U1 ^ U2 ^ ... ^ Uc；U1 = PRF(P, S||INT(1))；Ui = PRF(P, U_{i-1})
+  __kdfCalls_++;
+  __kdfIterations_ += (iterations||0);
   let u = Utilities.computeHmacSha256Signature(saltBytes.concat([0,0,0,1]), String(password||''));
   let t = u.slice();
   for(let i=1;i<iterations;i++){
@@ -664,21 +701,62 @@ function hashPasswordV2(p){
   return 'pbkdf2$'+PBKDF2_ITERATIONS+'$'+saltHex+'$'+toHex(dk);
 }
 function isLegacyPasswordHash_(h){ return /^[0-9a-f]{64}$/i.test(String(h||'')); }
-// 驗證密碼：自動接受舊格式（單次 SHA-256）與新格式（pbkdf2$...）；比對用 safeEqualText（雙重 SHA-256，防時序）
+// 解析 pbkdf2$<iter>$<salt>$<dk>；格式／迭代次數超出可接受範圍一律回 null（當壞資料，唔會做超長 KDF）
+function parsePbkdf2Hash_(stored){
+  const s=String(stored||'');
+  if(s.indexOf('pbkdf2$')!==0) return null;
+  const parts=s.split('$');
+  if(parts.length!==4) return null;
+  const iter=parseInt(parts[1],10)||0;
+  if(iter<PBKDF2_MIN_ITERATIONS || iter>PBKDF2_MAX_ITERATIONS) return null;
+  const saltBytes=hexToBytes_(parts[2]);
+  if(!saltBytes.length) return null;
+  const dkHex=String(parts[3]||'');
+  if(!/^[0-9a-f]{64}$/i.test(dkHex)) return null;
+  return {iterations:iter, saltBytes:saltBytes, dkHex:dkHex};
+}
+// 驗證密碼：自動接受舊格式（單次 SHA-256）與任何迭代次數嘅 pbkdf2$ 格式；
+// 比對用 safeEqualText（雙重 SHA-256，防時序）。
 function verifyPassword(p, stored){
   stored = String(stored||'');
   if(stored.indexOf('pbkdf2$')===0){
-    const parts = stored.split('$');
-    if(parts.length!==4) return false;
-    const iter = parseInt(parts[1],10)||0; if(iter<100000) return false;
-    const salt = hexToBytes_(parts[2]); if(!salt.length) return false;
-    const dk = pbkdf2HmacSha256_(String(p||''), salt, iter);
-    return safeEqualText(toHex(dk), parts[3]);
+    const parsed=parsePbkdf2Hash_(stored);
+    if(!parsed) return false;
+    const dk = pbkdf2HmacSha256_(String(p||''), parsed.saltBytes, parsed.iterations);
+    return safeEqualText(toHex(dk), parsed.dkHex);
   }
   return safeEqualText(sha256Hex(String(p||'')), stored);
 }
+// 呢個雜湊係唔係「本版之前」嘅格式（64-hex 或迭代次數唔同）→ 成功登入後透明改寫為本版格式
+function needsPasswordRehash_(stored){
+  stored=String(stored||'');
+  if(!stored) return false;
+  if(isLegacyPasswordHash_(stored)) return true;
+  const parsed=parsePbkdf2Hash_(stored);
+  if(!parsed) return false; // 壞資料／超範圍：唔主動改寫（避免把不明資料靜靜換走）
+  return parsed.iterations!==PBKDF2_ITERATIONS;
+}
+// 反枚舉用 dummy 雜湊：改用 CacheService 跨執行重用（唔再每次「帳號不存在」都重新計一次 KDF）。
+// CacheService 唔可用時退回單次執行記憶體，最後才即場計算。
+const DUMMY_HASH_CACHE_KEY_ = 'pwd_dummy_hash_v1';
 let __dummyPasswordHash_ = null;
-function dummyPasswordHash_(){ if(!__dummyPasswordHash_) __dummyPasswordHash_ = hashPasswordV2('timing-equalizer'); return __dummyPasswordHash_; }
+function dummyPasswordHash_(){
+  if(__dummyPasswordHash_) return __dummyPasswordHash_;
+  try{
+    const hit=CacheService.getScriptCache().get(DUMMY_HASH_CACHE_KEY_);
+    if(hit){ __dummyPasswordHash_=String(hit); return __dummyPasswordHash_; }
+  }catch(e){}
+  const h=hashPasswordV2('timing-equalizer');
+  __dummyPasswordHash_=h;
+  try{ CacheService.getScriptCache().put(DUMMY_HASH_CACHE_KEY_, h, 21600); }catch(e){}
+  return h;
+}
+// 帳號不存在／停用時燒一次 dummy KDF（令時序同「密碼錯誤」一致），並清走每次執行嘅統計
+function burnDummyKdf_(password){
+  const t0=Date.now();
+  try{ verifyPassword(String(password||''), dummyPasswordHash_()); }catch(e){}
+  return Date.now()-t0;
+}
 function generateToken(){ return Utilities.getUuid().replace(/-/g,'') + Date.now().toString(36); }
 function now(){ return Utilities.formatDate(new Date(), 'Asia/Hong_Kong', 'yyyy-MM-dd HH:mm:ss'); }
 function formatDate(d){ if(!d) return ''; if(d instanceof Date) return Utilities.formatDate(d,'Asia/Hong_Kong','yyyy-MM-dd'); return d.toString().split(' ')[0]; }
@@ -880,8 +958,8 @@ const APPLY_ROLES = ['member','branch_leader'];
 // INITIALIZED_GS_VERSION（Script Property）只在 initializeSheets() 成功走完最後一步才寫入，
 // 表示「此 GS 版本的初始化已完成」。initializeSheets() 只做增補（缺表／缺欄位標題／缺預設管理員），
 // 不刪除、不改寫任何既有用戶、進度、紀錄或金鑰資料（見 docs/LEADER_GUIDE.md「資料保全規則」）。
-const GS_VERSION = '5.3.0';
-const GS_RELEASE_DATE = '2026-11-03';
+const GS_VERSION = '5.4.0';
+const GS_RELEASE_DATE = '2026-11-04';
 const GS_INIT_REQUIRED = true;
 const GS_INIT_PROP = 'INITIALIZED_GS_VERSION';
 function gsVersionInfo_(){
@@ -959,7 +1037,22 @@ function isLegacySuperRow_(row){
   const role=String((row&&row[3])||'').trim().toLowerCase();
   return role==='super_admin' || (!!SUPER_ADMIN_ID && y===String(SUPER_ADMIN_ID).toLowerCase());
 }
-function isDefaultPasswordHash_(hash){ const h=String(hash||''); return h!=='' && (safeEqualText(sha256Hex(ADMIN_PASS), h) || (h.indexOf('pbkdf2$')===0 && verifyPassword(ADMIN_PASS, h))); }
+// 「呢個明文密碼係唔係預設密碼」＝ 必須首次登入強制改密。
+// GS 5.4.0：舊版 isDefaultPasswordHash_() 會為咗判斷而再跑一次 PBKDF2（成功登入＝2× KDF，
+// 直接撞爆 proxy 上游上限）。登入流程已經驗證過同一個明文密碼，所以直接字串比對就係同等資訊，
+// 唔需要、亦唔應該再做任何雜湊。本函式保留名稱供舊呼叫點使用，只做字串比對（零 KDF）。
+function isDefaultPasswordHash_(){ return false; } // 已停用：雜湊 → 預設密碼嘅推斷唔再需要（見 isDefaultPassword_）
+function isDefaultPassword_(plain){ const p=String(plain===undefined||plain===null?'':plain); return p!=='' && (p===ADMIN_PASS || p===DEFAULT_PASS); }
+// 診斷用：某個雜湊係唔係預設密碼（只在選單「⏱️ 密碼雜湊效能測試」／維運用；登入流程永不呼叫）
+function hashMatchesDefaultPassword_(hash){
+  const h=String(hash||'').trim();
+  if(!h) return false;
+  try{
+    if(isLegacyPasswordHash_(h)) return safeEqualText(sha256Hex(ADMIN_PASS), h) || safeEqualText(sha256Hex(DEFAULT_PASS), h);
+    if(parsePbkdf2Hash_(h)) return verifyPassword(ADMIN_PASS,h) || verifyPassword(DEFAULT_PASS,h);
+  }catch(e){}
+  return false;
+}
 // 旅系統 GS 版本核對（前端「最新版本公告」用；唯讀，不含任何用戶資料）
 function ecStatusResponse_(){ return jsonResponse(Object.assign({success:true}, gsVersionInfo_())); }
 // 設計：停用帳號仍佔用其 YMIS／Email（保留歷史進度與審批軌跡），不可用同一 YMIS／Email 另開新帳號；
@@ -1123,6 +1216,19 @@ function initializeSheets() {
     lpSheet.getRange(1,1,1,LOG_PENDING_HEADERS.length).setFontWeight('bold').setBackground('#8B0000').setFontColor('#FFFFFF');
     lpSheet.setFrozenRows(1);
   }
+
+  // ROVERBOOK 對接（GS 5.4.0）：新工作表「紀錄冊核簽」＋「紀錄冊頒發」
+  // 只存「SCOUT ID → 項目／日期／核簽人」與「SCOUT ID → 獎章／頒發日期」。
+  // 成員個人資料（姓名以外嘅聯絡方法、相片、簽名墨跡）永遠唔會寫入本試算表。
+  [BOOK_SIGNOFF_SHEET, BOOK_AWARD_SHEET].forEach(function(name){
+    const sh = ss.getSheetByName(name);
+    if(sh) return;
+    const created = ss.insertSheet(name);
+    created.appendRow(name===BOOK_SIGNOFF_SHEET ? BOOK_SIGNOFF_HEADERS : BOOK_AWARD_HEADERS);
+    created.getRange(1,1,1,(name===BOOK_SIGNOFF_SHEET?BOOK_SIGNOFF_HEADERS:BOOK_AWARD_HEADERS).length)
+      .setFontWeight('bold').setBackground('#8B0000').setFontColor('#FFFFFF');
+    created.setFrozenRows(1);
+  });
 
   // 旅系統：不預設寫入 ALLOW_LOCAL_LOGIN（未設定＝開啟，現有旅團零影響）；登記下游／sig／閂口全部經選單「🔗 旅系統」操作，資料只存 Script Properties
   // 確保系統設定有 allow_member_view_others
@@ -1391,6 +1497,16 @@ function doPost(e){
     const user=getUser(ymis);
     if(!user) return jsonResponse({success:false,error:'找不到用戶'});
 
+    // ROVERBOOK 對接（GS 5.4.0）：成員手機 ↔ 領袖統管
+    //   bookRoster：領袖讀全團進度一覽（零個資）
+    //   bookSync  ：上載成員紀錄冊的進度／核簽（個資一律剝走，只寫 SCOUT ID＋項目＋日期）
+    //   bookAward ：領袖一次過頒發（可一次多成員多獎章）
+    //   bookPull  ：成員只下載「自己」的進度＋頒發＋核簽（身分由 token 決定，唔接受任意 SCOUT ID）
+    if(action==='bookRoster') return handleBookRoster(user);
+    if(action==='bookSync') return handleBookSync(user, body);
+    if(action==='bookAward') return handleBookAward(user, body);
+    if(action==='bookPull') return handleBookPull(user);
+
     // 上下游旗標：讀取只需登入；設置需團長以上（掣同時在上游選單，可經 sig 打下游 setLocalLogin）
     if(action==='getAllowLocalLogin'){
       return handleGetAllowLocalLogin();
@@ -1477,6 +1593,63 @@ function doPost(e){
 // 中央管理帳號（vs 同構）：Vercel 驗證密碼 → 簽發短效加密票據 →
 //       本函數向固定受信端點（SUPER_VERIFY_URL）驗票 → 通過後才建立 session。
 // 本檔永不接收、儲存或比對任何密碼；票據一次性（LockService＋CacheService）防重放。
+// ===== 登入：單行定位（GS 5.4.0）=====
+// 舊版 handleLogin() 係「掃全表逐行驗」，每個 active 帳號都跑一次完整 KDF：
+//   錯密碼＝全表 N 次；正確密碼亦要跑到你嗰行先停。排第 3 行之後嘅帳號就爆 proxy 上游 45 秒上限，
+//   典型症狀係「管理員／頭幾個帳號入得，其他人全部逾時」。
+// 現在改為：先「純文字掃描」（零 KDF）定位到唯一一行，再對該行做「一次」KDF 驗證。
+// 掃描成本仍然 O(N)，但只係讀儲存格，唔係 O(N × 10,000 次 HMAC)。
+function isActiveStatus_(v){ return String(v===undefined||v===null?'':v).trim()==='active'; }
+// 用登入識別字（YMIS／L 編號／電郵）定位 Users 表唯一一行；唔做任何 KDF。
+// 回傳 { rowIndex, ymis, email, hash, user } 或 null。
+function locateLoginRow_(loginId){
+  const key=String(loginId||'').trim();
+  if(!key) return null;
+  const sheet=getSheet().getSheetByName('Users'); if(!sheet) return null;
+  const data=sheet.getDataRange().getValues();
+  if(data.length<2) return null;
+  const hasAllowedCol=sheet.getLastColumn()>=13;
+  const lower=key.toLowerCase();
+  const build=function(i){
+    const row=data[i];
+    const rEmail=String(row[2]||'').trim();
+    return {
+      rowIndex:i+1,
+      ymis:String(row[0]===undefined||row[0]===null?'':row[0]).trim(),
+      email:rEmail,
+      role:String(row[3]||'member'),
+      hash:String(row[4]===undefined||row[4]===null?'':row[4]),
+      active:isActiveStatus_(row[11]),
+      forceChange:(row.length>=FORCE_CHANGE_COL && isForceChangeValue(row[FORCE_CHANGE_COL-1])),
+      user:{
+        ymis:String(row[0]===undefined||row[0]===null?'':row[0]).trim(),
+        name:row[1]?String(row[1]):'',
+        email:rEmail,
+        role:String(row[3]||'member'),
+        can_tick:row[6]===true||row[6]==='TRUE',
+        branch:row[5]?String(row[5]):'',
+        squad:row[5]?String(row[5]):'',
+        squad_role:'member',
+        allowed_badges:hasAllowedCol?(row[12]?String(row[12]):''):'',
+        status:'active',
+        force_change_password:(row.length>=FORCE_CHANGE_COL && isForceChangeValue(row[FORCE_CHANGE_COL-1]))
+      }
+    };
+  };
+  // 一次掃描，同時記住「YMIS 命中」與「電郵命中」；YMIS 優先（同 getUser/getUserByEmail 的既有次序一致）
+  let byId=-1, byEmail=-1;
+  for(let i=1;i<data.length;i++){
+    if(isLegacySuperRow_(data[i])) continue; // 舊版殘留 super_admin 列不可作為登入身分（保留不刪）
+    const rowY=String(data[i][0]===undefined||data[i][0]===null?'':data[i][0]).trim();
+    const rowE=String(data[i][2]||'').trim().toLowerCase();
+    if(byId<0 && rowY && rowY===key) byId=i;
+    if(byEmail<0 && rowE && rowE===lower) byEmail=i;
+    if(byId>=0 && byEmail>=0) break;
+  }
+  const idx=byId>=0?byId:byEmail;
+  if(idx<0) return null;
+  return build(idx);
+}
 function handleLogin(loginId,password,superTicket){
   if(!loginId||(!password&&!superTicket)) return jsonResponse({success:false,error:'請填寫帳號和密碼'});
   if(isSuperAdminId(loginId)){
@@ -1484,60 +1657,84 @@ function handleLogin(loginId,password,superTicket){
     const token=createToken(SUPER_ADMIN_ID);
     return jsonResponse({success:true,token:token,user:{ymis:SUPER_ADMIN_ID,name:SUPER_ADMIN_NAME,email:SUPER_ADMIN_EMAIL,role:'super_admin',can_tick:true,branch:'',squad:'',squad_role:'member',allowed_badges:'*',status:'active'},force_change_password:false});
   }
-  let user=(/^\d{10}$/.test(loginId)||/^L\d+/.test(loginId))? getUser(loginId): getUserByEmail(loginId);
-  if(!user){
-    // try both
-    user=getUser(loginId)||getUserByEmail(loginId);
+  const loginT0=Date.now();
+  const found=locateLoginRow_(loginId);
+  // A17 防枚舉：找不到帳號（或帳號已停用）與密碼錯誤回同一訊息；另燒一次 dummy KDF 令時序一致
+  if(!found || !found.active){
+    const ms=burnDummyKdf_(password);
+    logSlowLogin_('login', ms, found && found.ymis);
+    return jsonResponse({success:false,error:'帳號或密碼錯誤'});
   }
-  // A17 防枚舉：找不到帳號與密碼錯誤回同一訊息；另做一次假 KDF 令時序一致
-  if(!user){ try{ verifyPassword(password, dummyPasswordHash_()); }catch(e){} return jsonResponse({success:false,error:'帳號或密碼錯誤'}); }
   // A5 失敗鎖定：同一帳號 5 次失敗鎖 15 分鐘（ScriptProperties 記錄；鎖定中回同一訊息，唔洩漏帳號存在）
   const loginProps=PropertiesService.getScriptProperties();
-  const failKey='LOGIN_FAIL:'+user.ymis;
+  const failKey='LOGIN_FAIL:'+found.ymis;
   let failRec=null; try{ failRec=JSON.parse(loginProps.getProperty(failKey)||'null'); }catch(e){}
-  if(failRec && Number(failRec.until||0)>Date.now()) return jsonResponse({success:false,error:'帳號或密碼錯誤'});
-  const sheet=getSheet().getSheetByName('Users'); const data=sheet.getDataRange().getValues();
-  for(let i=1;i<data.length;i++){
-    if(data[i][11].toString()==='active' && verifyPassword(password, data[i][4])){
-      const rowY=data[i][0].toString(); const rowE=data[i][2].toString().toLowerCase();
-      if(rowY===user.ymis || rowE===user.email.toLowerCase() || rowY===loginId){
-        try{ loginProps.deleteProperty(failKey); }catch(e){}
-        const token=createToken(user.ymis);
-        sheet.getRange(i+1,11).setValue(now());
-        // 強制改密：旗標為 TRUE，或密碼仍是預設值（讀取時判斷；不寫入用戶資料）
-        const forceChange=(data[i].length>=FORCE_CHANGE_COL && isForceChangeValue(data[i][FORCE_CHANGE_COL-1])) || isDefaultPasswordHash_(data[i][4]);
-        // A3 自動升級：舊單次 SHA-256 hash 登入成功後即改寫為 PBKDF2 格式（密碼不變）
-        if(isLegacyPasswordHash_(data[i][4])){ try{ sheet.getRange(i+1,5).setValue(hashPasswordV2(password)); }catch(e){} }
-        return jsonResponse({success:true,token:token,user:user,force_change_password:forceChange});
-      }
+  if(failRec && Number(failRec.until||0)>Date.now()){
+    const ms=burnDummyKdf_(password); // 鎖定中亦要保持同一時序，唔可以「快回」洩漏帳號存在
+    logSlowLogin_('login', ms, found.ymis);
+    return jsonResponse({success:false,error:'帳號或密碼錯誤'});
+  }
+  // 只對「已定位嘅呢一行」做一次 KDF（本版最重要嘅修正）
+  const kdfStart=Date.now();
+  const ok=verifyPassword(password, found.hash);
+  const kdfMs=Date.now()-kdfStart;
+  logSlowLogin_('login', Date.now()-loginT0, found.ymis, kdfMs);
+  const sheet=getSheet().getSheetByName('Users');
+  if(ok){
+    try{ loginProps.deleteProperty(failKey); }catch(e){}
+    const token=createToken(found.ymis);
+    try{ sheet.getRange(found.rowIndex,11).setValue(now()); }catch(e){}
+    // 強制改密：旗標為 TRUE，或「已驗證成功嘅明文密碼」本身就係預設密碼。
+    // GS 5.4.0：唔再為咗判斷預設密碼而額外跑一次 KDF —— 呢個密碼剛剛已經驗證過，
+    //           字串比對就係同等資訊（舊版會令成功登入變成 2× KDF，直接撞爆上游上限）。
+    const forceChange=found.forceChange || isDefaultPassword_(password);
+    // 透明升級：舊 64-hex 或舊迭代次數（例如 pbkdf2$120000$）→ 成功登入後改寫為本版格式（密碼不變）。
+    // 只會喺登入成功後做，且升級後同一密碼照樣可登入；失敗時靜靜保留原雜湊（下次登入再試）。
+    if(needsPasswordRehash_(found.hash)){
+      try{ sheet.getRange(found.rowIndex,5).setValue(hashPasswordV2(password)); }catch(e){}
     }
+    return jsonResponse({success:true,token:token,user:found.user,force_change_password:forceChange});
   }
   // 密碼錯誤：計次，達上限即鎖定並寫審計（對外統一回「帳號或密碼錯誤」）
   const f=((failRec&&Number(failRec.f))||0)+1;
   try{
     loginProps.setProperty(failKey, JSON.stringify({f:f, until: f>=LOGIN_MAX_FAILS ? Date.now()+LOGIN_LOCK_MS : 0}));
-    if(f>=LOGIN_MAX_FAILS) writeAudit('system','login_locked', user.ymis, '連續 '+LOGIN_MAX_FAILS+' 次登入失敗，鎖定 15 分鐘');
+    if(f>=LOGIN_MAX_FAILS) writeAudit('system','login_locked', found.ymis, '連續 '+LOGIN_MAX_FAILS+' 次登入失敗，鎖定 15 分鐘');
   }catch(e){}
   return jsonResponse({success:false,error:'帳號或密碼錯誤'});
+}
+// 慢登入觀測：只在超過 8 秒時寫一行執行紀錄（唔含密碼、唔寫入任何工作表）。
+// Vercel 端（api/proxy.js）另有 slow_password_kdf log；兩邊對照即可分辨「邊個旅團 / 邊條路徑慢」。
+const SLOW_LOGIN_MS = 8000;
+function logSlowLogin_(action, ms, who, kdfMs){
+  if(!(ms>=SLOW_LOGIN_MS)) return;
+  try{
+    Logger.log('slow_password_kdf action='+String(action||'')+' duration='+ms+'ms'+
+      (typeof kdfMs==='number'?(' kdf='+kdfMs+'ms'):'')+
+      ' iterations='+PBKDF2_ITERATIONS+(who?(' user='+String(who).slice(0,20)):''));
+    console.warn('慢登入／慢密碼操作：action='+String(action||'')+' duration='+ms+'ms；請確認本旅團 GS 已更新至 5.4.0（PBKDF2 '+PBKDF2_ITERATIONS+' 次）');
+  }catch(e){}
 }
 function handleChangePassword(ymis,oldP,newP,keepToken){
   // 錯誤訊息刻意不含任何帳號／密碼資訊
   if(isSuperAdminId(ymis)) return jsonResponse({success:false,error:'系統管理員密碼不能由此更改'});
   if(!newP || newP.toString().length<4) return jsonResponse({success:false,error:'新密碼至少4位'});
   if(String(newP)===String(oldP||'')) return jsonResponse({success:false,error:'新密碼不可與原密碼相同'});
-  const sheet=getSheet().getSheetByName('Users'); const data=sheet.getDataRange().getValues();
-  for(let i=1;i<data.length;i++){
-    if(data[i][0].toString()===ymis && data[i][11].toString()==='active'){
-      if(verifyPassword(oldP, data[i][4])){
-        sheet.getRange(i+1,5).setValue(hashPasswordV2(newP));
-        ensureForceChangeCol(sheet);
-        sheet.getRange(i+1,FORCE_CHANGE_COL).setValue(false);
-        // A5：改密碼後踢走該用戶其他所有 session（保留當前 token）
-        try{ destroyUserTokensExcept(ymis, keepToken); }catch(e){}
-        return jsonResponse({success:true});
-      }
-    }
+  // GS 5.4.0：先用純文字掃描定位（零 KDF），只對該行驗一次舊密碼，唔好逐行跑 KDF
+  const target=locateLoginRow_(ymis);
+  if(!target || !target.active) return jsonResponse({success:false,error:'原密碼錯誤'});
+  const chgT0=Date.now();
+  if(verifyPassword(oldP, target.hash)){
+    logSlowLogin_('changePassword', Date.now()-chgT0, target.ymis);
+    const sheet=getSheet().getSheetByName('Users');
+    sheet.getRange(target.rowIndex,5).setValue(hashPasswordV2(newP));
+    ensureForceChangeCol(sheet);
+    sheet.getRange(target.rowIndex,FORCE_CHANGE_COL).setValue(false);
+    // A5：改密碼後踢走該用戶其他所有 session（保留當前 token）
+    try{ destroyUserTokensExcept(ymis, keepToken); }catch(e){}
+    return jsonResponse({success:true});
   }
+  logSlowLogin_('changePassword', Date.now()-chgT0, target.ymis);
   return jsonResponse({success:false,error:'原密碼錯誤'});
 }
 function handleApply(ymis,name,email,role,branch){
@@ -2685,6 +2882,287 @@ function handleReviewLogRequest(reqId, decision, reviewer, note){
   writeAudit(reviewer,'approve_log_request',rec.ymis,rec.type+': '+rec.title+' '+rec.date+' -> '+newRecordId);
   return jsonResponse({success:true,message:'已批准並寫入活動履歷',record_id:newRecordId});
 }
+// ===== ROVERBOOK 對接（GS 5.4.0）=====
+// 一份 Code.gs 同時服務「領袖的 ROVERBADGE」與「成員手機上的 ROVERBOOK」。三條鐵律：
+//   ① 成員個人資料只留在成員自己的手機：本節任何函數都唔會接收／回傳／寫入姓名以外嘅個資，
+//      即使請求夾帶（phone／email／address／photo／signature…）亦會剝走，只回一張「剝走了甚麼」清單。
+//   ② ROVERBADGE 只記進度（SCOUT ID + 項目 ID + 完成日期 + 核簽領袖），方便領袖一次過統管。
+//   ③ 頒發（badge award）只由領袖一次過做；成員只收到唯讀結果（writebookAwards 會核對角色）。
+// 寫入都係「只增不改歷史」：同一 (SCOUT ID, 項目) 已有日期就唔會覆寫，只會補核簽欄。
+
+function bookStripPersonal_(obj, sink) {
+  if (!obj || typeof obj !== 'object') return;
+  Object.keys(obj).forEach(function (k) {
+    if (BOOK_NEVER_STORE_FIELDS.indexOf(k) >= 0) { if (sink) sink[k] = true; return; }
+    const v = obj[k];
+    if (v && typeof v === 'object') bookStripPersonal_(v, sink);
+  });
+}
+function bookPrivacyReport_(obj) { const sink = {}; bookStripPersonal_(obj, sink); return { removedFields: Object.keys(sink), removedCount: Object.keys(sink).length }; }
+function bookNormDate_(v) {
+  const m = String(v === undefined || v === null ? '' : v).trim().match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+  if (!m) return '';
+  const out = m[1] + '-' + ('0' + parseInt(m[2], 10)).slice(-2) + '-' + ('0' + parseInt(m[3], 10)).slice(-2);
+  const t = new Date(out + 'T00:00:00Z');
+  return (!isNaN(t.getTime()) && t.toISOString().slice(0, 10) === out) ? out : '';
+}
+function bookScoutId_(v) { return String(v === undefined || v === null ? '' : v).trim().replace(/[^0-9A-Za-z_-]/g, '').slice(0, 32); }
+function bookSheet_(name, headers) {
+  const ss = getSheet();
+  let sh = ss.getSheetByName(name);
+  if (!sh) {
+    sh = ss.insertSheet(name);
+    sh.appendRow(headers);
+    sh.getRange(1, 1, 1, headers.length).setFontWeight('bold').setBackground('#8B0000').setFontColor('#FFFFFF');
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+// 核簽紀錄以「項目」為唯一鍵（同一成員同一項目只保留最新一次核簽，日期永不回退）
+function writeBookSignoffs_(items, meta) {
+  const sh = bookSheet_(BOOK_SIGNOFF_SHEET, BOOK_SIGNOFF_HEADERS);
+  const data = sh.getDataRange().getValues();
+  const index = {};
+  for (let i = 1; i < data.length; i++) {
+    if (!data[i][1] || !data[i][2]) continue;
+    index[String(data[i][1]) + '|' + String(data[i][2])] = i + 1;
+  }
+  const ts = now();
+  let written = 0, skipped = 0;
+  (items || []).forEach(function (it) {
+    const sid = bookScoutId_(it && it.scoutId);
+    const itemId = String((it && it.itemId) || '').trim();
+    const date = bookNormDate_(it && (it.date || it.verifiedDate));
+    if (!sid || !BOOK_ITEM_RE.test(itemId) || !date) { skipped++; return; }
+    const leader = safeSheetText((it && (it.leader || it.assessor)) || (meta && meta.leader) || '', 60);
+    const title = safeSheetText((it && it.leaderTitle) || (meta && meta.leaderTitle) || '', 40);
+    const source = safeSheetText((it && it.source) || (meta && meta.source) || 'ROVERBOOK', 24);
+    const note = safeSheetText((it && it.note) || '', 160);
+    const key = sid + '|' + itemId;
+    if (index[key]) {
+      const row = index[key];
+      const prevDate = bookNormDate_(data[row - 1][3] || '');
+      // 日期只可以向前：舊核簽唔會被較早的日期蓋走
+      if (!prevDate || date >= prevDate) sh.getRange(row, 4).setValue(date);
+      if (leader) sh.getRange(row, 5).setValue(leader);
+      if (title) sh.getRange(row, 6).setValue(title);
+      sh.getRange(row, 7).setValue((meta && meta.date) || date);
+      sh.getRange(row, 9).setValue(ts);
+      if (note) sh.getRange(row, 10).setValue(note);
+    } else {
+      const signId = 'BS_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+      sh.appendRow([signId, sid, itemId, date, leader, title, (meta && meta.date) || date, source, ts, note]);
+      index[key] = sh.getLastRow();
+    }
+    written++;
+  });
+  return { written: written, skipped: skipped };
+}
+function writeBookAwards_(awards, actorYmis) {
+  const sh = bookSheet_(BOOK_AWARD_SHEET, BOOK_AWARD_HEADERS);
+  const data = sh.getDataRange().getValues();
+  const index = {};
+  for (let i = 1; i < data.length; i++) {
+    if (!data[i][0] || !data[i][1]) continue;
+    index[String(data[i][0]) + '|' + String(data[i][1])] = i + 1;
+  }
+  const ts = now();
+  const writer = sheetActor(actorYmis);
+  let written = 0, skipped = 0;
+  (awards || []).forEach(function (a) {
+    const sid = bookScoutId_(a && (a.scoutId || a.ymis));
+    const badge = String((a && (a.badgeId || a.badge)) || '').trim().toUpperCase();
+    const date = bookNormDate_(a && (a.date || a.awardDate));
+    if (!sid || !/^L\d$/.test(badge) || !date) { skipped++; return; }
+    const key = sid + '|' + badge;
+    if (index[key]) { skipped++; return; } // 已頒發過：唔會重複寫，亦唔會改日期
+    sh.appendRow([sid, badge, date, writer, safeSheetText((a && a.source) || 'ROVERBADGE', 24), ts, safeSheetText((a && a.note) || '', 160)]);
+    index[key] = sh.getLastRow();
+    written++;
+  });
+  return { written: written, skipped: skipped };
+}
+// 成員已完成哪些項目：正式「進度追蹤」（領袖確認過的）優先，核簽表只補未入帳的。
+// 兩張表欄位次序唔同，所以分開處理（唔好靠欄位位置猜）。
+function bookProgressOf_(sid) {
+  const out = {};
+  const pSheet = getSheet().getSheetByName('進度追蹤');
+  if (pSheet) {
+    const data = pSheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0] || '').trim() !== sid) continue;
+      const itemId = String(data[i][1] || '').trim();
+      if (!BOOK_ITEM_RE.test(itemId)) continue;
+      const date = bookNormDate_(data[i][2]);
+      if (date && (!out[itemId] || date > out[itemId])) out[itemId] = date;
+    }
+  }
+  const sSheet = getSheet().getSheetByName(BOOK_SIGNOFF_SHEET);
+  if (sSheet) {
+    const data = sSheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][1] || '').trim() !== sid) continue;
+      const itemId = String(data[i][2] || '').trim();
+      if (!BOOK_ITEM_RE.test(itemId)) continue;
+      const date = bookNormDate_(data[i][3]);
+      if (date && (!out[itemId] || date > out[itemId])) out[itemId] = date;
+    }
+  }
+  return out;
+}
+function bookAwardsOf_(sid) {
+  const out = {};
+  const sh = getSheet().getSheetByName(BOOK_AWARD_SHEET);
+  if (!sh) return out;
+  const data = sh.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0] || '').trim() !== sid) continue;
+    const badge = String(data[i][1] || '').trim().toUpperCase();
+    const date = bookNormDate_(data[i][2]);
+    if (/^L\d$/.test(badge) && date) out[badge] = date;
+  }
+  return out;
+}
+// 領袖讀：全團「已完成哪些項目」一覽（零個資；只有 SCOUT ID 與項目／日期）
+function handleBookRoster(actor) {
+  if (!canTickUser_(actor)) return jsonResponse({ success: false, error: '權限不足，需已獲勾選權限的領袖' });
+  const sheet = getSheet().getSheetByName('進度追蹤');
+  const members = {};
+  if (sheet) {
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      const sid = bookScoutId_(data[i][0]);
+      const itemId = String(data[i][1] || '').trim();
+      if (!sid || !BOOK_ITEM_RE.test(itemId)) continue;
+      const date = bookNormDate_(data[i][2]);
+      if (!date) continue;
+      if (!members[sid]) members[sid] = {};
+      if (!members[sid][itemId] || date > members[sid][itemId]) members[sid][itemId] = date;
+    }
+  }
+  // 未完成的核簽（成員自己勾了但領袖未簽）→ 提示領袖去簽
+  const unsigned = [];
+  const sh = getSheet().getSheetByName(BOOK_SIGNOFF_SHEET);
+  if (sh) {
+    const data = sh.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      const sid = bookScoutId_(data[i][1]);
+      const itemId = String(data[i][2] || '').trim();
+      if (!sid || !BOOK_ITEM_RE.test(itemId)) continue;
+      if (!members[sid] || !members[sid][itemId]) unsigned.push({ scoutId: sid, itemId: itemId, date: bookNormDate_(data[i][3]) });
+    }
+  }
+  return jsonResponse({ success: true, members: members, unsignedFromBook: unsigned, count: Object.keys(members).length, privacy: { personalData: 'none' } });
+}
+// 成員（或領袖代掃）上載：只收 SCOUT ID／項目／日期，其餘一律剝走
+function handleBookSync(actor, body) {
+  if (!canTickUser_(actor)) return jsonResponse({ success: false, error: '權限不足，需已獲勾選權限的領袖' });
+  const b = body || {};
+  const sid = bookScoutId_(b.scoutId || (b.member && b.member.scoutId));
+  if (!sid) return jsonResponse({ success: false, error: '缺少 SCOUT ID：請成員在紀錄冊填一次成員編號' });
+  const privacy = bookPrivacyReport_(b);
+  // 學制／項目檢查用同一套規則（未知或已停用項目一律拒絕，避免亂寫）
+  const items = [];
+  const rejected = [];
+  const rawProgress = (b.progress && typeof b.progress === 'object') ? b.progress : {};
+  Object.keys(rawProgress).forEach(function (itemId) {
+    const id = String(itemId || '').trim();
+    const date = bookNormDate_(typeof rawProgress[itemId] === 'string' ? rawProgress[itemId] : (rawProgress[itemId] && rawProgress[itemId].date));
+    if (!BOOK_ITEM_RE.test(id) || !date) { rejected.push({ itemId: id, reason: '項目 ID 或日期格式不正確' }); return; }
+    const err = checkTickBatch_([{ ymis: sid, itemId: id }], null);
+    if (err) { rejected.push({ itemId: id, reason: err }); return; }
+    const assessor = (rawProgress[itemId] && typeof rawProgress[itemId] === 'object') ? String(rawProgress[itemId].assessor || '') : '';
+    items.push({ scoutId: sid, itemId: id, date: date, leader: assessor, source: 'ROVERBOOK' });
+  });
+  const res = writeBookSignoffs_(items, { leader: actor.name || '', leaderTitle: '', source: 'ROVERBOOK' });
+  writeAudit(actor.ymis, 'book_sync', sid, 'ROVERBOOK 上載：' + res.written + ' 項核簽（已剝走個資欄位 ' + privacy.removedCount + ' 個）');
+  return jsonResponse({
+    success: true, scoutId: sid, written: res.written, skipped: res.skipped,
+    rejected: rejected, privacy: privacy,
+    progress: bookProgressOf_(sid), awards: bookAwardsOf_(sid),
+    message: '只寫入進度（' + res.written + ' 項），未收到任何個人資料'
+  });
+}
+// 領袖一次過頒發：可指定多個成員／多個獎章，一 call 完成
+function handleBookAward(actor, body) {
+  if (!canTickUser_(actor)) return jsonResponse({ success: false, error: '權限不足，需已獲勾選權限的領袖' });
+  const b = body || {};
+  const list = Array.isArray(b.awards) ? b.awards : (b.scoutId ? [b] : []);
+  if (!list.length) return jsonResponse({ success: false, error: '請提供 awards[]（scoutId／badgeId／date）' });
+  const res = writeBookAwards_(list, actor.ymis);
+  writeAudit(actor.ymis, 'book_award', String(list.length) + ' 人／章', '一次過頒發：' + res.written + ' 筆（已存在 ' + res.skipped + ' 筆）');
+  return jsonResponse({ success: true, written: res.written, skipped: res.skipped, message: '已頒發 ' + res.written + ' 筆（重複或格式不正確 ' + res.skipped + ' 筆）' });
+}
+// 成員自己下載「唯讀」進度（只回自己那行；用 token 身分，不接受任意 SCOUT ID）
+function handleBookPull(actor) {
+  const sid = bookScoutId_(actor && (actor.scoutId || actor.ymis));
+  if (!sid) return jsonResponse({ success: false, error: '找不到 SCOUT ID' });
+  const progress = bookProgressOf_(sid);
+  const awards = bookAwardsOf_(sid);
+  // 核簽清單（成員可貼回 ROVERBOOK；不含任何人名以外的個資）
+  const signoffs = [];
+  const sh = getSheet().getSheetByName(BOOK_SIGNOFF_SHEET);
+  if (sh) {
+    const data = sh.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][1] || '').trim() !== sid) continue;
+      const itemId = String(data[i][2] || '').trim();
+      const date = bookNormDate_(data[i][3]);
+      if (!BOOK_ITEM_RE.test(itemId) || !date) continue;
+      signoffs.push({ id: itemId, date: date, leader: String(data[i][4] || ''), title: String(data[i][5] || ''), verified: true });
+    }
+  }
+  return jsonResponse({
+    success: true, schema: 'roverbadge.progress.roverbook.v2', scoutId: sid,
+    progress: progress, awards: awards, signoffs: signoffs,
+    privacy: { personalData: 'none', note: '只回進度與頒發；姓名、聯絡、相片、簽名墨跡不出本檔' }
+  });
+}
+function menuBookStatus() {
+  const stats = bookStats_();
+  const lines = [
+    'ROVERBOOK 對接狀態（GS v' + GS_VERSION + '）',
+    '',
+    '・「' + BOOK_SIGNOFF_SHEET + '」：' + stats.signoffs + ' 筆核簽（' + stats.signedMembers + ' 位成員）',
+    '・「' + BOOK_AWARD_SHEET + '」：' + stats.awards + ' 筆頒發（' + stats.awardedMembers + ' 位成員）',
+    '・未完成：成員已交但領袖未簽 ' + stats.unsigned + ' 項',
+    '',
+    '私隱：本試算表只存 SCOUT ID、項目、日期、核簽領袖姓名；',
+    '成員的電話／電郵／地址／相片／簽名墨跡永遠留在佢自己部手機。',
+    '兩張表都在「🔧 初始化／更新」時自動補建，唔會改動任何既有資料。'
+  ];
+  return linkAlert('📖 ROVERBOOK 對接', lines.join('\n'));
+}
+function bookStats_() {
+  const out = { signoffs: 0, awards: 0, signedMembers: {}, awardedMembers: {}, unsigned: 0 };
+  const sh = getSheet().getSheetByName(BOOK_SIGNOFF_SHEET);
+  const done = {};
+  const p = getSheet().getSheetByName('進度追蹤');
+  if (p) {
+    const d = p.getDataRange().getValues();
+    for (let i = 1; i < d.length; i++) {
+      const sid = String(d[i][0] || '').trim(); const id = String(d[i][1] || '').trim();
+      if (sid && id) done[sid + '|' + id] = true;
+    }
+  }
+  if (sh) {
+    const d = sh.getDataRange().getValues();
+    for (let i = 1; i < d.length; i++) {
+      if (!d[i][1]) continue;
+      out.signoffs++; out.signedMembers[String(d[i][1])] = true;
+      if (!done[String(d[i][1]) + '|' + String(d[i][2])]) out.unsigned++;
+    }
+  }
+  const a = getSheet().getSheetByName(BOOK_AWARD_SHEET);
+  if (a) {
+    const d = a.getDataRange().getValues();
+    for (let i = 1; i < d.length; i++) { if (!d[i][0]) continue; out.awards++; out.awardedMembers[String(d[i][0])] = true; }
+  }
+  out.signedMembers = Object.keys(out.signedMembers).length;
+  out.awardedMembers = Object.keys(out.awardedMembers).length;
+  return out;
+}
+
 // ===== 旅系統：Sheet 選單（onOpen）=====
 // 全部接駁操作都經呢度做（sig 係 GAS→GAS，唔經 Vercel proxy，前端／api 唔使改）。
 function onOpen() {
@@ -2698,6 +3176,8 @@ function onOpen() {
       .addSeparator()
       .addItem('🧭 本機接駁狀態', 'menuShowLinkState')
       .addItem('🔑 顯示 API KEY（交 ADMIN）', 'menuShowLinkCredentials')
+      .addItem('⏱️ 密碼雜湊效能測試', 'menuBenchmarkPasswordKdf')
+      .addItem('📖 ROVERBOOK 對接狀態', 'menuBookStatus')
       .addSeparator()
       .addItem('➕ 登記下游（URL + SHEET KEY）', 'menuRegisterDownstream')
       .addItem('📡 測試下游連線（sig）', 'menuPingDownstream')
@@ -2802,6 +3282,70 @@ function menuShowLinkCredentials() {
     '\n\n正式部署 URL 請從 Google「部署」視窗取得；請自行在原有 ADMIN FORM 填寫旅團編號、名稱、URL 和 API Key。';
   return linkAlert('API KEY（交 ADMIN）', message);
 }
+// ===== ⏱️ 密碼雜湊效能測試（GS 5.4.0）=====
+// 只讀：即場用 Utilities.computeHmacSha256Signature 原路徑量真實毫秒數（唔係喺 Node 估），
+// 再用本旅團真實（假資料）Users 表計四條登入路徑各自要幾秒。完全唔改任何儲存格。
+const KDF_BENCH_LIMIT_MS = 30000; // 任何一條路徑超過 30 秒 = fail（proxy 上游上限 45 秒，要留緩衝）
+function benchmarkPasswordKdf(){
+  const runs = [1000, 10000, 120000];
+  const salt = hexToBytes_((Utilities.getUuid() + Utilities.getUuid()).replace(/-/g, '').slice(0, 32));
+  const sample = 'benchmark-passphrase';
+  const rows = [];
+  const perIter = {};
+  runs.forEach(function (iter) {
+    const t0 = Date.now();
+    pbkdf2HmacSha256_(sample, salt, iter);
+    const ms = Date.now() - t0;
+    perIter[iter] = ms;
+    rows.push({ path: '純 PBKDF2 ' + iter + ' 次', ms: ms, note: iter === PBKDF2_ITERATIONS ? '本版寫入格式' : (iter === 120000 ? '舊版格式（GS 5.2.x–5.3.0）' : '下限參考') });
+  });
+  // 用真實 Users 表計四條路徑（只讀；每個路徑最多驗一次，完全唔會逐行掃）
+  const sheet = getSheet().getSheetByName('Users');
+  const paths = [];
+  if (sheet) {
+    const data = sheet.getDataRange().getValues();
+    const actives = [];
+    for (let i = 1; i < data.length; i++) {
+      if (isLegacySuperRow_(data[i])) continue;
+      if (String(data[i][11] || '').trim() === 'active') actives.push({ row: i + 1, ymis: String(data[i][0] || ''), hash: String(data[i][4] || '') });
+    }
+    const probe = function (label, hash, password) {
+      if (!hash) return paths.push({ label: label, ms: 0, note: '冇此類帳號' });
+      const t = Date.now();
+      let ok = false;
+      try { ok = verifyPassword(password, hash); } catch (e) { }
+      paths.push({ label: label, ms: Date.now() - t, note: ok ? '驗證成功（1× KDF）' : '驗證失敗（1× KDF）' });
+    };
+    const wrongPw = '\u0000benchmark-wrong-' + Date.now();
+    const first = actives[0];
+    probe('① 本版 pbkdf2$' + PBKDF2_ITERATIONS + '$ 帳號（第 ' + (first ? first.row : '-') + ' 行）', first ? first.hash : '', wrongPw);
+    const legacy = actives.filter(function (a) { return isLegacyPasswordHash_(a.hash); })[0];
+    probe('② 舊 64-hex 帳號（第 ' + (legacy ? legacy.row : '-') + ' 行）', legacy ? legacy.hash : '', wrongPw);
+    const row10 = actives.filter(function (a) { return a.row === 10; })[0] || actives[9];
+    const row30 = actives.filter(function (a) { return a.row === 30; })[0] || actives[29];
+    probe('③ 排第 10 行嘅帳號', row10 ? row10.hash : '', wrongPw);
+    probe('③ 排第 30 行嘅帳號', row30 ? row30.hash : '', wrongPw);
+    paths.push({ label: '④ 錯密碼（已定位單行）', ms: paths[0] ? paths[0].ms : 0, note: '單行驗證 1× KDF，與 ① 同成本；唔會再掃全表' });
+    paths.push({ label: '④ 帳號不存在（dummy 雜湊）', ms: burnDummyKdf_(wrongPw), note: 'CacheService 重用 dummy 雜湊，每個執行最多計一次' });
+  }
+  const lines = [];
+  lines.push('GS v' + GS_VERSION + '（PBKDF2 迭代 ' + PBKDF2_ITERATIONS + ' 次，proxy 上游上限 45 秒）');
+  lines.push('');
+  lines.push('【單次 KDF 實測毫秒】');
+  rows.forEach(function (r) { lines.push('・' + r.path + '：' + r.ms + ' ms　' + r.note); });
+  lines.push('');
+  lines.push('【本旅團 Users 表四條登入路徑】');
+  paths.forEach(function (p) { lines.push('・' + p.label + '：' + p.ms + ' ms　' + p.note); });
+  const worst = paths.reduce(function (m, p) { return Math.max(m, p.ms); }, 0);
+  const verdict = worst > KDF_BENCH_LIMIT_MS ? '❌ FAIL（最慢一條 ' + worst + ' ms > ' + KDF_BENCH_LIMIT_MS + ' ms）' : '✅ PASS（最慢一條 ' + worst + ' ms，安全邊界 ' + KDF_BENCH_LIMIT_MS + ' ms）';
+  lines.push('');
+  lines.push('結果：' + verdict);
+  const msg = lines.join('\n');
+  try { linkAlert('⏱️ 密碼雜湊效能測試', msg); } catch (e) { }
+  try { Logger.log(msg); } catch (e) { }
+  return { success: true, gsVersion: GS_VERSION, iterations: PBKDF2_ITERATIONS, bench: rows, paths: paths, worstMs: worst, pass: worst <= KDF_BENCH_LIMIT_MS, text: msg };
+}
+function menuBenchmarkPasswordKdf() { const r = benchmarkPasswordKdf(); return r.text; }
 function menuRegisterDownstream() {
   const id = linkPrompt('登記下游 1/4', '下游編號（例：團／進度節點識別，只可用英文、數字、底線、連字號）：');
   if (id === null) return '';
