@@ -586,6 +586,7 @@ a:hover{text-decoration:underline}
     <button class="nav-tab" id="btn-tab-forms" onclick="switchTab('forms', this)">🖨️ 表格列印</button>
     <button class="nav-tab" id="btn-tab-help" onclick="switchTab('help', this)">❓ 教學</button>
     <button class="nav-tab" id="btn-tab-info" onclick="switchTab('info', this)">📚 資料庫</button>
+    <button class="nav-tab" id="btn-tab-book" onclick="switchTab('book', this)">📖 ROVERBOOK 對接</button>
     <button class="nav-tab nav-hidden" id="btn-tab-users" onclick="switchTab('users', this)">👥 用戶管理</button>
     <!-- 已合併：審批申請已併入審批中心，按項目及按項目已併入全團總覽，其他獎章已併入我的進度，版本更新框架保留 -->
     <button class="nav-tab nav-hidden" id="btn-tab-apps" onclick="switchTab('apps', this)">📋 審批申請(舊-已合併)</button>
@@ -602,6 +603,7 @@ a:hover{text-decoration:underline}
   <div id="tab-forms" class="tab-content"></div>
   <div id="tab-help" class="tab-content"></div>
   <div id="tab-info" class="tab-content"></div>
+  <div id="tab-book" class="tab-content"></div>
   <div id="tab-users" class="tab-content"></div>
   <div id="tab-apps" class="tab-content"></div>
 </div>
@@ -902,12 +904,97 @@ a:hover{text-decoration:underline}
 <script src="assets/ymis-parse.js"></script>
 <script src="assets/rover-scope.js"></script>
 <script src="assets/gs-release.js"></script>
+<script src="assets/roverbook-bridge.js"></script>
 <script src="assets/forms.js"></script>
 <script>
 /* ================== i18n (English mode) ================== */
 // ?lang=en／?lang=zh 可鎖定分享連結嘅語言（同 vsbadge 一致）：讀到就寫入 localStorage，即時生效，毋須重新載入
 const UI_LANG=(function(){ try{ const p=new URLSearchParams(window.location.search).get('lang'); if(p==='en'||p==='zh'){ try{ localStorage.setItem('roverbadge_lang',p); }catch(e2){} return p; } return localStorage.getItem('roverbadge_lang')||'zh'; }catch(e){ return 'zh'; } })();
 const LANG_DICT={
+  "撤回": "Withdraw",
+  "撤回（刪除）這些頒發紀錄，需要確認": "Withdraw (delete) these awards — requires confirmation",
+  "更正": "Correct",
+  "更正已頒發的日期（會覆寫原日期，需要確認）": "Correct the award date (overwrites the original date; requires confirmation)",
+  "確定要一次過確認**全部**待批項目？（會寫入全團所有成員的進度）": "Confirm ALL pending items at once? (this writes progress for every member in the troop)",
+  "確定要刪除這些頒發紀錄？刪除後成員的 ROVERBOOK 下次取回時會消失。": "Delete these award records? They will disappear from the member’s ROVERBOOK the next time it pulls.",
+  "確定要更正已頒發的日期？原日期會被覆寫（會寫入備註）。": "Correct the awarded date? The original date is overwritten (and noted in the remarks column).",
+  "領袖已撤回（貼回 ROVERBOOK 時會移除）": "Withdrawn by the leader (removed when pasted back into ROVERBOOK)",
+  "BOOK 信任度": "BOOK trust",
+  "BOOK 顯示領袖已簽": "BOOK says a leader signed",
+  "BOOK 顯示領袖已簽（仍待你確認）": "BOOK says a leader signed (still needs your confirmation)",
+  "只確認 BOOK 顯示已簽的": "🔏 Confirm only BOOK items marked leader-signed",
+  "待批清單內沒有「BOOK 顯示領袖已簽」的項目": "No leader-signed items in the pending list",
+  "成員自己標記": "Marked by the member",
+  "成員自己標記（未經領袖）": "Marked by the member (no leader yet)",
+  "貼回 ROVERBOOK 時：這裡的「進度／核簽」＝領袖已核實，BOOK 會無條件採用；「待領袖確認」的項目 BOOK 只會顯示為申請中，不會當成完成。": "When pasted back into ROVERBOOK: “progress / sign-offs” here are leader-verified and the BOOK adopts them as-is; items “awaiting leader confirmation” appear only as pending requests and never as completed.",
+  "雙向信任規則：BADGE → BOOK 會無條件相信你在這裡核實過的紀錄（BOOK 只會採用已核實的項目，未核實的不會變成完成）；BOOK → BADGE 則一律不信——即使成員手機上寫住「已由領袖簽核」，都只會變成待你確認，因為成員部機可以改任何欄位。": "Two-way trust rule: BADGE → BOOK trusts anything you verified here unconditionally (the BOOK only adopts verified items; unverified ones never become completed); BOOK → BADGE trusts nothing — even if the member’s phone claims “signed by a leader”, it only becomes something for you to confirm, because the member controls every field on that device.",
+  "BOOK 日期": "Book date",
+  "以上項目仍未計入進度。請喺下面「待批」逐項或一次過按 ✅ 確認；BOOK 交上嚟嘅資料唔會自動變成已完成。": "These items are NOT counted yet. Confirm them one by one (or all at once) with ✅ under “Pending”; data handed in from the BOOK never becomes completed by itself.",
+  "全部確認": "Confirm all",
+  "同一日": "Same date",
+  "呢啲係成員喺 ROVERBOOK 自己標記嘅進度，全部未計入正式進度。確認後才會寫入「進度追蹤」並產生核簽；拒絕就唔會入帳。": "These are progress marks the member made on their own device in ROVERBOOK and none of them count yet. Only after you confirm do they get written into “進度追蹤” with a sign-off; rejected items are never recorded.",
+  "如果係團集會／考驗營「有參加就一次過簽」，請用「🏠 全團總覽 → 🚀 考驗營批量完成」或「📋 待批 → 批量批准」，唔需要經 ROVERBOOK；ROVERBOOK 只係成員自己擁有、出外可讀的紀錄冊。": "For “everyone who attended gets signed off in one go” (meetings, challenge camps), use “🏠 Troop overview → 🚀 Camp bulk complete” or “📋 Pending → bulk approve”. You do not go through ROVERBOOK; the BOOK is simply the record book each member owns and can read on the go.",
+  "差異": "Difference",
+  "已存在，略過": "Already present, skipped",
+  "已放入待批": "Staged for confirmation",
+  "待批（等領袖確認）": "Pending (awaiting leader confirmation)",
+  "待領袖確認（未計入進度）": "Pending leader confirmation (not counted yet)",
+  "成員在 ROVERBOOK 用「出示二維碼」揀「訓練進度」，領袖掃完之後（或成員自己貼上）會得到一段 RB1… 或以 { 開頭的 JSON。貼在下面即可；系統只會讀 SCOUT ID、項目 ID、完成日期，而且只會放入「待批」，要你確認才計入進度。": "The member uses “show QR code → training progress” in ROVERBOOK; after scanning (or the member pasting it) you get an RB1… string or a JSON starting with {. Paste it below — only the SCOUT ID, item ID and completion date are read, and they are placed in “Pending” until you confirm them.",
+  "拒絕所選": "Reject selected",
+  "新項目": "New item",
+  "暫無待批項目": "Nothing pending",
+  "未接收（格式／學制不符）": "Not accepted (bad format / wrong scheme)",
+  "確認所選（寫入進度）": "Confirm selected (write to progress)",
+  "請先勾選要拒絕的項目": "Tick the items you want to reject",
+  "請先勾選要確認的項目": "Tick the items you want to confirm",
+  "較後日期（會更新）": "Later date (will update)",
+  "較舊、未回寫（既有紀錄較後，已保留）": "Older, not written back (existing record is later and was kept)",
+  "較舊（預設不改）": "Older (kept by default)",
+  "📥 接收（放入待批）": "📥 Receive (stage for confirmation)",
+  "🔄 重新整理全團一覽同待批": "🔄 Refresh troop overview and pending list",
+  "📖 ROVERBOOK 對接": "📖 ROVERBOOK bridge",
+  "ROVERBOOK 對接": "ROVERBOOK bridge",
+  "📥 1 · 接收進度（從 ROVERBOOK）": "📥 1 · Receive progress (from ROVERBOOK)",
+  "🏅 2 · 一次過頒發": "🏅 2 · Award in one go",
+  "📤 3 · 成員取回進度": "📤 3 · Member pulls progress",
+  "ROVERBOOK 是成員自己手機上的紀錄冊；這裡只收「進度」。姓名以外嘅個人資料（電話、電郵、地址、相片、簽名墨跡）永遠留在成員自己部機，系統會自動剝走並顯示剝走了幾多項。": "ROVERBOOK is the record book on each member's own phone; this page only receives progress. Personal particulars (phone, email, address, photo, signature ink) always stay on the member's device — the system strips them and reports how many were removed.",
+  "項目 ID": "Item ID",
+  "完成日期": "Completed on",
+  "未有任何進度紀錄": "No progress records yet",
+  "已接收": "Received",
+  "項進度": "progress items",
+  "已剝走個資欄位": "Personal-data fields stripped",
+  "未寫入（格式／學制不符）": "Not written (bad format or scheme mismatch)",
+  "步驟 1：把成員手機的進度交上嚟": "Step 1: bring a member's progress up from their phone",
+  "成員在 ROVERBOOK 用「出示二維碼」揀「訓練進度」，領袖掃完之後（或成員自己貼上）會得到一段 RB1… 或以 { 開頭的 JSON。貼在下面即可；系統只會讀 SCOUT ID、項目 ID、完成日期。": "In ROVERBOOK the member picks “Training progress” under “Show QR code”. After the leader scans it (or the member pastes it) you get an RB1… string or a JSON starting with {. Paste it below — only SCOUT ID, item ID and completion date are read.",
+  "✅ 接收並寫入進度": "✅ Receive and write progress",
+  "📂 或者揀一個 JSON 檔": "📂 Or choose a JSON file",
+  "🔄 重新整理全團一覽": "🔄 Refresh troop overview",
+  "全團已完成進度一覽": "Troop progress overview",
+  "位成員": "members",
+  "項": "items",
+  "暫未有任何進度": "No progress yet",
+  "成員交上嚟但未喺進度追蹤入帳": "Received from members but not yet in the progress sheet",
+  "步驟 2：一次過頒發（多個成員、多個獎章）": "Step 2: award in one go (many members, many badges)",
+  "一行一個：SCOUT ID, 獎章（L1／L2／L3／L4）, 頒發日期（YYYY-MM-DD）。一次過提交，成員下次喺 ROVERBOOK 取回時就會見到。": "One per line: SCOUT ID, badge (L1/L2/L3/L4), award date (YYYY-MM-DD). Submit once — members see it the next time they pull from ROVERBOOK.",
+  "🏅 一次過頒發": "🏅 Award all",
+  "已頒發": "Awarded",
+  "筆": "entries",
+  "略過（已頒發或格式不正確）": "Skipped (already awarded or bad format)",
+  "步驟 3：成員取回自己的進度（唯讀）": "Step 3: member pulls their own progress (read-only)",
+  "按一下即取回你自己的進度、頒發同核簽，可以貼返入 ROVERBOOK。只會回你本人嘅資料，唔會回其他人。": "One tap pulls your own progress, awards and sign-offs, ready to paste back into ROVERBOOK. Only your own data is returned.",
+  "📤 取回我的進度": "📤 Pull my progress",
+  "📋 複製 JSON（貼入 ROVERBOOK）": "📋 Copy JSON (paste into ROVERBOOK)",
+  "已複製，請貼入 ROVERBOOK 的「從 ROVERBADGE 匯入」": "Copied — paste it into ROVERBOOK's “Import from ROVERBADGE”",
+  "複製失敗，請手動選取文字": "Copy failed — please select the text manually",
+  "請先貼上 ROVERBOOK 的內容": "Paste the ROVERBOOK content first",
+  "RB1 二維碼要由 ROVERBOOK 自己解碼：請成員在 ROVERBOOK 按「匯出 ROVERBADGE 進度」再把 JSON 貼上（或儲存成檔案）": "An RB1 QR code must be decoded by ROVERBOOK itself: ask the member to press “Export ROVERBADGE progress” in ROVERBOOK and paste (or save) that JSON instead",
+  "內容不是有效 JSON": "The content is not valid JSON",
+  "檔案不是有效 JSON": "The file is not valid JSON",
+  "請每行填：SCOUT ID, 獎章, 日期（YYYY-MM-DD）": "Each line needs: SCOUT ID, badge, date (YYYY-MM-DD)",
+  "對接模組未載入（assets/roverbook-bridge.js）": "Bridge module not loaded (assets/roverbook-bridge.js)",
+  "🔴 此版本登入會逾時：本旅團 GS 是慢登入版本，請更新 Code.gs 至 v5.4.0": "🔴 This version will time out on login: this troop runs a slow-login GS — please update Code.gs to v5.4.0",
+  "此版本每次登入要做 120,000 次密碼雜湊（成功登入更要做兩次），超過後端 45 秒上限，部分帳號會一直顯示「連線逾時」。更新後新雜湊只需 10,000 次、每次登入只做一次，登入會回復 1–3 秒；舊帳號登入一次後會自動升級，不需要任何人重設密碼。": "This version runs 120,000 password-hash iterations on every login (twice on a successful one), which exceeds the backend 45-second limit, so some accounts keep showing \"connection timed out\". After updating, new hashes need only 10,000 iterations and each login runs the KDF once, so login returns to 1–3 seconds; older hashes upgrade themselves on the next successful login — nobody needs a password reset.",
   "樂行童軍進度追蹤系統": "Rover Scout Progress Tracker",
   "樂行童軍進度追蹤": "Rover Scout Progress Tracker",
   "樂行童軍進度追蹤系統 v5.2 - 手機友善・批量開戶・全前端控制": "Rover Scout Progress Tracker v5.2 - Mobile friendly · Bulk onboarding · Full front-end control",
@@ -2237,10 +2324,16 @@ function gsNoticeHtml(where){
   const meta=(where!=='home' && gsCheckInfo && st.code!=='unchecked')
     ? '<div class="gs-meta">'+tr('本旅團 GS 版本')+'：v'+escapeHtmlText(st.gsVersion||'—')+'　'+tr('初始化標記')+'：'+escapeHtmlText(st.initializedGsVersion||'—')+'</div>' : '';
   const mustInit=needInit ? '<div class="gs-must-init">'+tr('必須按一次選單「🔗 旅系統 → 🔧 初始化／更新」（只補缺失，不刪改資料）')+'</div>' : '';
+  // 慢登入版本（GS 5.2.x–5.3.0：PBKDF2 120k，成功登入做 2× KDF，失敗逐行掃全表）→ 標紅。
+  // 版本判斷見 assets/gs-release.js 的 loginTimeoutNotice()；未知版本唔估、唔靠嚇。
+  const slowLoginHtml=GsRelease.loginTimeoutNotice(gsCheckInfo)
+    ? '<div class="gs-badge gs-danger">'+tr('🔴 此版本登入會逾時：本旅團 GS 是慢登入版本，請更新 Code.gs 至 v5.4.0')+'</div>'+
+      '<div class="gs-data-safe">'+tr('此版本每次登入要做 120,000 次密碼雜湊（成功登入更要做兩次），超過後端 45 秒上限，部分帳號會一直顯示「連線逾時」。更新後新雜湊只需 10,000 次、每次登入只做一次，登入會回復 1–3 秒；舊帳號登入一次後會自動升級，不需要任何人重設密碼。')+'</div>'
+    : '';
   return '<div class="gs-notice">'+
     '<h3>'+tr('📢 最新版本公告')+'</h3>'+
     '<div>'+tr('GS 最新版本')+'：<b>v'+escapeHtmlText(L.version)+'</b>（'+escapeHtmlText(L.releaseDate)+'）</div>'+
-    badge+meta+mustInit+
+    badge+meta+slowLoginHtml+mustInit+
     '<div class="gs-steps-title"><b>'+tr('更新步驟')+'</b></div>'+
     '<ol class="gs-steps">'+
       '<li>'+tr('下載 Code.gs（按下方按鈕）')+'</li>'+
@@ -2459,6 +2552,8 @@ function setupTabsByRole(){
   setNavTabVisible('byitem', false);
   setNavTabVisible('other', false);
   setNavTabVisible('users', isManage);
+  // ROVERBOOK 對接：成員只會用「取回我的進度」（bookPull）；接收／頒發是領袖工作
+  setNavTabVisible('book', isLeader || isManage);
   // 審批申請已合併到審批中心，不再獨立顯示
   setNavTabVisible('apps', false);
   // v8.9：按「常用 / 進階」重新分層（只影響外觀，不改權限）
@@ -3310,6 +3405,318 @@ async function loadItemsAndProgress(){
 
 /* ================== Tab Switching - 防止卡死版 ================== */
 let _switching = false;
+/* ================== ROVERBOOK 對接（GS 5.4.0）==================
+   定位：ROVERBOOK 是成員自己手機上的紀錄冊（前端）；這裡是領袖的統管／簽發端。
+   三條鐵律（寫死喺程式，唔靠使用者自律）：
+     ① 成員個人資料只留在他自己的手機：貼上／匯入時只讀 SCOUT ID、項目、日期，
+        其餘（姓名以外嘅聯絡、相片、簽名墨跡…）由 assets/roverbook-bridge.js 剝走，
+        畫面會明確顯示「已剝走 N 個個資欄位」。
+     ② 只記進度：成員交上嚟嘅資料**先入「紀錄冊待批」**，領袖逐項／一次過 CONFIRM 之後
+        才會寫入正式「進度追蹤」——防止「成員自己喺 BOOK 簽完再錄入就扮已完成」。
+     ③ 頒發只由領袖一次過做（bookAward），成員只收到唯讀結果。
+        團集會「有參加就一次過簽」照舊用「全團總覽 → 批量剔」（唔經 BOOK）。
+   與 ROVERBOOK 的交換格式見 assets/roverbook-bridge.js（純邏輯，有測試）。 */
+let bookState = { roster: null, pending: null, busy: false, tab: 'sync', syncResult: null, confirmResult: null, awardResult: null, pull: null, error: '', selected: {} };
+
+function bookIsLeader() {
+  return !!(currentUser && ['admin', 'group_leader', 'branch_leader', 'exec_committee', 'super_admin'].indexOf(currentUser.role) >= 0);
+}
+function bookEsc(v) { return escapeHtmlText(v === undefined || v === null ? '' : v); }
+
+async function renderBookTab() {
+  const c = document.getElementById('tab-book');
+  if (!c) return;
+  // 第一次入「接收進度」時順手載入待批清單（非阻塞）
+  if (bookState.tab === 'sync' && bookState.pending === null && !bookState._loadingPending) {
+    bookState._loadingPending = true;
+    setTimeout(() => { bookState._loadingPending = false; bookLoadPending(); }, 0);
+  }
+  const tab = bookState.tab;
+  const tabs = [
+    ['sync', '📥 1 · 接收進度（從 ROVERBOOK）'],
+    ['award', '🏅 2 · 一次過頒發'],
+    ['pull', '📤 3 · 成員取回進度']
+  ];
+  let body = '';
+  if (tab === 'sync') body = bookSyncHtml();
+  else if (tab === 'award') body = bookAwardHtml();
+  else body = bookPullHtml();
+  c.innerHTML = `<div class="info-section" style="border-left-color:var(--green);background:#F0FFF4">
+    <h3>📖 ROVERBOOK 對接 <span style="font-size:12px;font-weight:400">（成員手機 → 領袖統管）</span></h3>
+    <p style="font-size:12px;line-height:1.7;color:var(--text-light)">${bookEsc(tr('ROVERBOOK 是成員自己手機上的紀錄冊；這裡只收「進度」。姓名以外嘅個人資料（電話、電郵、地址、相片、簽名墨跡）永遠留在成員自己部機，系統會自動剝走並顯示剝走了幾多項。'))}</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      ${tabs.map(([k, label]) => `<button class="btn btn-sm ${tab === k ? 'btn-primary' : 'btn-secondary'}" onclick="bookSwitchTab('${k}')">${bookEsc(tr(label))}</button>`).join('')}
+    </div>
+  </div>${bookState.error ? `<div class="info-section" style="border-left-color:var(--red);background:#FFF5F5"><b>⚠️ ${bookEsc(bookState.error)}</b></div>` : ''}${body}`;
+}
+
+function bookSwitchTab(k) { bookState.tab = k; renderBookTab(); }
+
+function bookProgressRows(progress) {
+  const ids = Object.keys(progress || {}).sort();
+  if (!ids.length) return `<div style="font-size:12px;color:var(--text-light)">${bookEsc(tr('未有任何進度紀錄'))}</div>`;
+  return `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+    <tr style="background:var(--bg)"><th style="text-align:left;padding:6px">${bookEsc(tr('項目 ID'))}</th><th style="text-align:left;padding:6px">${bookEsc(tr('完成日期'))}</th></tr>
+    ${ids.map(id => `<tr><td style="padding:6px;border-top:1px solid #eee;font-family:monospace">${bookEsc(id)}</td><td style="padding:6px;border-top:1px solid #eee">${bookEsc(progress[id])}</td></tr>`).join('')}
+  </table></div>`;
+}
+
+function bookSyncHtml() {
+  const r = bookState.syncResult;
+  const resultHtml = r ? `<div class="info-section" style="border-left-color:var(--green)">
+    <h4>📥 ${bookEsc(tr('已放入待批'))}：${bookEsc(String(r.staged || 0))} ${bookEsc(tr('項'))}　<span style="font-size:11px;color:var(--text-light)">SCOUT ID ${bookEsc(r.scoutId)}</span></h4>
+    <div style="font-size:11px;color:var(--text-light);line-height:1.7">
+      ${bookEsc(tr('已剝走個資欄位'))}：${bookEsc(String((r.privacy && r.privacy.removedCount) || 0))}${r.privacy && r.privacy.removedCount ? '（' + bookEsc((r.privacy.removedFields || []).join('、')) + '）' : ''}<br>
+      ${typeof r.leaderSignedCount === 'number' ? '🔏 ' + bookEsc(tr('BOOK 顯示領袖已簽')) + '：' + bookEsc(String(r.leaderSignedCount)) + ' ' + bookEsc(tr('項')) + '　👤 ' + bookEsc(tr('成員自己標記')) + '：' + bookEsc(String(r.memberClaimCount)) + ' ' + bookEsc(tr('項')) + '<br>' : ''}
+      ${r.older && r.older.length ? '🕓 ' + bookEsc(tr('較舊、未回寫（既有紀錄較後，已保留）')) + '：' + bookEsc(r.older.map(x => x.itemId + ' ' + x.date + ' < ' + x.existing).join('；')) + '<br>' : ''}
+      ${r.duplicates && r.duplicates.length ? '♻️ ' + bookEsc(tr('已存在，略過')) + '：' + bookEsc(String(r.duplicates.length)) + ' ' + bookEsc(tr('項')) + '<br>' : ''}
+      ${r.rejected && r.rejected.length ? '⛔ ' + bookEsc(tr('未接收（格式／學制不符）')) + '：' + bookEsc(r.rejected.map(x => x.itemId + '：' + x.reason).join('；')) : ''}
+    </div>
+    ${r.needsConfirm ? `<div style="margin-top:8px;padding:8px;background:#FFF8E1;border-left:3px solid var(--orange);font-size:12px">⚠️ ${bookEsc(tr('以上項目仍未計入進度。請喺下面「待批」逐項或一次過按 ✅ 確認；BOOK 交上嚟嘅資料唔會自動變成已完成。'))}</div>` : ''}
+  </div>` : '';
+  return `<div class="info-section">
+    <h4>📥 ${bookEsc(tr('步驟 1：把成員手機的進度交上嚟'))}</h4>
+    <p style="font-size:12px;line-height:1.7">${bookEsc(tr('成員在 ROVERBOOK 用「出示二維碼」揀「訓練進度」，領袖掃完之後（或成員自己貼上）會得到一段 RB1… 或以 { 開頭的 JSON。貼在下面即可；系統只會讀 SCOUT ID、項目 ID、完成日期，而且只會放入「待批」，要你確認才計入進度。'))}</p>
+    <p style="font-size:12px;line-height:1.7;color:var(--text-light)">🔒 ${bookEsc(tr('雙向信任規則：BADGE → BOOK 會無條件相信你在這裡核實過的紀錄（BOOK 只會採用已核實的項目，未核實的不會變成完成）；BOOK → BADGE 則一律不信——即使成員手機上寫住「已由領袖簽核」，都只會變成待你確認，因為成員部機可以改任何欄位。'))}</p>
+    <textarea id="bookPaste" rows="6" style="width:100%;font-family:monospace;font-size:11px" placeholder="RB1.…或是 {&quot;scoutId&quot;:&quot;1234567890&quot;,&quot;progress&quot;:{&quot;L1-ACT-01&quot;:&quot;2026-03-01&quot;}}"></textarea>
+    <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-sm btn-primary" onclick="bookSubmitPaste()">${bookEsc(tr('📥 接收（放入待批）'))}</button>
+      <label class="btn btn-sm btn-secondary" style="cursor:pointer">${bookEsc(tr('📂 或者揀一個 JSON 檔'))}<input type="file" accept=".json,application/json" style="display:none" onchange="bookLoadFile(event)"></label>
+      <button class="btn btn-sm btn-secondary" onclick="bookLoadRoster()">${bookEsc(tr('🔄 重新整理全團一覽同待批'))}</button>
+    </div>
+    ${resultHtml}
+    ${bookPendingHtml()}
+    ${bookState.roster ? `<div class="info-section" style="background:var(--bg)"><h4>👥 ${bookEsc(tr('全團已完成進度一覽'))}（${bookEsc(String(bookState.roster.count))} ${bookEsc(tr('位成員'))}）</h4>
+      ${Object.keys(bookState.roster.members || {}).sort().map(sid => `<div style="margin:6px 0"><b style="font-family:monospace">${bookEsc(sid)}</b> <span style="font-size:11px;color:var(--text-light)">${bookEsc(String(Object.keys(bookState.roster.members[sid]).length))} ${bookEsc(tr('項'))}</span><br><span style="font-size:11px">${bookEsc(Object.keys(bookState.roster.members[sid]).sort().map(k => k + ' ' + bookState.roster.members[sid][k]).join('　'))}</span></div>`).join('') || `<div style="font-size:12px">${bookEsc(tr('暫未有任何進度'))}</div>`}
+    </div>` : ''}
+  </div>`;
+}
+
+function bookPendingHtml() {
+  const c = bookState.confirmResult;
+  const p = bookState.pending;
+  if (!p) return '';
+  const rows = (p.pending || []).slice().sort((a, b) => (a.scoutId + a.itemId).localeCompare(b.scoutId + b.itemId));
+  return `<div class="info-section" style="border-left-color:var(--orange);background:#FFFDF5">
+    <h4>⏳ ${bookEsc(tr('待批（等領袖確認）'))}：${bookEsc(String(rows.length))} ${bookEsc(tr('項'))}</h4>
+    <p style="font-size:12px;line-height:1.7;color:var(--text-light)">${bookEsc(tr('呢啲係成員喺 ROVERBOOK 自己標記嘅進度，全部未計入正式進度。確認後才會寫入「進度追蹤」並產生核簽；拒絕就唔會入帳。'))}</p>
+    ${rows.length ? `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+      <tr style="background:var(--bg)"><th style="padding:6px"><input type="checkbox" id="bookSelAll" onchange="bookToggleAll(this.checked)"></th><th style="text-align:left;padding:6px">SCOUT ID</th><th style="text-align:left;padding:6px">${bookEsc(tr('項目 ID'))}</th><th style="text-align:left;padding:6px">${bookEsc(tr('BOOK 日期'))}</th><th style="text-align:left;padding:6px">${bookEsc(tr('差異'))}</th><th style="text-align:left;padding:6px">${bookEsc(tr('BOOK 信任度'))}</th></tr>
+      ${rows.map(x => `<tr><td style="padding:6px;text-align:center"><input type="checkbox" class="bookPick" data-pid="${bookEsc(x.pendingId)}" ${bookState.selected[x.pendingId] ? 'checked' : ''} onchange="bookTogglePick('${bookEsc(x.pendingId)}', this.checked)"></td><td style="padding:6px;border-top:1px solid #eee;font-family:monospace">${bookEsc(x.scoutId)}</td><td style="padding:6px;border-top:1px solid #eee;font-family:monospace">${bookEsc(x.itemId)}</td><td style="padding:6px;border-top:1px solid #eee">${bookEsc(x.date)}</td><td style="padding:6px;border-top:1px solid #eee;font-size:11px;color:var(--text-light)">${bookEsc(bookDiffLabel(x.diff))}</td><td style="padding:6px;border-top:1px solid #eee;font-size:11px;color:${x.trust === 'leader-signed' ? 'var(--green)' : 'var(--orange)'}">${bookEsc(x.trust === 'leader-signed' ? tr('BOOK 顯示領袖已簽（仍待你確認）') : tr('成員自己標記（未經領袖）'))}</td></tr>`).join('')}
+    </table></div>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-sm btn-primary" onclick="bookConfirmSelected()">✅ ${bookEsc(tr('確認所選（寫入進度）'))}</button>
+      <button class="btn btn-sm btn-secondary" onclick="bookConfirmAll()">✅ ${bookEsc(tr('全部確認'))}</button>
+      <button class="btn btn-sm btn-secondary" onclick="bookConfirmLeaderSigned()">🔏 ${bookEsc(tr('只確認 BOOK 顯示已簽的'))}</button>
+      <button class="btn btn-sm btn-secondary" onclick="bookRejectSelected()">❌ ${bookEsc(tr('拒絕所選'))}</button>
+    </div>` : `<div style="font-size:12px">${bookEsc(tr('暫無待批項目'))}</div>`}
+    ${c ? `<div style="margin-top:8px;font-size:12px;color:var(--green)">✅ ${bookEsc(c.message || '')}</div>` : ''}
+  </div>`;
+}
+
+function bookDiffLabel(d) {
+  if (d === 'new') return tr('新項目');
+  if (d === 'newer') return tr('較後日期（會更新）');
+  if (d === 'older') return tr('較舊（預設不改）');
+  if (d === 'same') return tr('同一日');
+  return d || '';
+}
+
+function bookTogglePick(pid, on) {
+  if (on) bookState.selected[pid] = true; else delete bookState.selected[pid];
+}
+function bookToggleAll(on) {
+  const p = bookState.pending;
+  bookState.selected = {};
+  if (on && p) (p.pending || []).forEach(x => { bookState.selected[x.pendingId] = true; });
+  renderBookTab();
+}
+
+async function bookLoadPending() {
+  try {
+    const r = await apiRequest('bookPending', { token: currentToken });
+    if (!r.success) throw new Error(r.error || 'load failed');
+    bookState.pending = r;
+  } catch (e) { bookState.error = e.message || String(e); }
+  renderBookTab();
+}
+
+async function bookConfirmSubmit(pendingIds, decision, overwrite, all) {
+  try {
+    const r = await apiRequest('bookConfirm', { token: currentToken, pendingIds, decision, overwrite: !!overwrite, all: !!all });
+    if (!r.success) throw new Error(r.error || 'confirm failed');
+    bookState.confirmResult = r;
+    bookState.selected = {};
+    bookState.error = '';
+    const p = await apiRequest('bookPending', { token: currentToken });
+    if (p.success) bookState.pending = p;
+    const ro = await apiRequest('bookRoster', { token: currentToken });
+    if (ro.success) bookState.roster = ro;
+  } catch (e) { bookState.error = e.message || String(e); }
+  renderBookTab();
+}
+
+function bookSelectedIds() { return Object.keys(bookState.selected); }
+function bookConfirmSelected() {
+  const ids = bookSelectedIds();
+  if (!ids.length) { bookState.error = tr('請先勾選要確認的項目'); renderBookTab(); return; }
+  bookConfirmSubmit(ids, 'approve', false);
+}
+function bookConfirmAll() {
+  if (!window.confirm(tr('確定要一次過確認**全部**待批項目？（會寫入全團所有成員的進度）'))) return;
+  bookConfirmSubmit(null, 'approve', false, true);
+}
+// 只確認「BOOK 顯示領袖已簽」嗰啲（仍然係一次過由領袖決定；成員自己標記嘅一項都唔會混入）
+function bookConfirmLeaderSigned() {
+  const p = bookState.pending;
+  const ids = ((p && p.pending) || []).filter(x => x.trust === 'leader-signed').map(x => x.pendingId);
+  if (!ids.length) { bookState.error = tr('待批清單內沒有「BOOK 顯示領袖已簽」的項目'); renderBookTab(); return; }
+  bookConfirmSubmit(ids, 'approve', false);
+}
+function bookRejectSelected() {
+  const ids = bookSelectedIds();
+  if (!ids.length) { bookState.error = tr('請先勾選要拒絕的項目'); renderBookTab(); return; }
+  bookConfirmSubmit(ids, 'reject', false);
+}
+
+function bookAwardHtml() {
+  const r = bookState.awardResult;
+  return `<div class="info-section">
+    <h4>🏅 ${bookEsc(tr('步驟 2：一次過頒發（多個成員、多個獎章）'))}</h4>
+    <p style="font-size:12px;line-height:1.7">${bookEsc(tr('一行一個：SCOUT ID, 獎章（L1／L2／L3／L4）, 頒發日期（YYYY-MM-DD）。一次過提交，成員下次喺 ROVERBOOK 取回時就會見到。'))}</p>
+    <p style="font-size:12px;line-height:1.7;color:var(--text-light)">ℹ️ ${bookEsc(tr('如果係團集會／考驗營「有參加就一次過簽」，請用「🏠 全團總覽 → 🚀 考驗營批量完成」或「📋 待批 → 批量批准」，唔需要經 ROVERBOOK；ROVERBOOK 只係成員自己擁有、出外可讀的紀錄冊。'))}</p>
+    <textarea id="bookAwards" rows="5" style="width:100%;font-family:monospace;font-size:12px" placeholder="1234567890, L1, 2026-04-01&#10;1234567891, L2, 2026-04-01"></textarea>
+    <div style="margin-top:8px;font-size:12px;line-height:1.8">
+      <label><input type="checkbox" id="bookAwardCorrect"> ${bookEsc(tr('更正已頒發的日期（會覆寫原日期，需要確認）'))}</label><br>
+      <label><input type="checkbox" id="bookAwardRemove"> ${bookEsc(tr('撤回（刪除）這些頒發紀錄，需要確認'))}</label>
+    </div>
+    <div style="margin-top:8px"><button class="btn btn-sm btn-primary" onclick="bookSubmitAwards()">${bookEsc(tr('🏅 一次過頒發'))}</button></div>
+    ${r ? `<div class="info-section" style="border-left-color:var(--green)"><b>✅ ${bookEsc(tr('已頒發'))} ${bookEsc(String(r.written))} ${bookEsc(tr('筆'))}</b>${r.corrected ? `　<span style="font-size:11px">${bookEsc(tr('更正'))} ${bookEsc(String(r.corrected))}</span>` : ''}${r.removed ? `　<span style="font-size:11px">${bookEsc(tr('撤回'))} ${bookEsc(String(r.removed))}</span>` : ''}${r.skipped ? `<div style="font-size:11px;color:var(--text-light)">${bookEsc(tr('略過（已頒發或格式不正確）'))}：${bookEsc(String(r.skipped))}</div>` : ''}</div>` : ''}
+  </div>`;
+}
+
+function bookPullHtml() {
+  const p = bookState.pull;
+  return `<div class="info-section">
+    <h4>📤 ${bookEsc(tr('步驟 3：成員取回自己的進度（唯讀）'))}</h4>
+    <p style="font-size:12px;line-height:1.7">${bookEsc(tr('按一下即取回你自己的進度、頒發同核簽，可以貼返入 ROVERBOOK。只會回你本人嘅資料，唔會回其他人。'))}</p>
+    <p style="font-size:12px;line-height:1.7;color:var(--text-light)">ℹ️ ${bookEsc(tr('貼回 ROVERBOOK 時：這裡的「進度／核簽」＝領袖已核實，BOOK 會無條件採用；「待領袖確認」的項目 BOOK 只會顯示為申請中，不會當成完成。'))}</p>
+    <button class="btn btn-sm btn-primary" onclick="bookLoadPull()">${bookEsc(tr('📤 取回我的進度'))}</button>
+    ${p ? `<div class="info-section" style="background:var(--bg)">
+      <div style="font-size:12px;margin-bottom:6px">SCOUT ID <b style="font-family:monospace">${bookEsc(p.scoutId)}</b></div>
+      ${bookProgressRows(p.progress || {})}
+      ${Object.keys(p.awards || {}).length ? `<div style="margin-top:8px;font-size:12px">🏅 ${bookEsc(tr('已頒發'))}：${bookEsc(Object.keys(p.awards).sort().map(k => k + ' ' + p.awards[k]).join('、'))}</div>` : ''}
+      ${Object.keys(p.pending || {}).length ? `<div style="margin-top:8px;font-size:12px;color:var(--orange)">⏳ ${bookEsc(tr('待領袖確認（未計入進度）'))}：${bookEsc(Object.keys(p.pending).sort().map(k => k + ' ' + p.pending[k]).join('、'))}</div>` : ''}
+      ${(p.withdrawn || []).length ? `<div style="margin-top:8px;font-size:12px;color:var(--red)">↩️ ${bookEsc(tr('領袖已撤回（貼回 ROVERBOOK 時會移除）'))}：${bookEsc((p.withdrawn || []).join('、'))}</div>` : ''}
+      <div style="margin-top:10px"><button class="btn btn-sm btn-secondary" onclick="bookCopyPull()">${bookEsc(tr('📋 複製 JSON（貼入 ROVERBOOK）'))}</button></div>
+      <textarea id="bookPullJson" rows="5" style="width:100%;margin-top:8px;font-family:monospace;font-size:11px" readonly>${bookEsc(JSON.stringify(p, null, 2))}</textarea>
+    </div>` : ''}
+  </div>`;
+}
+
+async function bookLoadRoster() {
+  try {
+    bookState.error = '';
+    const r = await apiRequest('bookRoster', { token: currentToken });
+    if (!r.success) throw new Error(r.error || 'load failed');
+    bookState.roster = r;
+    const p = await apiRequest('bookPending', { token: currentToken });
+    if (p.success) bookState.pending = p;
+  } catch (e) { bookState.error = e.message || String(e); }
+  renderBookTab();
+}
+
+async function bookSyncPayload(payload) {
+  const bridge = window.RoverBookBridge;
+  if (!bridge) { bookState.error = tr('對接模組未載入（assets/roverbook-bridge.js）'); renderBookTab(); return; }
+  const parsed = bridge.fromRoverBook(payload);
+  if (!parsed.ok) { bookState.error = tr(parsed.reason); renderBookTab(); return; }
+  bookState.busy = true;
+  try {
+    const r = await apiRequest('bookSync', { token: currentToken, scoutId: parsed.scoutId, progress: parsed.progress, trusts: parsed.trusts || {} });
+    if (!r.success) throw new Error(r.error || 'sync failed');
+    bookState.syncResult = r;
+    bookState.confirmResult = null;
+    bookState.error = '';
+    const p = await apiRequest('bookPending', { token: currentToken });
+    if (p.success) bookState.pending = p;
+    const ro = await apiRequest('bookRoster', { token: currentToken });
+    if (ro.success) bookState.roster = ro;
+  } catch (e) { bookState.error = e.message || String(e); }
+  bookState.busy = false;
+  renderBookTab();
+}
+
+async function bookSubmitPaste() {
+  const el = document.getElementById('bookPaste');
+  const raw = (el && el.value || '').trim();
+  if (!raw) { bookState.error = tr('請先貼上 ROVERBOOK 的內容'); renderBookTab(); return; }
+  let payload = null;
+  if (raw.indexOf('RB1') === 0) {
+    // RB1…（gzip）只有 ROVERBOOK 自己解得到；這裡提示改用 JSON
+    bookState.error = tr('RB1 二維碼要由 ROVERBOOK 自己解碼：請成員在 ROVERBOOK 按「匯出 ROVERBADGE 進度」再把 JSON 貼上（或儲存成檔案）');
+    renderBookTab();
+    return;
+  }
+  try { payload = JSON.parse(raw); } catch (e) {
+    bookState.error = tr('內容不是有效 JSON');
+    renderBookTab();
+    return;
+  }
+  bookSyncPayload(payload);
+}
+
+function bookLoadFile(ev) {
+  const f = ev && ev.target && ev.target.files && ev.target.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try { bookSyncPayload(JSON.parse(String(reader.result || '{}'))); }
+    catch (e) { bookState.error = tr('檔案不是有效 JSON'); renderBookTab(); }
+  };
+  reader.readAsText(f);
+}
+
+async function bookSubmitAwards() {
+  const el = document.getElementById('bookAwards');
+  const lines = String(el && el.value || '').split('\n').map(s => s.trim()).filter(Boolean);
+  const awards = lines.map(line => {
+    const parts = line.split(/[,，\t]+/).map(s => s.trim());
+    return { scoutId: parts[0], badgeId: (parts[1] || '').toUpperCase(), date: parts[2] };
+  }).filter(a => a.scoutId && a.badgeId && a.date);
+  if (!awards.length) { bookState.error = tr('請每行填：SCOUT ID, 獎章, 日期（YYYY-MM-DD）'); renderBookTab(); return; }
+  const correctEl = document.getElementById('bookAwardCorrect');
+  const removeEl = document.getElementById('bookAwardRemove');
+  const wantCorrect = !!(correctEl && correctEl.checked);
+  const wantRemove = !!(removeEl && removeEl.checked);
+  if (wantCorrect && !window.confirm(tr('確定要更正已頒發的日期？原日期會被覆寫（會寫入備註）。'))) { renderBookTab(); return; }
+  if (wantRemove && !window.confirm(tr('確定要刪除這些頒發紀錄？刪除後成員的 ROVERBOOK 下次取回時會消失。'))) { renderBookTab(); return; }
+  if (wantCorrect || wantRemove) awards.forEach(a => { a.correct = wantCorrect; a.remove = wantRemove; });
+  try {
+    const r = await apiRequest('bookAward', { token: currentToken, awards, confirm: wantCorrect || wantRemove });
+    if (!r.success) throw new Error(r.error || 'award failed');
+    bookState.awardResult = r; bookState.error = '';
+  } catch (e) { bookState.error = e.message || String(e); }
+  renderBookTab();
+}
+
+async function bookLoadPull() {
+  try {
+    const r = await apiRequest('bookPull', { token: currentToken });
+    if (!r.success) throw new Error(r.error || 'pull failed');
+    bookState.pull = r; bookState.error = '';
+  } catch (e) { bookState.error = e.message || String(e); }
+  renderBookTab();
+}
+
+function bookCopyPull() {
+  const el = document.getElementById('bookPullJson');
+  if (!el) return;
+  try {
+    navigator.clipboard.writeText(el.value).then(() => showToast(tr('已複製，請貼入 ROVERBOOK 的「從 ROVERBADGE 匯入」'), 'success'));
+  } catch (e) { showToast(tr('複製失敗，請手動選取文字'), 'error'); }
+}
+
 function switchTab(name, btn){
   if(_switching) return;
   _switching = true;
@@ -3334,6 +3741,7 @@ function switchTab(name, btn){
         else if(name==='forms') renderFormsTab();
         else if(name==='help') renderHelpTab();
         else if(name==='info') renderInfoTab();
+        else if(name==='book') renderBookTab();
         else if(name==='users') loadUsers();
         else if(name==='apps') loadApplications();
       }catch(e){

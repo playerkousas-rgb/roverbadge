@@ -1009,3 +1009,87 @@ GS 最新版本	Latest GS version
 每次更新後請按一次選單「🔗 旅系統 → 🔧 初始化／更新」（等同 initializeSheets()）。</b>佢只會補建缺少的工作表（例如「活動履歷」及「待批履歷」）與欄位標題，不會更改或清除現有資料，亦不會更換 API Key。	After every update press the menu "🔗 Troop System → 🔧 Initialize / Update" once (the same as initializeSheets()).</b>It only adds missing sheets (for example "Activity Log" and "Pending Activity Log") and column headers; it never changes or clears existing data and never changes the API Key.
 旅團後端未升級 v8.2：請通知管理員更新 Code.gs 並按選單「🔗 旅系統 → 🔧 初始化／更新」一次	Group backend not upgraded to v8.2: ask the admin to update Code.gs and press the menu "🔗 Troop System → 🔧 Initialize / Update" once
 新節點接入：選單「🔧 初始化／更新」／「🔑 顯示 API KEY（交 ADMIN）」只提供 API Key；URL 由 Google 部署視窗取得，再填原有 ADMIN FORM。	New node onboarding: the menu items "🔧 Initialize / Update" and "🔑 Show API KEY (for the ADMIN)" provide only the API Key; get the URL from the Google deployment dialog and enter it in the existing ADMIN FORM.
+🔴 此版本登入會逾時：本旅團 GS 是慢登入版本，請更新 Code.gs 至 v5.4.0	🔴 This version will time out on login: this troop's GS is a slow-login version — please update Code.gs to v5.4.0
+此版本每次登入要做 120,000 次密碼雜湊（成功登入更要做兩次），超過後端 45 秒上限，部分帳號會一直顯示「連線逾時」。更新後新雜湊只需 10,000 次、每次登入只做一次，登入會回復 1–3 秒；舊帳號登入一次後會自動升級，不需要任何人重設密碼。	This version runs 120,000 password-hash iterations on every login (twice on a successful login), which exceeds the backend's 45-second limit, so some accounts keep seeing "connection timed out". After updating, new hashes need only 10,000 iterations and each login runs the KDF once, so login returns to 1–3 seconds; older hashes upgrade themselves automatically on the next successful login — nobody needs to reset a password.
+📖 ROVERBOOK 對接	📖 ROVERBOOK bridge
+ROVERBOOK 對接	ROVERBOOK bridge
+📥 1 · 接收進度（從 ROVERBOOK）	📥 1 · Receive progress (from ROVERBOOK)
+🏅 2 · 一次過頒發	🏅 2 · Award in one go
+📤 3 · 成員取回進度	📤 3 · Member pulls progress
+ROVERBOOK 是成員自己手機上的紀錄冊；這裡只收「進度」。姓名以外嘅個人資料（電話、電郵、地址、相片、簽名墨跡）永遠留在成員自己部機，系統會自動剝走並顯示剝走了幾多項。	ROVERBOOK is the record book on each member's own phone; this page only receives progress. Personal particulars (phone, email, address, photo, signature ink) always stay on the member's device — the system strips them and reports how many were removed.
+項目 ID	Item ID
+完成日期	Completed on
+未有任何進度紀錄	No progress records yet
+已接收	Received
+項進度	progress items
+已剝走個資欄位	Personal-data fields stripped
+未寫入（格式／學制不符）	Not written (bad format or scheme mismatch)
+步驟 1：把成員手機的進度交上嚟	Step 1: bring a member's progress up from their phone
+成員在 ROVERBOOK 用「出示二維碼」揀「訓練進度」，領袖掃完之後（或成員自己貼上）會得到一段 RB1… 或以 { 開頭的 JSON。貼在下面即可；系統只會讀 SCOUT ID、項目 ID、完成日期。	In ROVERBOOK the member picks “Training progress” under “Show QR code”. After the leader scans it (or the member pastes it) you get an RB1… string or a JSON starting with {. Paste it below — only SCOUT ID, item ID and completion date are read.
+✅ 接收並寫入進度	✅ Receive and write progress
+📂 或者揀一個 JSON 檔	📂 Or choose a JSON file
+🔄 重新整理全團一覽	🔄 Refresh troop overview
+全團已完成進度一覽	Troop progress overview
+位成員	members
+項	items
+暫未有任何進度	No progress yet
+成員交上嚟但未喺進度追蹤入帳	Received from members but not yet in the progress sheet
+步驟 2：一次過頒發（多個成員、多個獎章）	Step 2: award in one go (many members, many badges)
+一行一個：SCOUT ID, 獎章（L1／L2／L3／L4）, 頒發日期（YYYY-MM-DD）。一次過提交，成員下次喺 ROVERBOOK 取回時就會見到。	One per line: SCOUT ID, badge (L1/L2/L3/L4), award date (YYYY-MM-DD). Submit once — members see it the next time they pull from ROVERBOOK.
+🏅 一次過頒發	🏅 Award all
+已頒發	Awarded
+筆	entries
+略過（已頒發或格式不正確）	Skipped (already awarded or bad format)
+步驟 3：成員取回自己的進度（唯讀）	Step 3: member pulls their own progress (read-only)
+按一下即取回你自己的進度、頒發同核簽，可以貼返入 ROVERBOOK。只會回你本人嘅資料，唔會回其他人。	One tap pulls your own progress, awards and sign-offs, ready to paste back into ROVERBOOK. Only your own data is returned.
+📤 取回我的進度	📤 Pull my progress
+📋 複製 JSON（貼入 ROVERBOOK）	📋 Copy JSON (paste into ROVERBOOK)
+已複製，請貼入 ROVERBOOK 的「從 ROVERBADGE 匯入」	Copied — paste it into ROVERBOOK's “Import from ROVERBADGE”
+複製失敗，請手動選取文字	Copy failed — please select the text manually
+請先貼上 ROVERBOOK 的內容	Paste the ROVERBOOK content first
+RB1 二維碼要由 ROVERBOOK 自己解碼：請成員在 ROVERBOOK 按「匯出 ROVERBADGE 進度」再把 JSON 貼上（或儲存成檔案）	An RB1 QR code must be decoded by ROVERBOOK itself: ask the member to press “Export ROVERBADGE progress” in ROVERBOOK and paste (or save) that JSON instead
+內容不是有效 JSON	The content is not valid JSON
+檔案不是有效 JSON	The file is not valid JSON
+請每行填：SCOUT ID, 獎章, 日期（YYYY-MM-DD）	Each line needs: SCOUT ID, badge, date (YYYY-MM-DD)
+對接模組未載入（assets/roverbook-bridge.js）	Bridge module not loaded (assets/roverbook-bridge.js)
+BOOK 日期	Book date
+以上項目仍未計入進度。請喺下面「待批」逐項或一次過按 ✅ 確認；BOOK 交上嚟嘅資料唔會自動變成已完成。	These items are NOT counted yet. Confirm them one by one (or all at once) with ✅ under “Pending”; data handed in from the BOOK never becomes completed by itself.
+全部確認	Confirm all
+同一日	Same date
+呢啲係成員喺 ROVERBOOK 自己標記嘅進度，全部未計入正式進度。確認後才會寫入「進度追蹤」並產生核簽；拒絕就唔會入帳。	These are progress marks the member made on their own device in ROVERBOOK and none of them count yet. Only after you confirm do they get written into “進度追蹤” with a sign-off; rejected items are never recorded.
+如果係團集會／考驗營「有參加就一次過簽」，請用「🏠 全團總覽 → 🚀 考驗營批量完成」或「📋 待批 → 批量批准」，唔需要經 ROVERBOOK；ROVERBOOK 只係成員自己擁有、出外可讀的紀錄冊。	For “everyone who attended gets signed off in one go” (meetings, challenge camps), use “🏠 Troop overview → 🚀 Camp bulk complete” or “📋 Pending → bulk approve”. You do not go through ROVERBOOK; the BOOK is simply the record book each member owns and can read on the go.
+差異	Difference
+已存在，略過	Already present, skipped
+已放入待批	Staged for confirmation
+待批（等領袖確認）	Pending (awaiting leader confirmation)
+待領袖確認（未計入進度）	Pending leader confirmation (not counted yet)
+成員在 ROVERBOOK 用「出示二維碼」揀「訓練進度」，領袖掃完之後（或成員自己貼上）會得到一段 RB1… 或以 { 開頭的 JSON。貼在下面即可；系統只會讀 SCOUT ID、項目 ID、完成日期，而且只會放入「待批」，要你確認才計入進度。	The member uses “show QR code → training progress” in ROVERBOOK; after scanning (or the member pasting it) you get an RB1… string or a JSON starting with {. Paste it below — only the SCOUT ID, item ID and completion date are read, and they are placed in “Pending” until you confirm them.
+拒絕所選	Reject selected
+新項目	New item
+暫無待批項目	Nothing pending
+未接收（格式／學制不符）	Not accepted (bad format / wrong scheme)
+確認所選（寫入進度）	Confirm selected (write to progress)
+請先勾選要拒絕的項目	Tick the items you want to reject
+請先勾選要確認的項目	Tick the items you want to confirm
+較後日期（會更新）	Later date (will update)
+較舊、未回寫（既有紀錄較後，已保留）	Older, not written back (existing record is later and was kept)
+較舊（預設不改）	Older (kept by default)
+📥 接收（放入待批）	📥 Receive (stage for confirmation)
+🔄 重新整理全團一覽同待批	🔄 Refresh troop overview and pending list
+BOOK 信任度	BOOK trust
+BOOK 顯示領袖已簽	BOOK says a leader signed
+BOOK 顯示領袖已簽（仍待你確認）	BOOK says a leader signed (still needs your confirmation)
+只確認 BOOK 顯示已簽的	🔏 Confirm only BOOK items marked leader-signed
+待批清單內沒有「BOOK 顯示領袖已簽」的項目	No leader-signed items in the pending list
+成員自己標記	Marked by the member
+成員自己標記（未經領袖）	Marked by the member (no leader yet)
+貼回 ROVERBOOK 時：這裡的「進度／核簽」＝領袖已核實，BOOK 會無條件採用；「待領袖確認」的項目 BOOK 只會顯示為申請中，不會當成完成。	When pasted back into ROVERBOOK: “progress / sign-offs” here are leader-verified and the BOOK adopts them as-is; items “awaiting leader confirmation” appear only as pending requests and never as completed.
+雙向信任規則：BADGE → BOOK 會無條件相信你在這裡核實過的紀錄（BOOK 只會採用已核實的項目，未核實的不會變成完成）；BOOK → BADGE 則一律不信——即使成員手機上寫住「已由領袖簽核」，都只會變成待你確認，因為成員部機可以改任何欄位。	Two-way trust rule: BADGE → BOOK trusts anything you verified here unconditionally (the BOOK only adopts verified items; unverified ones never become completed); BOOK → BADGE trusts nothing — even if the member’s phone claims “signed by a leader”, it only becomes something for you to confirm, because the member controls every field on that device.
+撤回	Withdraw
+撤回（刪除）這些頒發紀錄，需要確認	Withdraw (delete) these awards — requires confirmation
+更正	Correct
+更正已頒發的日期（會覆寫原日期，需要確認）	Correct the award date (overwrites the original date; requires confirmation)
+確定要一次過確認**全部**待批項目？（會寫入全團所有成員的進度）	Confirm ALL pending items at once? (this writes progress for every member in the troop)
+確定要刪除這些頒發紀錄？刪除後成員的 ROVERBOOK 下次取回時會消失。	Delete these award records? They will disappear from the member’s ROVERBOOK the next time it pulls.
+確定要更正已頒發的日期？原日期會被覆寫（會寫入備註）。	Correct the awarded date? The original date is overwritten (and noted in the remarks column).
+領袖已撤回（貼回 ROVERBOOK 時會移除）	Withdrawn by the leader (removed when pasted back into ROVERBOOK)

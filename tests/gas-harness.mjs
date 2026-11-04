@@ -111,8 +111,18 @@ function formatDate(d, tz, fmt) {
     .replace('ss', p(dt.getUTCSeconds()));
 }
 
-export function loadCodeGs({ promptAnswers = [], urlFetchHandler = null, serviceUrls = ['https://script.google.com/macros/s/HARNESS/exec'] } = {}) {
-  const code = fs.readFileSync(CODE_GS_PATH, 'utf8');
+// 忙等：模擬 GAS 每次執行原生呼叫的固定成本（唔用 setTimeout，保持同步語意）
+function busyWait(ms) {
+  const end = process.hrtime.bigint() + BigInt(Math.round(ms * 1e6));
+  while (process.hrtime.bigint() < end) { /* spin */ }
+}
+
+// options:
+//   promptAnswers／urlFetchHandler／serviceUrls：見上方說明
+//   sourcePath：改為載入另一份 Code.gs（例如 git 取出的舊版，用嚟量「修前」成本）
+//   hmacLatencyMs：每次 Utilities.computeHmacSha256Signature() 額外燒幾多毫秒（模擬 GAS 邊界；預設 0）
+export function loadCodeGs({ promptAnswers = [], urlFetchHandler = null, serviceUrls = ['https://script.google.com/macros/s/HARNESS/exec'], sourcePath = null, hmacLatencyMs = 0 } = {}) {
+  const code = fs.readFileSync(sourcePath || CODE_GS_PATH, 'utf8');
 
   const ss = {
     sheets: new Map(),
@@ -156,6 +166,12 @@ export function loadCodeGs({ promptAnswers = [], urlFetchHandler = null, service
       // v8.9.3：登入票據 HMAC 簽／驗 + base64url + newBlob（零回傳本地驗簽用）
       computeHmacSha256Signature(value, key) {
         // 真 GAS 接受 String 或 Byte[] 作 data；PBKDF2 會傳 byte[]，呢度要同 semantics
+        // GAS_HMAC_LATENCY_MS：可選的「JS↔Java 邊界」延遲模擬（預設 0＝唔加延遲，行為完全不變）。
+        //   真 Apps Script 每次呼叫要過邊界，實測約 0.1–0.3 ms；Node 只需幾微秒。
+        //   設了呢個值之後，PBKDF2 的「KDF 次數 × 延遲」就等於真 GAS 的秒數，
+        //   所以測試可以用同一個延遲同時量「修前」與「修後」兩份 Code.gs（見 tests/password-kdf.test.mjs）。
+        if (sandbox.__hmacCalls !== undefined) sandbox.__hmacCalls++;
+        if (sandbox.__hmacLatencyMs > 0) busyWait(sandbox.__hmacLatencyMs);
         const v = Array.isArray(value) ? Buffer.from(value.map(b => b & 0xFF)) : Buffer.from(String(value), 'utf8');
         return Array.from(crypto.createHmac('sha256', String(key)).update(v).digest());
       },
@@ -219,6 +235,9 @@ export function loadCodeGs({ promptAnswers = [], urlFetchHandler = null, service
     }
   };
   sandbox.__urlFetchLog = [];
+  // GAS 邊界延遲模擬（預設 0：唔影響任何既有測試的語意或時間）
+  sandbox.__hmacLatencyMs = Math.max(0, Number(hmacLatencyMs) || 0);
+  sandbox.__hmacCalls = 0;
   sandbox.globalThis = sandbox;
 
   const ctx = vm.createContext(sandbox);
@@ -234,6 +253,30 @@ export function loadCodeGs({ promptAnswers = [], urlFetchHandler = null, service
   createToken, ITEM_CATALOG_, DEFAULT_PERMS_,
   // A3/A5 測試內省用：密碼雜湊／驗證與匯入
   hashPassword, hashPasswordV2, verifyPassword, isLegacyPasswordHash_, upsertUser,
+  // GS 5.4.0 測試內省用：PBKDF2 迭代常數／解析／升級判斷／單行定位／效能測試／慢登入 log。
+  // 用 typeof 守衛：同一個 harness 亦要載入「修前」的舊版 Code.gs（例如 tests/measure-login-kdf.mjs），
+  // 嗰啲版本冇呢啲符號，唔可以因此拋 ReferenceError。
+  PBKDF2_ITERATIONS: (typeof PBKDF2_ITERATIONS !== 'undefined' ? PBKDF2_ITERATIONS : undefined),
+  PBKDF2_MIN_ITERATIONS: (typeof PBKDF2_MIN_ITERATIONS !== 'undefined' ? PBKDF2_MIN_ITERATIONS : undefined),
+  PBKDF2_MAX_ITERATIONS: (typeof PBKDF2_MAX_ITERATIONS !== 'undefined' ? PBKDF2_MAX_ITERATIONS : undefined),
+  parsePbkdf2Hash_: (typeof parsePbkdf2Hash_ !== 'undefined' ? parsePbkdf2Hash_ : undefined),
+  needsPasswordRehash_: (typeof needsPasswordRehash_ !== 'undefined' ? needsPasswordRehash_ : undefined),
+  locateLoginRow_: (typeof locateLoginRow_ !== 'undefined' ? locateLoginRow_ : undefined),
+  isDefaultPassword_: (typeof isDefaultPassword_ !== 'undefined' ? isDefaultPassword_ : undefined),
+  benchmarkPasswordKdf: (typeof benchmarkPasswordKdf !== 'undefined' ? benchmarkPasswordKdf : undefined),
+  menuBenchmarkPasswordKdf: (typeof menuBenchmarkPasswordKdf !== 'undefined' ? menuBenchmarkPasswordKdf : undefined),
+  logSlowLogin_: (typeof logSlowLogin_ !== 'undefined' ? logSlowLogin_ : undefined),
+  // GS 5.4.0 ROVERBOOK 對接：手動測試用
+  handleBookSync: (typeof handleBookSync !== 'undefined' ? handleBookSync : undefined),
+  handleBookAward: (typeof handleBookAward !== 'undefined' ? handleBookAward : undefined),
+  handleBookPull: (typeof handleBookPull !== 'undefined' ? handleBookPull : undefined),
+  handleBookRoster: (typeof handleBookRoster !== 'undefined' ? handleBookRoster : undefined),
+  handleBookConfirm: (typeof handleBookConfirm !== 'undefined' ? handleBookConfirm : undefined),
+  handleBookPending: (typeof handleBookPending !== 'undefined' ? handleBookPending : undefined),
+  menuBookStatus: (typeof menuBookStatus !== 'undefined' ? menuBookStatus : undefined),
+  bookStats_: (typeof bookStats_ !== 'undefined' ? bookStats_ : undefined),
+  __kdfStats: () => ({ calls: (typeof __kdfCalls_ !== 'undefined' ? __kdfCalls_ : 0), iterations: (typeof __kdfIterations_ !== 'undefined' ? __kdfIterations_ : 0) }),
+  __resetKdfStats: () => { if (typeof __kdfCalls_ !== 'undefined') { __kdfCalls_ = 0; __kdfIterations_ = 0; } },
   // 重設密碼授權測試用：直接以已驗證管理員物件呼叫（等同 token／上游簽章兩條入口的授權檢查）
   handleResetPassword
 };`;
@@ -253,6 +296,9 @@ export function loadCodeGs({ promptAnswers = [], urlFetchHandler = null, service
     mailApp: sandbox.MailApp,               // 測試可替換 sendEmail 模擬發信失敗
     setSessionEmail: (e) => { sandbox.__sessionEmail = String(e || ''); }, // testPasswordResetMail 用
     urlFetchLog: sandbox.__urlFetchLog,
+    hmacCalls: () => sandbox.__hmacCalls,
+    resetHmacCalls: () => { sandbox.__hmacCalls = 0; },
+    setHmacLatency: (ms) => { sandbox.__hmacLatencyMs = Math.max(0, Number(ms) || 0); },
     // 走真實 doPost() 路由（與部署後的 /exec 相同路徑）
     call: (body) => jsonOf(api.doPost({ postData: { contents: JSON.stringify(body) } })),
     get: (parameter) => jsonOf(api.doGet({ parameter }))
