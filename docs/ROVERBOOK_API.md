@@ -168,4 +168,5 @@ ROVERBOOK 現時**唔係**打 `/api/roverbook`，而係打 `<origin>/api/proxy`�
 | --- | --- |
 | `tests/roverbook-api.test.mjs` | 白名單／403／400／401／404／413、零個資（逐欄位）、`scoutNorm`、`requestComplete` 一律 pending、真 HTTP、build 打包、GAS 端同一套正規化 |
 | `tests/roverbook-bridge.test.mjs` | 橋接邏輯、CONFIRM 閘、只加不減、雙向信任、撤回、頒發更正 |
+| `tests/roverbook-e2e.test.mjs` | **真端到端**：真 `api/proxy.js`＋真 `api/roverbook.js`＋真 `Code.gs`（HTTP），照抄 BOOK 的 login／load／filter／submitPending → 見到本人進度、送交只 pending、成員寫入失敗、CONFIRM 後才生效 |
 | `tests/proxy-actions.test.mjs` | 本系統前端每個 `apiRequest` 都在 proxy 白名單 |

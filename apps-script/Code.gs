@@ -1953,6 +1953,17 @@ function handleLoad(){
   //   否則 BOOK 端會攞到空白進度（明明有紀錄都顯示冇）。
   //   同時保留 name 供本系統前端使用；ROVERBOOK 端自己會剝（零個資由佢負責）。
   //   如果 BOOK 之後改為讀頂層 progress，呢個結構一樣通（兩邊都通）。
+  // 頒發（只認 L1–L6 獎章）先一次過讀，避免每人掃一次 Sheet
+  const awardByScout={};
+  (function(){ const aSheet=ss.getSheetByName(BOOK_AWARD_SHEET); if(!aSheet) return;
+    const d=aSheet.getDataRange().getValues();
+    for(let i=1;i<d.length;i++){
+      const sid=scoutNorm_(d[i][0]); const bid=String(d[i][1]||'');
+      if(!sid || !/^L\d$/.test(bid)) continue;
+      if(!awardByScout[sid]) awardByScout[sid]={};
+      awardByScout[sid][bid]=formatDate(d[i][2]);
+    }
+  })();
   const members=(typeof getMembers==='function'?getMembers():[]).map(function(m){
     const sid=scoutNorm_(m.ymis);
     const mine=Object.assign({}, progress[sid]||{});
@@ -1961,7 +1972,7 @@ function handleLoad(){
       ymis: sid, scoutId: sid, memberNo: sid,
       name: m.name||'', squad: m.squad||'',
       progress: mine, flatProgress: flatMine,
-      badges: (function(){ const out={}; const aSheet=ss.getSheetByName(BOOK_AWARD_SHEET); if(aSheet){ const d=aSheet.getDataRange().getValues(); for(let i=1;i<d.length;i++){ if(scoutNorm_(d[i][0])===sid && /^L\d$/.test(String(d[i][1]||''))) out[String(d[i][1])]=formatDate(d[i][2]); } } return out; })(),
+      badges: awardByScout[sid]||{},
       otherBadges: other[sid]||{},
       pendingRequests: pending.filter(function(p){ return scoutNorm_(p.ymis)===sid; })
         .map(function(p){ return {itemId:p.item_id, date:p.requested_date, status:'pending'}; })

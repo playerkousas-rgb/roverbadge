@@ -52,8 +52,12 @@ ROVERBOOK 已合併到 `main`，佢只經 `https://roverbadge.vercel.app` 對接
   權限面分離（BOOK 唔會用 `/api/proxy`）、build 打包、GAS 端同一套正規化（補零／去零登入、待批對得上、只有一行進度），
   以及 **3 項 ROVERBOOK 實碼契約測試**——測試檔內 `roverbookFilterPersonalConfirmedLoad()` 係逐行照抄 BOOK 的過濾邏輯，
   斷言 `load` 之後 BOOK 真的見到本人 `progress`／`otherBadges`／`pendingRequests`、`requestComplete` 後仍空白直到領袖 CONFIRM、已批即從待批消失。
-- `npm test` 已納入；`npm run test:book` 跑 bridge（31）＋ API（13）。
-- 現況：`npm test` 全綠（21 套件）、`npm run check` **98/0**、`npm run lint` 3/0、`npm run build` 正常（5 functions）。
+- **新增 `tests/roverbook-e2e.test.mjs`（真端到端）**：用真 `api/proxy.js`＋真 `api/roverbook.js`＋真 `apps-script/Code.gs`（GAS 模擬器，經 HTTP）跑一次
+  「BOOK 前端 → BOOK 伺服器（照抄 ROVERBOOK `api/roverbadge.js` 的 login／load／submitPending／filter）→ BADGE」全流程：
+  成員用未補零 `81420` 登入 → BOOK 見到本人已核實進度／頒發／其他獎章、見唔到其他人 → 送交待批得 `pending`（「進度追蹤」仍然只有領袖簽的一筆）
+  → 成員直接打 `save`／`reviewRequest` 一律失敗、`/api/roverbook` POST 寫入 403 → 領袖 CONFIRM 後 BOOK 才見到、待批即消失 → `GET ?action=troops` 零後端資訊。
+- `npm test` 已納入；`npm run test:book` 跑 bridge（31）＋ API（13）＋ 端到端（1）。
+- 現況：`npm test` 全綠（22 套件）、`npm run check` **100/0**、`npm run lint` 3/0、`npm run build` 正常（5 functions）。
 
 ### 部署
 
