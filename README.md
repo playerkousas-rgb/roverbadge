@@ -15,6 +15,7 @@
 - **用戶管理**：新增／編輯／停用／重設密碼（臨時密碼寄電郵或當面給，首次登入強制改密）、細緻權限 `allowed_badges`、私隱開關 `allow_member_view_others`（成員預設只看自己）、批量開戶（CSV／YMIS 自訂報表 PDF 瀏覽器內解密）
 - **🔑 忘記密碼（GS 5.2.3 起）**：登入頁自助式——輸入 YMIS 或登記電郵 → 寄 8 位一次性重設碼 → 即場設新密碼；重設碼只存 SHA-256、15 分鐘有效、5 次錯誤鎖定、不洩漏帳戶是否存在。詳見 [docs/PASSWORD_RESET.md](docs/PASSWORD_RESET.md)
 - **官方表格**：新制／舊制 PT/21、PT/22、PT/69 自動填寫，`.print-area` 雙面列印
+- **🔌 ROVERBOOK 用戶端 API（`/api/roverbook`）**：ROVERBOOK 只經呢一個閘道溝通——`GET ?action=troops` 回旅團 id＋名稱；`POST` 只准 `login`／`logout`／`load`／`requestComplete`；`save`／`saveOtherBadge`／`reviewRequest` 一律 **403**；回應**零個資**（連姓名都剝走）；SCOUT ID 十位數前導零正規化（`81420 ⇄ 0000081420`）。詳見 [docs/ROVERBOOK_API.md](docs/ROVERBOOK_API.md)
 - **📖 ROVERBOOK 對接（GS 5.4.0 起）**：ROVERBOOK 是成員自己手機上的紀錄冊（前端），ROVERBADGE 是領袖統管（後端）。兩者只交換**進度**：成員交上來的 JSON／檔案即場剝走全部個資（電話、電郵、地址、生日、相片、簽名墨跡、緊急聯絡人），只留 `scoutId`＋項目＋日期；而**成員自己簽的紀錄只會放入「紀錄冊待批」，領袖逐項／一次過 CONFIRM 之後才計入進度**（杜絕「自己簽完扮完成」）。「只加不減、但可以改」：較舊日期永不回寫。雙向信任：**BADGE → BOOK 無條件相信領袖已核實的紀錄（未核實的不錄入）；BOOK → BADGE 一律只當申請**，成員自稱已簽都會變待批。領袖可一頁看全團進度、**一次過頒發**（寫入「紀錄冊頒發」），成員按「取回我的進度」只拿回自己的資料。詳見 [docs/ROVERBOOK_BRIDGE.md](docs/ROVERBOOK_BRIDGE.md)
 - **其他獎章**併入進度頁底部；**考驗介紹**內建（每項 detail／assessment／tip／links）；**保護兒童**資源一鍵直達
 - **中／英一鍵切換**：`🌐 English` 按鈕即時全站切換（記喺 `localStorage: roverbadge_lang`）；分享連結可用 `?lang=en`／`?lang=zh` 鎖定語言
@@ -29,6 +30,7 @@ assets/                 — LOGO PNG 128/256 + favicon + 架構圖 WebP + forms.
 data/                   — items.json（樂行綱要：32 項段章細項（+子細項 0 項），15 項其他獎章）／items_en.json／members_template.csv／mock_members.json／mock_import.csv
 apps-script/Code.gs     — 各旅團 Google Sheet 後端（單一檔案；進度／獎章／審批／帳戶／履歷／忘記密碼）
 api/                    — proxy.js（同源多旅團 GAS Proxy，SSRF 白名單＋逾時＋錯誤標準化）
+                        roverbook.js（ROVERBOOK 專用閘道：只 login／logout／load／requestComplete，零個資，寫入一律 403）
                         troops.js（只回旅團 id+name，永不回 backend/apikey）
                         portal.js（主系統 Portal 免登入，伺服器端驗 Referer/Origin＋角色白名單）
                         super.js（中央帳號：Vercel 驗 SUPER_KEY → 封短效票 → GAS 回打驗票）
@@ -85,7 +87,7 @@ npm run dev      # 本機預覽：mock 旅團 0082 + 開發伺服器（port 3000
 npm run demo     # Demo server（同樣掛 /api/proxy、/api/troops、/api/super）
 npm run build    # 產生 .vercel/output（本機驗證 Build Output）
 npm run test:build   # 驗證建置產物
-npm run test:book    # ROVERBOOK 對接回歸（17 項，含整份試算表個資掃描）
+npm run test:book    # ROVERBOOK 對接回歸（bridge 31 項＋用戶端 API 10 項）
 npm run book:dropin  # 生成 ROVERBOOK 端 drop-in（dist/roverbook/，不入 git）
 ```
 
@@ -96,7 +98,7 @@ CI：`.github/workflows/ci.yml` 會在 push／PR 自動跑 `lint`＋`check`＋`t
 ## 文件
 
 - 旅團負責人／領袖：[docs/LEADER_GUIDE.md](docs/LEADER_GUIDE.md)｜執委：[docs/EXEC_GUIDE.md](docs/EXEC_GUIDE.md)｜成員：[docs/MEMBER_GUIDE.md](docs/MEMBER_GUIDE.md)
-- 部署：[docs/DEPLOY_GUIDE_V5_DUALTRACK.md](docs/DEPLOY_GUIDE_V5_DUALTRACK.md)／[VERCEL_ENV_SETUP.md](VERCEL_ENV_SETUP.md)｜批量開戶：[docs/BULK_ONBOARD.md](docs/BULK_ONBOARD.md)／[docs/YMIS_EXPORT.md](docs/YMIS_EXPORT.md)｜忘記密碼：[docs/PASSWORD_RESET.md](docs/PASSWORD_RESET.md)｜ROVERBOOK 對接：[docs/ROVERBOOK_BRIDGE.md](docs/ROVERBOOK_BRIDGE.md)｜登入逾時：[docs/TROUBLESHOOT_LOGIN_TIMEOUT.md](docs/TROUBLESHOOT_LOGIN_TIMEOUT.md)｜主系統整合：[docs/MAIN_SYSTEM_INTEGRATION.md](docs/MAIN_SYSTEM_INTEGRATION.md)
+- 部署：[docs/DEPLOY_GUIDE_V5_DUALTRACK.md](docs/DEPLOY_GUIDE_V5_DUALTRACK.md)／[VERCEL_ENV_SETUP.md](VERCEL_ENV_SETUP.md)｜批量開戶：[docs/BULK_ONBOARD.md](docs/BULK_ONBOARD.md)／[docs/YMIS_EXPORT.md](docs/YMIS_EXPORT.md)｜忘記密碼：[docs/PASSWORD_RESET.md](docs/PASSWORD_RESET.md)｜ROVERBOOK 對接：[docs/ROVERBOOK_BRIDGE.md](docs/ROVERBOOK_BRIDGE.md)｜ROVERBOOK API：[docs/ROVERBOOK_API.md](docs/ROVERBOOK_API.md)｜登入逾時：[docs/TROUBLESHOOT_LOGIN_TIMEOUT.md](docs/TROUBLESHOOT_LOGIN_TIMEOUT.md)｜主系統整合：[docs/MAIN_SYSTEM_INTEGRATION.md](docs/MAIN_SYSTEM_INTEGRATION.md)
 - APP 管理員工作流程／發佈檢查清單：[APP_ADMIN_WORKFLOW.md](APP_ADMIN_WORKFLOW.md)｜歷史：[CHANGE_LOG.md](CHANGE_LOG.md)
 
 ## 姊妹系統

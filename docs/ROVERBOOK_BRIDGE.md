@@ -19,6 +19,7 @@
 | ② | **ROVERBADGE 只記進度** | 新工作表「紀錄冊核簽」只有 10 欄：簽核編號／SCOUT ID／項目 ID／完成日期／核簽領袖／職銜／核簽日期／來源／寫入時間／備註。冇電話、冇電郵、冇地址、冇相片、冇墨跡。 |
 | ③ | **頒發只由領袖一次過做** | `bookAward` 需要「可勾選的領袖」權限，可以一次 submit 多成員多獎章；成員只能用 `bookPull` 取回唯讀結果。「團集會／考驗營有參加就一次過簽」照舊用「全團總覽 → 🚀 考驗營批量完成」或「待批 → 批量批准」，**唔經 BOOK**。 |
 | ④ | **BOOK 的簽名唔等於完成（CONFIRM 閘）** | `bookSync` 只寫「紀錄冊待批」；`bookConfirm` 才由領袖寫入「進度追蹤」＋「紀錄冊核簽」。成員交上嚟嘅資料永遠唔會自動計入進度（測試會斷言 `bookSync` 之後 `進度追蹤` 仍然只有表頭）。 |
+| ⑥ | **SCOUT ID 前導零正規化** | `81420 ⇄ 0000081420` 視為同一人（`scoutNorm_`／`scoutAliases_`／`scoutMatches_`）。只影響比對，唔改寫舊資料；新紀錄一律存 10 位正規化值，唔會一人兩份。 |
 | ⑤ | **只加不減（防舊資料回寫）** | 同一 (SCOUT ID, 項目) 已有較後日期時，較舊的提交只會標為 `older` 交回前端提示，**唔會入待批、唔會蓋走**；即使有人手動塞入待批，`bookConfirm` 預設都唔會覆寫（領袖要明確 `overwrite: true` 才可以改日期——「可以改」）。重覆提交同一日期會標 `duplicate` 而不新增列。 |
 
 三條都寫成測試：`tests/roverbook-bridge.test.mjs`（17 項）。其中一項會把整份模擬紀錄冊
@@ -84,6 +85,10 @@ localStorage（只在自己部機）               Google Sheet（旅團自己�
 | `roverbadge.award.v1` | BADGE → BOOK | 一次過頒發結果：`awards[{scoutId,badgeId,date}]` | 零 |
 
 ROVERBOOK 原本的 `RB1…` 二維碼（gzip）仍然係成員自己裝置之間的事；本對接**唔會**要求成員上傳它。
+
+> **ROVERBOOK 自己嘅前端**唔會直接用下面呢四個 action：佢只經 `/api/roverbook`（只准
+> `login`／`logout`／`load`／`requestComplete`，零個資、寫入 403），見 [ROVERBOOK_API.md](ROVERBOOK_API.md)。
+> 下面四個 action 係**領袖在 ROVERBADGE 前端**用的（或者領袖掃 QR 後手動貼上）。
 
 ## 4. ROVERBADGE 端的四個 action
 
