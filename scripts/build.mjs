@@ -15,7 +15,9 @@ for (const f of ['AGENT_TEMPLATE_FOR_OTHER_SECTIONS.md', 'DEPLOY_GUIDE_V5_DUALTR
   fs.rmSync(path.join(staticDir, 'docs', f), { force: true });
 }
 const dependencies = {
-  proxy: ['_registry', '_super', '_admin'], troops: ['_registry'], portal: ['_registry'], super: ['_registry', '_super']
+  proxy: ['_registry', '_super', '_admin'], troops: ['_registry'], portal: ['_registry'], super: ['_registry', '_super'],
+  // ROVERBOOK 專用閘道：只依賴旅團清單（唔需要 _super／_admin，減少權限面）
+  roverbook: ['_registry']
 };
 for (const [name, deps] of Object.entries(dependencies)) {
   const dir = path.join(output, 'functions/api', name + '.func');
@@ -36,7 +38,7 @@ export default function(req, res) {
 `);
 }
 fs.writeFileSync(path.join(output, 'config.json'), JSON.stringify({ version: 3, routes: [
-  { src: '^/api/(proxy|troops|portal|super)(?:\\.js)?/?$', dest: '/api/$1' },
+  { src: '^/api/(proxy|troops|portal|super|roverbook)(?:\\.js)?/?$', dest: '/api/$1' },
   { src: '^/$', dest: '/index.html' },
   { handle: 'filesystem' }
 ] }, null, 2));

@@ -1,5 +1,72 @@
 # CHANGE_LOG
 
+## 2026-11-05 — GS 5.4.0：ROVERBOOK 用戶端 API（`/api/roverbook`）＋ SCOUT ID 前導零正規化
+
+ROVERBOOK 已合併到 `main`，佢只經 `https://roverbadge.vercel.app` 對接。本版新增一個**專用閘道**，
+同本系統前端的 `/api/proxy` 完全分開（GUARD：唔會有一條漏寫 403 的路）。
+
+### 【1】`api/roverbook.js`（第五個 Vercel function，只依賴 `_registry`）
+
+| 對外 | 行為 |
+| --- | --- |
+| `GET ?action=troops` | `{ troops: { id: { name, en } } }`——只 id＋名稱，永不回 backend／apikey；`Cache-Control: public, max-age=300` |
+| `POST action=login` | `{ success, token, scoutId, ymis, force_change_password }`；**姓名／電郵／角色一律剝走** |
+| `POST action=logout` | `{ success }` |
+| `POST action=load` | 全團 `progress`／`otherBadges`／`pendingRequests`（BOOK 端自行過濾自己）；`progress[scoutId][itemId] = {date, confirmer?}` |
+| `POST action=requestComplete` | 只建 **`status:'pending'`**（上游就算回 approved 都會被改成 pending），領袖在 ROVERBADGE CONFIRM 才計入進度 |
+| 其他 | 已知寫入／管理類（`save`／`saveOtherBadge`／`reviewRequest`／`addUser`／`exportUsers`／`bookSync`／`bookConfirm`…）→ **403**；未知 → 400；缺 token → 401；無旅團 → 404；payload > 200 KB → 413 |
+
+- **零個資**：白名單輸出＋最後一道 `stripNever()`；`otherBadges` 連 `cert` 都唔回、`pendingRequests` 唔回 `evidence`（可能係相片）。
+- `scripts/build.mjs` 打包 `roverbook: ['_registry']`，routes regex 加入 `roverbook`；`tests/build.test.mjs` 同步（5 個 function，且確認冇打包 `_super`）。
+
+### 【2】SCOUT ID 十位數前導零正規化
+
+- `api/roverbook.js` `scoutNorm()`；`apps-script/Code.gs` `scoutNorm_()`／`scoutAliases_()`／`scoutMatches_()`（同一套）。
+- `81420 ⇄ 0000081420` 視為同一人：**登入**（`locateLoginRow_`）、`getUser`、**待批**（`bookSync`／`bookPending`／`bookConfirm`）、
+  **核簽**、**頒發**、**取回**（`bookPull`）、**成員存在檢查**（`bookScoutExists_`）全部用正規化比對。
+- **只影響比對，唔改寫任何既有 Sheet 資料**；新紀錄（新帳號、待批、核簽、頒發、進度）一律存 10 位正規化值，唔會一人兩份。
+- `handleAddUser`／`handleAddMember` 接受 1–10 位數字並自動補零（`81420` → `0000081420`）。
+
+### 【3】`requestComplete` 契約對齊（同時兼容本系統前端）
+
+- 接受 `item_id`（BOOK 契約）或 `itemId`（本系統前端）；兩者走同一套目錄／學制檢查。
+- `evidence` 只留字串、上限 200 字（BOOK 唔應該上傳相片／簽名）；回傳加 `status:'pending'` 與 `scoutId`（正規化值）。
+
+### 【4】★ 對照 ROVERBOOK 實碼的相容性修正（2026-11-05 審計）
+
+審計發現：BOOK **唔會**打 `/api/roverbook`，佢寫死打 `<origin>/api/proxy`，而且自己在前端過濾——
+先喺 `json.members[]` 用 `scoutId||ymis||memberNo` 搵返本人，再讀 `me.progress || me.flatProgress`。
+本系統原本 `load` 的 `members[]` 完全冇 `progress`，即係 **BOOK 會匯入一份空白進度（有紀錄都當冇）**。已修：
+
+- `handleLoad` 重寫：所有 key 先經 `scoutNorm_`；`members[]` **每個人都自帶** `progress`／`flatProgress`（`{itemId:'YYYY-MM-DD'}`）、
+  `badges`（已頒 `{badgeId:date}`）、`otherBadges`（只留 `{date}`，剝走證明／相片）、`pendingRequests`（`[{itemId,date,status}]`，已批不再出現）。
+- `pendingRequests` 合併兩個來源：「紀錄冊待批」＋ `bookPendingRows_`，同一人同一項以較新者為準。
+- `handleRequestComplete` 回傳加 `id`／`date`（BOOK 逐項記錄送交結果時會讀 `id`）。
+- `bookPull` 同時回 BOOK 形狀的 `ymis`／`flatProgress`／`otherBadges`／`pendingRequests`／`pendingItemIds`／`badgeDates`／`withdrawnItemIds`，
+  原有完整形狀不變（本系統前端照用）。
+
+### 【5】測試
+
+- 新增 `tests/roverbook-api.test.mjs`（**13 項**）：`scoutNorm` 正規化、login 剝姓名電郵、load 逐欄位零個資、
+  `requestComplete` 一律 pending、`stripNever` 遞迴、真 HTTP（GET troops／403 白名單／400／401／404／413／405）、
+  權限面分離（BOOK 唔會用 `/api/proxy`）、build 打包、GAS 端同一套正規化（補零／去零登入、待批對得上、只有一行進度），
+  以及 **3 項 ROVERBOOK 實碼契約測試**——測試檔內 `roverbookFilterPersonalConfirmedLoad()` 係逐行照抄 BOOK 的過濾邏輯，
+  斷言 `load` 之後 BOOK 真的見到本人 `progress`／`otherBadges`／`pendingRequests`、`requestComplete` 後仍空白直到領袖 CONFIRM、已批即從待批消失。
+- **新增 `tests/roverbook-e2e.test.mjs`（真端到端）**：用真 `api/proxy.js`＋真 `api/roverbook.js`＋真 `apps-script/Code.gs`（GAS 模擬器，經 HTTP）跑一次
+  「BOOK 前端 → BOOK 伺服器（照抄 ROVERBOOK `api/roverbadge.js` 的 login／load／submitPending／filter）→ BADGE」全流程：
+  成員用未補零 `81420` 登入 → BOOK 見到本人已核實進度／頒發／其他獎章、見唔到其他人 → 送交待批得 `pending`（「進度追蹤」仍然只有領袖簽的一筆）
+  → 成員直接打 `save`／`reviewRequest` 一律失敗、`/api/roverbook` POST 寫入 403 → 領袖 CONFIRM 後 BOOK 才見到、待批即消失 → `GET ?action=troops` 零後端資訊。
+- `npm test` 已納入；`npm run test:book` 跑 bridge（31）＋ API（13）＋ 端到端（1）。
+- 現況：`npm test` 全綠（22 套件）、`npm run check` **100/0**、`npm run lint` 3/0、`npm run build` 正常（5 functions）。
+
+### 部署
+
+1. Vercel 部署本版 → `GET /api/roverbook?action=troops` 應回 `{success:true,troops:{…}}`。
+2. `POST` 一個 `save` 應回 **403**（白名單生效的證據）。
+3. Apps Script 覆寫 `Code.gs` → 部署新版本（正規化在 GAS 端生效）；選單「🔧 初始化／更新」照舊按一次。
+
+---
+
 ## 2026-11-04（2026-11-05 修正 CONFIRM 閘） — GS 5.4.0：登入逾時修正（PBKDF2 120k → 10k、單次 KDF、單行定位）＋ ROVERBOOK 對接
 
 沿用姊妹 repo **ScoutBadge 6.4.0**（`docs/TROUBLESHOOT_82.md`）已驗證的做法，解決「super 入得、其他成員一直逾時」。GS 5.3.0 → **5.4.0**、`GS_RELEASE_DATE` 2026-11-04、`GS_INIT_REQUIRED` 維持 `true`、`assets/gs-release.js` 嘅 `GS_LATEST` 同步（前端仍 v5.2、`package.json` 版本不動）。**資料保全零變動**：唔改任何既有欄名、唔刪任何列、唔換 API Key、唔要求任何人重設密碼；舊雜湊在任何格式下都照樣登入得，成功登入時透明升級。

@@ -1321,10 +1321,13 @@ function getUser(ymis){
   const data=sheet.getDataRange().getValues();
   const hasAllowedCol = sheet.getLastColumn()>=13;
   const key=String(ymis||'').trim();
+  const keyNorm=scoutNorm_(key);
   for(let i=1;i<data.length;i++){
     // 舊版殘留 super_admin 列：保留不刪（資料保全），但不可作為登入身分
     if(isLegacySuperRow_(data[i])) continue;
-    if(String(data[i][0]||'').trim()===key && String(data[i][11]||'').trim()==='active'){
+    const rowKey=String(data[i][0]||'').trim();
+    const sameId = rowKey===key || (keyNorm && scoutNorm_(rowKey)===keyNorm);
+    if(sameId && String(data[i][11]||'').trim()==='active'){
       return {
         ymis:data[i][0].toString(),
         name:data[i][1]?data[i][1].toString():'',
@@ -1654,15 +1657,20 @@ function locateLoginRow_(loginId){
     };
   };
   // 一次掃描，同時記住「YMIS 命中」與「電郵命中」；YMIS 優先（同 getUser/getUserByEmail 的既有次序一致）
+  // SCOUT ID 正規化（2026-11-05）：`81420` ⇄ `0000081420` 要當同一個人。
+  // 只影響「比對」，Sheet 內原有寫法同資料一律不變。
+  const keyNorm=scoutNorm_(key);
+  const keyAliases=scoutAliases_(key);
   let byId=-1, byEmail=-1;
   for(let i=1;i<data.length;i++){
     if(isLegacySuperRow_(data[i])) continue; // 舊版殘留 super_admin 列不可作為登入身分（保留不刪）
     const rowY=String(data[i][0]===undefined||data[i][0]===null?'':data[i][0]).trim();
     const rowE=String(data[i][2]||'').trim().toLowerCase();
-    if(byId<0 && rowY && rowY===key) byId=i;
+    if(byId<0 && rowY && (rowY===key || (keyNorm && scoutNorm_(rowY)===keyNorm))) byId=i;
     if(byEmail<0 && rowE && rowE===lower) byEmail=i;
     if(byId>=0 && byEmail>=0) break;
   }
+  void keyAliases;
   const idx=byId>=0?byId:byEmail;
   if(idx<0) return null;
   return build(idx);
@@ -1907,17 +1915,69 @@ function getMembers(){
 }
 function handleLoad(){
   const ss=getSheet();
+  // ---- 進度：key 一律用正規化 SCOUT ID（81420 ⇄ 0000081420），避免同一人兩份 ----
   const pSheet=ss.getSheetByName('進度追蹤'); const progress={};
-  if(pSheet){ const data=pSheet.getDataRange().getValues(); for(let i=1;i<data.length;i++){ const ymis=data[i][0].toString(); if(!ymis) continue; if(!progress[ymis]) progress[ymis]={}; progress[ymis][data[i][1].toString()]={date:data[i][2]?formatDate(data[i][2]):'',confirmer:data[i][4]?data[i][4].toString():''}; } }
+  if(pSheet){
+    const data=pSheet.getDataRange().getValues();
+    for(let i=1;i<data.length;i++){
+      const sid=scoutNorm_(data[i][0]); if(!sid) continue;
+      const itemId=String(data[i][1]||'').trim(); if(!itemId) continue;
+      if(!progress[sid]) progress[sid]={};
+      progress[sid][itemId]={date:data[i][2]?formatDate(data[i][2]):'',confirmer:data[i][4]?data[i][4].toString():''};
+    }
+  }
   // 簡化版：同時提供 flat
   const flat={}; for(const y in progress){ flat[y]={}; for(const k in progress[y]){ flat[y][k]=progress[y][k].date; } }
-  const members=getMembers();
-  // pending requests
-  const prSheet=ss.getSheetByName('待批完成'); const pending=[];
-  if(prSheet){ const data=prSheet.getDataRange().getValues(); for(let i=1;i<data.length;i++){ if(data[i][7].toString()==='pending'){ pending.push({request_id:data[i][0].toString(),ymis:data[i][1].toString(),name:data[i][2].toString(),item_id:data[i][3].toString(),item_name:data[i][4].toString(),requested_date:data[i][5]?formatDate(data[i][5]):'',evidence:data[i][6]?data[i][6].toString():'',status:'pending',created_at:data[i][8]?formatDate(data[i][8]):''}); } } }
-  // other badges
+  // ---- 其他獎章 ----
   const oSheet=ss.getSheetByName('其他獎章'); const other={};
-  if(oSheet){ const data=oSheet.getDataRange().getValues(); for(let i=1;i<data.length;i++){ const y=data[i][0].toString(); if(!y) continue; if(!other[y]) other[y]={}; other[y][data[i][1].toString()]={name:data[i][2]?data[i][2].toString():'',date:data[i][3]?formatDate(data[i][3]):'',cert:data[i][4]?data[i][4].toString():''}; } }
+  if(oSheet){
+    const data=oSheet.getDataRange().getValues();
+    for(let i=1;i<data.length;i++){
+      const y=scoutNorm_(data[i][0]); if(!y) continue;
+      if(!other[y]) other[y]={};
+      other[y][data[i][1].toString()]={date:data[i][3]?formatDate(data[i][3]):''};
+    }
+  }
+  // ---- 待批申請（待批完成＋紀錄冊待批）----
+  const prSheet=ss.getSheetByName('待批完成'); const pending=[];
+  if(prSheet){ const data=prSheet.getDataRange().getValues(); for(let i=1;i<data.length;i++){ if(String(data[i][7]||'').trim()==='pending'){ pending.push({request_id:data[i][0].toString(),ymis:scoutNorm_(data[i][1]),name:data[i][2].toString(),item_id:data[i][3].toString(),item_name:data[i][4].toString(),requested_date:data[i][5]?formatDate(data[i][5]):'',evidence:data[i][6]?data[i][6].toString():'',status:'pending',created_at:data[i][8]?formatDate(data[i][8]):''}); } } }
+  if(typeof bookPendingRows_==='function'){
+    bookPendingRows_().forEach(function(r){
+      if(r.status!==BOOK_PENDING_STATUS.PENDING) return;
+      pending.push({request_id:r.pendingId,ymis:scoutNorm_(r.scoutId),item_id:r.itemId,item_name:r.itemId,requested_date:r.date,evidence:'',status:'pending',created_at:r.submittedAt,source:'ROVERBOOK'});
+    });
+  }
+  // ---- 成員名單 ----
+  // ★ ROVERBOOK 兼容（2026-11-05）：BOOK 的伺服器端係「先喺 members 搵到本人，再讀 me.progress／
+  //   me.flatProgress／me.otherBadges／me.pendingRequests」。所以每個成員都要帶埋自己嗰份進度，
+  //   否則 BOOK 端會攞到空白進度（明明有紀錄都顯示冇）。
+  //   同時保留 name 供本系統前端使用；ROVERBOOK 端自己會剝（零個資由佢負責）。
+  //   如果 BOOK 之後改為讀頂層 progress，呢個結構一樣通（兩邊都通）。
+  // 頒發（只認 L1–L6 獎章）先一次過讀，避免每人掃一次 Sheet
+  const awardByScout={};
+  (function(){ const aSheet=ss.getSheetByName(BOOK_AWARD_SHEET); if(!aSheet) return;
+    const d=aSheet.getDataRange().getValues();
+    for(let i=1;i<d.length;i++){
+      const sid=scoutNorm_(d[i][0]); const bid=String(d[i][1]||'');
+      if(!sid || !/^L\d$/.test(bid)) continue;
+      if(!awardByScout[sid]) awardByScout[sid]={};
+      awardByScout[sid][bid]=formatDate(d[i][2]);
+    }
+  })();
+  const members=(typeof getMembers==='function'?getMembers():[]).map(function(m){
+    const sid=scoutNorm_(m.ymis);
+    const mine=Object.assign({}, progress[sid]||{});
+    const flatMine={}; Object.keys(mine).forEach(function(k){ flatMine[k]=mine[k].date; });
+    return {
+      ymis: sid, scoutId: sid, memberNo: sid,
+      name: m.name||'', squad: m.squad||'',
+      progress: mine, flatProgress: flatMine,
+      badges: awardByScout[sid]||{},
+      otherBadges: other[sid]||{},
+      pendingRequests: pending.filter(function(p){ return scoutNorm_(p.ymis)===sid; })
+        .map(function(p){ return {itemId:p.item_id, date:p.requested_date, status:'pending'}; })
+    };
+  });
   const lSheet=ss.getSheetByName(LOG_SHEET_NAME);
   const gsInfo=gsVersionInfo_();
   return jsonResponse({success:true,members:members,progress:progress,flatProgress:flat,pendingRequests:pending,otherBadges:other,logs:getLogRecordsList(),logsSupported:!!lSheet,schemes:schemeMap_(),schemeDefault:SCHEME_DEFAULT_,gsVersion:gsInfo.gsVersion,gsReleaseDate:gsInfo.gsReleaseDate,initRequired:gsInfo.initRequired,initializedGsVersion:gsInfo.initializedGsVersion});
@@ -1946,9 +2006,10 @@ function handleSave(changes, confirmer, actor){
   return jsonResponse({success:true,processed:processed});
 }
 function handleAddMember(ymis,name,squad,squadRole){
-  ymis=String(ymis||'').trim(); name=safeSheetText(name,100); squad=safeSheetText(squad,100);
+  ymis=scoutNorm_(ymis); name=safeSheetText(name,100); squad=safeSheetText(squad,100);
   if(isSuperAdminId(ymis)) return jsonResponse({success:false,error:'不能新增系統管理員帳號'});
-  if(!/^\d{10}$/.test(ymis)) return jsonResponse({success:false,error:'YMIS 須為 10 位數字'});
+  // SCOUT ID：接受 1–10 位數字（81420 → 0000081420），一律以 10 位正規化值儲存
+  if(!/^\d{10}$/.test(ymis)) return jsonResponse({success:false,error:'SCOUT ID（YMIS）須為 10 位數字'});
   if(!name) return jsonResponse({success:false,error:'請填寫姓名'});
   const uRow=findUserRowAnyStatus_(ymis);
   if(uRow) return jsonResponse({success:false,error:(uRow.status!=='active')?'此 YMIS 已有帳號紀錄（已停用），請在用戶管理恢復該帳號':'此 YMIS 已有登入帳號，請在用戶管理直接管理'});
@@ -1965,13 +2026,23 @@ function handleAddMember(ymis,name,squad,squadRole){
 // 待批完成
 function handleRequestComplete(body, requesterYmis){
   const sheet=getSheet().getSheetByName('待批完成'); if(!sheet) return jsonResponse({success:false,error:'Sheet not found'});
-  // 申請只限本人學制範圍內的現行項目（舊版 ID／他學制項目一律拒絕）
-  const err=checkTickBatch_([{ymis:requesterYmis, itemId:body&&body.itemId}], null);
+  const b=body||{};
+  // 項目代號：接受 item_id（BOOK 契約）或 itemId（本系統前端）；兩者都必須通過同一套目錄／學制檢查
+  const itemId=String(b.item_id||b.itemId||'').trim();
+  const err=checkTickBatch_([{ymis:requesterYmis, itemId:itemId}], null);
   if(err) return jsonResponse({success:false,error:err});
   const reqId='REQ_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);
-  const user=getUser(requesterYmis)||{name:body.name||requesterYmis};
-  sheet.appendRow([reqId,requesterYmis,user.name||body.name,body.itemId,body.itemName||body.itemId,body.requested_date||formatDate(new Date()),body.evidence||'','pending',now(),'','','', '']);
-  return jsonResponse({success:true,request_id:reqId});
+  const user=getUser(requesterYmis)||{name:b.name||requesterYmis};
+  // 證據欄位：BOOK 唔應該上傳個資（相片／簽名），只留短文字；長度上限 200，非字串一律空白
+  const evidence=typeof b.evidence==='string'?b.evidence.trim().slice(0,200):'';
+  sheet.appendRow([reqId,requesterYmis,user.name||b.name||requesterYmis,itemId,String(b.item_name||b.itemName||itemId).slice(0,80),String(b.requested_date||b.date||'').slice(0,20)||formatDate(new Date()),evidence,'pending',now(),'','','', '']);
+  // 回傳同時帶 `id`／`date`：ROVERBOOK 的 submitPending 會逐項記錄結果（itemId／date／ok／status）
+  return jsonResponse({
+    success:true, request_id:reqId, status:'pending',
+    scoutId:scoutNorm_(requesterYmis),
+    item_id:itemId, id:itemId,
+    date:String(b.requested_date||b.date||'').slice(0,20)
+  });
 }
 function handleGetPendingRequests(){
   const sheet=getSheet().getSheetByName('待批完成'); const list=[];
@@ -2409,7 +2480,8 @@ function destroyUserTokensExcept(ymis, keepToken){
 function handleAddUser(body,mgr){ return jsonResponse(addUser_(body,mgr)); }
 function addUser_(body,mgr){
   try{
-    let ymis=(body.ymis||'').toString().trim();
+    // SCOUT ID 正規化：81420 → 0000081420（十位數左補零）。只補零，不會改寫既有紀錄。
+    let ymis=scoutNorm_((body.ymis||'').toString().trim());
     const name=(body.name||'').toString().trim();
     const email=(body.email||'').toString().trim();
     const role=(body.role||'member').toString().trim();
@@ -2934,6 +3006,34 @@ function bookNormDate_(v) {
   return (!isNaN(t.getTime()) && t.toISOString().slice(0, 10) === out) ? out : '';
 }
 function bookScoutId_(v) { return String(v === undefined || v === null ? '' : v).trim().replace(/[^0-9A-Za-z_-]/g, '').slice(0, 32); }
+// SCOUT ID 正規化（與 api/roverbook.js scoutNorm() 同一套；2026-11-05 對接規格）：
+//   純數字 1–10 位 → 左補 0 到 10 位（81420 ⇄ 0000081420 視為同一人）；其餘（L 開頭內部編號）原樣。
+// 只影響「比對」，唔會改寫任何既有 Sheet 資料；不過寫入新紀錄時會存正規化值，避免一人兩份。
+function scoutNorm_(v) {
+  const raw = bookScoutId_(v);
+  if (!raw) return '';
+  if (/^\d{1,10}$/.test(raw)) return ('0000000000' + raw).slice(-10);
+  return raw;
+}
+// 回傳「同一個人」在 Sheet 內可能出現的所有寫法（讓舊未補零紀錄都對得上）
+function scoutAliases_(v) {
+  const norm = scoutNorm_(v);
+  const raw = bookScoutId_(v);
+  const out = [];
+  [norm, raw].forEach(function (x) { if (x && out.indexOf(x) < 0) out.push(x); });
+  // 如果 Sheet 上存的是「未補零」的原始數字，亦要對得上
+  if (/^\d+$/.test(norm)) {
+    const trimmed = norm.replace(/^0+/, '');
+    if (trimmed && out.indexOf(trimmed) < 0) out.push(trimmed);
+  }
+  return out;
+}
+function scoutMatches_(rowValue, wanted) {
+  const v = bookScoutId_(rowValue);
+  if (!v) return false;
+  const aliases = Array.isArray(wanted) ? wanted : scoutAliases_(wanted);
+  return aliases.indexOf(v) >= 0;
+}
 function bookSheet_(name, headers) {
   const ss = getSheet();
   let sh = ss.getSheetByName(name);
@@ -2949,12 +3049,13 @@ function bookSheet_(name, headers) {
 // ---- 正式進度（進度追蹤）：同 (SCOUT ID, 項目) 只保留較後日期 ----
 // 回傳 { existing: 'YYYY-MM-DD' | '' }，讓呼叫端知道「本來有冇、係邊日」
 function bookProgressDateOf_(sid, itemId) {
+  const aliases = scoutAliases_(sid);
   const sh = getSheet().getSheetByName('進度追蹤');
   if (!sh) return '';
   const data = sh.getDataRange().getValues();
   let best = '';
   for (let i = 1; i < data.length; i++) {
-    if (String(data[i][0] || '').trim() !== sid) continue;
+    if (!scoutMatches_(data[i][0], aliases)) continue;
     if (String(data[i][1] || '').trim() !== itemId) continue;
     const d = bookNormDate_(data[i][2]);
     if (d && d > best) best = d;
@@ -2963,11 +3064,12 @@ function bookProgressDateOf_(sid, itemId) {
 }
 // 寫入正式進度：只加不減（只可以改日期，唔會移除已完成紀錄）
 function bookWriteProgress_(sid, itemId, date, confirmer, note) {
+  const aliases = scoutAliases_(sid);
   const sh = getSheet().getSheetByName('進度追蹤');
   if (!sh) return { ok: false, reason: '找不到「進度追蹤」工作表' };
   const data = sh.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
-    if (String(data[i][0] || '').trim() !== sid) continue;
+    if (!scoutMatches_(data[i][0], aliases)) continue;
     if (String(data[i][1] || '').trim() !== itemId) continue;
     sh.getRange(i + 1, 3).setValue(date);
     sh.getRange(i + 1, 4).setValue(new Date());
@@ -2991,7 +3093,7 @@ function writeBookSignoffs_(items, meta) {
   const ts = now();
   let written = 0, skipped = 0;
   (items || []).forEach(function (it) {
-    const sid = bookScoutId_(it && it.scoutId);
+    const sid = scoutNorm_(it && it.scoutId);
     const itemId = String((it && it.itemId) || '').trim();
     const date = bookNormDate_(it && (it.date || it.verifiedDate));
     if (!sid || !BOOK_ITEM_RE.test(itemId) || !date) { skipped++; return; }
@@ -3031,7 +3133,7 @@ function writeBookAwards_(awards, actorYmis, confirmRemove) {
   const writer = sheetActor(actorYmis);
   let written = 0, skipped = 0, corrected = 0, removed = 0;
   (awards || []).forEach(function (a) {
-    const sid = bookScoutId_(a && (a.scoutId || a.ymis));
+    const sid = scoutNorm_(a && (a.scoutId || a.ymis));
     const badge = String((a && (a.badgeId || a.badge)) || '').trim().toUpperCase();
     const date = bookNormDate_(a && (a.date || a.awardDate));
     if (!sid || !/^L\d$/.test(badge) || !date) { skipped++; return; }
@@ -3141,11 +3243,12 @@ function stageBookPending_(sid, progress, opts) {
 // 呢個情況唔可以再由核簽補回（舊版 bug：撤回後 bookPull 仍然回「已核實」，BOOK 會重新採用）。
 function bookWithdrawnOf_(sid) {
   const signed = {}, done = {};
+  const aliases = scoutAliases_(sid);
   const sSheet = getSheet().getSheetByName(BOOK_SIGNOFF_SHEET);
   if (sSheet) {
     const data = sSheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
-      if (String(data[i][1] || '').trim() !== sid) continue;
+      if (!scoutMatches_(data[i][1], aliases)) continue;
       const id = String(data[i][2] || '').trim();
       if (BOOK_ITEM_RE.test(id)) signed[id] = bookNormDate_(data[i][3]);
     }
@@ -3154,7 +3257,7 @@ function bookWithdrawnOf_(sid) {
   if (pSheet) {
     const data = pSheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
-      if (String(data[i][0] || '').trim() !== sid) continue;
+      if (!scoutMatches_(data[i][0], aliases)) continue;
       const id = String(data[i][1] || '').trim();
       if (BOOK_ITEM_RE.test(id)) done[id] = true;
     }
@@ -3168,19 +3271,38 @@ function bookScoutExists_(sid) {
   const key = String(sid || '').trim();
   if (!key) return false;
   if (isSuperAdminId(key)) return true;
-  try { if (getUser(key)) return true; } catch (e) { }
-  try { if (memberNameRowExists_(key)) return true; } catch (e) { }
+  const aliases = scoutAliases_(key);
+  // SCOUT ID 可能係「未補零」的 YMIS（81420 vs 0000081420）→ 逐個寫法都試
+  for (let i = 0; i < aliases.length; i++) {
+    const a = aliases[i];
+    try { if (getUser(a)) return true; } catch (e) { }
+    try { if (memberNameRowExists_(a)) return true; } catch (e) { }
+  }
+  // Users／成員名單可能存原始未補零值 → 直接掃比對（資料量細）
+  try {
+    const u = getSheet().getSheetByName('Users');
+    if (u) {
+      const d = u.getDataRange().getValues();
+      for (let i = 1; i < d.length; i++) { if (isLegacySuperRow_(d[i])) continue; if (scoutMatches_(d[i][0], aliases)) return true; }
+    }
+    const m = getSheet().getSheetByName('成員名單');
+    if (m) {
+      const d2 = m.getDataRange().getValues();
+      for (let i = 1; i < d2.length; i++) { if (scoutMatches_(d2[i][0], aliases)) return true; }
+    }
+  } catch (e) { }
   return false;
 }
 
 function bookProgressOf_(sid) {
   const out = {};
   const withdrawn = bookWithdrawnOf_(sid);
+  const aliases = scoutAliases_(sid);
   const pSheet = getSheet().getSheetByName('進度追蹤');
   if (pSheet) {
     const data = pSheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
-      if (String(data[i][0] || '').trim() !== sid) continue;
+      if (!scoutMatches_(data[i][0], aliases)) continue;
       const itemId = String(data[i][1] || '').trim();
       if (!BOOK_ITEM_RE.test(itemId)) continue;
       const date = bookNormDate_(data[i][2]);
@@ -3191,7 +3313,7 @@ function bookProgressOf_(sid) {
   if (sSheet) {
     const data = sSheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
-      if (String(data[i][1] || '').trim() !== sid) continue;
+      if (!scoutMatches_(data[i][1], aliases)) continue;
       const itemId = String(data[i][2] || '').trim();
       if (!BOOK_ITEM_RE.test(itemId)) continue;
       if (withdrawn[itemId]) continue; // 領袖已撤回：唔可以由核簽補回
@@ -3203,11 +3325,12 @@ function bookProgressOf_(sid) {
 }
 function bookAwardsOf_(sid) {
   const out = {};
+  const aliases = scoutAliases_(sid);
   const sh = getSheet().getSheetByName(BOOK_AWARD_SHEET);
   if (!sh) return out;
   const data = sh.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
-    if (String(data[i][0] || '').trim() !== sid) continue;
+    if (!scoutMatches_(data[i][0], aliases)) continue;
     const badge = String(data[i][1] || '').trim().toUpperCase();
     const date = bookNormDate_(data[i][2]);
     if (/^L\d$/.test(badge) && date) out[badge] = date;
@@ -3217,8 +3340,9 @@ function bookAwardsOf_(sid) {
 // 成員自己手機上已有、但 BADGE 未入帳嘅項目（只計 pending，唔會當成完成）
 function bookPendingOf_(sid) {
   const out = {};
+  const aliases = scoutAliases_(sid);
   bookPendingRows_().forEach(function (r) {
-    if (r.scoutId !== sid || r.status !== BOOK_PENDING_STATUS.PENDING || !r.date) return;
+    if (aliases.indexOf(bookScoutId_(r.scoutId)) < 0 || r.status !== BOOK_PENDING_STATUS.PENDING || !r.date) return;
     if (!out[r.itemId] || r.date > out[r.itemId]) out[r.itemId] = r.date;
   });
   return out;
@@ -3232,7 +3356,7 @@ function handleBookRoster(actor) {
   if (sheet) {
     const data = sheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
-      const sid = bookScoutId_(data[i][0]);
+      const sid = scoutNorm_(data[i][0]);
       const itemId = String(data[i][1] || '').trim();
       if (!sid || !BOOK_ITEM_RE.test(itemId)) continue;
       const date = bookNormDate_(data[i][2]);
@@ -3263,13 +3387,14 @@ function handleBookRoster(actor) {
 function handleBookPending(actor, body) {
   const b = body || {};
   const isLeader = canTickUser_(actor);
-  const want = bookScoutId_(b.scoutId);
-  const me = bookScoutId_(actor && (actor.scoutId || actor.ymis));
+  const want = scoutNorm_(b.scoutId);
+  const me = scoutNorm_(actor && (actor.scoutId || actor.ymis));
   if (!isLeader && want && want !== me) return jsonResponse({ success: false, error: '權限不足：只可以查看自己的待批紀錄' });
   const sid = isLeader ? want : me;
   const status = String(b.status || BOOK_PENDING_STATUS.PENDING);
+  const aliases = sid ? scoutAliases_(sid) : null;
   const list = bookPendingRows_().filter(function (r) {
-    if (sid && r.scoutId !== sid) return false;
+    if (aliases && aliases.indexOf(bookScoutId_(r.scoutId)) < 0) return false;
     if (status !== 'all' && r.status !== status) return false;
     return true;
   }).map(function (r) {
@@ -3283,7 +3408,7 @@ function handleBookPending(actor, body) {
 function handleBookSync(actor, body) {
   if (!canTickUser_(actor)) return jsonResponse({ success: false, error: '權限不足，需已獲勾選權限的領袖' });
   const b = body || {};
-  const sid = bookScoutId_(b.scoutId || (b.member && b.member.scoutId));
+  const sid = scoutNorm_(b.scoutId || b.ymis || (b.member && b.member.scoutId));
   if (!sid) return jsonResponse({ success: false, error: '缺少 SCOUT ID：請成員在紀錄冊填一次成員編號' });
   // 防幽靈紀錄：SCOUT ID 必須對應本旅團現有成員（打錯一個數字就會變成冇人跟進的待批）
   if (!bookScoutExists_(sid)) {
@@ -3330,7 +3455,7 @@ function handleBookConfirm(actor, body) {
   const b = body || {};
   const all = bookPendingRows_().filter(function (r) { return r.status === BOOK_PENDING_STATUS.PENDING; });
   const wantIds = Array.isArray(b.pendingIds) ? b.pendingIds.map(String) : null;
-  const wantScout = bookScoutId_(b.scoutId);
+  const wantScout = scoutNorm_(b.scoutId);
   // 一定要指明範圍（逐項 pendingIds 或一位 scoutId，或明確 all:true）。
   // 舊版「冇帶 id 就等於全團」太容易誤按，會一次過確認全團所有待批。
   if (!wantIds && !wantScout && b.all !== true) {
@@ -3338,7 +3463,10 @@ function handleBookConfirm(actor, body) {
   }
   let targets = all;
   if (wantIds) targets = all.filter(function (r) { return wantIds.indexOf(r.pendingId) >= 0; });
-  else if (wantScout) targets = all.filter(function (r) { return r.scoutId === wantScout; });
+  else if (wantScout) {
+    const aliases = scoutAliases_(wantScout);
+    targets = all.filter(function (r) { return aliases.indexOf(bookScoutId_(r.scoutId)) >= 0; });
+  }
   // 可以只批准某幾項：b.items=[{pendingId,date}] 覆寫日期（「只加不減，但可以改」）
   const dateOverride = {};
   (Array.isArray(b.items) ? b.items : []).forEach(function (it) {
@@ -3409,7 +3537,7 @@ function handleBookAward(actor, body) {
   // 防幽靈頒發：任何一個 SCOUT ID 唔存在就整批拒絕（唔會半寫入）
   const unknown = [];
   list.forEach(function (a) {
-    const sid2 = bookScoutId_(a && (a.scoutId || a.ymis));
+    const sid2 = scoutNorm_(a && (a.scoutId || a.ymis));
     if (sid2 && !bookScoutExists_(sid2) && unknown.indexOf(sid2) < 0) unknown.push(sid2);
   });
   if (unknown.length) {
@@ -3430,7 +3558,7 @@ function handleBookAward(actor, body) {
 
 // 成員自己下載「唯讀」進度（只回自己那行；用 token 身分，不接受任意 SCOUT ID）
 function handleBookPull(actor) {
-  const sid = bookScoutId_(actor && (actor.scoutId || actor.ymis));
+  const sid = scoutNorm_(actor && (actor.scoutId || actor.ymis));
   if (!sid) return jsonResponse({ success: false, error: '找不到 SCOUT ID' });
   const progress = bookProgressOf_(sid);
   const awards = bookAwardsOf_(sid);
@@ -3438,11 +3566,12 @@ function handleBookPull(actor) {
   // 核簽清單（成員可貼回 ROVERBOOK；不含任何人名以外的個資）
   const signoffs = [];
   const withdrawn = bookWithdrawnOf_(sid);
+  const pullAliases = scoutAliases_(sid);
   const sh = getSheet().getSheetByName(BOOK_SIGNOFF_SHEET);
   if (sh) {
     const data = sh.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
-      if (String(data[i][1] || '').trim() !== sid) continue;
+      if (!scoutMatches_(data[i][1], pullAliases)) continue;
       const itemId = String(data[i][2] || '').trim();
       const date = bookNormDate_(data[i][3]);
       if (!BOOK_ITEM_RE.test(itemId) || !date) continue;
@@ -3454,12 +3583,45 @@ function handleBookPull(actor) {
   // BOOK 側只可以「無條件相信」呢啲（全部係 BADGE 領袖核實過 / 由領袖行為產生）
   const verifiedInBadge = {};
   Object.keys(progress).forEach(function (k) { verifiedInBadge[k] = progress[k]; });
+  // ---- 給 ROVERBOOK 的「個人純進度」視圖（endpoint-compatible）----
+  // ROVERBOOK 的伺服器端會用 { ymis, progress{itemId:date}, otherBadges, pendingRequests[{itemId,date,status}] }
+  // 呢個包裝令佢可以直接消費；姓名／電郵／電話等一律唔會出現（本身已剝清）。
+  const flatProgress = {};
+  Object.keys(progress).forEach(function (k) { flatProgress[k] = progress[k]; });
+  const bookAwardsCompat = {};
+  Object.keys(awards).forEach(function (k) { bookAwardsCompat[k] = awards[k]; });
+  const pendingList = Object.keys(pending).sort().map(function (k) {
+    return { itemId: k, date: pending[k], status: 'pending' };
+  });
+  const pendingIds = Object.keys(pending).sort();
+  // 其他獎章（OT-*）：只回 id → 日期（零個資）；ROVERBOOK 只會用日期
+  const otherBadges = {};
+  const oSheet = getSheet().getSheetByName('其他獎章');
+  if (oSheet) {
+    const aliases = scoutAliases_(sid);
+    const data = oSheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (!scoutMatches_(data[i][0], aliases)) continue;
+      const id = String(data[i][1] || '').trim();
+      const date = bookNormDate_(data[i][3]);
+      if (!id || !date) continue;
+      otherBadges[id] = { date: date };
+    }
+  }
   return jsonResponse({
     success: true, schema: 'roverbadge.progress.roverbook.v2', scoutId: sid,
     verified: true, verifiedBy: 'ROVERBADGE',
+    // ---- ROVERBOOK 直接消費的形狀（同 ROVERBOOK api/roverbadge.js 期望一致）----
+    ymis: sid,                        // BOOK 會 normalizeScoutId(ymis) 後當作本人編號
+    flatProgress: flatProgress,       // { itemId: 'YYYY-MM-DD' }
+    otherBadges: otherBadges,         // { 'OT-…': { date } }
+    pendingRequests: pendingList,     // [{ itemId, date, status:'pending' }]
+    pendingItemIds: pendingIds,       // BOOK 前端用嚟避免重複送交
+    badgeDates: bookAwardsCompat,     // { L1: 'YYYY-MM-DD' }（獎章頒發日期）
+    withdrawnItemIds: withdrawnIds,   // BOOK 要由本機移除嘅項目
+    // ---- 本系統前端用的完整形狀（不變）----
     progress: progress, awards: awards, signoffs: signoffs,
     verifiedInBadge: verifiedInBadge,
-    // 待批（未經領袖核實）→ BOOK 只可以顯示為「申請中」，唔准當完成
     pending: pending, unverified: pending,
     // 領袖撤回清單：BOOK 必須把呢啲項目由「已完成」移除（BOOK 側 applySignoff 會處理）
     withdrawn: withdrawnIds,
