@@ -32,12 +32,27 @@ ROVERBOOK 已合併到 `main`，佢只經 `https://roverbadge.vercel.app` 對接
 - 接受 `item_id`（BOOK 契約）或 `itemId`（本系統前端）；兩者走同一套目錄／學制檢查。
 - `evidence` 只留字串、上限 200 字（BOOK 唔應該上傳相片／簽名）；回傳加 `status:'pending'` 與 `scoutId`（正規化值）。
 
-### 【4】測試
+### 【4】★ 對照 ROVERBOOK 實碼的相容性修正（2026-11-05 審計）
 
-- 新增 `tests/roverbook-api.test.mjs`（**10 項**）：`scoutNorm` 正規化、login 剝姓名電郵、load 逐欄位零個資、
+審計發現：BOOK **唔會**打 `/api/roverbook`，佢寫死打 `<origin>/api/proxy`，而且自己在前端過濾——
+先喺 `json.members[]` 用 `scoutId||ymis||memberNo` 搵返本人，再讀 `me.progress || me.flatProgress`。
+本系統原本 `load` 的 `members[]` 完全冇 `progress`，即係 **BOOK 會匯入一份空白進度（有紀錄都當冇）**。已修：
+
+- `handleLoad` 重寫：所有 key 先經 `scoutNorm_`；`members[]` **每個人都自帶** `progress`／`flatProgress`（`{itemId:'YYYY-MM-DD'}`）、
+  `badges`（已頒 `{badgeId:date}`）、`otherBadges`（只留 `{date}`，剝走證明／相片）、`pendingRequests`（`[{itemId,date,status}]`，已批不再出現）。
+- `pendingRequests` 合併兩個來源：「紀錄冊待批」＋ `bookPendingRows_`，同一人同一項以較新者為準。
+- `handleRequestComplete` 回傳加 `id`／`date`（BOOK 逐項記錄送交結果時會讀 `id`）。
+- `bookPull` 同時回 BOOK 形狀的 `ymis`／`flatProgress`／`otherBadges`／`pendingRequests`／`pendingItemIds`／`badgeDates`／`withdrawnItemIds`，
+  原有完整形狀不變（本系統前端照用）。
+
+### 【5】測試
+
+- 新增 `tests/roverbook-api.test.mjs`（**13 項**）：`scoutNorm` 正規化、login 剝姓名電郵、load 逐欄位零個資、
   `requestComplete` 一律 pending、`stripNever` 遞迴、真 HTTP（GET troops／403 白名單／400／401／404／413／405）、
-  權限面分離（BOOK 唔會用 `/api/proxy`）、build 打包、GAS 端同一套正規化（補零／去零登入、待批對得上、只有一行進度）。
-- `npm test` 已納入；`npm run test:book` 跑 bridge（31）＋ API（10）。
+  權限面分離（BOOK 唔會用 `/api/proxy`）、build 打包、GAS 端同一套正規化（補零／去零登入、待批對得上、只有一行進度），
+  以及 **3 項 ROVERBOOK 實碼契約測試**——測試檔內 `roverbookFilterPersonalConfirmedLoad()` 係逐行照抄 BOOK 的過濾邏輯，
+  斷言 `load` 之後 BOOK 真的見到本人 `progress`／`otherBadges`／`pendingRequests`、`requestComplete` 後仍空白直到領袖 CONFIRM、已批即從待批消失。
+- `npm test` 已納入；`npm run test:book` 跑 bridge（31）＋ API（13）。
 - 現況：`npm test` 全綠（21 套件）、`npm run check` **98/0**、`npm run lint` 3/0、`npm run build` 正常（5 functions）。
 
 ### 部署

@@ -189,6 +189,149 @@ test('權限面分離：/api/proxy 未加入 BOOK 白名單；build 有打包 ro
   assert.match(buildSrc, /proxy\|troops\|portal\|super\|roverbook/, 'legacy .js alias 要 route 去 bundled function');
 });
 
+
+// ============================================================
+// 與 ROVERBOOK 真實程式碼的契約（2026-11-05）
+//
+// ROVERBOOK 的 api/roverbadge.js 會：
+//   1) 直接打 <origin>/api/proxy（唔係 /api/roverbook）
+//   2) login  → proxy('login', { login_id, password })
+//   3) load   → proxy('load', { token }) 然後喺 members 搵本人：
+//                 msid = normalize(m.scoutId || m.ymis || m.memberNo)
+//                 confirmed = me.progress || me.flatProgress
+//                 pending   = me.pendingRequests
+//   4) submitPending → 逐項 proxy('requestComplete', { token, itemId, date })
+//   5) save / saveOtherBadge / reviewRequest → 佢自己 403（唔會打上嚟）
+//
+// 所以 BADGE 的 load 回應**必須**在每個 member 帶自己嗰份 progress，
+// 否則 BOOK 端會攞到空白進度（明明有紀錄都顯示冇）。
+// 呢個 test 就係用 ROVERBOOK 的實際邏輯（逐行照抄）去驗。
+// ============================================================
+function roverbookFilterPersonalConfirmedLoad(json, rawScoutId) {
+  // ↓↓ 以下逐行對應 ROVERBOOK api/roverbadge.js ↓↓
+  const normalize = (id) => {
+    const raw = String(id === undefined || id === null ? '' : id).trim();
+    if (!raw) return '';
+    const digits = raw.replace(/\D/g, '');
+    if (!digits) return raw;
+    return /^\d{1,10}$/.test(digits) ? digits.padStart(10, '0') : digits;
+  };
+  const sid = normalize(rawScoutId);
+  const out = { progress: {}, otherBadges: {}, pendingRequests: [], ymis: sid };
+  const members = Array.isArray(json?.members) ? json.members : [];
+  let me = null;
+  if (members.length) {
+    me = members.find((m) => {
+      const msid = normalize(m.scoutId || m.ymis || m.memberNo);
+      return msid && msid === sid;
+    }) || null;
+  }
+  if (!me && sid) {
+    for (const key of ['progress', 'progress_mock']) {
+      const c = json && json[key] && typeof json[key] === 'object' ? json[key] : null;
+      if (c && c[sid] && typeof c[sid] === 'object') { me = { scoutId: sid, ...c[sid] }; break; }
+    }
+  }
+  if (!me) return out;
+  out.ymis = me.scoutId || me.ymis || me.memberNo || sid;
+  const confirmed = me.progress || me.flatProgress || {};
+  Object.entries(confirmed).forEach(([itemId, v]) => {
+    const d = typeof v === 'string' ? v : v && v.date ? v.date : '';
+    if (d) out.progress[itemId] = d;
+  });
+  if (me.otherBadges && typeof me.otherBadges === 'object') out.otherBadges = { ...me.otherBadges };
+  const pend = Array.isArray(me.pendingRequests) ? me.pendingRequests : [];
+  out.pendingRequests = pend.map((p) => ({ itemId: p.itemId || p.id || '', date: p.date || '', status: p.status || 'pending' }));
+  return out;
+}
+
+test('ROVERBOOK 契約：load 回應的 members[] 必須帶本人進度（否則 BOOK 顯示空白）', () => {
+  const env = loadCodeGs();
+  env.api.initializeSheets();
+  const L = env.call({ action: 'login', login_id: '1111111111', password: 'changeme' });
+  env.call({ action: 'addUser', token: L.token, ymis: '81420', name: '陳大文', email: 't@example.org', role: 'member', password: 'Member!1234' });
+  const m = env.call({ action: 'login', login_id: '81420', password: 'Member!1234' });
+  assert.equal(m.success, true);
+
+  // 領袖寫入正式進度／頒發／其他獎章；成員交一項待批
+  env.call({ action: 'save', token: L.token, changes: [{ ymis: '0000081420', itemId: 'L1-ACT-01', date: '2026-03-01' }] });
+  env.call({ action: 'bookAward', token: L.token, awards: [{ scoutId: '81420', badgeId: 'L1', date: '2026-04-01' }] });
+  env.call({ action: 'saveOtherBadge', token: L.token, records: [{ ymis: '81420', badgeId: 'OT-WOSM-SW', date: '2026-01-05' }] });
+  env.call({ action: 'requestComplete', token: m.token, itemId: 'L1-UND-01', date: '2026-03-02' });
+
+  // BOOK 走的是 doGet ?action=load（經 proxy）
+  const up = env.get({ action: 'load' });
+  assert.equal(up.success, true);
+
+  // ★ 逐行用 ROVERBOOK 的過濾邏輯去消費
+  const seen = roverbookFilterPersonalConfirmedLoad(up, '81420'); // 成員輸入未補零
+  assert.equal(seen.ymis, '0000081420');
+  assert.deepEqual(seen.progress, { 'L1-ACT-01': '2026-03-01' }, 'BOOK 要見到已核實進度：' + JSON.stringify(seen));
+  assert.ok(seen.otherBadges['OT-WOSM-SW'], 'BOOK 要見到其他獎章：' + JSON.stringify(seen.otherBadges));
+  assert.deepEqual(seen.pendingRequests.map(p => p.itemId), ['L1-UND-01'], 'BOOK 要見到本人待批（避免重複送交）');
+  assert.equal(seen.pendingRequests[0].status, 'pending');
+  // BOOK 見到嘅頒發日期
+  const me = up.members.find(x => x.scoutId === '0000081420');
+  assert.deepEqual(me.badges, { L1: '2026-04-01' });
+
+  // 補零／未補零兩種輸入都要對得上
+  assert.deepEqual(roverbookFilterPersonalConfirmedLoad(up, '0000081420').progress, seen.progress);
+});
+
+test('ROVERBOOK 契約：submitPending 逐項 requestComplete（itemId+date）→ 一定 pending，領袖才 CONFIRM', () => {
+  const env = loadCodeGs();
+  env.api.initializeSheets();
+  const L = env.call({ action: 'login', login_id: '1111111111', password: 'changeme' });
+  env.call({ action: 'addUser', token: L.token, ymis: '1234567890', name: '李小明', email: 's@example.org', role: 'member', password: 'Member!1234' });
+  const m = env.call({ action: 'login', login_id: '1234567890', password: 'Member!1234' });
+
+  // BOOK 的 submitPending：逐項 { token, itemId, date }
+  const r1 = env.call({ action: 'requestComplete', token: m.token, itemId: 'L1-ACT-01', date: '2026-03-01' });
+  assert.equal(r1.success, true, JSON.stringify(r1));
+  assert.equal(r1.status, 'pending', 'BOOK 送交只可以係 pending');
+  assert.equal(r1.item_id, 'L1-ACT-01');
+  assert.equal(r1.id, 'L1-ACT-01', 'BOOK 逐項結果會讀 id');
+  assert.equal(r1.date, '2026-03-01');
+  assert.equal(r1.scoutId, '1234567890');
+
+  // 未 CONFIRM：未有正式進度
+  let load = env.get({ action: 'load' });
+  let seen = roverbookFilterPersonalConfirmedLoad(load, '1234567890');
+  assert.deepEqual(seen.progress, {}, 'podcast：未 CONFIRM 唔可以當完成');
+  assert.deepEqual(seen.pendingRequests.map(p => p.itemId), ['L1-ACT-01']);
+
+  // 領袖在 BADGE 內批准（既有「審批中心」路徑）
+  const reqs = env.call({ action: 'getPendingRequests', token: L.token });
+  const reqId = reqs.requests[0].request_id;
+  const rev = env.call({ action: 'reviewRequest', token: L.token, request_id: reqId, decision: 'approved', confirmed_date: '2026-03-01' });
+  assert.equal(rev.success, true, JSON.stringify(rev));
+
+  // CONFIRM 之後 BOOK 才見到
+  load = env.get({ action: 'load' });
+  seen = roverbookFilterPersonalConfirmedLoad(load, '1234567890');
+  assert.deepEqual(seen.progress, { 'L1-ACT-01': '2026-03-01' });
+  assert.deepEqual(seen.pendingRequests, [], '已批就唔應該再顯示待批（BOOK 才不會重複送交）');
+});
+
+test('ROVERBOOK 契約：BOOK 端唔會打 save／saveOtherBadge／reviewRequest（佢自己 403），但即使打上嚟 BADGE 亦會擋', () => {
+  const env = loadCodeGs();
+  env.api.initializeSheets();
+  const L = env.call({ action: 'login', login_id: '1111111111', password: 'changeme' });
+  env.call({ action: 'addUser', token: L.token, ymis: '1234567890', name: '李小明', email: 's@example.org', role: 'member', password: 'Member!1234' });
+  const m = env.call({ action: 'login', login_id: '1234567890', password: 'Member!1234' });
+  // 成員 token 直接寫進度 → 必須拒絕（單一權威：領袖）
+  for (const [action, body] of [
+    ['save', { changes: [{ ymis: '1234567890', itemId: 'L1-ACT-01', date: '2026-03-01' }] }],
+    ['saveOtherBadge', { records: [{ ymis: '1234567890', badgeId: 'OT-WOSM-SW', date: '2026-01-01' }] }],
+    ['reviewRequest', { request_id: 'REQ_x', decision: 'approved' }],
+    ['bookConfirm', { scoutId: '1234567890' }]
+  ]) {
+    const r = env.call({ action, token: m.token, ...body });
+    assert.equal(r.success, false, action + ' 唔可以由成員執行：' + JSON.stringify(r));
+  }
+  assert.equal(env.ss.sheets.get('進度追蹤').rows.length, 1, '一項都唔可以寫入');
+});
+
 // ---- 與 GAS 的 SCOUT ID 正規化一致 ----
 test('GAS 端同一套正規化：81420 同 0000081420 係同一個人（登入、待批、取回）', () => {
   const env = loadCodeGs();

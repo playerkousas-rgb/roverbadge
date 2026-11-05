@@ -1915,17 +1915,58 @@ function getMembers(){
 }
 function handleLoad(){
   const ss=getSheet();
+  // ---- 進度：key 一律用正規化 SCOUT ID（81420 ⇄ 0000081420），避免同一人兩份 ----
   const pSheet=ss.getSheetByName('進度追蹤'); const progress={};
-  if(pSheet){ const data=pSheet.getDataRange().getValues(); for(let i=1;i<data.length;i++){ const ymis=data[i][0].toString(); if(!ymis) continue; if(!progress[ymis]) progress[ymis]={}; progress[ymis][data[i][1].toString()]={date:data[i][2]?formatDate(data[i][2]):'',confirmer:data[i][4]?data[i][4].toString():''}; } }
+  if(pSheet){
+    const data=pSheet.getDataRange().getValues();
+    for(let i=1;i<data.length;i++){
+      const sid=scoutNorm_(data[i][0]); if(!sid) continue;
+      const itemId=String(data[i][1]||'').trim(); if(!itemId) continue;
+      if(!progress[sid]) progress[sid]={};
+      progress[sid][itemId]={date:data[i][2]?formatDate(data[i][2]):'',confirmer:data[i][4]?data[i][4].toString():''};
+    }
+  }
   // 簡化版：同時提供 flat
   const flat={}; for(const y in progress){ flat[y]={}; for(const k in progress[y]){ flat[y][k]=progress[y][k].date; } }
-  const members=getMembers();
-  // pending requests
-  const prSheet=ss.getSheetByName('待批完成'); const pending=[];
-  if(prSheet){ const data=prSheet.getDataRange().getValues(); for(let i=1;i<data.length;i++){ if(data[i][7].toString()==='pending'){ pending.push({request_id:data[i][0].toString(),ymis:data[i][1].toString(),name:data[i][2].toString(),item_id:data[i][3].toString(),item_name:data[i][4].toString(),requested_date:data[i][5]?formatDate(data[i][5]):'',evidence:data[i][6]?data[i][6].toString():'',status:'pending',created_at:data[i][8]?formatDate(data[i][8]):''}); } } }
-  // other badges
+  // ---- 其他獎章 ----
   const oSheet=ss.getSheetByName('其他獎章'); const other={};
-  if(oSheet){ const data=oSheet.getDataRange().getValues(); for(let i=1;i<data.length;i++){ const y=data[i][0].toString(); if(!y) continue; if(!other[y]) other[y]={}; other[y][data[i][1].toString()]={name:data[i][2]?data[i][2].toString():'',date:data[i][3]?formatDate(data[i][3]):'',cert:data[i][4]?data[i][4].toString():''}; } }
+  if(oSheet){
+    const data=oSheet.getDataRange().getValues();
+    for(let i=1;i<data.length;i++){
+      const y=scoutNorm_(data[i][0]); if(!y) continue;
+      if(!other[y]) other[y]={};
+      other[y][data[i][1].toString()]={date:data[i][3]?formatDate(data[i][3]):''};
+    }
+  }
+  // ---- 待批申請（待批完成＋紀錄冊待批）----
+  const prSheet=ss.getSheetByName('待批完成'); const pending=[];
+  if(prSheet){ const data=prSheet.getDataRange().getValues(); for(let i=1;i<data.length;i++){ if(String(data[i][7]||'').trim()==='pending'){ pending.push({request_id:data[i][0].toString(),ymis:scoutNorm_(data[i][1]),name:data[i][2].toString(),item_id:data[i][3].toString(),item_name:data[i][4].toString(),requested_date:data[i][5]?formatDate(data[i][5]):'',evidence:data[i][6]?data[i][6].toString():'',status:'pending',created_at:data[i][8]?formatDate(data[i][8]):''}); } } }
+  if(typeof bookPendingRows_==='function'){
+    bookPendingRows_().forEach(function(r){
+      if(r.status!==BOOK_PENDING_STATUS.PENDING) return;
+      pending.push({request_id:r.pendingId,ymis:scoutNorm_(r.scoutId),item_id:r.itemId,item_name:r.itemId,requested_date:r.date,evidence:'',status:'pending',created_at:r.submittedAt,source:'ROVERBOOK'});
+    });
+  }
+  // ---- 成員名單 ----
+  // ★ ROVERBOOK 兼容（2026-11-05）：BOOK 的伺服器端係「先喺 members 搵到本人，再讀 me.progress／
+  //   me.flatProgress／me.otherBadges／me.pendingRequests」。所以每個成員都要帶埋自己嗰份進度，
+  //   否則 BOOK 端會攞到空白進度（明明有紀錄都顯示冇）。
+  //   同時保留 name 供本系統前端使用；ROVERBOOK 端自己會剝（零個資由佢負責）。
+  //   如果 BOOK 之後改為讀頂層 progress，呢個結構一樣通（兩邊都通）。
+  const members=(typeof getMembers==='function'?getMembers():[]).map(function(m){
+    const sid=scoutNorm_(m.ymis);
+    const mine=Object.assign({}, progress[sid]||{});
+    const flatMine={}; Object.keys(mine).forEach(function(k){ flatMine[k]=mine[k].date; });
+    return {
+      ymis: sid, scoutId: sid, memberNo: sid,
+      name: m.name||'', squad: m.squad||'',
+      progress: mine, flatProgress: flatMine,
+      badges: (function(){ const out={}; const aSheet=ss.getSheetByName(BOOK_AWARD_SHEET); if(aSheet){ const d=aSheet.getDataRange().getValues(); for(let i=1;i<d.length;i++){ if(scoutNorm_(d[i][0])===sid && /^L\d$/.test(String(d[i][1]||''))) out[String(d[i][1])]=formatDate(d[i][2]); } } return out; })(),
+      otherBadges: other[sid]||{},
+      pendingRequests: pending.filter(function(p){ return scoutNorm_(p.ymis)===sid; })
+        .map(function(p){ return {itemId:p.item_id, date:p.requested_date, status:'pending'}; })
+    };
+  });
   const lSheet=ss.getSheetByName(LOG_SHEET_NAME);
   const gsInfo=gsVersionInfo_();
   return jsonResponse({success:true,members:members,progress:progress,flatProgress:flat,pendingRequests:pending,otherBadges:other,logs:getLogRecordsList(),logsSupported:!!lSheet,schemes:schemeMap_(),schemeDefault:SCHEME_DEFAULT_,gsVersion:gsInfo.gsVersion,gsReleaseDate:gsInfo.gsReleaseDate,initRequired:gsInfo.initRequired,initializedGsVersion:gsInfo.initializedGsVersion});
@@ -1984,7 +2025,13 @@ function handleRequestComplete(body, requesterYmis){
   // 證據欄位：BOOK 唔應該上傳個資（相片／簽名），只留短文字；長度上限 200，非字串一律空白
   const evidence=typeof b.evidence==='string'?b.evidence.trim().slice(0,200):'';
   sheet.appendRow([reqId,requesterYmis,user.name||b.name||requesterYmis,itemId,String(b.item_name||b.itemName||itemId).slice(0,80),String(b.requested_date||b.date||'').slice(0,20)||formatDate(new Date()),evidence,'pending',now(),'','','', '']);
-  return jsonResponse({success:true,request_id:reqId,status:'pending',scoutId:scoutNorm_(requesterYmis),item_id:itemId});
+  // 回傳同時帶 `id`／`date`：ROVERBOOK 的 submitPending 會逐項記錄結果（itemId／date／ok／status）
+  return jsonResponse({
+    success:true, request_id:reqId, status:'pending',
+    scoutId:scoutNorm_(requesterYmis),
+    item_id:itemId, id:itemId,
+    date:String(b.requested_date||b.date||'').slice(0,20)
+  });
 }
 function handleGetPendingRequests(){
   const sheet=getSheet().getSheetByName('待批完成'); const list=[];
@@ -3525,12 +3572,45 @@ function handleBookPull(actor) {
   // BOOK 側只可以「無條件相信」呢啲（全部係 BADGE 領袖核實過 / 由領袖行為產生）
   const verifiedInBadge = {};
   Object.keys(progress).forEach(function (k) { verifiedInBadge[k] = progress[k]; });
+  // ---- 給 ROVERBOOK 的「個人純進度」視圖（endpoint-compatible）----
+  // ROVERBOOK 的伺服器端會用 { ymis, progress{itemId:date}, otherBadges, pendingRequests[{itemId,date,status}] }
+  // 呢個包裝令佢可以直接消費；姓名／電郵／電話等一律唔會出現（本身已剝清）。
+  const flatProgress = {};
+  Object.keys(progress).forEach(function (k) { flatProgress[k] = progress[k]; });
+  const bookAwardsCompat = {};
+  Object.keys(awards).forEach(function (k) { bookAwardsCompat[k] = awards[k]; });
+  const pendingList = Object.keys(pending).sort().map(function (k) {
+    return { itemId: k, date: pending[k], status: 'pending' };
+  });
+  const pendingIds = Object.keys(pending).sort();
+  // 其他獎章（OT-*）：只回 id → 日期（零個資）；ROVERBOOK 只會用日期
+  const otherBadges = {};
+  const oSheet = getSheet().getSheetByName('其他獎章');
+  if (oSheet) {
+    const aliases = scoutAliases_(sid);
+    const data = oSheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (!scoutMatches_(data[i][0], aliases)) continue;
+      const id = String(data[i][1] || '').trim();
+      const date = bookNormDate_(data[i][3]);
+      if (!id || !date) continue;
+      otherBadges[id] = { date: date };
+    }
+  }
   return jsonResponse({
     success: true, schema: 'roverbadge.progress.roverbook.v2', scoutId: sid,
     verified: true, verifiedBy: 'ROVERBADGE',
+    // ---- ROVERBOOK 直接消費的形狀（同 ROVERBOOK api/roverbadge.js 期望一致）----
+    ymis: sid,                        // BOOK 會 normalizeScoutId(ymis) 後當作本人編號
+    flatProgress: flatProgress,       // { itemId: 'YYYY-MM-DD' }
+    otherBadges: otherBadges,         // { 'OT-…': { date } }
+    pendingRequests: pendingList,     // [{ itemId, date, status:'pending' }]
+    pendingItemIds: pendingIds,       // BOOK 前端用嚟避免重複送交
+    badgeDates: bookAwardsCompat,     // { L1: 'YYYY-MM-DD' }（獎章頒發日期）
+    withdrawnItemIds: withdrawnIds,   // BOOK 要由本機移除嘅項目
+    // ---- 本系統前端用的完整形狀（不變）----
     progress: progress, awards: awards, signoffs: signoffs,
     verifiedInBadge: verifiedInBadge,
-    // 待批（未經領袖核實）→ BOOK 只可以顯示為「申請中」，唔准當完成
     pending: pending, unverified: pending,
     // 領袖撤回清單：BOOK 必須把呢啲項目由「已完成」移除（BOOK 側 applySignoff 會處理）
     withdrawn: withdrawnIds,

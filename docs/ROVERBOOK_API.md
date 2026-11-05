@@ -143,6 +143,25 @@ await fetch(`${base}/api/roverbook`, {
 });
 ```
 
+## 6.5 與 ROVERBOOK 現行程式碼的相容性（2026-11-05 對照實碼）
+
+ROVERBOOK 現時**唔係**打 `/api/roverbook`，而係打 `<origin>/api/proxy`：
+
+| ROVERBOOK 端 | 實際請求 | BADGE 端承接 |
+| --- | --- | --- |
+| `login` | `proxy('login', { login_id, password })`，讀 `up.user.ymis` | `handleLogin`（`login_id` 已接受 SCOUT ID／未補零） |
+| `load` | `proxy('load', { token })`，之後在 `members[]` 內以 `scoutId \|\| ymis \|\| memberNo` 搵本人 | `handleLoad` — **每個 member 自帶 `progress`／`flatProgress`／`badges`／`otherBadges`／`pendingRequests`** |
+| `submitPending` | 逐項 `proxy('requestComplete', { token, itemId, date })` | `handleRequestComplete` — 一律 `status:'pending'`，並回 `id`／`date` 供 BOOK 記錄 |
+| `save` / `saveOtherBadge` / `reviewRequest` | BOOK 自己 403，唔會打上嚟 | BADGE 一樣擋（成員 token 寫唔入） |
+
+關鍵三點（缺一 BOOK 就顯示空白或重複送交）：
+
+1. **`members[]` 每個人都要帶自己嗰份 `progress`**（`{itemId: 'YYYY-MM-DD'}`）。
+2. **所有 SCOUT ID 一律 10 位補零**（`81420` → `0000081420`）——BOOK 用 `padStart(10,'0')` 比對。
+3. **`pendingRequests` 只放未批項目**（`[{itemId,date,status:'pending'}]`），批完就消失，否則 BOOK 會重複送交。
+
+`tests/roverbook-api.test.mjs` 內 `roverbookFilterPersonalConfirmedLoad()` 係逐行照抄 BOOK 的過濾邏輯，用來鎖住呢個契約。
+
 ## 7. 相關測試
 
 | 檔案 | 覆蓋 |
