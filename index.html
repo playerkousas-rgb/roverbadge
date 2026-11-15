@@ -902,6 +902,7 @@ a:hover{text-decoration:underline}
 </footer>
 
 <script src="assets/ymis-parse.js"></script>
+<script src="assets/ymis-export.js"></script>
 <script src="assets/rover-scope.js"></script>
 <script src="assets/gs-release.js"></script>
 <script src="assets/roverbook-bridge.js"></script>
@@ -1695,6 +1696,13 @@ const LANG_DICT={
   "無法載入 PDF 解析元件（需要網絡），請改用「貼上文字」或先用瀏覽器另存為無密碼 PDF": "Cannot load the PDF parser (network required). Use \"paste text\" instead, or re-save the PDF without a password first",
   "讀不到成員資料，請確認報表欄位次序為：": "No member data found. Check the column order: ",
   "assets/ymis-parse.js 未載入": "assets/ymis-parse.js not loaded",
+  "📤 匯出 YMIS 獎章（試行）": "📤 Export YMIS Awards (Pilot)",
+  "匯出 YMIS 獎章（試行）": "Export YMIS Awards (Pilot)",
+  "尚未有真實資料喺 YMIS 實測；匯出不等於匯入成功；冇跨次重複上傳偵測。": "Not yet tested with real data on YMIS; export does not guarantee import success; no cross-upload duplicate detection.",
+  "下載後請到 YMIS「成員註冊 → 資料檔案上傳 → 新增支部獎章紀錄」上傳。": "After downloading, upload in YMIS under Member Registration → Data File Upload → Add Section Badge Record.",
+  "我已核對成員編號、獎章及獲獎日期（本工具不讀取考核進度，亦不記錄或偵測跨次重複上傳）": "I have verified the Scout IDs, badge, and award date (this tool does not read assessment progress or record/detect cross-upload duplicates).",
+  "請先選擇獎章、填寫有效獲獎日期、勾選至少一位 10 位數字 Scout ID 成員，並勾選確認。": "Please select a badge, enter a valid award date, select at least one member with a 10-digit Scout ID, and tick the confirmation box.",
+  "已匯出 YMIS 獎章檔案！注意：此為試行版，尚未有真實資料喺 YMIS 實測，匯出不等於匯入成功。": "YMIS badge file exported! Note: this is a pilot feature not yet tested with real data on YMIS; export does not guarantee import success.",
   "✅ 已讀出 ": "✅ Parsed ",
   "位成員（共 ": " members (",
   " 頁），略過 ": " pages), skipped ",
@@ -4193,11 +4201,194 @@ async function submitMemberRequest(){
 
 /* ================== Overview Tab ================== */
 
+function isYmisLeaderRole(){
+  return !!(typeof currentUser !== 'undefined' && currentUser && ['admin','group_leader','branch_leader','exec_committee','super_admin'].includes(currentUser.role));
+}
+
+let _sheetJsPromise = null;
+function loadSheetJs(){
+  if (window.XLSX && window.XLSX.version === '0.18.5') {
+    return Promise.resolve(window.XLSX);
+  }
+  if (_sheetJsPromise) return _sheetJsPromise;
+  const sri = 'sha512-r22gChDnGvBylk90+2e/ycr3RVrDi8DIOkIGNhJlKfuyQM4tIRAI062MaV8sfjQKYVGjOBaZBOA87z+IhZE9DA==';
+  const urls = [
+    'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+    'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
+    'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js'
+  ];
+  _sheetJsPromise = (async () => {
+    let lastErr = null;
+    for (const url of urls) {
+      try {
+        await new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.src = url;
+          s.integrity = sri;
+          s.crossOrigin = 'anonymous';
+          s.onload = () => resolve();
+          s.onerror = () => reject(new Error('Failed to load ' + url));
+          document.head.appendChild(s);
+        });
+        if (window.XLSX) return window.XLSX;
+      } catch (err) {
+        lastErr = err;
+      }
+    }
+    _sheetJsPromise = null;
+    throw lastErr || new Error('Unable to load SheetJS');
+  })();
+  return _sheetJsPromise;
+}
+
+function closeYmisExport(){
+  const m = document.getElementById('ymisExportModal');
+  if (m) m.remove();
+}
+
+function ymisSelectAllMembers(checked){
+  document.querySelectorAll('#ymisExportMemberList input[type="checkbox"]:not(:disabled)').forEach(cb => {
+    cb.checked = !!checked;
+  });
+}
+
+function openYmisExport(){
+  if (!isYmisLeaderRole()) return;
+  if (!window.YmisExport) {
+    showToast('assets/ymis-export.js 未載入', 'error');
+    return;
+  }
+  loadSheetJs().catch(e => console.warn('SheetJS preload failed:', e));
+  closeYmisExport();
+
+  const esc = s => String(s || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const badgeOpts = window.YmisExport.YMIS_BADGES.map(b =>
+    `<option value="${esc(b.key)}">${esc(b.zh)} (${esc(b.ymisBadge)})</option>`
+  ).join('');
+
+  const list = (typeof members !== 'undefined' && Array.isArray(members)) ? members : [];
+  const memberRows = list.map((m, idx) => {
+    const id = m && typeof m.ymis === 'string' ? m.ymis.trim() : '';
+    const valid = window.YmisExport.isValidScoutId(id);
+    const label = `${esc(m && m.name ? m.name : '(未命名)')} — ${esc(id || '無 Scout ID')}${valid ? '' : '（非10位數字，不可勾選）'}`;
+    return `<label style="display:flex;align-items:center;gap:6px;padding:4px 2px;font-size:12px;opacity:${valid ? '1' : '0.55'}">
+      <input type="checkbox" class="ymis-export-member-cb" value="${idx}" ${valid ? '' : 'disabled'}>
+      <span>${label}</span>
+    </label>`;
+  }).join('') || '<div style="font-size:12px;color:var(--text-light);padding:6px">暫無成員資料</div>';
+
+  const modal = document.createElement('div');
+  modal.id = 'ymisExportModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  modal.innerHTML = `<div style="background:#fff;border-radius:12px;max-width:560px;width:100%;max-height:90vh;overflow-y:auto;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,0.2)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <h3 style="margin:0;font-size:16px">📤 匯出 YMIS 獎章（試行）</h3>
+      <button class="btn btn-sm btn-secondary" onclick="closeYmisExport()">✕</button>
+    </div>
+    <div style="background:#FFF8E1;border:1px solid #FFE082;border-radius:8px;padding:10px;font-size:12px;line-height:1.5;margin-bottom:12px">
+      <b>⚠️ 試行提示：</b>尚未有真實資料喺 YMIS 實測；匯出不等於匯入成功；冇跨次重複上傳偵測。<br>
+      <span style="color:#666">Pilot notice: Not yet tested with real data on YMIS; export does not guarantee import success; no cross-upload duplicate detection.</span>
+    </div>
+    <div style="margin-bottom:10px">
+      <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">1. 選擇獎章（每次匯出一款）</label>
+      <select id="ymisExportBadge" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px">${badgeOpts}</select>
+    </div>
+    <div style="margin-bottom:10px">
+      <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">2. 實際獲獎日期（無預設值，必須自行填寫）</label>
+      <input type="date" id="ymisExportDate" value="" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px">
+    </div>
+    <div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <label style="font-size:12px;font-weight:600">3. 選擇成員（只可勾選 10 位數字 Scout ID）</label>
+        <div style="display:flex;gap:6px">
+          <button type="button" class="btn btn-sm btn-secondary" onclick="ymisSelectAllMembers(true)">全選</button>
+          <button type="button" class="btn btn-sm btn-secondary" onclick="ymisSelectAllMembers(false)">取消全選</button>
+        </div>
+      </div>
+      <div id="ymisExportMemberList" style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px;background:#FAFAFA">${memberRows}</div>
+    </div>
+    <label style="display:flex;align-items:flex-start;gap:8px;font-size:12px;margin-bottom:12px;cursor:pointer">
+      <input type="checkbox" id="ymisExportConfirm">
+      <span>我已核對成員編號、獎章及獲獎日期（本工具不讀取考核進度，亦不記錄或偵測跨次重複上傳）</span>
+    </label>
+    <div id="ymisExportStatus" style="font-size:12px;margin-bottom:10px;color:var(--text-light)"></div>
+    <div style="display:flex;justify-content:flex-end;gap:8px">
+      <button type="button" class="btn btn-sm btn-secondary" onclick="closeYmisExport()">取消</button>
+      <button type="button" class="btn btn-sm btn-primary" id="btnDownloadYmisAwards" onclick="downloadYmisAwards()">⬇️ 下載 .xlsx</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+
+async function downloadYmisAwards(){
+  if (!isYmisLeaderRole()) return;
+  if (!window.YmisExport) {
+    showToast('assets/ymis-export.js 未載入', 'error');
+    return;
+  }
+  const badgeKey = document.getElementById('ymisExportBadge')?.value || '';
+  const awardDate = document.getElementById('ymisExportDate')?.value || '';
+  const confirmed = !!document.getElementById('ymisExportConfirm')?.checked;
+  const statusEl = document.getElementById('ymisExportStatus');
+
+  const list = (typeof members !== 'undefined' && Array.isArray(members)) ? members : [];
+  const selectedMembers = [];
+  document.querySelectorAll('#ymisExportMemberList input.ymis-export-member-cb:checked').forEach(cb => {
+    const idx = parseInt(cb.value, 10);
+    if (!Number.isNaN(idx) && list[idx]) selectedMembers.push(list[idx]);
+  });
+
+  if (!badgeKey || !window.YmisExport.formatAwardDate(awardDate) || selectedMembers.length === 0 || !confirmed) {
+    if (statusEl) {
+      statusEl.style.color = 'var(--red)';
+      statusEl.textContent = '請先選擇獎章、填寫有效獲獎日期、勾選至少一位 10 位數字 Scout ID 成員，並勾選確認。';
+    }
+    return;
+  }
+
+  try {
+    if (statusEl) {
+      statusEl.style.color = 'var(--text-light)';
+      statusEl.textContent = '正在載入 Excel 匯出元件...';
+    }
+    const XLSX = await loadSheetJs();
+    const rows = window.YmisExport.buildYmisRows({
+      members: selectedMembers,
+      badgeKey,
+      awardDate
+    });
+    if (rows.length === 0) {
+      if (statusEl) {
+        statusEl.style.color = 'var(--red)';
+        statusEl.textContent = '沒有符合 10 位數字 Scout ID 的有效成員可匯出。';
+      }
+      return;
+    }
+    const wb = window.YmisExport.buildYmisWorkbook(XLSX, rows);
+    const yyyymmdd = window.YmisExport.formatAwardDate(awardDate);
+    const filename = window.YmisExport.makeExportFilename(badgeKey, yyyymmdd);
+    XLSX.writeFile(wb, filename);
+    if (statusEl) {
+      statusEl.style.color = 'var(--green)';
+      statusEl.innerHTML = `✅ 已匯出 <b>${rows.length}</b> 筆紀錄（${filename}）。<br>下載後請到 YMIS「成員註冊 → 資料檔案上傳 → 新增支部獎章紀錄」上傳。<br>⚠️ 注意：此為試行版，尚未有真實資料喺 YMIS 實測，匯出不等於匯入成功；冇跨次重複上傳偵測。`;
+    }
+  } catch (err) {
+    if (statusEl) {
+      statusEl.style.color = 'var(--red)';
+      statusEl.textContent = '匯出失敗：' + (err && err.message ? err.message : String(err));
+    }
+  }
+}
+
 function renderOverviewTab(){
   const c=document.getElementById('tab-overview');
   if(!itemsData){ c.innerHTML='<p>載入中...</p>'; return; }
+  const isLeaderForYmis = !!(currentUser && ['admin','group_leader','branch_leader','exec_committee','super_admin'].includes(currentUser.role));
   const badgeOptions=itemsData.badges.map(b=>`<option value="${b.id}">${b.icon} ${b.name}</option>`).join('');
-  c.innerHTML=`<div class="info-section" style="border-left-color:var(--blue);background:var(--blue-light);padding:12px">
+  c.innerHTML=`${isLeaderForYmis ? `<div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+    <span style="font-size:11px;color:var(--text-light)">⚠️ 尚未有真實資料喺 YMIS 實測；匯出不等於匯入成功；冇跨次重複上傳偵測。</span>
+    <button class="btn btn-sm btn-secondary" id="btnOpenYmisExport" onclick="openYmisExport()">📤 匯出 YMIS 獎章（試行）</button>
+  </div>` : ''}<div class="info-section" style="border-left-color:var(--blue);background:var(--blue-light);padding:12px">
     <h3 style="color:var(--blue);font-size:15px">🚀 考驗營 / 集體活動 批量完成 (領袖專用)</h3>
     <p style="font-size:12px;color:var(--text-light);margin-bottom:8px">例如剛去完考驗營，可一鍵幫有去的成員全剔。先暫存瀏覽器，底部按確認才寫入。</p>
     <div class="filter-bar">
