@@ -25,6 +25,11 @@ CI（`.github/workflows/ci.yml`）會在 push／PR 跑同一條鏈。
 3a. **ROVERBOOK 只可以經 `/api/roverbook`**：呢個閘道只准 `login`／`logout`／`load`／`requestComplete`；任何寫入／管理類 action 必須 **403**；回應必須零個資（`stripNever()` 最後一道）；**唔准**為咗方便而把 BOOK 的 action 加落 `/api/proxy` 白名單。SCOUT ID 一律經 `scoutNorm()`／`scoutNorm_()` 正規化（`81420 ⇄ 0000081420`）。
 3b. **ROVERBOOK 對接：CONFIRM 閘（唔准繞過）**：`bookSync` 只可以寫「紀錄冊待批」；任何寫入正式「進度追蹤」／「紀錄冊核簽」的路徑必須經 `bookConfirm`（領袖權限＋`canTickUser_`＋`checkTickBatch_`）。**成員自己喺 BOOK 簽嘅永遠唔可以自動變成完成**。亦唔准把「較舊日期」回寫（只加不減；改動要 `overwrite:true`）。`tests/roverbook-bridge.test.mjs` 有一項會掃 `handleBookSync` 原始碼，若出現 `bookWriteProgress_`／`writeBookSignoffs_` 即紅。
 3c. **ROVERBOOK 對接的個資紅線**：成員手機紀錄冊的個人資料（姓名、電話、電郵、地址、出生日期、近照、簽名墨跡、緊急聯絡人）**只留在成員自己部機**，唔准寫入任何 Sheet／log／回傳值。跨邊界只准 `scoutId`＋項目 ID＋日期（＋領袖的職銜）。改動 `assets/roverbook-bridge.js` 或四個 `book*` action 後必須跑 `npm run test:book`（會掃描三張進度表全部儲存格確認零個資）。ROVERBOOK 端程式在本 repo 之外，只可經 `npm run book:dropin` 生成 drop-in（`dist/roverbook/`，不入 git）。
+3d. **個人 QR 匯出（`RBC1`）**：`assets/roverbook-bridge.js` 的 `buildCard`／`encodeCard` 只准寫 SCOUT ID、項目 ID、日期、獎章、旅團編號；
+   姓名／電話／電郵／地址／生日／相片／簽名墨跡一律唔准入卡（`tests/roverbook-card.test.mjs` 會連 base64 內文一齊掃）。
+   `CARD_ITEMS` 係**追加式**索引表（改動／重排會令舊 QR 解錯）：只准在尾加，並同步 `tests/roverbook-card.test.mjs` 的對照。
+   QR 由 `assets/roverbook-qr.js` 純前端產生，**唔准**加後端 action、唔准用 CDN 或 npm runtime 依賴（要離線可用）。
+   連結一律用 hash（`#rb=`），唔准放 query／路徑／伺服器。
 4. **新 action → proxy 白名單 + 測試**（`tests/proxy-actions.test.mjs` 會掃前端每個 `apiRequest('…')`）。
 5. **i18n**：新 UI 字串要入 `i18n_dict.tsv` ＋ `index.html` 內嵌 `LANG_DICT` 兩處（`tests/residue-audit`／`html-integrity` 會盯）。
 6. **部署形態**：Build Output 模式 —— `vercel.json` 只准官方頂層欄位、絕對唔好有 legacy `builds`/`routes`/`functions`、唔准有 `.vercelignore`（`tests/vercel-config.test.mjs` 會守）。
@@ -40,4 +45,5 @@ assets/ data/ docs/   靜態資源／項目目錄／教學（build 時白名單�
 tests/                全部測試（gas-harness 真實跑 Code.gs；mock-gas 模擬 GAS；run-e2e 真 HTTP 端到端）
 scripts/build.mjs     建置 → .vercel/output（Build Output API）
 scripts/roverbook-dropin.mjs  生成 ROVERBOOK 端 ESM 版對接（npm run book:dropin）
+assets/roverbook-qr.js        零依賴 QR 編碼器（個人 QR 匯出用；ISO 18004 byte mode）
 ```

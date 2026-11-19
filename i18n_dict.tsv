@@ -1,11 +1,11 @@
 樂行童軍進度追蹤系統	Rover Scout Progress Tracker
 樂行童軍進度追蹤	Rover Scout Progress Tracker
-樂行童軍進度追蹤系統 v5.2 - 手機友善・批量開戶・全前端控制	Rover Scout Progress Tracker v5.2 - Mobile friendly · Bulk onboarding · Full front-end control
-樂行童軍進度追蹤 v5.2	Rover Scout Progress Tracker v5.2
-Rover Scout Progress Tracker v5.2 • 樂行童軍徽章 + 2026年第5版綱要	Rover Scout Progress Tracker v5.2 • Rover Scout emblem + 2026 5th Edition Scheme
+樂行童軍進度追蹤系統 v5.3 - 手機友善・批量開戶・個人 QR 匯出	Rover Scout Progress Tracker v5.3 - Mobile friendly · Bulk onboarding · Full front-end control
+樂行童軍進度追蹤 v5.3	Rover Scout Progress Tracker v5.3
+Rover Scout Progress Tracker v5.3 • 樂行童軍徽章 + 2026年第5版綱要	Rover Scout Progress Tracker v5.3 • Rover Scout emblem + 2026 5th Edition Scheme
 基於 2026年第5版《樂行童軍訓練綱要》 | 支援離線暫存 • 批量寫入 • 批量開戶 • 全前端控制 • 保護兒童 Safe from Harm	Based on the 5th Edition of the Rover Scout Training Scheme (2026) | Offline staging • Batch writing • Bulk onboarding • Full front-end control • Safe from Harm
 基於 2026年第5版《樂行童軍訓練綱要》• 支援離線暫存•批量寫入•成員申請確認•表格自動填寫	Based on the 5th Edition of the Rover Scout Training Scheme (2026) • Offline staging • batch writing • member request confirmation • form auto-fill
-COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 v5.2	COPYRIGHT 2026 Scout System • Rover Scout Progress Tracker v5.2
+COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 v5.3	COPYRIGHT 2026 Scout System • Rover Scout Progress Tracker v5.3
 香港童軍總會	Scout Association of Hong Kong
 🏠 進入系統	🏠 Enter System
 📋 新旅團部署	📋 New Group Deployment
@@ -855,7 +855,7 @@ YMIS 或登記電郵	YMIS or registered email
 不支援的請求方式	Unsupported request method
 未能連接驗證服務，請重試或聯絡管理員	Could not reach the verification service. Please retry or contact the admin
 
-最新：v5.2	Latest: v5.2
+最新：v5.3	Latest: v5.3
 v5.2：第五版綱要核對（L2 簽發人、L4 時限、L3 段章獲頒狀態、PT/75 延長表格連結）；學制（新制／舊制／舊制過渡新制）；後端強制 allowed_badges；撤銷「可勾選」全面生效	v5.2: 5th-edition scheme check (L2 signatory, L4 timeframe, L3 award status, PT/75 extension form link); per-member scheme (new / old / transition); server-enforced allowed_badges; revoking "can tick" now applies to all ticking, approvals and edits
 v5.1 更新：YMIS PDF 批量開戶、🐛💬 回報 · 意見按鈕（Scout Admin 統一回報）、非官方聲明、手機頂部按鈕排列整齊化、全 APP 版號統一 v5.1	v5.1 update: YMIS PDF bulk onboarding, 🐛💬 Report · Feedback buttons (Scout Admin unified reporting), unofficial notice, tidier mobile top buttons, app-wide version aligned to v5.1
 🐛💬 回報 · 意見	🐛💬 Report · Feedback
@@ -1093,3 +1093,31 @@ BOOK 顯示領袖已簽（仍待你確認）	BOOK says a leader signed (still ne
 確定要刪除這些頒發紀錄？刪除後成員的 ROVERBOOK 下次取回時會消失。	Delete these award records? They will disappear from the member’s ROVERBOOK the next time it pulls.
 確定要更正已頒發的日期？原日期會被覆寫（會寫入備註）。	Correct the awarded date? The original date is overwritten (and noted in the remarks column).
 領袖已撤回（貼回 ROVERBOOK 時會移除）	Withdrawn by the leader (removed when pasted back into ROVERBOOK)
+📱 4 · 匯出 QR（交給成員）	📱 4 · Export QR (hand to member)
+只限領袖使用：呢一步係領袖匯出成員紀錄，唔會回傳任何資料。	Leaders only: this step exports a member's records and never sends anything back.
+步驟 4：把成員的紀錄變成一個 QR	Step 4: turn a member's records into one QR code
+未載入成員名單：請先開一次「📊 我的進度」或「🏠 全團總覽」載入，然後返嚟呢一頁。	Member list not loaded yet: open “📊 My Progress” or “🏠 Group Overview” once to load it, then come back to this page.
+用相機掃一下，加入我的紀錄冊	Scan with your camera to add this to my record book
+掃描後按「加入我的紀錄冊」即可；只會加入已由領袖核實的進度。紀錄冊本身的姓名、相片、簽名仍然只留在成員手機。	After scanning, tap “Add to my record book”. Only leader-verified progress is added; the book's name, photo and signatures still stay on the member's phone.
+複製連結	Copy link
+列印	Print
+複製 JSON（舊版 ROVERBOOK 手動貼上）	Copy JSON (paste manually in older ROVERBOOK)
+QR 內容	QR content
+字元・二維碼版本	characters · QR version
+網址（成員亦可直接開啟）	Link (members can also open it directly)
+步驟 4：把成員的紀錄變成一個 QR（成員用相機掃）	Step 4: turn a member's records into one QR (the member scans it with the camera)
+揀一位成員 → 產生 QR → 列印或傳圖給他。成員用手機相機掃一下就會開 ROVERBOOK，按「加入我的紀錄冊」就成為他自己的紀錄冊：毋須密碼、毋須帳號。	Pick a member → generate the QR → print it or send it. The member scans it with the phone camera, ROVERBOOK opens, and one tap makes it their own record book — no password, no account.
+QR 內只有旅團編號、SCOUT ID、已完成項目同日期、獎章日期；冇姓名、電話、電郵、地址、生日、相片、簽名墨跡。連結唔會過期，等同紙本紀錄冊，只交予本人。	The QR contains only the group id, SCOUT ID, completed items with dates, and badge dates — no name, phone, email, address, date of birth, photo or signature ink. The link does not expire; treat it like the paper record book and hand it only to the member.
+ROVERBOOK 網址	ROVERBOOK URL
+產生 QR	Generate QR
+這位成員暫時未有進度：QR 會建立一本空白紀錄冊並綁定他的 SCOUT ID，之後再匯出一次就會補上進度。	This member has no progress yet: the QR creates a blank record book bound to their SCOUT ID, and a later export fills the progress in.
+未產生 QR。	No QR generated yet.
+請先揀一位成員	Pick a member first
+紀錄太多，一個 QR 放唔落：請改用「複製 JSON」貼入 ROVERBOOK	Too many records for one QR — use “Copy JSON” and paste it into ROVERBOOK instead
+已產生 QR：	QR generated: 
+已複製連結：用相機掃或直接打開都可以	Link copied — scan it or open it directly
+二維碼模組未載入（assets/roverbook-qr.js）	QR module not loaded (assets/roverbook-qr.js)
+進度	Progress
+v5.3：📱 個人 QR 匯出（領袖揀一位成員 → 產生二維碼或連結 → 成員用手機相機一掃即成為自己的 ROVERBOOK，毋須密碼；卡內零個資、只帶領袖已核實的進度、只加不減）。零依賴 QR 編碼器（assets/roverbook-qr.js）＋ RBC1 二進位匯入卡	v5.3: 📱 personal QR export (a leader picks one member → a QR code or link is generated → the member scans it with the phone camera and it becomes their own ROVERBOOK, no password; the card holds zero personal data, only leader-verified progress, and only ever adds). Zero-dependency QR encoder (assets/roverbook-qr.js) + the RBC1 binary import card
+在原有 ADMIN FORM 自行填寫旅團編號、名稱、從 Google 部署視窗複製的 URL，以及 API Key。不要把 URL 貼到 Apps Script 或 Sheet 的新設定。	Fill in the Group ID, name, URL copied from the Google deployment dialog, and API Key in the existing ADMIN FORM. Do not paste the URL into new Apps Script or Sheet settings.
+登記完成後首頁會出現旅團卡片，選團即可登入；成員可 bookmark 本系統連結使用。	Once registered, a group card appears on the home page — pick the group to sign in. Members can bookmark this system’s link.

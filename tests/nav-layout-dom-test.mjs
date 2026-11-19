@@ -52,6 +52,7 @@ console.log('\n【1】成員（預設）：常用功能在上方，領袖／進�
   }
   check('全團總覽：未開放 → 隱藏', hidden('overview'));
   check('用戶管理：成員無權 → 隱藏', hidden('users'));
+  check('ROVERBOOK 對接：成員無權 → 隱藏', hidden('book'));
 }
 
 console.log('\n【2】成員 + 團長開放「允許成員互相查看進度」：全團總覽自動升返上方');
@@ -71,15 +72,18 @@ console.log('\n【3】管委 exec_committee：成員功能在上、全團總覽�
   check('用戶管理：無管理權 → 隱藏', hidden('users'));
 }
 
-console.log('\n【4】領袖 group_leader：常用在上，全團總覽＋用戶管理排下（半半一行）');
+console.log('\n【4】領袖 group_leader：常用在上，全團總覽＋用戶管理＋ROVERBOOK 對接排下');
 {
   setUser('group_leader');
   check('我的進度：顯示、屬常用（上方）', !hidden('progress') && !elevated('progress'));
   check('審批中心：顯示、屬常用（上方）', !hidden('requests') && !elevated('requests'));
   check('全團總覽：顯示、屬進階（下方）', !hidden('overview') && elevated('overview'));
   check('用戶管理：顯示、屬進階（下方）', !hidden('users') && elevated('users'));
-  check('方塊內只有 2 個進階按鈕（會平分一行）',
-    [...doc.querySelectorAll('#mainNavTabs .nav-tab.nav-elevated')].filter(b => !b.classList.contains('nav-hidden')).length === 2);
+  // 2026-11：ROVERBOOK 對接（book）係領袖第 3 個進階分頁，所以進階按鈕由 2 個變 3 個
+  check('ROVERBOOK 對接：顯示、屬進階（下方）', !hidden('book') && elevated('book'));
+  check('方塊內有 3 個進階按鈕（全團總覽／用戶管理／ROVERBOOK 對接）',
+    [...doc.querySelectorAll('#mainNavTabs .nav-tab.nav-elevated')].filter(b => !b.classList.contains('nav-hidden')).length === 3,
+    [...doc.querySelectorAll('#mainNavTabs .nav-tab.nav-elevated')].filter(b => !b.classList.contains('nav-hidden')).map(b => b.id).join('|'));
 }
 
 console.log('\n【5】桌機外觀不變：按鈕 DOM 順序相同、無殘留 inline display');

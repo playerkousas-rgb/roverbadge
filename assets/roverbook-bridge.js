@@ -27,7 +27,12 @@
   const SCHEMA_PROGRESS_V2 = 'roverbadge.progress.roverbook.v2';
   const SCHEMA_AWARD = 'roverbadge.award.v1';
   const SCHEMA_SIGNOFF = 'roverbadge.signoff.v2';
-  const BRIDGE_VERSION = 2;
+  // 2026-11：新增「個人匯入卡」（領袖 → 成員，一個 QR／一條連結）
+  const SCHEMA_CARD = 'roverbadge.card.v1';
+  const CARD_PREFIX = 'RBC1';
+  const CARD_HASH_KEY = '#rb=';
+  const CARD_DEFAULT_BASE = 'https://roverbook.vercel.app';
+  const BRIDGE_VERSION = 3;
 
   // 只准這兩個欄位跨越裝置邊界（其餘一律剝走）
   const ALLOWED_MEMBER_FIELDS = ['scoutId'];
@@ -288,6 +293,280 @@
     return { progress, awards, applied, kept, removed, notes, source: text(src.schema, 40) };
   }
 
+  /* ==================================================================
+   * 個人匯入卡（roverbadge.card.v1）—— 「領袖匯出 → 成員用相機掃 QR → 變成自己的 ROVERBOOK」
+   *
+   * 為什麼要另一種格式：`bookPull` 的 JSON 有幾 KB，二維碼放唔落（一隻 QR 最多 2,953 bytes，
+   * 手機鏡頭實際上 1,000 字元以下最易讀）。所以把同一份「零個資進度」壓成二進位：
+   *   version(1) flags(1) troopId(len+ascii) scoutId(len+ascii) issuedAt(2 bytes 日數)
+   *   progress: count(2) × [itemIndex(1) 或 255+len+id, date(2 bytes 日數)]
+   *   awards:   count(1) × [badgeCode(1)（L1..L6）, date(2 bytes 日數)]
+   * 32 項全滿都只係約 130 bytes → base64url 約 175 字元，加埋網址仍然係「中型 QR」。
+   *
+   * 鐵律不變：卡內只有 SCOUT ID、項目 ID、完成日期、頒發日期、旅團編號。
+   * 冇姓名、冇電話、冇電郵、冇地址、冇生日、冇相片、冇簽名墨跡 —— 呢個函數連欄位都唔會讀。
+   * ================================================================== */
+  // 綱要 32 項的固定索引（append-only！改動或重排會令舊 QR 解錯）
+  // tests/roverbook-card.test.mjs 會同 data/items.json 對照，少了／多了都會 fail。
+  const CARD_ITEMS = [
+    'L1-ACT-01', 'L1-UND-01', 'L1-UND-02', 'L1-UND-03', 'L1-UND-04', 'L1-ETQ-01', 'L1-ETQ-02',
+    'L1-ETQ-03', 'L1-ETQ-04', 'L1-ETQ-05', 'L1-ETQ-06', 'L1-PRM-01', 'L1-CP-01', 'L2-INTRO-01',
+    'L3-LEADER-01', 'L3-LEADER-02', 'L3-SCOUT-01', 'L3-SCOUT-02', 'L3-SCOUT-03', 'L3-SERVICE-01',
+    'L3-SERVICE-02', 'L3-SERVICE-03', 'L3-INTL-01', 'L3-INTL-02', 'L3-INT-01', 'L3-HEALTH-01',
+    'L3-HEALTH-02', 'L3-CHALLENGE-01', 'L3-CHALLENGE-02', 'L4-ALL-01', 'L4-ALL-02', 'L4-ALL-03'
+  ];
+  const CARD_ITEM_INDEX = CARD_ITEMS.reduce((acc, id, i) => { acc[id] = i; return acc; }, {});
+  const CARD_AWARD_CODES = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6'];
+  const CARD_DAY_EPOCH = Date.UTC(2000, 0, 1) / 86400000; // 日期以「2000-01-01 起第幾日」儲存（u16）
+  const CARD_DAY_MAX = 65535;                              // 179 年，足夠應付所有合理日期
+
+  function dateToDay(date) {
+    const d = normDate(date);
+    if (!d) return -1;
+    const day = Math.round(Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10)) / 86400000 - CARD_DAY_EPOCH);
+    return (day >= 0 && day <= CARD_DAY_MAX) ? day : -1;
+  }
+
+  function dayToDate(day) {
+    if (!(day >= 0 && day <= CARD_DAY_MAX)) return '';
+    const t = new Date((day + CARD_DAY_EPOCH) * 86400000);
+    return t.toISOString().slice(0, 10);
+  }
+
+  // 只接受 ASCII 的短字串（避免用 UTF-8 撐大 QR）
+  function ascii(v, n) {
+    return text(v, n || 40).replace(/[^\x20-\x7E]/g, '');
+  }
+
+  function toBase64Url(bytes) {
+    const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+    let out = '';
+    for (let i = 0; i < bytes.length; i += 3) {
+      const b0 = bytes[i], b1 = bytes[i + 1], b2 = bytes[i + 2];
+      out += B64[b0 >> 2];
+      out += B64[((b0 & 3) << 4) | ((b1 === undefined ? 0 : b1) >> 4)];
+      if (b1 === undefined) break;
+      out += B64[((b1 & 15) << 2) | ((b2 === undefined ? 0 : b2) >> 6)];
+      if (b2 === undefined) break;
+      out += B64[b2 & 63];
+    }
+    return out;
+  }
+
+  function fromBase64Url(str) {
+    const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+    const clean = String(str || '').replace(/=+$/, '');
+    const bytes = [];
+    for (let i = 0; i < clean.length; i += 4) {
+      const c0 = B64.indexOf(clean[i]), c1 = B64.indexOf(clean[i + 1]);
+      const c2 = B64.indexOf(clean[i + 2]), c3 = B64.indexOf(clean[i + 3]);
+      if (c0 < 0 || c1 < 0) throw new Error('二維碼內容有誤（base64url）');
+      bytes.push((c0 << 2) | (c1 >> 4));
+      if (c2 >= 0) bytes.push(((c1 & 15) << 4) | (c2 >> 2));
+      if (c3 >= 0) bytes.push(((c2 & 3) << 6) | c3);
+    }
+    return new Uint8Array(bytes);
+  }
+
+  /**
+   * 建立個人匯入卡（不讀取任何個人資料欄位）。
+   * progress: { itemId: date }｜awards: { L1: date }
+   * 回傳 { card, dropped:{badItemId,badDate,unknownAward} }
+   */
+  function buildCard(input) {
+    const i = isObj(input) ? input : {};
+    const progress = {}, awards = {};
+    const dropped = { badItemId: 0, badDate: 0, unknownAward: 0 };
+    Object.keys(i.progress || {}).forEach((itemId) => {
+      const id = text(itemId, 32);
+      if (!ITEM_ID_RE.test(id)) { dropped.badItemId++; return; }
+      // ROVERBADGE 的 progress 可能是日期字串，也可能是 { date, confirmer } —— 兩者都收
+      const raw = i.progress[itemId];
+      const d = normDate(isObj(raw) ? raw.date : raw);
+      // 卡用 2000-01-01 起第幾日（u16）儲存日期：超出範圍就當壞日期，唔會寫錯
+      if (!d || dateToDay(d) < 0) { dropped.badDate++; return; }
+      progress[id] = d;
+    });
+    Object.keys(i.awards || {}).forEach((badge) => {
+      const b = text(badge, 16).toUpperCase();
+      if (CARD_AWARD_CODES.indexOf(b) < 0) { dropped.unknownAward++; return; }
+      const raw = i.awards[badge];
+      const d = normDate(isObj(raw) ? raw.date : raw);
+      if (!d || dateToDay(d) < 0) { dropped.badDate++; return; }
+      awards[b] = d;
+    });
+    return {
+      card: {
+        schema: SCHEMA_CARD,
+        v: 1,
+        troopId: ascii(i.troopId, 16),
+        scoutId: sid(i.scoutId),
+        issuedAt: normDate(i.issuedAt) || new Date().toISOString().slice(0, 10),
+        progress: progress,
+        awards: awards,
+        privacy: { personalData: 'none', ink: 'withheld' }
+      },
+      dropped: dropped
+    };
+  }
+
+  function encodeCardBytes(card) {
+    const c = isObj(card) ? card : {};
+    const bytes = [];
+    const push = (n) => bytes.push(n & 0xFF);
+    const pushStr = (s) => {
+      const v = ascii(s, 64);
+      push(v.length);
+      for (let i = 0; i < v.length; i++) push(v.charCodeAt(i));
+    };
+    push(1); // 卡格式版本
+    push(0); // flags（保留）
+    pushStr(c.troopId);
+    pushStr(c.scoutId);
+    const issued = dateToDay(c.issuedAt);
+    push((issued < 0 ? 0 : issued) >> 8);
+    push((issued < 0 ? 0 : issued) & 0xFF);
+
+    const ids = Object.keys(c.progress || {}).filter((id) => ITEM_ID_RE.test(id) && dateToDay(c.progress[id]) >= 0);
+    push(ids.length >> 8); push(ids.length & 0xFF);
+    ids.slice(0, 500).forEach((id) => {
+      const idx = CARD_ITEM_INDEX[id];
+      const day = dateToDay(c.progress[id]);
+      if (idx === undefined) {
+        push(0xFF);
+        pushStr(id);
+      } else push(idx);
+      push(day >> 8); push(day & 0xFF);
+    });
+
+    const badges = Object.keys(c.awards || {}).filter((b) => CARD_AWARD_CODES.indexOf(b) >= 0 && dateToDay(c.awards[b]) >= 0);
+    push(badges.length);
+    badges.forEach((b) => {
+      const day = dateToDay(c.awards[b]);
+      push(CARD_AWARD_CODES.indexOf(b));
+      push(day >> 8); push(day & 0xFF);
+    });
+    return new Uint8Array(bytes);
+  }
+
+  function decodeCardBytes(bytes) {
+    const b = bytes;
+    let p = 0;
+    const need = (n) => { if (p + n > b.length) throw new Error('二維碼內容不完整'); };
+    need(2);
+    const ver = b[p++];
+    if (ver !== 1) throw new Error('二維碼版本未支援（' + ver + '）');
+    p++; // flags
+    const readStr = () => {
+      need(1);
+      const len = b[p++];
+      need(len);
+      let s = '';
+      for (let i = 0; i < len; i++) s += String.fromCharCode(b[p++]);
+      return s;
+    };
+    const troopId = readStr();
+    const scoutId = readStr();
+    need(2);
+    const issuedAt = dayToDate((b[p] << 8) | b[p + 1]);
+    p += 2;
+    need(2);
+    const count = (b[p] << 8) | b[p + 1];
+    p += 2;
+    const progress = {};
+    for (let n = 0; n < count; n++) {
+      need(1);
+      const idx = b[p++];
+      const id = idx === 0xFF ? readStr() : CARD_ITEMS[idx];
+      need(2);
+      const date = dayToDate((b[p] << 8) | b[p + 1]);
+      p += 2;
+      if (id && ITEM_ID_RE.test(id) && date) progress[id] = date;
+    }
+    need(1);
+    const awardCount = b[p++];
+    const awards = {};
+    for (let n = 0; n < awardCount; n++) {
+      need(3);
+      const code = b[p++];
+      const date = dayToDate((b[p] << 8) | b[p + 1]);
+      p += 2;
+      const badge = CARD_AWARD_CODES[code];
+      if (badge && date) awards[badge] = date;
+    }
+    return {
+      schema: SCHEMA_CARD,
+      v: 1,
+      troopId: troopId,
+      scoutId: sid(scoutId),
+      issuedAt: issuedAt,
+      progress: progress,
+      awards: awards,
+      privacy: { personalData: 'none', ink: 'withheld' }
+    };
+  }
+
+  /** 卡 → 權杖（RBC1.<base64url>）；同一張卡永遠得出同一串（方便列印／核對） */
+  function encodeCard(card) {
+    const built = isObj(card) && card.schema === SCHEMA_CARD ? card : buildCard(card).card;
+    return CARD_PREFIX + '.' + toBase64Url(encodeCardBytes(built));
+  }
+
+  /** 由一段文字（權杖／完整網址／純 hash）找回匯入卡。永不拋錯：回 { ok, card } 或 { ok:false, reason } */
+  function decodeCard(input) {
+    const s = text(input, 4000);
+    const m = s.match(new RegExp(CARD_PREFIX.replace('.', '\\.') + '\\.([A-Za-z0-9_-]+)'));
+    if (!m) return { ok: false, reason: '找不到 ROVERBADGE 匯入卡（要 RBC1. 開頭的內容）' };
+    try {
+      const card = decodeCardBytes(fromBase64Url(m[1]));
+      if (!card.scoutId) return { ok: false, reason: '匯入卡缺少 SCOUT ID' };
+      return { ok: true, card: card, token: CARD_PREFIX + '.' + m[1] };
+    } catch (e) {
+      return { ok: false, reason: (e && e.message) || '匯入卡內容損壞' };
+    }
+  }
+
+  /** 產生給手機相機用的連結：https://<ROVERBOOK>/#rb=RBC1.…（hash 不會送到伺服器） */
+  function cardUrl(base, token) {
+    const t = text(token, 4000);
+    if (!t) return '';
+    let b = text(base, 300) || CARD_DEFAULT_BASE;
+    if (!/^https?:\/\//i.test(b)) b = 'https://' + b;
+    b = b.replace(/[#?].*$/, '').replace(/\/+$/, '');
+    return b + '/' + CARD_HASH_KEY + t;
+  }
+
+  /** 由網址／hash 找卡（ROVERBOOK 端登入時用） */
+  function cardFromUrl(urlOrHash) {
+    return decodeCard(urlOrHash);
+  }
+
+  /**
+   * 卡 → bookPull 兼容 JSON（ROVERBOOK 可以直接交給自己的 importFromRoverBadge）。
+   * verified:true 係「領袖已核實」的明確標記 —— BOOK 側的規則就係「BADGE 講嘅就信」。
+   */
+  function cardToPull(card) {
+    const c = isObj(card) && card.schema === SCHEMA_CARD ? card : (decodeCard(encodeCard(card)).card || {});
+    const progress = Object.assign({}, c.progress || {});
+    return {
+      schema: SCHEMA_PROGRESS_V2,
+      v: BRIDGE_VERSION,
+      source: 'ROVERBADGE',
+      verified: true,
+      verifiedBy: 'ROVERBADGE',
+      exportedAt: new Date().toISOString(),
+      issuedAt: c.issuedAt || '',
+      troopId: c.troopId || '',
+      scoutId: c.scoutId || '',
+      progress: progress,
+      flatProgress: Object.assign({}, progress),
+      awards: Object.assign({}, c.awards || {}),
+      badgeDates: Object.assign({}, c.awards || {}),
+      signoffs: Object.keys(progress).map((id) => ({ id: id, date: progress[id], verified: true, source: 'ROVERBADGE' })),
+      privacy: { personalData: 'none', ink: 'withheld' }
+    };
+  }
+
   /** ROVERBADGE → ROVERBOOK：只匯出進度（＋頒發），絕不匯出任何個人資料。 */
   function toRoverBook(troop, opts) {
     const o = opts || {};
@@ -417,6 +696,12 @@
     SCHEMA_PROGRESS_V2,
     SCHEMA_AWARD,
     SCHEMA_SIGNOFF,
+    SCHEMA_CARD,
+    CARD_PREFIX,
+    CARD_HASH_KEY,
+    CARD_DEFAULT_BASE,
+    CARD_ITEMS,
+    CARD_AWARD_CODES,
     ALLOWED_MEMBER_FIELDS,
     NEVER_TRANSFER_FIELDS,
     TRUSTED_SIGNOFF_SOURCES,
@@ -431,6 +716,16 @@
     toRoverBook,
     buildAwards,
     buildSignoff,
-    parseSignoff
+    parseSignoff,
+    buildCard,
+    encodeCard,
+    decodeCard,
+    cardUrl,
+    cardFromUrl,
+    cardToPull,
+    encodeCardBytes,
+    decodeCardBytes,
+    dateToDay,
+    dayToDate
   };
 });

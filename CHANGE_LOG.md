@@ -1,5 +1,56 @@
 # CHANGE_LOG
 
+## 2026-11-19 — 前端 v5.3：📱 個人 QR 匯出（領袖 → 成員，一掃就變成自己的 ROVERBOOK）
+
+**功能**：領袖喺「📖 ROVERBOOK 對接 → 📱 4 · 匯出 QR」揀一位成員，系統把他的
+**進度＋頒發**壓成一張 `roverbadge.card.v1` 匯入卡（權杖 `RBC1.<base64url>`），
+放進連結 `https://<ROVERBOOK>/#rb=…` 再印成二維碼。成員用手機**相機**掃 → 開 ROVERBOOK →
+按「加入我的紀錄冊」即成為自己的紀錄冊（毋須密碼、毋須帳號）；舊版 ROVERBOOK 可用同一頁
+「📋 複製 JSON」手動貼上。
+
+### 【1】`assets/roverbook-bridge.js`（+ 卡格式）
+
+| 函數 | 作用 |
+| --- | --- |
+| `buildCard({troopId,scoutId,progress,awards,issuedAt})` | 只取 SCOUT ID／項目／日期／頒發，個資（姓名、電話、電郵、地址、生日、相片、簽名墨跡）**連讀都唔讀**；日期正規化並限制在 2000–2179 之間（u16 日數），超範圍會計入 `dropped` 而唔會寫錯 |
+| `encodeCard`／`decodeCard` | `RBC1.<base64url>` 二進位（版本＋flags＋troop＋scout＋日數＋進度索引＋頒發），32 項全滿約 130 bytes；未知項目用 `255` 逃生門 |
+| `cardUrl`／`cardFromUrl` | `https://<ROVERBOOK>/#rb=…`（**一定用 hash**，唔會送去伺服器）；清理舊 `?query`／`#hash`／結尾斜線 |
+| `cardToPull(card)` | 轉成 `roverbadge.progress.roverbook.v2`（`verified:true`、`signoffs[]` 全 `verified`），ROVERBOOK 可直接交給自己的 `importFromRoverBadge()` |
+
+- `CARD_ITEMS` 係**追加式**索引表（32 項）；`tests/roverbook-card.test.mjs` 會同 `data/items.json` 對照，綱要改版一定 fail。
+- `BRIDGE_VERSION` 2 → 3（新增函數向後兼容；舊函數行為不變）。
+
+### 【2】`assets/roverbook-qr.js`（新檔，零依賴 QR 編碼器）
+
+- Byte mode、ECC L/M/Q/H、version 1–40、自動選遮罩（ISO 18004 四條罰分規則）、輸出 SVG。
+- 不引入 CDN／npm：離線可用、部署唔多一個外部信任點。
+- 正確性：以獨立解碼器 **jsQR** 交叉驗證（160 組隨機 payload × 4 個 ECC 級別全部解得返原文）；
+  測試鎖住兩個指紋（v1 與 v6 各一）。
+
+### 【3】`index.html`
+
+- 新分頁「📱 4 · 匯出 QR（交給成員）」：成員下拉、ROVERBOOK 網址（記喺 localStorage）、
+  產生 QR、🔗 複製連結、🖨️ 列印（A4 `.print-area`）、📋 複製 JSON、QR 字元數／版本／格數。
+- 私隱聲明寫在 UI；領袖以外見唔到產生器；**冇新增任何後端 action**（純前端產生，唔會多開寫入面）。
+- i18n：25 條新字串（中英同步 `i18n_dict.tsv` + `LANG_DICT`）；版號 v5.2 → **v5.3**。
+
+### 【4】ROVERBOOK 端（另一個 repo，本 repo 只出 drop-in）
+
+`npm run book:dropin` 的 `dist/roverbook/PATCH.md` 新增 **④**：
+`web/src/pages/ImportCard.jsx`（讀 `location.hash` → `cardFromUrl` → 即刻 `replaceState` 清 hash →
+`importFromRoverBadge(cardToPull(card), book)`）＋ `App.jsx` 一行路由；fixtures 加入
+`card.token／url／decoded／pull`，跨 repo 測試可以直接對照。
+
+### 【5】測試
+
+- 新增 `tests/roverbook-card.test.mjs`（**14 項**）：零個資（連 base64 內文都掃）、編解碼往返、
+  壞資料／截斷／版本錯、體積（32 項 ≤ 200 字元、QR ≤ v12）、QR 結構同指紋、前端接線、文件、drop-in 一致。
+- 已登記 `npm test` 與 `npm run test:book`（`scripts/check.mjs` 會盯）。
+- 文件：新增 `docs/ROVERBOOK_QR_EXPORT.md`（格式、私隱、部署、FAQ、威脅模型）。
+
+**不變**：Data 保全規則（唔會刪／改任何既有資料）、三條鐵律、`bookSync` 一律入待批、
+CONFIRM 才寫入進度、`/api/*` 零機密。無需更新 Code.gs（GS 仍 5.4.0），故 `GS_VERSION` 不變。
+
 ## 2026-11-05 — GS 5.4.0：ROVERBOOK 用戶端 API（`/api/roverbook`）＋ SCOUT ID 前導零正規化
 
 ROVERBOOK 已合併到 `main`，佢只經 `https://roverbadge.vercel.app` 對接。本版新增一個**專用閘道**，

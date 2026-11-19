@@ -2,7 +2,7 @@
 
 > RoverBadge 是為香港樂行童軍旅團設計的進度紀錄及領袖行政工具：領袖可在網頁完成日常管理、審批及報表列印，而資料仍由各旅團自己既有的 Google Sheet 與 Apps Script 保管。
 >
-> 基於 2026 年第 11 版《樂行童軍訓練綱要》 • 前端 v5.2 ＋ 後端 GS 5.4.0（2026-11-04）
+> 基於 2026 年第 11 版《樂行童軍訓練綱要》 • 前端 v5.3 ＋ 後端 GS 5.4.0（2026-11-19）
 >
 > ⚠️ **非官方聲明**：本系統為獨立開發的非官方工具，並非香港童軍總會官方產品，與總會並無隸屬或贊助關係。
 >
@@ -17,6 +17,10 @@
 - **官方表格**：新制／舊制 PT/21、PT/22、PT/69 自動填寫，`.print-area` 雙面列印
 - **🔌 ROVERBOOK 用戶端 API（`/api/roverbook`）**：ROVERBOOK 只經呢一個閘道溝通——`GET ?action=troops` 回旅團 id＋名稱；`POST` 只准 `login`／`logout`／`load`／`requestComplete`；`save`／`saveOtherBadge`／`reviewRequest` 一律 **403**；回應**零個資**（連姓名都剝走）；SCOUT ID 十位數前導零正規化（`81420 ⇄ 0000081420`）。詳見 [docs/ROVERBOOK_API.md](docs/ROVERBOOK_API.md)
 - **📖 ROVERBOOK 對接（GS 5.4.0 起）**：ROVERBOOK 是成員自己手機上的紀錄冊（前端），ROVERBADGE 是領袖統管（後端）。兩者只交換**進度**：成員交上來的 JSON／檔案即場剝走全部個資（電話、電郵、地址、生日、相片、簽名墨跡、緊急聯絡人），只留 `scoutId`＋項目＋日期；而**成員自己簽的紀錄只會放入「紀錄冊待批」，領袖逐項／一次過 CONFIRM 之後才計入進度**（杜絕「自己簽完扮完成」）。「只加不減、但可以改」：較舊日期永不回寫。雙向信任：**BADGE → BOOK 無條件相信領袖已核實的紀錄（未核實的不錄入）；BOOK → BADGE 一律只當申請**，成員自稱已簽都會變待批。領袖可一頁看全團進度、**一次過頒發**（寫入「紀錄冊頒發」），成員按「取回我的進度」只拿回自己的資料。詳見 [docs/ROVERBOOK_BRIDGE.md](docs/ROVERBOOK_BRIDGE.md)
+- **📱 一鍵匯出個人 QR（GS 5.4.0 前端 2026-11）**：領袖喺「ROVERBOOK 對接 → 📱 4 · 匯出 QR」揀一位成員，
+  系統把他的進度＋頒發壓成 130 bytes 左右的「匯入卡」（`RBC1.…`），放進連結 `https://<ROVERBOOK>/#rb=…` 並印成二維碼；
+  成員用手機**相機**一掃就開 ROVERBOOK，按一下即成為自己的紀錄冊（毋須密碼／帳號）。卡內**零個資**（只有 SCOUT ID、項目、日期、獎章），
+  只帶領袖已核實的項目、只加不減。詳見 [docs/ROVERBOOK_QR_EXPORT.md](docs/ROVERBOOK_QR_EXPORT.md)
 - **其他獎章**併入進度頁底部；**考驗介紹**內建（每項 detail／assessment／tip／links）；**保護兒童**資源一鍵直達
 - **中／英一鍵切換**：`🌐 English` 按鈕即時全站切換（記喺 `localStorage: roverbadge_lang`）；分享連結可用 `?lang=en`／`?lang=zh` 鎖定語言
 - **🐛💬 回報 · 意見**：對接 [scout-admin](https://github.com/playerkousas-rgb/scout-admin) 統一回報（首頁／登入頁／登入後 header 三個入口），傳送狀態明確（傳送中 → 已確認／未能確認，防重複提交）
@@ -97,6 +101,7 @@ CI：`.github/workflows/ci.yml` 會在 push／PR 自動跑 `lint`＋`check`＋`t
 
 ## 文件
 
+- 📱 ROVERBOOK 個人 QR 匯出：[docs/ROVERBOOK_QR_EXPORT.md](docs/ROVERBOOK_QR_EXPORT.md)
 - 旅團負責人／領袖：[docs/LEADER_GUIDE.md](docs/LEADER_GUIDE.md)｜執委：[docs/EXEC_GUIDE.md](docs/EXEC_GUIDE.md)｜成員：[docs/MEMBER_GUIDE.md](docs/MEMBER_GUIDE.md)
 - 部署：[docs/DEPLOY_GUIDE_V5_DUALTRACK.md](docs/DEPLOY_GUIDE_V5_DUALTRACK.md)／[VERCEL_ENV_SETUP.md](VERCEL_ENV_SETUP.md)｜批量開戶：[docs/BULK_ONBOARD.md](docs/BULK_ONBOARD.md)／[docs/YMIS_EXPORT.md](docs/YMIS_EXPORT.md)｜忘記密碼：[docs/PASSWORD_RESET.md](docs/PASSWORD_RESET.md)｜ROVERBOOK 對接：[docs/ROVERBOOK_BRIDGE.md](docs/ROVERBOOK_BRIDGE.md)｜ROVERBOOK API：[docs/ROVERBOOK_API.md](docs/ROVERBOOK_API.md)｜登入逾時：[docs/TROUBLESHOOT_LOGIN_TIMEOUT.md](docs/TROUBLESHOOT_LOGIN_TIMEOUT.md)｜主系統整合：[docs/MAIN_SYSTEM_INTEGRATION.md](docs/MAIN_SYSTEM_INTEGRATION.md)
 - APP 管理員工作流程／發佈檢查清單：[APP_ADMIN_WORKFLOW.md](APP_ADMIN_WORKFLOW.md)｜歷史：[CHANGE_LOG.md](CHANGE_LOG.md)

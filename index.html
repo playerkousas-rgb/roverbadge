@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="copyright" content="© SCOUT SYSTEM">
-<meta name="app-version" content="v5.2">
-<title>樂行童軍進度追蹤系統 v5.2 - 手機友善・批量開戶・全前端控制</title>
+<meta name="app-version" content="v5.3">
+<title>樂行童軍進度追蹤系統 v5.3 - 手機友善・批量開戶・個人 QR 匯出</title>
 <link rel="icon" href="assets/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
@@ -249,6 +249,8 @@ a:hover{text-decoration:underline}
 .print-table{width:100%;border-collapse:collapse;margin-top:12px;font-size:11px}
 .print-table th,.print-table td{border:1px solid #333;padding:6px;text-align:left}
 .print-table th{background:#F0F0F0}
+.book-card-qr svg{width:100%;height:auto;display:block}
+.book-card-qr{image-rendering:pixelated}
 @media print{
   body *{visibility:hidden}
   .print-area, .print-area *{visibility:visible}
@@ -388,7 +390,7 @@ a:hover{text-decoration:underline}
       </div>
       <div style="text-align:left">
         <h1>樂行童軍進度追蹤系統</h1>
-        <p>Rover Scout Progress Tracker v5.2 • 樂行童軍徽章 + 2026年第5版綱要</p>
+        <p>Rover Scout Progress Tracker v5.3 • 樂行童軍徽章 + 2026年第5版綱要</p>
       </div>
     </div>
     <div class="header-subtitle">基於 2026年第5版《樂行童軍訓練綱要》• 支援離線暫存•批量寫入•成員申請確認•表格自動填寫</div>
@@ -522,7 +524,8 @@ a:hover{text-decoration:underline}
         <div style="margin-top:8px;font-size:11px;color:var(--text-light)">COPYRIGHT 2026 Scout System</div>
       </div>
       <div class="info-section" style="margin-top:12px">
-        <h3>最新：v5.2</h3>
+        <h3>最新：v5.3</h3>
+        <p style="font-size:12px">v5.3：📱 個人 QR 匯出（領袖揀一位成員 → 產生二維碼或連結 → 成員用手機相機一掃即成為自己的 ROVERBOOK，毋須密碼；卡內零個資、只帶領袖已核實的進度、只加不減）。零依賴 QR 編碼器（assets/roverbook-qr.js）＋ RBC1 二進位匯入卡</p>
         <p style="font-size:12px">v5.2：第五版綱要核對（L2 簽發人、L4 時限、L3 段章獲頒狀態、PT/75 延長表格連結）；學制（新制／舊制／舊制過渡新制）；後端強制 allowed_badges；撤銷「可勾選」全面生效</p>
         <p style="font-size:12px">v5.1 更新：YMIS PDF 批量開戶、🐛💬 回報 · 意見按鈕（Scout Admin 統一回報）、非官方聲明、手機頂部按鈕排列整齊化、全 APP 版號統一 v5.1</p>
       </div>
@@ -536,7 +539,7 @@ a:hover{text-decoration:underline}
   <div class="app-header-common" style="padding:14px">
     <div class="logo-row" style="margin-bottom:0">
       <div class="logo-svg-wrap"><img src="assets/rover-badge-256.png" alt="樂行童軍徽章" onerror="this.style.display='none'"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:32px;height:32px"><path d="M30 85 L50 38 L70 85" fill="none" stroke="#FFD700" stroke-width="3" stroke-linecap="round"/><rect x="47" y="42" width="6" height="34" fill="#8B0000" rx="2"/><ellipse cx="50" cy="42" rx="9" ry="2.5" fill="none" stroke="#FFD700" stroke-width="1.2"/><path d="M45 46 Q42 36 48 28 Q50 24 50 20 Q50 16 52 13 Q55 18 54 24 Q53 28 55 32 Q58 38 55 46" fill="#FFA000"/></svg></div>
-      <div><h1 style="font-size:18px">樂行童軍進度追蹤 v5.2</h1></div>
+      <div><h1 style="font-size:18px">樂行童軍進度追蹤 v5.3</h1></div>
     </div>
   </div>
   <div class="container">
@@ -896,7 +899,7 @@ a:hover{text-decoration:underline}
 <div id="toast" class="toast"></div>
 
 <footer style="text-align:center;padding:20px 16px;margin-top:20px;border-top:2px solid var(--border);font-size:12px;color:var(--text-light);background:var(--card)">
-  <div>COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 v5.2</div>
+  <div>COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 v5.3</div>
   <div style="margin-top:4px;font-size:11px">基於 2026年第5版《樂行童軍訓練綱要》 | 支援離線暫存 • 批量寫入 • 批量開戶 • 全前端控制 • 保護兒童 Safe from Harm</div>
   <div style="margin-top:4px;font-size:10px">⚠️ 非官方聲明：本系統為獨立開發的非官方工具，並非香港童軍總會官方產品，與總會並無隸屬或贊助關係。</div>
 </footer>
@@ -906,132 +909,24 @@ a:hover{text-decoration:underline}
 <script src="assets/rover-scope.js"></script>
 <script src="assets/gs-release.js"></script>
 <script src="assets/roverbook-bridge.js"></script>
+<script src="assets/roverbook-qr.js"></script>
 <script src="assets/forms.js"></script>
 <script>
 /* ================== i18n (English mode) ================== */
 // ?lang=en／?lang=zh 可鎖定分享連結嘅語言（同 vsbadge 一致）：讀到就寫入 localStorage，即時生效，毋須重新載入
 const UI_LANG=(function(){ try{ const p=new URLSearchParams(window.location.search).get('lang'); if(p==='en'||p==='zh'){ try{ localStorage.setItem('roverbadge_lang',p); }catch(e2){} return p; } return localStorage.getItem('roverbadge_lang')||'zh'; }catch(e){ return 'zh'; } })();
 const LANG_DICT={
-  "撤回": "Withdraw",
-  "撤回（刪除）這些頒發紀錄，需要確認": "Withdraw (delete) these awards — requires confirmation",
-  "更正": "Correct",
-  "更正已頒發的日期（會覆寫原日期，需要確認）": "Correct the award date (overwrites the original date; requires confirmation)",
-  "確定要一次過確認**全部**待批項目？（會寫入全團所有成員的進度）": "Confirm ALL pending items at once? (this writes progress for every member in the troop)",
-  "確定要刪除這些頒發紀錄？刪除後成員的 ROVERBOOK 下次取回時會消失。": "Delete these award records? They will disappear from the member’s ROVERBOOK the next time it pulls.",
-  "確定要更正已頒發的日期？原日期會被覆寫（會寫入備註）。": "Correct the awarded date? The original date is overwritten (and noted in the remarks column).",
-  "領袖已撤回（貼回 ROVERBOOK 時會移除）": "Withdrawn by the leader (removed when pasted back into ROVERBOOK)",
-  "BOOK 信任度": "BOOK trust",
-  "BOOK 顯示領袖已簽": "BOOK says a leader signed",
-  "BOOK 顯示領袖已簽（仍待你確認）": "BOOK says a leader signed (still needs your confirmation)",
-  "只確認 BOOK 顯示已簽的": "🔏 Confirm only BOOK items marked leader-signed",
-  "待批清單內沒有「BOOK 顯示領袖已簽」的項目": "No leader-signed items in the pending list",
-  "成員自己標記": "Marked by the member",
-  "成員自己標記（未經領袖）": "Marked by the member (no leader yet)",
-  "貼回 ROVERBOOK 時：這裡的「進度／核簽」＝領袖已核實，BOOK 會無條件採用；「待領袖確認」的項目 BOOK 只會顯示為申請中，不會當成完成。": "When pasted back into ROVERBOOK: “progress / sign-offs” here are leader-verified and the BOOK adopts them as-is; items “awaiting leader confirmation” appear only as pending requests and never as completed.",
-  "雙向信任規則：BADGE → BOOK 會無條件相信你在這裡核實過的紀錄（BOOK 只會採用已核實的項目，未核實的不會變成完成）；BOOK → BADGE 則一律不信——即使成員手機上寫住「已由領袖簽核」，都只會變成待你確認，因為成員部機可以改任何欄位。": "Two-way trust rule: BADGE → BOOK trusts anything you verified here unconditionally (the BOOK only adopts verified items; unverified ones never become completed); BOOK → BADGE trusts nothing — even if the member’s phone claims “signed by a leader”, it only becomes something for you to confirm, because the member controls every field on that device.",
-  "BOOK 日期": "Book date",
-  "以上項目仍未計入進度。請喺下面「待批」逐項或一次過按 ✅ 確認；BOOK 交上嚟嘅資料唔會自動變成已完成。": "These items are NOT counted yet. Confirm them one by one (or all at once) with ✅ under “Pending”; data handed in from the BOOK never becomes completed by itself.",
-  "全部確認": "Confirm all",
-  "同一日": "Same date",
-  "呢啲係成員喺 ROVERBOOK 自己標記嘅進度，全部未計入正式進度。確認後才會寫入「進度追蹤」並產生核簽；拒絕就唔會入帳。": "These are progress marks the member made on their own device in ROVERBOOK and none of them count yet. Only after you confirm do they get written into “進度追蹤” with a sign-off; rejected items are never recorded.",
-  "如果係團集會／考驗營「有參加就一次過簽」，請用「🏠 全團總覽 → 🚀 考驗營批量完成」或「📋 待批 → 批量批准」，唔需要經 ROVERBOOK；ROVERBOOK 只係成員自己擁有、出外可讀的紀錄冊。": "For “everyone who attended gets signed off in one go” (meetings, challenge camps), use “🏠 Troop overview → 🚀 Camp bulk complete” or “📋 Pending → bulk approve”. You do not go through ROVERBOOK; the BOOK is simply the record book each member owns and can read on the go.",
-  "差異": "Difference",
-  "已存在，略過": "Already present, skipped",
-  "已放入待批": "Staged for confirmation",
-  "待批（等領袖確認）": "Pending (awaiting leader confirmation)",
-  "待領袖確認（未計入進度）": "Pending leader confirmation (not counted yet)",
-  "成員在 ROVERBOOK 用「出示二維碼」揀「訓練進度」，領袖掃完之後（或成員自己貼上）會得到一段 RB1… 或以 { 開頭的 JSON。貼在下面即可；系統只會讀 SCOUT ID、項目 ID、完成日期，而且只會放入「待批」，要你確認才計入進度。": "The member uses “show QR code → training progress” in ROVERBOOK; after scanning (or the member pasting it) you get an RB1… string or a JSON starting with {. Paste it below — only the SCOUT ID, item ID and completion date are read, and they are placed in “Pending” until you confirm them.",
-  "拒絕所選": "Reject selected",
-  "新項目": "New item",
-  "暫無待批項目": "Nothing pending",
-  "未接收（格式／學制不符）": "Not accepted (bad format / wrong scheme)",
-  "確認所選（寫入進度）": "Confirm selected (write to progress)",
-  "請先勾選要拒絕的項目": "Tick the items you want to reject",
-  "請先勾選要確認的項目": "Tick the items you want to confirm",
-  "較後日期（會更新）": "Later date (will update)",
-  "較舊、未回寫（既有紀錄較後，已保留）": "Older, not written back (existing record is later and was kept)",
-  "較舊（預設不改）": "Older (kept by default)",
-  "📥 接收（放入待批）": "📥 Receive (stage for confirmation)",
-  "🔄 重新整理全團一覽同待批": "🔄 Refresh troop overview and pending list",
-  "📖 ROVERBOOK 對接": "📖 ROVERBOOK bridge",
-  "ROVERBOOK 對接": "ROVERBOOK bridge",
-  "📥 1 · 接收進度（從 ROVERBOOK）": "📥 1 · Receive progress (from ROVERBOOK)",
-  "🏅 2 · 一次過頒發": "🏅 2 · Award in one go",
-  "📤 3 · 成員取回進度": "📤 3 · Member pulls progress",
-  "ROVERBOOK 是成員自己手機上的紀錄冊；這裡只收「進度」。姓名以外嘅個人資料（電話、電郵、地址、相片、簽名墨跡）永遠留在成員自己部機，系統會自動剝走並顯示剝走了幾多項。": "ROVERBOOK is the record book on each member's own phone; this page only receives progress. Personal particulars (phone, email, address, photo, signature ink) always stay on the member's device — the system strips them and reports how many were removed.",
-  "項目 ID": "Item ID",
-  "完成日期": "Completed on",
-  "未有任何進度紀錄": "No progress records yet",
-  "已接收": "Received",
-  "項進度": "progress items",
-  "已剝走個資欄位": "Personal-data fields stripped",
-  "未寫入（格式／學制不符）": "Not written (bad format or scheme mismatch)",
-  "步驟 1：把成員手機的進度交上嚟": "Step 1: bring a member's progress up from their phone",
-  "成員在 ROVERBOOK 用「出示二維碼」揀「訓練進度」，領袖掃完之後（或成員自己貼上）會得到一段 RB1… 或以 { 開頭的 JSON。貼在下面即可；系統只會讀 SCOUT ID、項目 ID、完成日期。": "In ROVERBOOK the member picks “Training progress” under “Show QR code”. After the leader scans it (or the member pastes it) you get an RB1… string or a JSON starting with {. Paste it below — only SCOUT ID, item ID and completion date are read.",
-  "✅ 接收並寫入進度": "✅ Receive and write progress",
-  "📂 或者揀一個 JSON 檔": "📂 Or choose a JSON file",
-  "🔄 重新整理全團一覽": "🔄 Refresh troop overview",
-  "全團已完成進度一覽": "Troop progress overview",
-  "位成員": "members",
-  "項": "items",
-  "暫未有任何進度": "No progress yet",
-  "成員交上嚟但未喺進度追蹤入帳": "Received from members but not yet in the progress sheet",
-  "步驟 2：一次過頒發（多個成員、多個獎章）": "Step 2: award in one go (many members, many badges)",
-  "一行一個：SCOUT ID, 獎章（L1／L2／L3／L4）, 頒發日期（YYYY-MM-DD）。一次過提交，成員下次喺 ROVERBOOK 取回時就會見到。": "One per line: SCOUT ID, badge (L1/L2/L3/L4), award date (YYYY-MM-DD). Submit once — members see it the next time they pull from ROVERBOOK.",
-  "🏅 一次過頒發": "🏅 Award all",
-  "已頒發": "Awarded",
-  "筆": "entries",
-  "略過（已頒發或格式不正確）": "Skipped (already awarded or bad format)",
-  "步驟 3：成員取回自己的進度（唯讀）": "Step 3: member pulls their own progress (read-only)",
-  "按一下即取回你自己的進度、頒發同核簽，可以貼返入 ROVERBOOK。只會回你本人嘅資料，唔會回其他人。": "One tap pulls your own progress, awards and sign-offs, ready to paste back into ROVERBOOK. Only your own data is returned.",
-  "📤 取回我的進度": "📤 Pull my progress",
-  "📋 複製 JSON（貼入 ROVERBOOK）": "📋 Copy JSON (paste into ROVERBOOK)",
-  "已複製，請貼入 ROVERBOOK 的「從 ROVERBADGE 匯入」": "Copied — paste it into ROVERBOOK's “Import from ROVERBADGE”",
-  "複製失敗，請手動選取文字": "Copy failed — please select the text manually",
-  "請先貼上 ROVERBOOK 的內容": "Paste the ROVERBOOK content first",
-  "RB1 二維碼要由 ROVERBOOK 自己解碼：請成員在 ROVERBOOK 按「匯出 ROVERBADGE 進度」再把 JSON 貼上（或儲存成檔案）": "An RB1 QR code must be decoded by ROVERBOOK itself: ask the member to press “Export ROVERBADGE progress” in ROVERBOOK and paste (or save) that JSON instead",
-  "內容不是有效 JSON": "The content is not valid JSON",
-  "檔案不是有效 JSON": "The file is not valid JSON",
-  "請每行填：SCOUT ID, 獎章, 日期（YYYY-MM-DD）": "Each line needs: SCOUT ID, badge, date (YYYY-MM-DD)",
-  "對接模組未載入（assets/roverbook-bridge.js）": "Bridge module not loaded (assets/roverbook-bridge.js)",
-  "🔴 此版本登入會逾時：本旅團 GS 是慢登入版本，請更新 Code.gs 至 v5.4.0": "🔴 This version will time out on login: this troop runs a slow-login GS — please update Code.gs to v5.4.0",
-  "此版本每次登入要做 120,000 次密碼雜湊（成功登入更要做兩次），超過後端 45 秒上限，部分帳號會一直顯示「連線逾時」。更新後新雜湊只需 10,000 次、每次登入只做一次，登入會回復 1–3 秒；舊帳號登入一次後會自動升級，不需要任何人重設密碼。": "This version runs 120,000 password-hash iterations on every login (twice on a successful one), which exceeds the backend 45-second limit, so some accounts keep showing \"connection timed out\". After updating, new hashes need only 10,000 iterations and each login runs the KDF once, so login returns to 1–3 seconds; older hashes upgrade themselves on the next successful login — nobody needs a password reset.",
   "樂行童軍進度追蹤系統": "Rover Scout Progress Tracker",
   "樂行童軍進度追蹤": "Rover Scout Progress Tracker",
-  "樂行童軍進度追蹤系統 v5.2 - 手機友善・批量開戶・全前端控制": "Rover Scout Progress Tracker v5.2 - Mobile friendly · Bulk onboarding · Full front-end control",
-  "樂行童軍進度追蹤 v5.2": "Rover Scout Progress Tracker v5.2",
-  "Rover Scout Progress Tracker v5.2 • 樂行童軍徽章 + 2026年第5版綱要": "Rover Scout Progress Tracker v5.2 • Rover Scout emblem + 2026 5th Edition Scheme",
+  "樂行童軍進度追蹤系統 v5.3 - 手機友善・批量開戶・個人 QR 匯出": "Rover Scout Progress Tracker v5.3 - Mobile friendly · Bulk onboarding · Full front-end control",
+  "樂行童軍進度追蹤 v5.3": "Rover Scout Progress Tracker v5.3",
+  "Rover Scout Progress Tracker v5.3 • 樂行童軍徽章 + 2026年第5版綱要": "Rover Scout Progress Tracker v5.3 • Rover Scout emblem + 2026 5th Edition Scheme",
   "基於 2026年第5版《樂行童軍訓練綱要》 | 支援離線暫存 • 批量寫入 • 批量開戶 • 全前端控制 • 保護兒童 Safe from Harm": "Based on the 5th Edition of the Rover Scout Training Scheme (2026) | Offline staging • Batch writing • Bulk onboarding • Full front-end control • Safe from Harm",
   "基於 2026年第5版《樂行童軍訓練綱要》• 支援離線暫存•批量寫入•成員申請確認•表格自動填寫": "Based on the 5th Edition of the Rover Scout Training Scheme (2026) • Offline staging • batch writing • member request confirmation • form auto-fill",
-  "COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 v5.2": "COPYRIGHT 2026 Scout System • Rover Scout Progress Tracker v5.2",
+  "COPYRIGHT 2026 Scout System • 樂行童軍進度追蹤系統 v5.3": "COPYRIGHT 2026 Scout System • Rover Scout Progress Tracker v5.3",
   "香港童軍總會": "Scout Association of Hong Kong",
   "🏠 進入系統": "🏠 Enter System",
-  "ℹ️ 系統介紹": "ℹ️ System Introduction",
   "📋 新旅團部署": "📋 New Group Deployment",
-  "支部進度追蹤系統｜系統架構": "Branch Progress Tracking System | System Architecture",
-  "圖片語言：繁體中文": "Image language: Traditional Chinese",
-  "。圖片適用童軍、深資、樂行及幼童軍支部；可點擊放大，亦可下載原圖。": ". This shared image is for Scout, Venture Scout, Rover Scout and Cub Scout sections. Click to enlarge or download the original.",
-  "資料流程：": "Data flow:",
-  "使用者 → 網站／伺服器轉接 → 本團 Apps Script → 本團 Google Sheet。Apps Script 連接 Google Sheet 時會按 Google 授權執行，所需權限可能較廣；請只授權可信任的程式及帳戶。": "User → website/server proxy → this Group’s Apps Script → this Group’s Google Sheet. Apps Script runs with Google-authorised permissions, which may be broad; grant access only to trusted code and accounts.",
-  "權限說明：": "Access:",
-  "網頁應用程式設定「任何人」是讓系統入口可接收請求，不代表 Google Sheet 已公開分享。請在 Google Sheet 的分享設定維持適當限制。": "Setting a web app entry to “Anyone” lets the system endpoint receive requests; it does not publicly share the Google Sheet. Keep the Sheet’s sharing permissions restricted.",
-  "帳號安全：": "Accounts:",
-  "帳號密碼登入會於每次登入核實帳號及密碼；使用者自行設定系統密碼。首次登入後須更改臨時密碼。API Key 是系統與後端的接入憑證，不是個人登入驗證。": "Account/password sign-in checks the account and password on every login. Users set their own system passwords and must change the temporary password at first sign-in. An API Key is for system-to-backend access, not personal sign-in.",
-  "重要安全界線：": "Important security boundary:",
-  "私人 Google Sheet 不代表所有資料 API 自動安全。各支部仍須核實自己的讀取入口是否具備登入及權限驗證；本次系統介紹更新不修補或認證任何 API 安全狀態。此圖是架構說明，不是獨立安全認證，也不代表所有資料讀取都已受登入保護。": "A private Google Sheet does not automatically secure every data API. Each section must verify whether its read endpoints enforce sign-in and permissions. This introduction update does not repair or certify API security. The diagram is an architecture overview, not a security certification, and does not claim every read is protected by sign-in.",
-  "系統架構圖（繁體中文） / System architecture diagram (Traditional Chinese) · ": "System architecture diagram (Traditional Chinese) · ",
-  "下載圖片 / Download image": "Download image",
-  "📋 前往新旅團部署教學 / Go to new Group deployment guide": "📋 Go to new Group deployment guide",
-  "ℹ️ 先了解系統架構": "ℹ️ Understand the system architecture first",
-  "了解資料流程、Google Sheet 分享設定及安全界線。": "Learn about the data flow, Google Sheet sharing settings and security boundaries.",
-  "查看「系統介紹」 / View system introduction": "View system introduction",
-  "📋 前往新旅團部署教學 / Go to new Group deployment guide": "📋 Go to new Group deployment guide",
-  "✅ 已核對：本次更新毋須重跑初始化": "✅ Checked: this update does not require initialization to be rerun",
-  "正式部署 URL 請從 Google 部署視窗取得；請自行在原有 ADMIN FORM 填寫旅團編號、名稱、URL 和 API Key。": "Get the deployment URL from the Google deployment dialog. Enter the Group ID, name, URL and API Key yourself in the existing ADMIN FORM.",
-  "在原有 ADMIN FORM 自行填寫旅團編號、名稱、從 Google 部署視窗複製的 URL，以及 API Key。不要把 URL 貼到 Apps Script 或 Sheet 的新設定。": "Enter the Group ID, name, URL copied from the Google deployment dialog, and API Key in the existing ADMIN FORM. Do not paste the URL into a new Apps Script or Sheet setting.",
-  "自行在原有 ADMIN FORM 填寫旅團編號、名稱、Google 部署視窗提供的 URL 及 API Key。": "Enter the Group ID, name, URL from the Google deployment dialog, and API Key yourself in the existing ADMIN FORM.",
-  "登記完成後首頁會出現旅團卡片，選團即可登入；成員可 bookmark 本系統連結使用。": "Once registered, the Group card appears on the home page — select it to sign in. Members can bookmark this system link.",
-
   "📖 使用教學": "📖 User Guide",
   "📦 版本更新紀錄（未來用於新版本後端GS及功能改動）": "📦 Version History (for future backend GS versions and feature changes)",
   "最新：v5.0 FINAL": "Latest: v5.0 FINAL",
@@ -1078,20 +973,18 @@ const LANG_DICT={
   "軌道A 無主系統/有但想獨立用：": "Track A - no main system, or has one but wants standalone:",
   "軌道B 有主系統並想接上：": "Track B - has a main system and wants to connect:",
   "🗺️ 部署地圖 - 兩條路": "🗺️ Deployment map - two tracks",
+  "共通：下載 Code.gs → 建 Sheet → 執行 initializeSheets（只顯示 API Key）→ 部署；正式 URL 從 Google 部署視窗取得，再在既有 ADMIN FORM 填旅團編號、名稱、URL、API Key": "Common: download Code.gs → create a Sheet → run initializeSheets (API Key only) → deploy; get the official URL from the Google deployment dialog, then enter Group ID, name, URL and API Key in the existing ADMIN FORM",
   "共通：建立 Google Sheet 並部署": "Common: create a Google Sheet and deploy",
   "共通：下載後端程式碼 (單一檔案版)": "Common: download the backend code (single-file version)",
   "⬇️ 下載 Code.gs (最新)": "⬇️ Download Code.gs (latest)",
   "擴充功能→Apps Script，貼上 Code.gs": "Extensions → Apps Script, paste Code.gs",
   "儲存→執行 initializeSheets，授權，複製 API Key": "Save → run initializeSheets, authorise, copy the API Key",
-  "儲存→喺試算表選單「🔗 旅系統 → 🔧 初始化／更新」按一次，授權並取得 API Key（初始化不要求旅團編號）": "Save → press \"🔗 Troop System → 🔧 Initialize / Update\" once in the Sheet menu, authorise and get the API Key (no Group ID is required first)",
-  "部署為網頁應用程式（執行身分：我；存取權：任何人）；從 Google 部署視窗複製正式 URL": "Deploy as a web app (execute as me; access: anyone); copy the official URL from the Google deployment dialog",
-  "共通：下載 Code.gs → 建 Sheet → 執行 initializeSheets → 部署；只從 initializeSheets／旅系統選單取得 API Key。URL 請由 Google 部署視窗取得，再填入原有 ADMIN FORM。": "Common: download Code.gs → create a Sheet → run initializeSheets → deploy. Get only the API Key from initializeSheets or the Rover System menu. Get the URL from the Google deployment dialog and enter it in the existing ADMIN FORM.",
-  "部署為網頁應用程式 (執行身分我，存取權任何人)，複製 URL (/exec)": "Deploy as a web app (execute as me, access: anyone), copy the URL (/exec)",
-  "在原有 ADMIN FORM 自行填寫旅團編號、名稱、URL、API Key。不要把 URL 貼到 Apps Script 或 Sheet 的新設定。": "Enter the Group ID, name, URL and API Key yourself in the existing ADMIN FORM. Do not paste the URL into a new Apps Script or Sheet setting.",
+  "部署為網頁應用程式 (執行身分我，存取權任何人)，從 Google 部署視窗複製正式 URL": "Deploy as a web app (execute as me, access: anyone), copy the official URL from the Google deployment dialog",
+  "在原有 ADMIN FORM 填寫旅團編號、名稱、從 Google 部署視窗取得的 URL 和 API Key": "Enter the Group ID, name, URL from the Google deployment dialog, and API Key in the existing ADMIN FORM",
   "獨立用：交 roverbadge 管理員": "Standalone: submit to the roverbadge admin",
   "接入主系統：同時交主系統管理員（填 backend+apikey）": "Connect to main system: also submit to the main system admin (fill in backend + apikey)",
   "兩條路可同時用，領袖從主系統入，成員 bookmark 獨立連結": "Both tracks can be used at the same time: leaders enter via the main system, members bookmark the standalone link",
-  "將 URL+Key 交 roverbadge 管理員 → 管理員在 Vercel 環境變數登記 → 完成 → 用法：roverbadge.vercel.app 選旅團登入": "Give URL + Key to the roverbadge admin → the admin registers them in Vercel environment variables → done → how to use: go to roverbadge.vercel.app, select the Group and log in",
+  "只從 initializeSheets／旅系統選單取得 API Key；URL 從 Google 部署視窗取得，再填入原有 ADMIN FORM": "Get only the API Key from initializeSheets or the Rover System menu; get the URL from the Google deployment dialog and enter it in the existing ADMIN FORM",
   "告知主系統管理員旅團編號：旅團設定→元件設定 roverbadge 卡片只需設 u 參數（backend/apikey 不用；就算 URL 帶入亦會被忽略）。之後成員點 Dashboard 卡片自動帶入 ?u=0082&role=&from=portal&src=主系統網址&embed=1（ymis 可省略），經伺服器驗證來源及角色後免密碼進入": "Tell the main-system admin the Group number: Group settings → component settings → the roverbadge card only needs the u parameter (no backend/apikey; any such URL parameters are ignored). Members then click the Dashboard card, which auto-fills ?u=0082&role=&from=portal&src=main-platform-origin&embed=1 (ymis is optional); the server verifies the origin and role, then signs them in with no password needed",
   "有主系統不等於一定要接，可自由選擇獨立用。若旅團重私隱，成員預設只看自己；若想互相鼓勵，團長可在用戶管理→系統設定開啟「允許成員互相查看進度」": "Having a main system does not mean you must connect. For privacy-focused Groups, members see only themselves by default; for mutual encouragement, the Group Scout Leader can enable \"Allow members to view each other's progress\" in User Management → System Settings",
   "💡 提示：若您的旅團不在列表，請到「新旅團部署」查看10分鐘自助部署教學。": "💡 Tip: if your Group is not in the list, see the 10-minute self-deployment guide in \"New Group Deployment\".",
@@ -1696,13 +1589,6 @@ const LANG_DICT={
   "無法載入 PDF 解析元件（需要網絡），請改用「貼上文字」或先用瀏覽器另存為無密碼 PDF": "Cannot load the PDF parser (network required). Use \"paste text\" instead, or re-save the PDF without a password first",
   "讀不到成員資料，請確認報表欄位次序為：": "No member data found. Check the column order: ",
   "assets/ymis-parse.js 未載入": "assets/ymis-parse.js not loaded",
-  "📤 匯出 YMIS 獎章（試行）": "📤 Export YMIS Awards (Pilot)",
-  "匯出 YMIS 獎章（試行）": "Export YMIS Awards (Pilot)",
-  "尚未有真實資料喺 YMIS 實測；匯出不等於匯入成功；冇跨次重複上傳偵測。": "Not yet tested with real data on YMIS; export does not guarantee import success; no cross-upload duplicate detection.",
-  "下載後請到 YMIS「成員註冊 → 資料檔案上傳 → 新增支部獎章紀錄」上傳。": "After downloading, upload in YMIS under Member Registration → Data File Upload → Add Section Badge Record.",
-  "我已核對成員編號、獎章及獲獎日期（本工具不讀取考核進度，亦不記錄或偵測跨次重複上傳）": "I have verified the Scout IDs, badge, and award date (this tool does not read assessment progress or record/detect cross-upload duplicates).",
-  "請先選擇獎章、填寫有效獲獎日期、勾選至少一位 10 位數字 Scout ID 成員，並勾選確認。": "Please select a badge, enter a valid award date, select at least one member with a 10-digit Scout ID, and tick the confirmation box.",
-  "已匯出 YMIS 獎章檔案！注意：此為試行版，尚未有真實資料喺 YMIS 實測，匯出不等於匯入成功。": "YMIS badge file exported! Note: this is a pilot feature not yet tested with real data on YMIS; export does not guarantee import success.",
   "✅ 已讀出 ": "✅ Parsed ",
   "位成員（共 ": " members (",
   " 頁），略過 ": " pages), skipped ",
@@ -1886,14 +1772,14 @@ const LANG_DICT={
   "未能確認入口來源": "Could not confirm the entry source",
   "不支援的請求方式": "Unsupported request method",
   "未能連接驗證服務，請重試或聯絡管理員": "Could not reach the verification service. Please retry or contact the admin",
-  "最新：v5.2": "Latest: v5.2",
+  "最新：v5.3": "Latest: v5.3",
   "v5.2：第五版綱要核對（L2 簽發人、L4 時限、L3 段章獲頒狀態、PT/75 延長表格連結）；學制（新制／舊制／舊制過渡新制）；後端強制 allowed_badges；撤銷「可勾選」全面生效": "v5.2: 5th-edition scheme check (L2 signatory, L4 timeframe, L3 award status, PT/75 extension form link); per-member scheme (new / old / transition); server-enforced allowed_badges; revoking \"can tick\" now applies to all ticking, approvals and edits",
   "v5.1 更新：YMIS PDF 批量開戶、🐛💬 回報 · 意見按鈕（Scout Admin 統一回報）、非官方聲明、手機頂部按鈕排列整齊化、全 APP 版號統一 v5.1": "v5.1 update: YMIS PDF bulk onboarding, 🐛💬 Report · Feedback buttons (Scout Admin unified reporting), unofficial notice, tidier mobile top buttons, app-wide version aligned to v5.1",
   "🐛💬 回報 · 意見": "🐛💬 Report · Feedback",
   "問題回報 / 意見回饋（經 Scout Admin 統一回收，可匿名）": "Report an issue / send feedback (via Scout Admin, anonymous welcome)",
   "⚠️ 非官方聲明：本系統為獨立開發的非官方工具，並非香港童軍總會官方產品，與總會並無隸屬或贊助關係。": "⚠️ Unofficial notice: this system is an independently developed unofficial tool. It is NOT an official product of the Scout Association of Hong Kong and has no affiliation with or sponsorship from the Association.",
   "私隱：普通成員預設只看自己，能否看其他成員由團長開放。": "Privacy: members only see themselves by default; the Group Scout Leader decides whether they can view others.",
-  "本節點係進度系統（下游），唔設支部表。上下游接駁經 Google Sheet 選單「🔗 旅系統」操作（sig 係 GAS→GAS 直連，唔經本 proxy）：➕ 登記下游（URL + SHEET KEY）→ 📡 測試下游連線 → 📤 匯出 JSON（含 hash，Drive 私人檔）→ 📥 匯入 JSON → 🚪 閂下游直接入口 → 👤 為下游開戶。新節點接入：選單「🔧 初始化／更新」／「🔑 顯示 API KEY（交 ADMIN）」只提供 API Key；URL 由 Google 部署視窗取得，再填原有 ADMIN FORM。": "New node onboarding: the menu items \"🔧 Initialize / Update\" and \"🔑 Show API KEY (for the ADMIN)\" provide only the API Key; get the URL from the Google deployment dialog and enter it in the existing ADMIN FORM.",
+  "本節點係進度系統（下游），唔設支部表。上下游接駁經 Google Sheet 選單「🔗 旅系統」操作（sig 係 GAS→GAS 直連，唔經本 proxy）：➕ 登記下游（URL + SHEET KEY）→ 📡 測試下游連線 → 📤 匯出 JSON（含 hash，Drive 私人檔）→ 📥 匯入 JSON → 🚪 閂下游直接入口 → 👤 為下游開戶。新節點接入：選單「🔑 顯示 BACKEND／APIKEY（交 ADMIN）」→ 收件匣 → ADMIN 登記 Vercel env。": "This node is a Progress System (downstream); it has no Branch sheet. Upstream/downstream linking is done via the Google Sheet menu \"🔗 Troop System\" (sig is a direct GAS→GAS connection, not via this proxy): ➕ Register downstream (URL + SHEET KEY) → 📡 Test downstream connection → 📤 Export JSON (with hash, private Drive file) → 📥 Import JSON → 🚪 Close downstream direct entry → 👤 Create accounts for downstream. New node onboarding: menu \"🔑 Show BACKEND/APIKEY (for the ADMIN)\" → inbox → ADMIN registers in Vercel env.",
   "⚠️ 直接入口開關（ALLOW_LOCAL_LOGIN）只由上游（旅／支部系統）選單／sig 遠端操作，或在本節點 GAS Script Properties 手動設定；本 APP 屬下游系統，介面內不設此掣。誤閂而鎖死時：由上游選單「🚪 下游直接入口」重開。": "⚠️ The direct-entry switch (ALLOW_LOCAL_LOGIN) is operated only by the upstream (Troop/Branch system) menu via sig, or set manually in this node's GAS Script Properties. This app is a downstream system and does not offer this switch in its UI. If it is closed by mistake and locks everyone out: re-open it from the upstream menu \"🚪 Downstream direct entry\".",
   "問題回報 / 意見回饋（經 Scout Admin 統一回收；可匿名，留聯絡方式可收通知）": "Report an issue / send feedback (via Scout Admin; anonymous submissions are welcome, add contact details for a reply)",
   "🐛💬 回報問題／意見": "🐛💬 Report a problem / feedback",
@@ -1957,7 +1843,7 @@ const LANG_DICT={
   "選單「🔧 初始化／更新」跑完會自動建立預設管理員。登記完成後首頁揀該旅團卡片 → 用「👤 成員」分頁登入（YMIS 登入，唔好用「👨‍💼 領袖」＝Email 分頁）：": "The menu item \"🔧 Initialize / Update\" automatically creates a default admin.",
   "首次登入會強制改密碼（最少 4 位）。之後喺「用戶管理」開返各領袖自己嘅帳號並設角色／權限，喺「審批中心」批成員申請。": "The first sign-in forces a password change (min 4 characters). Then create each leader's own account with roles/permissions in \"User Management\", and approve member applications in the \"Approval Centre\".",
   "若旅團重私隱，成員預設只看自己；若想互相鼓勵，團長可在用戶管理→系統設定開啟「允許成員互相查看進度」": "For privacy-focused Groups, members see only themselves by default; for mutual encouragement, the Group Scout Leader can enable \"Allow members to view each other's progress\" in User Management → System Settings",
-  "將旅團編號、名稱、URL、API Key 交 roverbadge 管理員登記": "Send the Group ID, name, URL and API Key to the roverbadge admin for registration",
+  "在原有 ADMIN FORM 填寫旅團編號、名稱、Google 部署視窗提供的 URL 及 API Key": "Enter the Group ID, name, URL from the Google deployment dialog, and API Key in the existing ADMIN FORM",
   "登記完成後首頁會出現旅團卡片，選團即可登入": "Once registered, the Group card appears on the home page — pick the Group and sign in",
   "成員可直接 bookmark 本系統連結使用": "Members can bookmark the link to this system and use it directly",
   "🔒 請設定新密碼": "🔒 Set a New Password",
@@ -2011,6 +1897,145 @@ const LANG_DICT={
   "初始化／更新：喺旅團試算表選單「🔗 旅系統 → 🔧 初始化／更新」按一次（首次需授權）": "Initialize / update: in the Group Sheet menu press \"🔗 Troop System → 🔧 Initialize / Update\" once (authorise on first run)",
   "回到本頁按「重新檢查」，出現綠色「已核對」即完成": "Come back here and press \"Re-check\"; the green \"Checked\" badge means done",
   "請先選擇旅團並登入": "Please select a troop and log in first",
+  "ℹ️ 系統介紹": "ℹ️ System Introduction",
+  "支部進度追蹤系統｜系統架構": "Branch Progress Tracking System | System Architecture",
+  "圖片語言：繁體中文": "Image language: Traditional Chinese",
+  "。圖片適用童軍、深資、樂行及幼童軍支部；可點擊放大，亦可下載原圖。": ". This shared image is for Scout, Venture Scout, Rover Scout and Cub Scout sections. Click to enlarge or download the original.",
+  "資料流程：": "Data flow:",
+  "使用者 → 網站／伺服器轉接 → 本團 Apps Script → 本團 Google Sheet。Apps Script 連接 Google Sheet 時會按 Google 授權執行，所需權限可能較廣；請只授權可信任的程式及帳戶。": "User → website/server proxy → this Group’s Apps Script → this Group’s Google Sheet. Apps Script runs with Google-authorised permissions, which may be broad; grant access only to trusted code and accounts.",
+  "權限說明：": "Access:",
+  "網頁應用程式設定「任何人」是讓系統入口可接收請求，不代表 Google Sheet 已公開分享。請在 Google Sheet 的分享設定維持適當限制。": "Setting a web app entry to “Anyone” lets the system endpoint receive requests; it does not publicly share the Google Sheet. Keep the Sheet’s sharing permissions restricted.",
+  "帳號安全：": "Accounts:",
+  "帳號密碼登入會於每次登入核實帳號及密碼；使用者自行設定系統密碼。首次登入後須更改臨時密碼。API Key 是系統與後端的接入憑證，不是個人登入驗證。": "Account/password sign-in checks the account and password on every login. Users set their own system passwords and must change the temporary password at first sign-in. An API Key is for system-to-backend access, not personal sign-in.",
+  "重要安全界線：": "Important security boundary:",
+  "私人 Google Sheet 不代表所有資料 API 自動安全。各支部仍須核實自己的讀取入口是否具備登入及權限驗證；本次系統介紹更新不修補或認證任何 API 安全狀態。此圖是架構說明，不是獨立安全認證，也不代表所有資料讀取都已受登入保護。": "A private Google Sheet does not automatically secure every data API. Each section must verify whether its read endpoints enforce sign-in and permissions. This introduction update does not repair or certify API security. The diagram is an architecture overview, not a security certification, and does not claim every read is protected by sign-in.",
+  "系統架構圖（繁體中文） / System architecture diagram (Traditional Chinese) ·": "System architecture diagram (Traditional Chinese) ·",
+  "下載圖片 / Download image": "Download image",
+  "ℹ️ 先了解系統架構": "ℹ️ Understand the system architecture first",
+  "了解資料流程、Google Sheet 分享設定及安全界線。": "Learn about the data flow, Google Sheet sharing settings and security boundaries.",
+  "查看「系統介紹」 / View system introduction": "View system introduction",
+  "✅ 已核對：本次更新毋須重跑初始化": "✅ Checked: this update does not require initialization to be rerun",
+  "儲存→喺試算表選單「🔗 旅系統 → 🔧 初始化／更新」按一次，授權並取得 API Key（初始化不要求旅團編號）": "Save → press \"🔗 Troop System → 🔧 Initialize / Update\" once in the Sheet menu, authorise and get the API Key (no Group ID is required first)",
+  "部署為網頁應用程式（執行身分：我；存取權：任何人）；從 Google 部署視窗複製正式 URL": "Deploy as a web app (execute as me; access: anyone); copy the official URL from the Google deployment dialog",
+  "共通：下載 Code.gs → 建 Sheet → 執行 initializeSheets → 部署；只從 initializeSheets／旅系統選單取得 API Key。URL 請由 Google 部署視窗取得，再填入原有 ADMIN FORM。": "Common: download Code.gs → create a Sheet → run initializeSheets → deploy. Get only the API Key from initializeSheets or the Rover System menu. Get the URL from the Google deployment dialog and enter it in the existing ADMIN FORM.",
+  "在原有 ADMIN FORM 自行填寫旅團編號、名稱、URL、API Key。不要把 URL 貼到 Apps Script 或 Sheet 的新設定。": "Enter the Group ID, name, URL and API Key yourself in the existing ADMIN FORM. Do not paste the URL into a new Apps Script or Sheet setting.",
+  "自行在原有 ADMIN FORM 填寫旅團編號、名稱、Google 部署視窗提供的 URL 及 API Key。": "Enter the Group ID, name, URL from the Google deployment dialog, and API Key yourself in the existing ADMIN FORM.",
+  "正式 URL 從 Google 部署視窗取得；選單「🔧 初始化／更新」與「🔑 顯示 API KEY（交 ADMIN）」只顯示 API Key。資料請填入原有 ADMIN FORM。": "Get the official URL from the Google deployment dialog; the menu items \"🔧 Initialize / Update\" and \"🔑 Show API KEY (for the ADMIN)\" only show the API Key. Enter the details in the existing ADMIN FORM.",
+  "每次更新後請按一次選單「🔗 旅系統 → 🔧 初始化／更新」（等同 initializeSheets()）。</b>佢只會補建缺少的工作表（例如「活動履歷」及「待批履歷」）與欄位標題，不會更改或清除現有資料，亦不會更換 API Key。": "After every update press the menu \"🔗 Troop System → 🔧 Initialize / Update\" once (the same as initializeSheets()).</b>It only adds missing sheets (for example \"Activity Log\" and \"Pending Activity Log\") and column headers; it never changes or clears existing data and never changes the API Key.",
+  "旅團後端未升級 v8.2：請通知管理員更新 Code.gs 並按選單「🔗 旅系統 → 🔧 初始化／更新」一次": "Group backend not upgraded to v8.2: ask the admin to update Code.gs and press the menu \"🔗 Troop System → 🔧 Initialize / Update\" once",
+  "新節點接入：選單「🔧 初始化／更新」／「🔑 顯示 API KEY（交 ADMIN）」只提供 API Key；URL 由 Google 部署視窗取得，再填原有 ADMIN FORM。": "New node onboarding: the menu items \"🔧 Initialize / Update\" and \"🔑 Show API KEY (for the ADMIN)\" provide only the API Key; get the URL from the Google deployment dialog and enter it in the existing ADMIN FORM.",
+  "🔴 此版本登入會逾時：本旅團 GS 是慢登入版本，請更新 Code.gs 至 v5.4.0": "🔴 This version will time out on login: this troop's GS is a slow-login version — please update Code.gs to v5.4.0",
+  "此版本每次登入要做 120,000 次密碼雜湊（成功登入更要做兩次），超過後端 45 秒上限，部分帳號會一直顯示「連線逾時」。更新後新雜湊只需 10,000 次、每次登入只做一次，登入會回復 1–3 秒；舊帳號登入一次後會自動升級，不需要任何人重設密碼。": "This version runs 120,000 password-hash iterations on every login (twice on a successful login), which exceeds the backend's 45-second limit, so some accounts keep seeing \"connection timed out\". After updating, new hashes need only 10,000 iterations and each login runs the KDF once, so login returns to 1–3 seconds; older hashes upgrade themselves automatically on the next successful login — nobody needs to reset a password.",
+  "📖 ROVERBOOK 對接": "📖 ROVERBOOK bridge",
+  "ROVERBOOK 對接": "ROVERBOOK bridge",
+  "📥 1 · 接收進度（從 ROVERBOOK）": "📥 1 · Receive progress (from ROVERBOOK)",
+  "🏅 2 · 一次過頒發": "🏅 2 · Award in one go",
+  "📤 3 · 成員取回進度": "📤 3 · Member pulls progress",
+  "ROVERBOOK 是成員自己手機上的紀錄冊；這裡只收「進度」。姓名以外嘅個人資料（電話、電郵、地址、相片、簽名墨跡）永遠留在成員自己部機，系統會自動剝走並顯示剝走了幾多項。": "ROVERBOOK is the record book on each member's own phone; this page only receives progress. Personal particulars (phone, email, address, photo, signature ink) always stay on the member's device — the system strips them and reports how many were removed.",
+  "項目 ID": "Item ID",
+  "完成日期": "Completed on",
+  "未有任何進度紀錄": "No progress records yet",
+  "已接收": "Received",
+  "項進度": "progress items",
+  "已剝走個資欄位": "Personal-data fields stripped",
+  "未寫入（格式／學制不符）": "Not written (bad format or scheme mismatch)",
+  "步驟 1：把成員手機的進度交上嚟": "Step 1: bring a member's progress up from their phone",
+  "成員在 ROVERBOOK 用「出示二維碼」揀「訓練進度」，領袖掃完之後（或成員自己貼上）會得到一段 RB1… 或以 { 開頭的 JSON。貼在下面即可；系統只會讀 SCOUT ID、項目 ID、完成日期。": "In ROVERBOOK the member picks “Training progress” under “Show QR code”. After the leader scans it (or the member pastes it) you get an RB1… string or a JSON starting with {. Paste it below — only SCOUT ID, item ID and completion date are read.",
+  "✅ 接收並寫入進度": "✅ Receive and write progress",
+  "📂 或者揀一個 JSON 檔": "📂 Or choose a JSON file",
+  "🔄 重新整理全團一覽": "🔄 Refresh troop overview",
+  "全團已完成進度一覽": "Troop progress overview",
+  "位成員": "members",
+  "項": "items",
+  "暫未有任何進度": "No progress yet",
+  "成員交上嚟但未喺進度追蹤入帳": "Received from members but not yet in the progress sheet",
+  "步驟 2：一次過頒發（多個成員、多個獎章）": "Step 2: award in one go (many members, many badges)",
+  "一行一個：SCOUT ID, 獎章（L1／L2／L3／L4）, 頒發日期（YYYY-MM-DD）。一次過提交，成員下次喺 ROVERBOOK 取回時就會見到。": "One per line: SCOUT ID, badge (L1/L2/L3/L4), award date (YYYY-MM-DD). Submit once — members see it the next time they pull from ROVERBOOK.",
+  "🏅 一次過頒發": "🏅 Award all",
+  "已頒發": "Awarded",
+  "筆": "entries",
+  "略過（已頒發或格式不正確）": "Skipped (already awarded or bad format)",
+  "步驟 3：成員取回自己的進度（唯讀）": "Step 3: member pulls their own progress (read-only)",
+  "按一下即取回你自己的進度、頒發同核簽，可以貼返入 ROVERBOOK。只會回你本人嘅資料，唔會回其他人。": "One tap pulls your own progress, awards and sign-offs, ready to paste back into ROVERBOOK. Only your own data is returned.",
+  "📤 取回我的進度": "📤 Pull my progress",
+  "📋 複製 JSON（貼入 ROVERBOOK）": "📋 Copy JSON (paste into ROVERBOOK)",
+  "已複製，請貼入 ROVERBOOK 的「從 ROVERBADGE 匯入」": "Copied — paste it into ROVERBOOK's “Import from ROVERBADGE”",
+  "複製失敗，請手動選取文字": "Copy failed — please select the text manually",
+  "請先貼上 ROVERBOOK 的內容": "Paste the ROVERBOOK content first",
+  "RB1 二維碼要由 ROVERBOOK 自己解碼：請成員在 ROVERBOOK 按「匯出 ROVERBADGE 進度」再把 JSON 貼上（或儲存成檔案）": "An RB1 QR code must be decoded by ROVERBOOK itself: ask the member to press “Export ROVERBADGE progress” in ROVERBOOK and paste (or save) that JSON instead",
+  "內容不是有效 JSON": "The content is not valid JSON",
+  "檔案不是有效 JSON": "The file is not valid JSON",
+  "請每行填：SCOUT ID, 獎章, 日期（YYYY-MM-DD）": "Each line needs: SCOUT ID, badge, date (YYYY-MM-DD)",
+  "對接模組未載入（assets/roverbook-bridge.js）": "Bridge module not loaded (assets/roverbook-bridge.js)",
+  "BOOK 日期": "Book date",
+  "以上項目仍未計入進度。請喺下面「待批」逐項或一次過按 ✅ 確認；BOOK 交上嚟嘅資料唔會自動變成已完成。": "These items are NOT counted yet. Confirm them one by one (or all at once) with ✅ under “Pending”; data handed in from the BOOK never becomes completed by itself.",
+  "全部確認": "Confirm all",
+  "同一日": "Same date",
+  "呢啲係成員喺 ROVERBOOK 自己標記嘅進度，全部未計入正式進度。確認後才會寫入「進度追蹤」並產生核簽；拒絕就唔會入帳。": "These are progress marks the member made on their own device in ROVERBOOK and none of them count yet. Only after you confirm do they get written into “進度追蹤” with a sign-off; rejected items are never recorded.",
+  "如果係團集會／考驗營「有參加就一次過簽」，請用「🏠 全團總覽 → 🚀 考驗營批量完成」或「📋 待批 → 批量批准」，唔需要經 ROVERBOOK；ROVERBOOK 只係成員自己擁有、出外可讀的紀錄冊。": "For “everyone who attended gets signed off in one go” (meetings, challenge camps), use “🏠 Troop overview → 🚀 Camp bulk complete” or “📋 Pending → bulk approve”. You do not go through ROVERBOOK; the BOOK is simply the record book each member owns and can read on the go.",
+  "差異": "Difference",
+  "已存在，略過": "Already present, skipped",
+  "已放入待批": "Staged for confirmation",
+  "待批（等領袖確認）": "Pending (awaiting leader confirmation)",
+  "待領袖確認（未計入進度）": "Pending leader confirmation (not counted yet)",
+  "成員在 ROVERBOOK 用「出示二維碼」揀「訓練進度」，領袖掃完之後（或成員自己貼上）會得到一段 RB1… 或以 { 開頭的 JSON。貼在下面即可；系統只會讀 SCOUT ID、項目 ID、完成日期，而且只會放入「待批」，要你確認才計入進度。": "The member uses “show QR code → training progress” in ROVERBOOK; after scanning (or the member pasting it) you get an RB1… string or a JSON starting with {. Paste it below — only the SCOUT ID, item ID and completion date are read, and they are placed in “Pending” until you confirm them.",
+  "拒絕所選": "Reject selected",
+  "新項目": "New item",
+  "暫無待批項目": "Nothing pending",
+  "未接收（格式／學制不符）": "Not accepted (bad format / wrong scheme)",
+  "確認所選（寫入進度）": "Confirm selected (write to progress)",
+  "請先勾選要拒絕的項目": "Tick the items you want to reject",
+  "請先勾選要確認的項目": "Tick the items you want to confirm",
+  "較後日期（會更新）": "Later date (will update)",
+  "較舊、未回寫（既有紀錄較後，已保留）": "Older, not written back (existing record is later and was kept)",
+  "較舊（預設不改）": "Older (kept by default)",
+  "📥 接收（放入待批）": "📥 Receive (stage for confirmation)",
+  "🔄 重新整理全團一覽同待批": "🔄 Refresh troop overview and pending list",
+  "BOOK 信任度": "BOOK trust",
+  "BOOK 顯示領袖已簽": "BOOK says a leader signed",
+  "BOOK 顯示領袖已簽（仍待你確認）": "BOOK says a leader signed (still needs your confirmation)",
+  "只確認 BOOK 顯示已簽的": "🔏 Confirm only BOOK items marked leader-signed",
+  "待批清單內沒有「BOOK 顯示領袖已簽」的項目": "No leader-signed items in the pending list",
+  "成員自己標記": "Marked by the member",
+  "成員自己標記（未經領袖）": "Marked by the member (no leader yet)",
+  "貼回 ROVERBOOK 時：這裡的「進度／核簽」＝領袖已核實，BOOK 會無條件採用；「待領袖確認」的項目 BOOK 只會顯示為申請中，不會當成完成。": "When pasted back into ROVERBOOK: “progress / sign-offs” here are leader-verified and the BOOK adopts them as-is; items “awaiting leader confirmation” appear only as pending requests and never as completed.",
+  "雙向信任規則：BADGE → BOOK 會無條件相信你在這裡核實過的紀錄（BOOK 只會採用已核實的項目，未核實的不會變成完成）；BOOK → BADGE 則一律不信——即使成員手機上寫住「已由領袖簽核」，都只會變成待你確認，因為成員部機可以改任何欄位。": "Two-way trust rule: BADGE → BOOK trusts anything you verified here unconditionally (the BOOK only adopts verified items; unverified ones never become completed); BOOK → BADGE trusts nothing — even if the member’s phone claims “signed by a leader”, it only becomes something for you to confirm, because the member controls every field on that device.",
+  "撤回": "Withdraw",
+  "撤回（刪除）這些頒發紀錄，需要確認": "Withdraw (delete) these awards — requires confirmation",
+  "更正": "Correct",
+  "更正已頒發的日期（會覆寫原日期，需要確認）": "Correct the award date (overwrites the original date; requires confirmation)",
+  "確定要一次過確認**全部**待批項目？（會寫入全團所有成員的進度）": "Confirm ALL pending items at once? (this writes progress for every member in the troop)",
+  "確定要刪除這些頒發紀錄？刪除後成員的 ROVERBOOK 下次取回時會消失。": "Delete these award records? They will disappear from the member’s ROVERBOOK the next time it pulls.",
+  "確定要更正已頒發的日期？原日期會被覆寫（會寫入備註）。": "Correct the awarded date? The original date is overwritten (and noted in the remarks column).",
+  "領袖已撤回（貼回 ROVERBOOK 時會移除）": "Withdrawn by the leader (removed when pasted back into ROVERBOOK)",
+  "📱 4 · 匯出 QR（交給成員）": "📱 4 · Export QR (hand to member)",
+  "只限領袖使用：呢一步係領袖匯出成員紀錄，唔會回傳任何資料。": "Leaders only: this step exports a member's records and never sends anything back.",
+  "步驟 4：把成員的紀錄變成一個 QR": "Step 4: turn a member's records into one QR code",
+  "未載入成員名單：請先開一次「📊 我的進度」或「🏠 全團總覽」載入，然後返嚟呢一頁。": "Member list not loaded yet: open “📊 My Progress” or “🏠 Group Overview” once to load it, then come back to this page.",
+  "用相機掃一下，加入我的紀錄冊": "Scan with your camera to add this to my record book",
+  "掃描後按「加入我的紀錄冊」即可；只會加入已由領袖核實的進度。紀錄冊本身的姓名、相片、簽名仍然只留在成員手機。": "After scanning, tap “Add to my record book”. Only leader-verified progress is added; the book's name, photo and signatures still stay on the member's phone.",
+  "複製連結": "Copy link",
+  "列印": "Print",
+  "複製 JSON（舊版 ROVERBOOK 手動貼上）": "Copy JSON (paste manually in older ROVERBOOK)",
+  "QR 內容": "QR content",
+  "字元・二維碼版本": "characters · QR version",
+  "網址（成員亦可直接開啟）": "Link (members can also open it directly)",
+  "步驟 4：把成員的紀錄變成一個 QR（成員用相機掃）": "Step 4: turn a member's records into one QR (the member scans it with the camera)",
+  "揀一位成員 → 產生 QR → 列印或傳圖給他。成員用手機相機掃一下就會開 ROVERBOOK，按「加入我的紀錄冊」就成為他自己的紀錄冊：毋須密碼、毋須帳號。": "Pick a member → generate the QR → print it or send it. The member scans it with the phone camera, ROVERBOOK opens, and one tap makes it their own record book — no password, no account.",
+  "QR 內只有旅團編號、SCOUT ID、已完成項目同日期、獎章日期；冇姓名、電話、電郵、地址、生日、相片、簽名墨跡。連結唔會過期，等同紙本紀錄冊，只交予本人。": "The QR contains only the group id, SCOUT ID, completed items with dates, and badge dates — no name, phone, email, address, date of birth, photo or signature ink. The link does not expire; treat it like the paper record book and hand it only to the member.",
+  "ROVERBOOK 網址": "ROVERBOOK URL",
+  "產生 QR": "Generate QR",
+  "這位成員暫時未有進度：QR 會建立一本空白紀錄冊並綁定他的 SCOUT ID，之後再匯出一次就會補上進度。": "This member has no progress yet: the QR creates a blank record book bound to their SCOUT ID, and a later export fills the progress in.",
+  "未產生 QR。": "No QR generated yet.",
+  "請先揀一位成員": "Pick a member first",
+  "紀錄太多，一個 QR 放唔落：請改用「複製 JSON」貼入 ROVERBOOK": "Too many records for one QR — use “Copy JSON” and paste it into ROVERBOOK instead",
+  "已產生 QR：": "QR generated: ",
+  "已複製連結：用相機掃或直接打開都可以": "Link copied — scan it or open it directly",
+  "二維碼模組未載入（assets/roverbook-qr.js）": "QR module not loaded (assets/roverbook-qr.js)",
+  "進度": "Progress",
+  "v5.3：📱 個人 QR 匯出（領袖揀一位成員 → 產生二維碼或連結 → 成員用手機相機一掃即成為自己的 ROVERBOOK，毋須密碼；卡內零個資、只帶領袖已核實的進度、只加不減）。零依賴 QR 編碼器（assets/roverbook-qr.js）＋ RBC1 二進位匯入卡": "v5.3: 📱 personal QR export (a leader picks one member → a QR code or link is generated → the member scans it with the phone camera and it becomes their own ROVERBOOK, no password; the card holds zero personal data, only leader-verified progress, and only ever adds). Zero-dependency QR encoder (assets/roverbook-qr.js) + the RBC1 binary import card",
+  "在原有 ADMIN FORM 自行填寫旅團編號、名稱、從 Google 部署視窗複製的 URL，以及 API Key。不要把 URL 貼到 Apps Script 或 Sheet 的新設定。": "Fill in the Group ID, name, URL copied from the Google deployment dialog, and API Key in the existing ADMIN FORM. Do not paste the URL into new Apps Script or Sheet settings.",
+  "登記完成後首頁會出現旅團卡片，選團即可登入；成員可 bookmark 本系統連結使用。": "Once registered, a group card appears on the home page — pick the group to sign in. Members can bookmark this system’s link.",
 };
 const LANG_KEYS=Object.keys(LANG_DICT).sort(function(a,b){ return b.length-a.length; });
 const LANG_RE=new RegExp('('+LANG_KEYS.map(function(k){ return k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }).join('|')+')','g');
@@ -3424,7 +3449,7 @@ let _switching = false;
      ③ 頒發只由領袖一次過做（bookAward），成員只收到唯讀結果。
         團集會「有參加就一次過簽」照舊用「全團總覽 → 批量剔」（唔經 BOOK）。
    與 ROVERBOOK 的交換格式見 assets/roverbook-bridge.js（純邏輯，有測試）。 */
-let bookState = { roster: null, pending: null, busy: false, tab: 'sync', syncResult: null, confirmResult: null, awardResult: null, pull: null, error: '', selected: {} };
+let bookState = { roster: null, pending: null, busy: false, tab: 'sync', syncResult: null, confirmResult: null, awardResult: null, pull: null, error: '', selected: {}, card: null, cardScout: '' };
 
 function bookIsLeader() {
   return !!(currentUser && ['admin', 'group_leader', 'branch_leader', 'exec_committee', 'super_admin'].indexOf(currentUser.role) >= 0);
@@ -3443,11 +3468,13 @@ async function renderBookTab() {
   const tabs = [
     ['sync', '📥 1 · 接收進度（從 ROVERBOOK）'],
     ['award', '🏅 2 · 一次過頒發'],
-    ['pull', '📤 3 · 成員取回進度']
+    ['pull', '📤 3 · 成員取回進度'],
+    ['card', '📱 4 · 匯出 QR（交給成員）']
   ];
   let body = '';
   if (tab === 'sync') body = bookSyncHtml();
   else if (tab === 'award') body = bookAwardHtml();
+  else if (tab === 'card') body = bookCardHtml();
   else body = bookPullHtml();
   c.innerHTML = `<div class="info-section" style="border-left-color:var(--green);background:#F0FFF4">
     <h3>📖 ROVERBOOK 對接 <span style="font-size:12px;font-weight:400">（成員手機 → 領袖統管）</span></h3>
@@ -3458,7 +3485,7 @@ async function renderBookTab() {
   </div>${bookState.error ? `<div class="info-section" style="border-left-color:var(--red);background:#FFF5F5"><b>⚠️ ${bookEsc(bookState.error)}</b></div>` : ''}${body}`;
 }
 
-function bookSwitchTab(k) { bookState.tab = k; renderBookTab(); }
+function bookSwitchTab(k) { bookState.tab = k; bookState.cardError = ''; renderBookTab(); }
 
 function bookProgressRows(progress) {
   const ids = Object.keys(progress || {}).sort();
@@ -3620,6 +3647,156 @@ function bookPullHtml() {
       <textarea id="bookPullJson" rows="5" style="width:100%;margin-top:8px;font-family:monospace;font-size:11px" readonly>${bookEsc(JSON.stringify(p, null, 2))}</textarea>
     </div>` : ''}
   </div>`;
+}
+
+/* ---- 步驟 4：個人 QR 匯出（領袖 → 成員）---------------------------------
+   一個成員一張卡：旅團編號、SCOUT ID、已完成項目＋日期、獎章日期，
+   壓成 RBC1. 權杖再放進連結 https://<ROVERBOOK>/#rb=RBC1.…
+   手機相機掃到 URL 就會開 ROVERBOOK；ROVERBOOK 讀 hash（唔會送去伺服器）
+   之後問一句「加入我的紀錄冊」就完成 —— 成員毋須密碼、毋須先登入。
+   QR 內零個資（冇姓名／電話／電郵／地址／生日／相片／簽名），同紙本紀錄冊一樣只交本人。 */
+const BOOK_CARD_BASE_KEY = 'roverbadge_book_qr_base';
+
+function bookCardMembers() {
+  return (members || [])
+    .filter(m => m && (m.ymis || m.scoutId))
+    .map(m => ({ id: String(m.ymis || m.scoutId), name: String(m.name || ''), squad: String(m.squad || '') }))
+    .sort((a, b) => String(a.name || a.id).localeCompare(String(b.name || b.id), 'zh-Hant'));
+}
+
+function bookCardBaseUrl() {
+  try { const v = localStorage.getItem(BOOK_CARD_BASE_KEY); if (v) return v; } catch (e) {}
+  const bridge = window.RoverBookBridge;
+  return (bridge && bridge.CARD_DEFAULT_BASE) || 'https://roverbook.vercel.app';
+}
+
+function bookCardRememberBase(v) {
+  try { localStorage.setItem(BOOK_CARD_BASE_KEY, String(v || '')); } catch (e) {}
+}
+
+/* 由現有的 progressFlat／members 產生一張卡（唔會讀任何個人資料欄位） */
+function bookBuildCardFor(scoutId, baseUrl) {
+  const bridge = window.RoverBookBridge;
+  if (!bridge || !bridge.buildCard) throw new Error(tr('對接模組未載入（assets/roverbook-bridge.js）'));
+  if (!window.RoverQr) throw new Error(tr('二維碼模組未載入（assets/roverbook-qr.js）'));
+  const m = (members || []).find(x => x && String(x.ymis || x.scoutId) === String(scoutId)) || {};
+  const built = bridge.buildCard({
+    troopId: currentTroopId,
+    scoutId: scoutId,
+    progress: progressFlat[scoutId] || {},
+    awards: (m && m.badges) || {},
+    issuedAt: todayISO()
+  });
+  const token = bridge.encodeCard(built.card);
+  const url = bridge.cardUrl(baseUrl, token);
+  const pull = bridge.cardToPull(built.card);
+  const qr = window.RoverQr.encode(url, { ecl: 'M' });
+  return {
+    scoutId: String(scoutId), name: String(m.name || ''), token: token, url: url, pull: pull,
+    items: Object.keys(built.card.progress).length,
+    awards: Object.keys(built.card.awards).length,
+    dropped: built.dropped, base: baseUrl,
+    qr: qr, qrSvg: window.RoverQr.svg(url, { ecl: 'M', margin: 4, cell: 4, title: 'ROVERBOOK' })
+  };
+}
+
+function bookCardHtml() {
+  if (!bookIsLeader()) {
+    return `<div class="info-section"><b>${bookEsc(tr('只限領袖使用：呢一步係領袖匯出成員紀錄，唔會回傳任何資料。'))}</b></div>`;
+  }
+  const list = bookCardMembers();
+  if (!list.length) {
+    return `<div class="info-section"><h4>📱 ${bookEsc(tr('步驟 4：把成員的紀錄變成一個 QR'))}</h4>
+      <p style="font-size:12px;color:var(--text-light)">${bookEsc(tr('未載入成員名單：請先開一次「📊 我的進度」或「🏠 全團總覽」載入，然後返嚟呢一頁。'))}</p>
+    </div>`;
+  }
+  const chosen = bookState.cardScout || (bookState.card && bookState.card.scoutId) || list[0].id;
+  const card = bookState.card;
+  const options = list.map(m => `<option value="${bookEsc(m.id)}" ${m.id === chosen ? 'selected' : ''}>${bookEsc((m.name ? m.name + ' ' : '') + '（' + m.id + '）')}</option>`).join('');
+  const resultHtml = card ? `
+    <div class="info-section" style="background:var(--bg)" id="bookCardResult">
+      <div class="print-area" style="max-width:420px;margin:0 auto;text-align:center">
+        <div style="font-size:15px;font-weight:700;color:var(--maroon)">📖 ROVERBOOK</div>
+        <div style="font-size:12px;margin:2px 0 8px">${bookEsc(tr('用相機掃一下，加入我的紀錄冊'))}</div>
+        <div style="width:220px;max-width:100%;margin:0 auto" class="book-card-qr">${card.qrSvg}</div>
+        <div style="font-size:12px;margin-top:8px;font-family:monospace">SCOUT ID ${bookEsc(card.scoutId)}</div>
+        <div style="font-size:12px">${bookEsc(tr('進度'))} ${bookEsc(String(card.items))} ${bookEsc(tr('項'))}　🏅 ${bookEsc(String(card.awards))}</div>
+        <div style="font-size:10px;color:var(--text-light);margin-top:6px;line-height:1.6">
+          ${bookEsc(tr('掃描後按「加入我的紀錄冊」即可；只會加入已由領袖核實的進度。紀錄冊本身的姓名、相片、簽名仍然只留在成員手機。'))}
+        </div>
+      </div>
+      <div class="no-print" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+        <button class="btn btn-sm btn-primary" onclick="bookCardCopyLink()">🔗 ${bookEsc(tr('複製連結'))}</button>
+        <button class="btn btn-sm btn-secondary" onclick="window.print()">🖨️ ${bookEsc(tr('列印'))}</button>
+        <button class="btn btn-sm btn-secondary" onclick="bookCardCopyJson()">📋 ${bookEsc(tr('複製 JSON（舊版 ROVERBOOK 手動貼上）'))}</button>
+      </div>
+      <div class="no-print" style="font-size:11px;color:var(--text-light);line-height:1.7;margin-top:8px">
+        ${bookEsc(tr('QR 內容'))}：${bookEsc(String(card.url.length))} ${bookEsc(tr('字元・二維碼版本'))} ${bookEsc(String(card.qr.version))}（${bookEsc(String(card.qr.size))}×${bookEsc(String(card.qr.size))}）<br>
+        ${bookEsc(tr('網址（成員亦可直接開啟）'))}：<span style="word-break:break-all;font-family:monospace">${bookEsc(card.url)}</span>
+      </div>
+      <textarea id="bookCardJson" class="no-print" rows="4" style="width:100%;margin-top:8px;font-family:monospace;font-size:11px" readonly>${bookEsc(JSON.stringify(card.pull, null, 2))}</textarea>
+    </div>` : '';
+  return `<div class="info-section">
+    <h4>📱 ${bookEsc(tr('步驟 4：把成員的紀錄變成一個 QR（成員用相機掃）'))}</h4>
+    <p style="font-size:12px;line-height:1.7">${bookEsc(tr('揀一位成員 → 產生 QR → 列印或傳圖給他。成員用手機相機掃一下就會開 ROVERBOOK，按「加入我的紀錄冊」就成為他自己的紀錄冊：毋須密碼、毋須帳號。'))}</p>
+    <p style="font-size:12px;line-height:1.7;color:var(--text-light)">🔒 ${bookEsc(tr('QR 內只有旅團編號、SCOUT ID、已完成項目同日期、獎章日期；冇姓名、電話、電郵、地址、生日、相片、簽名墨跡。連結唔會過期，等同紙本紀錄冊，只交予本人。'))}</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px">
+      <label style="font-size:12px">${bookEsc(tr('成員'))}：<select id="bookCardMember" onchange="bookCardPick(this.value)">${options}</select></label>
+      <label style="font-size:12px">${bookEsc(tr('ROVERBOOK 網址'))}：<input id="bookCardBase" value="${bookEsc(bookCardBaseUrl())}" style="font-size:12px;min-width:220px"></label>
+      <button class="btn btn-sm btn-primary" onclick="bookCardGenerate()">📱 ${bookEsc(tr('產生 QR'))}</button>
+    </div>
+    ${bookState.cardError ? `<div style="margin-top:8px;color:var(--red);font-size:12px">⚠️ ${bookEsc(bookState.cardError)}</div>` : ''}
+    ${card && card.items === 0 ? `<div style="margin-top:8px;font-size:12px;color:var(--orange)">ℹ️ ${bookEsc(tr('這位成員暫時未有進度：QR 會建立一本空白紀錄冊並綁定他的 SCOUT ID，之後再匯出一次就會補上進度。'))}</div>` : ''}
+    ${resultHtml ? resultHtml : `<div style="margin-top:10px;font-size:12px;color:var(--text-light)">${bookEsc(tr('未產生 QR。'))}</div>`}
+  </div>`;
+}
+
+function bookCardPick(v) {
+  bookState.cardScout = String(v || '');
+  bookCardGenerate();
+}
+
+function bookCardGenerate() {
+  const sel = document.getElementById('bookCardMember');
+  const baseEl = document.getElementById('bookCardBase');
+  const scoutId = String((sel && sel.value) || bookState.cardScout || '');
+  const base = String((baseEl && baseEl.value) || bookCardBaseUrl()).trim() || bookCardBaseUrl();
+  bookState.cardScout = scoutId;
+  bookState.cardError = '';
+  try {
+    if (!scoutId) throw new Error(tr('請先揀一位成員'));
+    const card = bookBuildCardFor(scoutId, base);
+    if (card.url.length > 1200) throw new Error(tr('紀錄太多，一個 QR 放唔落：請改用「複製 JSON」貼入 ROVERBOOK'));
+    bookState.card = card;
+    bookCardRememberBase(base);
+    showToast(tr('已產生 QR：') + (card.name || card.scoutId), 'success');
+  } catch (e) {
+    bookState.card = null;
+    bookState.cardError = e.message || String(e);
+  }
+  renderBookTab();
+}
+
+function bookCardCopyLink() {
+  const card = bookState.card;
+  if (!card) return;
+  try {
+    navigator.clipboard.writeText(card.url).then(
+      () => showToast(tr('已複製連結：用相機掃或直接打開都可以'), 'success'),
+      () => showToast(tr('複製失敗，請手動選取文字'), 'error')
+    );
+  } catch (e) { showToast(tr('複製失敗，請手動選取文字'), 'error'); }
+}
+
+function bookCardCopyJson() {
+  const el = document.getElementById('bookCardJson');
+  if (!el) return;
+  try {
+    navigator.clipboard.writeText(el.value).then(
+      () => showToast(tr('已複製，請貼入 ROVERBOOK 的「從 ROVERBADGE 匯入」'), 'success'),
+      () => showToast(tr('複製失敗，請手動選取文字'), 'error')
+    );
+  } catch (e) { showToast(tr('複製失敗，請手動選取文字'), 'error'); }
 }
 
 async function bookLoadRoster() {

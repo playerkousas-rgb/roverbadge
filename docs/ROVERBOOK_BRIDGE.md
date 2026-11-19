@@ -111,6 +111,20 @@ ROVERBOOK 原本的 `RB1…` 二維碼（gzip）仍然係成員自己裝置之�
 「待領袖確認（未計入進度）」）。
 Sheet 選單新增「📖 ROVERBOOK 對接狀態」（只計數字，唔含任何個資）。
 
+## 4.5 個人 QR 匯出（2026-11）
+
+成員未必想在手機打密碼。領袖可以喺「📖 ROVERBOOK 對接 → 📱 4 · 匯出 QR」揀一位成員，
+把他的進度＋頒發壓成一張 **`roverbadge.card.v1`** 匯入卡（`RBC1.<base64url>`），
+再放進 `https://<ROVERBOOK>/#rb=RBC1.…` 印成二維碼。成員用手機相機掃 → 開 ROVERBOOK →
+按「加入我的紀錄冊」即可；毋須帳號，亦唔會經任何伺服器（hash 唔會上網）。
+
+- 卡內**零個資**：旅團編號、SCOUT ID、項目＋日期、獎章＋日期；冇姓名／電話／電郵／地址／生日／相片／簽名墨跡。
+- 只有**領袖已核實**的項目會入卡（`verified:true`）；成員自己申報的仍然走「待批 → CONFIRM」。
+- 只加不減：手機上較後的日期永遠不會被卡覆蓋。
+- 舊版 ROVERBOOK 未支援 `#rb=`：用同一頁「📋 複製 JSON」（`cardToPull()`）手動貼入即可。
+
+完整格式、體積上限與測試見 [ROVERBOOK_QR_EXPORT.md](ROVERBOOK_QR_EXPORT.md)（`tests/roverbook-card.test.mjs` 14 項）。
+
 ## 5. 部署（GS 5.4.0）
 
 1. 覆寫 `apps-script/Code.gs` →「部署 → 管理部署作業 → ✏️ → 建立新版本」（保留同一條 `/exec`）。
