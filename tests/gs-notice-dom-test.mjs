@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
+import { loadAssetModule } from './browser-module-harness.mjs';
 
 let JSDOM, VirtualConsole;
 try {
@@ -16,6 +17,9 @@ try {
 }
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+// 版號單一真理：跟 assets/gs-release.js 走，升級 GS 時本測試唔使再手改硬编码版號。
+const GS_VER = loadAssetModule('assets/gs-release.js').GS_LATEST.version;
+const V_RE = GS_VER.replace(/\./g, '\\.');
 const vc = new VirtualConsole();
 vc.on('jsdomError', () => {}); // 環境雜訊（localStorage、離線 CDN）
 const dom = await JSDOM.fromFile(path.join(root, 'index.html'), {
@@ -53,7 +57,7 @@ await test('三個頁面都有公告區，並帶 Code.gs 下載與「重新檢�
     assert.match(h, /最新版本公告/, id);
     assert.match(h, /href="apps-script\/Code\.gs"/, id + ' 缺少 Code.gs 下載');
     assert.match(h, /onclick="gsRecheck\(\)"/, id + ' 缺少重新檢查');
-    assert.match(h, /v5\.3\.0/, id + ' 缺少最新版本號');
+    assert.match(h, new RegExp('v' + V_RE), id + ' 缺少最新版本號');
   }
 });
 
@@ -73,13 +77,13 @@ await test('GS 未更新（舊版無 gsVersion）：提示更新，並指向選�
 });
 
 await test('本版要求初始化：GS 已更新但冇標記 → 顯示未初始化警告，不偽造初始化標記', () => {
-  setInfo({ success: true, gsVersion: '5.3.0', initRequired: true, initializedGsVersion: '' });
+  setInfo({ success: true, gsVersion: GS_VER, initRequired: true, initializedGsVersion: '' });
   const h = html('gsNoticeMain');
   assert.match(text('gsNoticeMain'), /GS 已更新但未初始化/);
   assert.match(text('gsNoticeMain'), /必須按一次選單「🔗 旅系統 → 🔧 初始化／更新」/);
   assert.match(h, /gs-must-init/);
   assert.doesNotMatch(h, /class="gs-badge gs-ok"/);
-  assert.match(h, /本旅團 GS 版本：v5\.3\.0/);
+  assert.match(h, new RegExp('本旅團 GS 版本：v' + V_RE));
   assert.match(h, /初始化標記：—/);
 });
 
@@ -93,11 +97,11 @@ await test('舊版後端（GS 5.2.4，可選初始化版本）：顯示未更新
 });
 
 await test('初始化完成（標記＝本版）：顯示已核對，唔再提示要按選單掣', () => {
-  setInfo({ success: true, gsVersion: '5.3.0', initRequired: true, initializedGsVersion: '5.3.0' });
+  setInfo({ success: true, gsVersion: GS_VER, initRequired: true, initializedGsVersion: GS_VER });
   const h = html('gsNoticeLogin');
   assert.match(h, /class="gs-badge gs-ok"[^>]*>✅ 已核對/);
   assert.doesNotMatch(h, /gs-must-init/);
-  assert.match(h, /初始化標記：5\.3\.0/);
+  assert.match(h, new RegExp('初始化標記：' + V_RE));
 });
 
 await test('資料保全說明出現在公告內（不刪除、不改寫）', () => {
@@ -108,7 +112,7 @@ await test('資料保全說明出現在公告內（不刪除、不改寫）', ()
 
 await test('「重新檢查」沒有選旅團時不發出請求；有旅團時只呼叫 ecStatus', async () => {
   const calls = [];
-  w.apiRequest = async (action, data, opts) => { calls.push({ action, data, opts }); return { success: true, gsVersion: '5.3.0', initRequired: true, initializedGsVersion: '5.3.0' }; };
+  w.apiRequest = async (action, data, opts) => { calls.push({ action, data, opts }); return { success: true, gsVersion: GS_VER, initRequired: true, initializedGsVersion: GS_VER }; };
   ev('currentTroopId = null');
   await w.gsRecheck();
   assert.equal(calls.length, 0, '未選旅團不應發出請求');

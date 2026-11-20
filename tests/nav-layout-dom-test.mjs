@@ -71,15 +71,16 @@ console.log('\n【3】管委 exec_committee：成員功能在上、全團總覽�
   check('用戶管理：無管理權 → 隱藏', hidden('users'));
 }
 
-console.log('\n【4】領袖 group_leader：常用在上，全團總覽＋用戶管理排下（半半一行）');
+console.log('\n【4】領袖 group_leader：常用在上，全團總覽＋用戶管理＋ROVERBOOK 排下（三等分一行）');
 {
   setUser('group_leader');
   check('我的進度：顯示、屬常用（上方）', !hidden('progress') && !elevated('progress'));
   check('審批中心：顯示、屬常用（上方）', !hidden('requests') && !elevated('requests'));
   check('全團總覽：顯示、屬進階（下方）', !hidden('overview') && elevated('overview'));
   check('用戶管理：顯示、屬進階（下方）', !hidden('users') && elevated('users'));
-  check('方塊內只有 2 個進階按鈕（會平分一行）',
-    [...doc.querySelectorAll('#mainNavTabs .nav-tab.nav-elevated')].filter(b => !b.classList.contains('nav-hidden')).length === 2);
+  // 進階按鈕＝全團總覽、用戶管理、ROVERBOOK 對接；CSS 用三等分格（flex:1 1 33.333%）。
+  check('方塊內只有 3 個進階按鈕（會三等分一行）',
+    [...doc.querySelectorAll('#mainNavTabs .nav-tab.nav-elevated')].filter(b => !b.classList.contains('nav-hidden')).length === 3);
 }
 
 console.log('\n【5】桌機外觀不變：按鈕 DOM 順序相同、無殘留 inline display');

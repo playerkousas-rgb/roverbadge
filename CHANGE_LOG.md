@@ -1,5 +1,30 @@
 # CHANGE_LOG
 
+## 2026-11-20 — GS 5.4.1：角色／勾選開關更新契約、登入識別字與自行改密
+
+修前已在真 `Code.gs`（gas-harness）重現：只帶 `allowed_badges` 的 `updatePermissions` 會把 role 寫成空白（＝降為 member）並清空 `can_tick`；`new_role:'hacker'` 被接受；小寫 `l` 開頭的 L 編號登入失敗；前端登入框 `maxlength=10`、`type=email`，member 行仍渲染無效的「授權」按鈕。以下修正全部有回歸測試。
+
+### 【1】`handleUpdateUserRole`（`Code.gs`）改為部分更新
+
+- `new_role` 未提供（undefined／null／空白）→ **不寫 role**；有提供但不在可指派角色表（`ROLE_HIERARCHY`，`super_admin` 除外）→ 回 `無效角色`，全部欄位原值不動。
+- `can_tick` 未提供 → **不寫開關**；有提供就寫正規化 boolean。`allowed_badges` 未提供 → 只在**明確改角色**且原值空白時補角色預設，不覆蓋已有自訂範圍。
+- 權限檢查改用「更新後角色」（未提供時＝現有角色）；團長唯一性只在新設團長時檢查。回包加入 `{role, can_tick}`，三條路由（signed 597／token 1592／1596）共用同一函式。
+- 前端 `member` 行不再渲染 `toggleCanTick` 按鈕（沿用 `canUserTickRole()`，與後端 `CAN_TICK_ROLES` 一致）；`canTickUser_` 規則不變，測試仍正確。
+
+### 【2】登入與改密
+
+- 登入分頁只作身份提示：`loginId` 一律接受 **YMIS／L 編號／Email**，`maxLength=100`、`type=text`（`type=email` 會阻止非電郵識別字）。
+- 後端 `locateLoginRow_()`／`getUser()` 對 `L`/`l` 前綴大小寫不敏感（Email 原本已不敏感）；只影響比對，不改寫 Sheet 內既有編號。
+- Header 新增「🔑 更改密碼」，沿用 `changePassword` action（自行輸入目前密碼，與首次登入的強制改密 modal 分開）。
+
+### 【3】版號與資料保全
+
+- `GS_VERSION` 5.4.0 → **5.4.1**、`GS_RELEASE_DATE` **2026-11-20**；`assets/gs-release.js` `GS_LATEST` 同步，`tests/password-kdf.test.mjs` 版面斷言同步；前端 UI 仍 v5.2、`package.json` 版本不動（GS 與前端雙軌版號）。
+- 不改動任何既有資料／欄名、不換 API Key、不要求重設密碼；`initializeSheets()` 仍然只增補。
+- 測試：`tests/can-tick.test.mjs` 新增 5 項（只改 badges、無效角色、開關、角色預設、member 按鈕源碼守衛）；`tests/auth-hardening.test.mjs` 新增 2 項（L 大小寫／Email 登入、登入框與 header 入口）。另把 `gs-notice-dom-test` 版號改為讀 `GS_LATEST`（不再硬編碼舊版）、更新 `nav-layout-dom-test` 的進階按鈕數量（ROVERBOOK 分頁已納入）。有／無 jsdom 環境下 `npm test` 均全綠。
+
+---
+
 ## 2026-11-05 — GS 5.4.0：ROVERBOOK 用戶端 API（`/api/roverbook`）＋ SCOUT ID 前導零正規化
 
 ROVERBOOK 已合併到 `main`，佢只經 `https://roverbadge.vercel.app` 對接。本版新增一個**專用閘道**，
