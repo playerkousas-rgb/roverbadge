@@ -283,12 +283,12 @@ test('docs：新增登入逾時排查文件，且明確禁止「叫用戶重設�
   assert.match(codeSrc, /KDF_BENCH_LIMIT_MS = 30000/);
 });
 
-// ---------- 8. 版號同步（GS 5.4.0） ----------
-test('GS_VERSION 與前端 GS_LATEST 同步為 5.4.0，release date 2026-11-04', () => {
-  assert.match(codeSrc, /const GS_VERSION = '5\.4\.0';/);
-  assert.match(codeSrc, /const GS_RELEASE_DATE = '2026-11-04';/);
-  assert.equal(GsRelease.GS_LATEST.version, '5.4.0');
-  assert.equal(GsRelease.GS_LATEST.releaseDate, '2026-11-04');
+// ---------- 8. 版號同步（GS 5.4.1） ----------
+test('GS_VERSION 與前端 GS_LATEST 同步為 5.4.1，release date 2026-11-20', () => {
+  assert.match(codeSrc, /const GS_VERSION = '5\.4\.1';/);
+  assert.match(codeSrc, /const GS_RELEASE_DATE = '2026-11-20';/);
+  assert.equal(GsRelease.GS_LATEST.version, '5.4.1');
+  assert.equal(GsRelease.GS_LATEST.releaseDate, '2026-11-20');
   // 除錯用：git 版本可用（實測腳本靠佢取舊版 Code.gs）
   try {
     execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: repoRoot, stdio: 'pipe' });

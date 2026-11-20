@@ -13,6 +13,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { loadCodeGs } from './gas-harness.mjs';
 
 const sha256 = (s) => crypto.createHash('sha256').update(String(s), 'utf8').digest('hex');
@@ -277,4 +278,25 @@ test('重設密碼成功後：清走登入失敗鎖定、踢走該帳號舊 sess
   // 審計有記錄
   const audit = env.ss.sheets.get('操作紀錄').rows.slice(1).filter(row => String(row[2]) === 'set_password');
   assert.ok(audit.length >= 1, '應寫入 set_password 審計');
+});
+
+test('登入識別字：L 編號大小寫不敏感，Email 大小寫不敏感', () => {
+  const env = newEnv();
+  seedUser(env, { ymis: 'L12345678', name: 'L 領袖', email: 'Case@Example.org', role: 'group_leader', pwd: USER.pwd });
+  for (const id of ['L12345678', 'l12345678', 'CASE@example.org', 'case@EXAMPLE.ORG']) {
+    const r = login(env, id, USER.pwd);
+    assert.equal(r.success, true, `${id} 應可登入：${JSON.stringify(r)}`);
+    assert.equal(r.user.ymis, 'L12345678', '不改寫 Sheet 內原有 L 編號寫法');
+  }
+});
+
+test('前端登入頁接受「YMIS 或 Email」、maxLength=100；header 有自行更改密碼入口', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /<label id="loginIdLabel">YMIS 或 Email<\/label><input[^>]*id="loginId"[^>]*maxlength="100"/);
+  const switchFn = html.slice(html.indexOf('function switchLoginType('), html.indexOf('async function doLogin('));
+  assert.match(switchFn, /l\.textContent='YMIS 或 Email'/);
+  assert.match(switchFn, /i\.maxLength=100/);
+  assert.match(switchFn, /i\.type='text'/, 'type=email 會阻止 YMIS／L 編號輸入');
+  assert.match(html, /onclick="openChangePasswordModal\(\)"[^>]*>🔑 更改密碼</, 'header 需有更改密碼按鈕');
+  assert.match(html, /apiRequest\('changePassword',\{token:currentToken,old_password:oldPw,new_password:n1\}\)/, '沿用 changePassword action');
 });

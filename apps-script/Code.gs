@@ -972,8 +972,8 @@ const APPLY_ROLES = ['member','branch_leader'];
 // INITIALIZED_GS_VERSION（Script Property）只在 initializeSheets() 成功走完最後一步才寫入，
 // 表示「此 GS 版本的初始化已完成」。initializeSheets() 只做增補（缺表／缺欄位標題／缺預設管理員），
 // 不刪除、不改寫任何既有用戶、進度、紀錄或金鑰資料（見 docs/LEADER_GUIDE.md「資料保全規則」）。
-const GS_VERSION = '5.4.0';
-const GS_RELEASE_DATE = '2026-11-04';
+const GS_VERSION = '5.4.1';
+const GS_RELEASE_DATE = '2026-11-20';
 const GS_INIT_REQUIRED = true;
 const GS_INIT_PROP = 'INITIALIZED_GS_VERSION';
 function gsVersionInfo_(){
@@ -1322,11 +1322,12 @@ function getUser(ymis){
   const hasAllowedCol = sheet.getLastColumn()>=13;
   const key=String(ymis||'').trim();
   const keyNorm=scoutNorm_(key);
+  const lIdKey=/^l\d+$/i.test(key)?key.toLowerCase():''; // L 編號與登入同一規則：大小寫不敏感
   for(let i=1;i<data.length;i++){
     // 舊版殘留 super_admin 列：保留不刪（資料保全），但不可作為登入身分
     if(isLegacySuperRow_(data[i])) continue;
     const rowKey=String(data[i][0]||'').trim();
-    const sameId = rowKey===key || (keyNorm && scoutNorm_(rowKey)===keyNorm);
+    const sameId = rowKey===key || (keyNorm && scoutNorm_(rowKey)===keyNorm) || (lIdKey && rowKey.toLowerCase()===lIdKey);
     if(sameId && String(data[i][11]||'').trim()==='active'){
       return {
         ymis:data[i][0].toString(),
@@ -1661,12 +1662,14 @@ function locateLoginRow_(loginId){
   // 只影響「比對」，Sheet 內原有寫法同資料一律不變。
   const keyNorm=scoutNorm_(key);
   const keyAliases=scoutAliases_(key);
+  // L 編號（領袖／管委的內部編號）大小寫不敏感：Sheet 存 L12345678，輸入 l12345678 都要登入到。
+  const lIdKey=/^l\d+$/i.test(key)?key.toLowerCase():'';
   let byId=-1, byEmail=-1;
   for(let i=1;i<data.length;i++){
     if(isLegacySuperRow_(data[i])) continue; // 舊版殘留 super_admin 列不可作為登入身分（保留不刪）
     const rowY=String(data[i][0]===undefined||data[i][0]===null?'':data[i][0]).trim();
     const rowE=String(data[i][2]||'').trim().toLowerCase();
-    if(byId<0 && rowY && (rowY===key || (keyNorm && scoutNorm_(rowY)===keyNorm))) byId=i;
+    if(byId<0 && rowY && (rowY===key || (keyNorm && scoutNorm_(rowY)===keyNorm) || (lIdKey && rowY.toLowerCase()===lIdKey))) byId=i;
     if(byEmail<0 && rowE && rowE===lower) byEmail=i;
     if(byId>=0 && byEmail>=0) break;
   }
@@ -1856,35 +1859,49 @@ function handleUpdateUserRole(targetYmis,newRole,canTick,managerYmis, allowedBad
   const manager=getUser(managerYmis);
   if(!manager) return jsonResponse({success:false,error:'找不到管理員'});
   if(isSuperAdminId(targetYmis)) return jsonResponse({success:false,error:'不能更改系統管理員帳號的角色'});
-  // super_admin 可以改任何人，admin 可以改團長/支部領袖/執委/成員，團長可改支部領袖/執委/成員，支部領袖可改執委/成員
-  if(manager.role!=='super_admin' && !canManageRole(manager.role,newRole) && manager.role!=='admin') return jsonResponse({success:false,error:'權限不足，你的等級不可設定此角色'});
-  if(newRole==='group_leader'){
-    const cur=findActiveGroupLeader(targetYmis);
-    if(cur) return jsonResponse({success:false,error:'團長只能有一位（現任：'+cur.name+' '+cur.ymis+'），如需更換請先將現任團長轉為其他角色'});
+  // 全部欄位都是「可選」：只寫明確提供的欄位。updatePermissions 只送 allowed_badges 時，
+  // 絕不可把 role 寫成空白（＝降為 member）或清空 can_tick（見 tests/can-tick.test.mjs）。
+  const roleGiven = newRole!==undefined && newRole!==null && String(newRole).trim()!=='';
+  const role = roleGiven ? String(newRole).trim() : '';
+  // 可指派角色與前端 roleOpts 一致；保留帳號 super_admin 不在 Users 表，不可經此入口指派。
+  if(roleGiven && (!Object.prototype.hasOwnProperty.call(ROLE_HIERARCHY,role) || role==='super_admin')){
+    return jsonResponse({success:false,error:'無效角色'});
   }
+  const tickGiven = canTick!==undefined && canTick!==null;
+  const tickValue = tickGiven ? (canTick===true || canTick===1 || /^true$/i.test(String(canTick))) : null;
+  const badgesGiven = allowedBadges!==undefined && allowedBadges!==null;
   const sheet=getSheet().getSheetByName('Users'); const data=sheet.getDataRange().getValues();
   for(let i=1;i<data.length;i++){
     if(data[i][0].toString()===targetYmis && data[i][11].toString()==='active'){
-      sheet.getRange(i+1,4).setValue(newRole);
-      sheet.getRange(i+1,7).setValue(canTick);
-      sheet.getRange(i+1,8).setValue(sheetActor(managerYmis));
-      sheet.getRange(i+1,9).setValue(now());
-      // 處理細緻權限：若提供 allowedBadges，寫入第13欄
+      const currentRole=String(data[i][3]||'member');
+      const currentTick=data[i][6]===true || data[i][6]==='TRUE';
+      const finalRole=roleGiven?role:currentRole;
+      const finalTick=tickGiven?tickValue:currentTick;
+      // 權限檢查用「改完之後的角色」：沒提供 new_role 時，仍須有權管理該用戶的現有角色。
+      if(manager.role!=='super_admin' && manager.role!=='admin' && !canManageRole(manager.role,finalRole)){
+        return jsonResponse({success:false,error:'權限不足，你的等級不可設定此角色'});
+      }
+      if(roleGiven && finalRole==='group_leader' && finalRole!==currentRole){
+        const cur=findActiveGroupLeader(targetYmis);
+        if(cur) return jsonResponse({success:false,error:'團長只能有一位（現任：'+cur.name+' '+cur.ymis+'），如需更換請先將現任團長轉為其他角色'});
+      }
+      if(roleGiven) sheet.getRange(i+1,4).setValue(finalRole);
+      if(tickGiven) sheet.getRange(i+1,7).setValue(finalTick);
+      if(roleGiven||tickGiven||badgesGiven){
+        sheet.getRange(i+1,8).setValue(sheetActor(managerYmis));
+        sheet.getRange(i+1,9).setValue(now());
+      }
+      // allowed_badges：明確提供就照寫；否則只喺「明確改角色」且原值空白時補角色預設，唔覆蓋已有設定。
       if(sheet.getLastColumn()>=13){
-        if(allowedBadges!==undefined && allowedBadges!==null){
-          sheet.getRange(i+1,13).setValue(allowedBadges);
-        } else {
+        if(badgesGiven){
+          sheet.getRange(i+1,13).setValue(String(allowedBadges));
+        } else if(roleGiven && finalRole!==currentRole && !data[i][12]){
           // 默認：領袖全部 (*)，成員無，執委默認 L1,OTHER（與 data/items.json permissionDefaults 一致）
-          if(!data[i][12]){
-            let def='*';
-            if(newRole==='member') def='';
-            else if(newRole==='exec_committee') def='L1,OTHER';
-            else def='*';
-            sheet.getRange(i+1,13).setValue(def);
-          }
+          const def=finalRole==='member'?'':(finalRole==='exec_committee'?'L1,OTHER':'*');
+          sheet.getRange(i+1,13).setValue(def);
         }
       }
-      return jsonResponse({success:true});
+      return jsonResponse({success:true,role:finalRole,can_tick:finalTick});
     }
   }
   return jsonResponse({success:false,error:'找不到用戶'});

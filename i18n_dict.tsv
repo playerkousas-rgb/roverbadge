@@ -1093,3 +1093,9 @@ BOOK 顯示領袖已簽（仍待你確認）	BOOK says a leader signed (still ne
 確定要刪除這些頒發紀錄？刪除後成員的 ROVERBOOK 下次取回時會消失。	Delete these award records? They will disappear from the member’s ROVERBOOK the next time it pulls.
 確定要更正已頒發的日期？原日期會被覆寫（會寫入備註）。	Correct the awarded date? The original date is overwritten (and noted in the remarks column).
 領袖已撤回（貼回 ROVERBOOK 時會移除）	Withdrawn by the leader (removed when pasted back into ROVERBOOK)
+YMIS 或 Email	YMIS or email
+例如 1234567890 或 your@email.com	e.g. 1234567890 or your@email.com
+🔑 更改密碼	🔑 Change password
+目前密碼	Current password
+請輸入目前密碼	Enter your current password
+✅ 密碼已更改	✅ Password changed

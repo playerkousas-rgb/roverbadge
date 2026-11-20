@@ -544,11 +544,11 @@ a:hover{text-decoration:underline}
       <h2>🔐 登入系統</h2>
       <div class="troop-info-box" id="loginTroopInfo">—</div>
       <div class="login-type-tabs">
-        <div class="login-type-tab active" id="tabMember" onclick="switchLoginType('member')">👤 成員<br><small style="font-weight:normal">YMIS 10位</small></div>
-        <div class="login-type-tab" id="tabLeader" onclick="switchLoginType('leader')">👨‍💼 領袖<br><small style="font-weight:normal">Email</small></div>
+        <div class="login-type-tab active" id="tabMember" onclick="switchLoginType('member')">👤 成員<br><small style="font-weight:normal">YMIS 或 Email</small></div>
+        <div class="login-type-tab" id="tabLeader" onclick="switchLoginType('leader')">👨‍💼 領袖<br><small style="font-weight:normal">YMIS 或 Email</small></div>
       </div>
       <div id="loginMsg" class="login-msg"></div>
-      <div class="form-group"><label id="loginIdLabel">YMIS（10位數字）</label><input type="text" id="loginId" placeholder="例如 1234567890" maxlength="10"></div>
+      <div class="form-group"><label id="loginIdLabel">YMIS 或 Email</label><input type="text" id="loginId" placeholder="例如 1234567890 或 your@email.com" maxlength="100" autocomplete="username"></div>
       <div class="form-group"><label>密碼</label><input type="password" id="loginPassword" placeholder="請輸入密碼"></div>
       <button class="btn btn-primary" onclick="doLogin()" style="width:100%" id="btnLogin">登入</button>
       <div style="text-align:center;margin-top:12px;display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
@@ -573,6 +573,7 @@ a:hover{text-decoration:underline}
     <div class="user-info">
       <span class="user-chip" id="userInfo">—</span>
       <button class="lang-toggle" onclick="setUILang(UI_LANG==='en'?'zh':'en')">🌐 English</button>
+      <button class="lang-toggle btn-change-password-top" onclick="openChangePasswordModal()" title="🔑 更改密碼">🔑 更改密碼</button>
       <button class="lang-toggle btn-feedback-top" onclick="openScoutReport()" title="問題回報 / 意見回饋（經 Scout Admin 統一回收；可匿名，留聯絡方式可收通知）">🐛💬 回報 · 意見</button>
       <button class="btn btn-sm btn-secondary" onclick="doLogout()">登出</button>
     </div>
@@ -684,6 +685,21 @@ a:hover{text-decoration:underline}
     <div class="modal-actions">
       <button type="button" class="btn btn-secondary" id="btnCancelForceChange" onclick="cancelForceChange()">取消（返回登入）</button>
       <button type="button" class="btn btn-primary" id="btnForceChange" onclick="submitForceChange()">確認更改</button>
+    </div>
+  </div>
+</div>
+
+<!-- 登入後自行改密：沿用 changePassword action；與首次登入的 forceChangeModal 分開，避免覆蓋 __fcOldPw。 -->
+<div id="changePasswordModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="changePasswordTitle">
+  <div class="modal-content">
+    <h3 id="changePasswordTitle">🔑 更改密碼</h3>
+    <div class="form-group"><label for="cpOld">目前密碼</label><input type="password" id="cpOld" placeholder="目前密碼" maxlength="100" autocomplete="current-password"></div>
+    <div class="form-group"><label for="cpNew1">新密碼（至少4位）</label><input type="password" id="cpNew1" placeholder="至少4位" maxlength="100" autocomplete="new-password"></div>
+    <div class="form-group"><label for="cpNew2">再次輸入新密碼</label><input type="password" id="cpNew2" placeholder="再輸入一次" maxlength="100" autocomplete="new-password" onkeydown="if(event.key==='Enter')submitChangePassword()"></div>
+    <div id="cpMsg" class="login-msg" role="alert"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" id="btnCancelChangePassword" onclick="closeChangePasswordModal()">取消</button>
+      <button type="button" class="btn btn-primary" id="btnChangePassword" onclick="submitChangePassword()">確認更改</button>
     </div>
   </div>
 </div>
@@ -2011,6 +2027,12 @@ const LANG_DICT={
   "初始化／更新：喺旅團試算表選單「🔗 旅系統 → 🔧 初始化／更新」按一次（首次需授權）": "Initialize / update: in the Group Sheet menu press \"🔗 Troop System → 🔧 Initialize / Update\" once (authorise on first run)",
   "回到本頁按「重新檢查」，出現綠色「已核對」即完成": "Come back here and press \"Re-check\"; the green \"Checked\" badge means done",
   "請先選擇旅團並登入": "Please select a troop and log in first",
+  "YMIS 或 Email": "YMIS or email",
+  "例如 1234567890 或 your@email.com": "e.g. 1234567890 or your@email.com",
+  "🔑 更改密碼": "🔑 Change password",
+  "目前密碼": "Current password",
+  "請輸入目前密碼": "Enter your current password",
+  "✅ 密碼已更改": "✅ Password changed"
 };
 const LANG_KEYS=Object.keys(LANG_DICT).sort(function(a,b){ return b.length-a.length; });
 const LANG_RE=new RegExp('('+LANG_KEYS.map(function(k){ return k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }).join('|')+')','g');
@@ -2427,8 +2449,11 @@ function switchLoginType(t){
   document.getElementById('tabMember').classList.toggle('active', t==='member');
   document.getElementById('tabLeader').classList.toggle('active', t==='leader');
   const l=document.getElementById('loginIdLabel'), i=document.getElementById('loginId');
-  if(t==='member'){ l.textContent='YMIS（10位數字）'; i.placeholder='例如 1234567890'; i.type='text'; i.maxLength=10; }
-  else{ l.textContent='Email'; i.placeholder='your@email.com'; i.type='email'; i.maxLength=100; }
+  // 後端 locateLoginRow_ 一律接受 YMIS／L 編號／Email（email 大小寫不敏感）；分頁只係身份提示，不再限制輸入格式。
+  l.textContent='YMIS 或 Email';
+  i.placeholder='例如 1234567890 或 your@email.com';
+  i.type='text'; // 不可用 type=email：YMIS／L 編號會被瀏覽器當作無效電郵
+  i.maxLength=100;
 }
 async function doLogin(){
   const lid=document.getElementById('loginId').value.trim();
@@ -2511,6 +2536,43 @@ async function submitForceChange(){
     console.error(e); m.textContent=e.message||tr('無法連接伺服器'); m.className='login-msg error';
   }finally{
     b.disabled=false; b.textContent=tr('確認更改');
+  }
+}
+// 登入後的「🔑 更改密碼」：自行輸入目前密碼，沿用同一個 changePassword action。
+function openChangePasswordModal(){
+  const m=document.getElementById('changePasswordModal'); if(!m) return;
+  ['cpOld','cpNew1','cpNew2'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  const msg=document.getElementById('cpMsg');
+  if(msg){ msg.textContent=''; msg.className='login-msg'; }
+  m.classList.add('active');
+  try{ document.getElementById('cpOld').focus(); }catch(e){}
+}
+function closeChangePasswordModal(){
+  const m=document.getElementById('changePasswordModal'); if(m) m.classList.remove('active');
+}
+async function submitChangePassword(){
+  const oldPw=(document.getElementById('cpOld')||{}).value||'';
+  const n1=(document.getElementById('cpNew1')||{}).value||'';
+  const n2=(document.getElementById('cpNew2')||{}).value||'';
+  const msg=document.getElementById('cpMsg');
+  const fail=(text)=>{ if(msg){ msg.textContent=tr(text); msg.className='login-msg error'; } };
+  if(msg){ msg.textContent=''; msg.className='login-msg'; }
+  if(!oldPw){ fail('請輸入目前密碼'); return; }
+  if(n1.length<4){ fail('新密碼至少4位'); return; }
+  if(n1===oldPw){ fail('新密碼不可與原密碼相同'); return; }
+  if(n1!==n2){ fail('兩次輸入的新密碼不一致'); return; }
+  const b=document.getElementById('btnChangePassword');
+  if(b){ b.disabled=true; b.textContent=tr('更改中...'); }
+  try{
+    const d=await apiRequest('changePassword',{token:currentToken,old_password:oldPw,new_password:n1});
+    if(!d.success){ fail(d.error||'更改密碼失敗'); return; }
+    closeChangePasswordModal();
+    if(currentUser) currentUser.force_change_password=false;
+    showToast(tr('✅ 密碼已更改'),'success');
+  }catch(e){
+    fail(e.message||'無法連接伺服器');
+  }finally{
+    if(b){ b.disabled=false; b.textContent=tr('確認更改'); }
   }
 }
 function doLogout(){
@@ -5761,7 +5823,8 @@ async function loadUsers(){
             return `<option value="${o[0]}" ${u.role===o[0]?'selected':''} ${dis?'disabled style="color:#999"':''}>${o[1]}</option>`;
           }).join('');
           actionBtns.push(`<select onchange="updateUserRole('${u.ymis}',this.value,'${u.role}',${hasOtherGsl},${isSoleGsl})" title="更改角色">${optHtml}</select>`);
-          actionBtns.push(`<button class="btn btn-sm ${u.can_tick?'btn-danger':'btn-success'}" onclick="toggleCanTick('${u.ymis}',${!u.can_tick},'${u.role}')" title="${u.can_tick?'收回勾選權限':'授權勾選權限'}">${u.can_tick?'收回':'授權'}</button>`);
+          // canTickUser_ = 角色屬 CAN_TICK_ROLES 且 can_tick；member 授權只會寫入無效開關，故不顯示按鈕。
+          if(canUserTickRole(u.role)) actionBtns.push(`<button class="btn btn-sm ${u.can_tick?'btn-danger':'btn-success'}" onclick="toggleCanTick('${u.ymis}',${!u.can_tick},'${u.role}')" title="${u.can_tick?'收回勾選權限':'授權勾選權限'}">${u.can_tick?'收回':'授權'}</button>`);
           actionBtns.push(`<button class="btn btn-sm btn-warning" onclick="openPermissionModal('${u.ymis}','${escapeAttr(u.name)}','${u.role}','${escapeAttr(u.allowed_badges||'')}')" title="設定可勾選權限">⚙️ 權限</button>`);
           actionBtns.push(`<button class="btn btn-sm btn-secondary" onclick="editUserProfile('${u.ymis}','${escapeAttr(u.name)}','${escapeAttr(u.email||'')}','${escapeAttr(squad)}')" title="修改姓名／電郵／備註">✏️ 修改</button>`);
           actionBtns.push(`<button class="btn btn-sm btn-warning" onclick="resetMemberPassword('${u.ymis}')" title="重設密碼（生成一次性臨時密碼）">🔑 重設密碼</button>`);
